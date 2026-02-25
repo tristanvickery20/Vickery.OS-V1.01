@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invoices • Vickery Electric CRM</title>
+
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarMount"></aside>
+
+    <main class="main-area">
+      <div class="page-header-row">
+        <h1>Invoices</h1>
+        <button class="btn-outline" id="refreshBtn" type="button">Refresh</button>
+      </div>
+
+      <p class="status-text" id="msg"></p>
+
+      <div class="date-filter" style="gap:10px; flex-wrap:wrap;">
+        <select id="statusFilter">
+          <option value="all">All</option>
+          <option value="draft">Draft</option>
+          <option value="sent">Sent</option>
+          <option value="overdue">Overdue</option>
+          <option value="paid">Paid</option>
+          <option value="void">Void</option>
+        </select>
+
+        <input id="searchInput" placeholder="Search invoice #, client, address…" />
+      </div>
+
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Client</th>
+              <th>Address</th>
+              <th>Status</th>
+              <th>Total</th>
+              <th>Balance</th>
+              <th>Issued</th>
+              <th>Due</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="8" class="status-text">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/pages/js/shell.js"></script>
+
+  <script>
+    // ---------- utils ----------
+    function money(v){
+      const n = Number(v || 0);
+      return isFinite(n)
+        ? n.toLocaleString(undefined, { style:"currency", currency:"USD" })
+        : "$0.00";
+    }
+
+    function fmtDate(val){
+      if (!val || typeof val !== "string") return "";
+      try {
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return "";
+        return d.toLocaleDateString();
+      } catch { return ""; }
+    }
+
+    function norm(s){ return String(s||"").toLowerCase().trim(); }
+
+    function statusLabel(r){
+      if (r.overdue) return "Overdue";
+      const s = String(r.status_code || "").trim();
+      return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Draft";
+    }
+
+    // ---------- load invoices ----------
+    async function loadInvoices(){
+      const rows = document.getElementById("rows");
+      const msg = document.getElementById("msg");
+      rows.innerHTML = '<tr><td colspan="8" class="status-text">Loading…</td></tr>';
+      msg.textContent = "";
+
+      const status = document.getElementById("statusFilter").value;
+      const q = document.getElementById("searchInput").value.trim();
+
+      const params = new URLSearchParams();
+      if (status && status !== "all") params.set("status", status);
+      if (q) params.set("q", q);
+
+      try{
+        const resp = await fetch("/api/invoices?" + params.toString(), { cache:"no-store" });
+        const data = await resp.json();
+
+        if (!data.ok){
+          rows.innerHTML = '<tr><td colspan="8" class="status-text">Error loading invoices.</td></tr>';
+          msg.textContent = data.error || "Unknown error.";
+          return;
+        }
+
+        const list = data.invoices || [];
+        if (!list.length){
+          rows.innerHTML = '<tr><td colspan="8" class="status-text">No invoices found.</td></tr>';
+          return;
+        }
+
+        rows.innerHTML = list.map(r => {
+          const invNum = r.invoice_number || r.id || "";
+          return `
+            <tr>
+              <td><a href="/invoices/${encodeURIComponent(r.id)}">${invNum}</a></td>
+              <td>${r.client_name || ""}</td>
+              <td>${r.property_address || ""}</td>
+              <td>${statusLabel(r)}</td>
+              <td>${money(r.total)}</td>
+              <td>${money(r.balance_due)}</td>
+              <td>${fmtDate(r.issued_at)}</td>
+              <td>${fmtDate(r.due_at)}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch(e){
+        rows.innerHTML = '<tr><td colspan="8" class="status-text">Error loading invoices.</td></tr>';
+        msg.textContent = e.message || String(e);
+      }
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", loadInvoices);
+    document.getElementById("statusFilter").addEventListener("change", loadInvoices);
+    document.getElementById("searchInput").addEventListener("input", () => {
+      clearTimeout(window.__t);
+      window.__t = setTimeout(loadInvoices, 200);
+    });
+
+    loadInvoices();
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expenses &bull; Vickery CRM</title>
+    <link rel="stylesheet" href="/pages/css/brand.css" />
+    <link rel="stylesheet" href="/pages/css/shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sidebar" id="sidebarMount"></div>
+      <main class="main-area">
+        <div class="page-header-row">
+          <h1>Expenses</h1>
+          <button id="refreshBtn" class="btn-outline" type="button">Refresh</button>
+        </div>
+        <div class="main-content">
+          <div class="form-card">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Date</label>
+                <input id="date" type="date" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tech</label>
+                <select id="tech_id"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Lead (optional)</label>
+                <select id="lead_id"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Type</label>
+                <select id="type">
+                  <option value="gas">Gas</option>
+                  <option value="material">Material</option>
+                  <option value="parts">Parts</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Vendor</label>
+                <input id="vendor" placeholder="e.g. Shell, Home Depot" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Amount ($)</label>
+                <input id="amount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Notes</label>
+                <input id="notes" placeholder="Optional notes" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Receipt URL</label>
+                <input id="receipt_url" placeholder="https://..." />
+              </div>
+            </div>
+            <button id="submitBtn" type="button" class="btn-primary" style="width: 100%; margin-top: 12px;">
+              Log Expense
+            </button>
+            <p id="result" class="muted" style="margin-top: 8px; text-align: center;"></p>
+          </div>
+
+          <h2>Recent Expenses</h2>
+          <p id="status" class="status-text"></p>
+
+          <div class="data-table-wrap">
+            <table id="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Tech</th>
+                  <th>Lead</th>
+                  <th>Type</th>
+                  <th>Vendor</th>
+                  <th>Amount</th>
+                  <th>Notes</th>
+                  <th>Receipt</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/pages/js/api.js"></script>
+    <script src="/pages/js/crm-expenses.js"></script>
+    <script src="/pages/js/shell.js"></script>
+  </body>
+</html>

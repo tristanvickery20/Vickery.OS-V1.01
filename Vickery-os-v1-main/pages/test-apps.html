@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Apps Script Test &bull; Vickery CRM</title>
+    <link rel="stylesheet" href="/pages/css/brand.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <img src="/pages/img/logo.png" alt="Vickery Electric" class="header-logo" />
+        <span class="header-title">Apps Script Test</span>
+      </div>
+    </header>
+
+    <nav class="app-nav">
+      <div class="nav-inner">
+        <a class="nav-link" href="/crm/dashboard">Dashboard</a>
+        <a class="nav-link" href="/clients">Clients</a>
+        <a class="nav-link active" href="/test-apps">Apps Script Test</a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <h1>Apps Script Lead Create</h1>
+      <p class="muted" style="margin-bottom: 20px;">Sends data to the backend, which forwards to Apps Script to write a row in Google Sheets.</p>
+
+      <div class="form-card">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input id="name" placeholder="Customer name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input id="phone" placeholder="(555) 123-4567" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input id="address" placeholder="Street address" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Job Type</label>
+          <select id="job_type">
+            <option value="small_job">Small Job / Troubleshooting</option>
+            <option value="project">Larger Project</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Estimated Value ($)</label>
+          <input id="estimated_value" type="number" min="0" step="1" placeholder="0" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="notes" placeholder="Additional details..."></textarea>
+        </div>
+
+        <button id="sendBtn" type="button" class="btn-primary" style="width: 100%; margin-top: 8px;">
+          Send to Apps Script
+        </button>
+
+        <div id="result" style="margin-top: 16px;"></div>
+      </div>
+    </main>
+
+    <script>
+      document.getElementById("sendBtn").addEventListener("click", async () => {
+        const resultEl = document.getElementById("result");
+        resultEl.innerHTML = "<p class='muted'>Sending...</p>";
+
+        const payload = {
+          name: document.getElementById("name").value,
+          phone: document.getElementById("phone").value,
+          address: document.getElementById("address").value,
+          job_type: document.getElementById("job_type").value,
+          estimated_value: Number(document.getElementById("estimated_value").value || 0),
+          notes: document.getElementById("notes").value,
+        };
+
+        try {
+          const resp = await fetch("/api/apps/lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await resp.json();
+          resultEl.innerHTML =
+            "<pre style='background: hsl(var(--secondary)); padding: 16px; border-radius: 12px; font-size: 13px; overflow-x: auto; white-space: pre-wrap;'>" +
+            JSON.stringify(data, null, 2) +
+            "</pre>";
+        } catch (err) {
+          resultEl.innerHTML =
+            "<p class='warn'>ERROR: " + err.message + "</p>";
+        }
+      });
+    </script>
+  </body>
+</html>

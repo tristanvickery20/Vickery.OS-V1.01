@@ -1,0 +1,247 @@
+TICKET 14 — REQUESTS MODULE (LEADS RE-HOMED) + REQUEST DETAIL + STAGE/DEPOSIT GATES (SERVER-ENFORCED)
+
+CONTEXT / NON-NEGOTIABLES
+- We are moving “Leads” into the Jobber-style world as “Requests”.
+- Google Sheets is the single source of truth.
+- DO NOT delete or migrate the old Leads tab yet.
+  - Keep /crm/leads working if it already does.
+  - This ticket introduces a NEW Requests module that reads/writes the Requests tab.
+- All rule enforcement is SERVER-SIDE:
+  - Deposit Gate blocks scheduling / moving to Scheduled or In Progress when required.
+  - Stage gates for Complete/Invoiced/Paid/Closed must be enforced.
+- Every mutation must:
+  1) Write to Sheets
+  2) Log Audit (fire-and-forget)
+  3) touchClient(clientId) => update clients.last_activity_at = now()
+- UI must be consistent with Jobber shell:
+  - Sidebar item “Requests” should point to /requests (new)
+  - Requests list should feel like a module list: filter + sortable table/list
+- No mock data.
+
+GOAL
+Implement:
+- GET /requests (auth) — Requests list
+- GET /requests/:requestId (auth) — Request detail with financial summary (computed later; for now show core fields)
+- CRUD-lite:
+  - Create request (minimal) or “Convert from Quote” later
+  - Update request fields + status transitions with gates
+
+SHEETS TABS USED
+- Requests (Ticket 10 headers)
+- Clients, Properties (to show client + address in list)
+- Time, Expenses (for costing on detail)
+- Config (labor_rate_tech/admin, burden_pct)
+- Audit
+
+REQUEST STATUS SYSTEM (from your original spec)
+Order:
+Lead -> Quoted -> Scheduled -> In Progress -> Complete -> Invoiced -> Paid -> Closed
+
+Allowed transitions (server validates):
+- Any status can only move forward (no backward moves in MVP)
+- Scheduled / In Progress require deposit gate pass
+- Complete requires: scheduled_date OR at least one visit scheduled (MVP choose one rule)
+  AND time entries logged (minutes > 0) OR admin override
+- Invoiced requires: status == Complete first
+- Paid requires: invoiced_amount > 0 (if you don’t have invoiced_amount on Requests yet, add it ONLY if already present in your old Leads model; otherwise treat Paid/Closed as “later” and show placeholders)
+- Closed requires: paid_amount >= invoiced_amount (same constraint)
+
+IMPORTANT NOTE ABOUT FIELDS
+Requests tab (Ticket 10) currently does NOT include invoiced_amount/paid_amount/scheduled_date.
+We will handle this by:
+A) For Ticket 14 MVP:
+   - Implement gates up through “Complete” only
+   - Keep Invoiced/Paid/Closed UI present but disabled with “coming soon”
+OR
+B) If you want full lifecycle now, we must add these columns to Requests:
+   invoiced_amount, paid_amount, scheduled_start, scheduled_end
+But Ticket 14 should NOT change sheet headers unless absolutely required.
+Choose Option A (preferred) to avoid schema churn.
+
+DEPOSIT GATE (AUTHORITATIVE)
+Triggered when:
+- deposit_required == true
+- (deposit_received is empty or 0)
+- deposit_override != true
+Blocks:
+- Changing status to Scheduled or In Progress
+- Any scheduling endpoint that implies a schedule (Visits comes in Ticket 16, but we still gate status moves here)
+
+When blocked:
+- Return HTTP 409 with:
+  { ok:false, code:"DEPOSIT_REQUIRED", message:"Deposit required before scheduling." }
+- Write audit entry:
+  action="BLOCKED_DEPOSIT_GATE"
+  entity_type="request"
+  entity_id=requestId
+  note includes attempted transition
+
+DELIVERABLES (SERVER)
+
+1) GET /api/requests (auth)
+Query params:
+- q (search)
+- status (exact or "all")
+- limit (default 200 max 500)
+Return list of request rows augmented with:
+- client_name
+- property_address (single line)
+- deposit_gate_blocked (boolean)
+- sort by updated_at DESC (fallback created_at DESC)
+
+2) POST /api/requests (auth) — minimal create
+Body:
+{
+  client_id,
+  property_id,
+  summary,
+  lead_source (optional),
+  deposit_required (bool default false),
+  estimated_value (number optional)
+}
+Behavior:
+- validate required fields
+- create id REQ-{timestamp}
+- status_code default "Lead"
+- deposit_received default 0
+- deposit_override default false
+- created_at/updated_at now
+- append to Requests sheet
+- audit CREATE_REQUEST
+- touchClient(client_id)
+- respond with created request
+
+3) PATCH /api/requests/:id (auth) — update fields
+Allows:
+- summary
+- lead_source
+- deposit_required
+- deposit_received
+- deposit_override
+- estimated_value
+- status_code (status transition)
+Rules:
+- When status_code included:
+  - validate forward-only
+  - enforce deposit gate for Scheduled/In Progress
+  - enforce Complete gate (minimum: require at least one Time entry minutes>0 for requestId OR allow if deposit_override==true and include admin_override flag in request; simplest is require minutes>0 for MVP)
+- Write per-field audit entries OR one combined audit (acceptable):
+  - action="UPDATE_REQUEST"
+  - include field, old_value, new_value
+- Always update updated_at
+- touchClient(client_id)
+
+4) GET /api/requests/:id (auth) — detail
+Return:
+- request row
+- client { id, name, phone, email }
+- property { address_line1, city, state, zip }
+- time summary:
+  total_minutes (sum Time.minutes where lead_id == requestId OR if your Time still uses lead_id)
+- expense summary:
+  total_expenses (sum Expenses.amount where lead_id == requestId)
+- costing preview (computed, never stored):
+  labor_cost = (total_minutes/60)*labor_rate_tech
+  expense_cost = total_expenses
+  total_cost = labor_cost + expense_cost
+For revenue/gross profit:
+- For now revenue = estimated_value OR 0 (MVP)
+(Real revenue will come from quotes/invoices later.)
+
+DELIVERABLES (PAGES / UI)
+
+5) Add sidebar link update
+- “Requests” should go to /requests (new module)
+Keep /crm/leads accessible but not primary.
+
+6) /pages/requests.html (auth)
+UI:
+- Header “Requests”
+- Controls:
+  - Search input
+  - Status filter dropdown
+- List:
+  - Table (desktop) with horizontal scroll on mobile OR card list.
+Columns:
+  - Summary
+  - Client
+  - Address
+  - Status (badge+dot)
+  - Deposit (Required/Received)
+  - Updated
+  - Actions: View
+- Inline status change (dropdown) per row:
+  - On change, calls PATCH /api/requests/:id with status_code
+  - If blocked by deposit gate, show inline error and revert dropdown
+
+7) /pages/request-detail.html (auth) + /pages/js/request-detail.js
+Detail layout:
+- Header: Request + status badge
+- Info cards:
+  - Client card (name + click to client detail)
+  - Property card (address)
+  - Financial preview card:
+    - total minutes
+    - labor cost
+    - expenses
+    - total cost
+- Fields section:
+  - Summary textarea (editable)
+  - Deposit required toggle + deposit received input + override toggle
+  - Estimated value input
+- Status transition control:
+  - dropdown with statuses (Lead/Quoted/Scheduled/In Progress/Complete/(Invoiced/Paid/Closed disabled))
+- Save changes button (or autosave per field; pick simplest)
+
+8) Frontend status styles
+Add shared status map for Requests:
+- Lead (gray)
+- Quoted (blue)
+- Scheduled (blue)
+- In Progress (blue)
+- Complete (green dot only; keep badge subtle)
+- Invoiced/Paid/Closed (disabled/coming soon)
+
+FILES TO CREATE / MODIFY
+
+SERVER
+- Add routes file or extend existing:
+  - GET /api/requests
+  - POST /api/requests
+  - GET /api/requests/:id
+  - PATCH /api/requests/:id
+- Add helpers:
+  - computeDepositBlocked(requestRow)
+  - validateStatusTransition(oldStatus, newStatus)
+  - getConfigRates()
+  - sumTimeForRequest(requestId) (map from Time tab field naming)
+  - sumExpensesForRequest(requestId)
+
+PAGES
+- /pages/requests.html
+- /pages/js/requests.js
+- /pages/request-detail.html
+- /pages/js/request-detail.js
+- Update sidebar partial to point Requests -> /requests
+
+ACCEPTANCE TESTS (MANUAL)
+1) Open /requests:
+   - shows real requests from Requests tab
+   - search + status filter work
+2) Create a request (either via API call or basic UI if you include a “New Request” button)
+3) Try to change status to Scheduled with deposit_required=true and deposit_received=0:
+   - blocked, shows message, dropdown reverts
+   - audit entry BLOCKED_DEPOSIT_GATE created
+4) Change deposit_received to >0 then set Scheduled:
+   - succeeds, audit UPDATE_REQUEST created
+5) Request detail:
+   - shows client + address + cost preview computed from Time/Expenses
+6) touchClient:
+   - client.last_activity_at updates on create/update
+
+OUTPUT REQUIREMENT
+- Implement all file changes.
+- End with “Changed Files” list with brief notes.
+
+NOTE
+Ticket 15 will make /quote “Save as Lead” create Client/Property/Request + Quote snapshot. Ticket 14 builds Requests module first so Ticket 15 can plug in cleanly.

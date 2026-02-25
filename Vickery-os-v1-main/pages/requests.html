@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Requests &bull; Vickery CRM</title>
+    <link rel="stylesheet" href="/pages/css/brand.css" />
+    <link rel="stylesheet" href="/pages/css/shell.css" />
+    <style>
+      .rq-controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+      .rq-search { flex:1; min-width:180px; padding:8px 14px; border:1px solid hsl(var(--border)); border-radius:var(--radius); font-size:14px; font-family:var(--font-body); }
+      .rq-search:focus { outline:none; border-color:hsl(var(--accent)); box-shadow:0 0 0 2px hsl(var(--accent)/.15); }
+      .rq-filter { padding:8px 12px; border:1px solid hsl(var(--border)); border-radius:var(--radius); font-size:14px; background:#fff; font-family:var(--font-body); }
+      .rq-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .rq-table { width:100%; border-collapse:collapse; font-size:14px; }
+      .rq-table th { text-align:left; padding:10px 12px; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:hsl(var(--muted-foreground)); border-bottom:2px solid hsl(var(--border)); white-space:nowrap; }
+      .rq-table td { padding:10px 12px; border-bottom:1px solid hsl(var(--border)); vertical-align:middle; }
+      .rq-table tr:hover { background:hsl(var(--accent)/.03); }
+      .rq-link { color:hsl(var(--accent)); text-decoration:none; font-weight:500; }
+      .rq-link:hover { text-decoration:underline; }
+      .rq-status { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; padding:3px 10px; border-radius:20px; background:hsl(var(--secondary)); white-space:nowrap; }
+      .rq-dot { width:7px; height:7px; border-radius:50%; }
+      .rq-deposit-warn { color:hsl(0,84%,60%); font-size:12px; font-weight:500; }
+      .rq-inline-select { padding:4px 8px; border:1px solid hsl(var(--border)); border-radius:var(--radius); font-size:12px; background:#fff; font-family:var(--font-body); cursor:pointer; }
+      .rq-inline-error { color:hsl(0,84%,60%); font-size:11px; margin-top:3px; display:block; }
+      .rq-empty { text-align:center; padding:60px 20px; color:hsl(var(--muted-foreground)); }
+      .rq-new-btn { padding:8px 18px; border-radius:var(--radius); font-size:13px; font-weight:600; border:none; cursor:pointer; background:hsl(var(--primary)); color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+      .rq-new-btn:hover { opacity:.9; }
+      @media (max-width:700px) {
+        .rq-table th:nth-child(3), .rq-table td:nth-child(3) { display:none; }
+        .rq-table th:nth-child(5), .rq-table td:nth-child(5) { display:none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sidebar" id="sidebarMount"></div>
+      <main class="main-area">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Requests</h1>
+            <p class="page-subtitle">Service requests &amp; leads</p>
+          </div>
+          <a href="/requests/new" class="rq-new-btn">+ New Request</a>
+        </div>
+        <div class="main-content">
+          <div class="rq-controls">
+            <input type="text" class="rq-search" id="searchInput" placeholder="Search requests..." />
+            <select class="rq-filter" id="statusFilter">
+              <option value="all">All Statuses</option>
+              <option value="lead">Lead</option>
+              <option value="quoted">Quoted</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in progress">In Progress</option>
+              <option value="complete">Complete</option>
+            </select>
+          </div>
+          <div class="rq-table-wrap">
+            <table class="rq-table">
+              <thead>
+                <tr>
+                  <th>Summary</th>
+                  <th>Client</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th>Deposit</th>
+                  <th>Updated</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="7" class="rq-empty">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="/pages/js/requests.js"></script>
+    <script src="/pages/js/shell.js"></script>
+  </body>
+</html>

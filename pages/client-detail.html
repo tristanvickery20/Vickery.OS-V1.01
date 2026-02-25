@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Client &bull; Vickery CRM</title>
+    <link rel="stylesheet" href="/pages/css/brand.css" />
+    <link rel="stylesheet" href="/pages/css/shell.css" />
+    <style>
+      .cd-back { text-decoration:none; font-size:14px; color:hsl(var(--accent)); display:inline-flex; align-items:center; gap:4px; }
+      .cd-back:hover { text-decoration:underline; }
+      .cd-header { margin-bottom:20px; }
+      .cd-name { font-family:var(--font-display); font-size:24px; font-weight:700; margin:0; }
+      .cd-sub { font-size:14px; color:hsl(var(--muted-foreground)); margin-top:2px; }
+      .cd-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+      .cd-action { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; border-radius:var(--radius); font-size:13px; font-weight:500; text-decoration:none; border:1px solid hsl(var(--border)); background:#fff; color:hsl(var(--foreground)); cursor:pointer; transition:border-color .15s,box-shadow .15s; }
+      .cd-action:hover { border-color:hsl(var(--accent)/.4); box-shadow:0 1px 4px hsl(var(--primary)/.06); }
+      .cd-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin-bottom:24px; }
+      .cd-card { background:#fff; border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:18px; }
+      .cd-card-title { font-family:var(--font-display); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:hsl(var(--muted-foreground)); margin-bottom:8px; }
+      .cd-card-body { font-size:14px; line-height:1.5; }
+      .cd-card-body a { color:hsl(var(--accent)); text-decoration:none; }
+      .cd-card-body a:hover { text-decoration:underline; }
+      .cd-tabs { display:flex; gap:0; border-bottom:2px solid hsl(var(--border)); margin-bottom:20px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .cd-tab { padding:10px 18px; font-size:14px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; white-space:nowrap; color:hsl(var(--muted-foreground)); transition:color .15s,border-color .15s; background:none; border-top:none; border-left:none; border-right:none; }
+      .cd-tab:hover { color:hsl(var(--foreground)); }
+      .cd-tab-active { color:hsl(var(--accent)); border-bottom-color:hsl(var(--accent)); }
+      .cd-tab-content { min-height:120px; }
+      .cd-empty { text-align:center; padding:40px 20px; color:hsl(var(--muted-foreground)); }
+      .cd-list { display:flex; flex-direction:column; gap:6px; }
+      .cd-list-item { background:#fff; border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+      .cd-list-main { flex:1; min-width:0; }
+      .cd-list-title { font-weight:600; font-size:14px; margin-bottom:2px; }
+      .cd-list-sub { font-size:13px; color:hsl(var(--muted-foreground)); }
+      .cd-list-right { text-align:right; flex-shrink:0; }
+      .cd-status { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; padding:3px 10px; border-radius:20px; background:hsl(var(--secondary)); }
+      .cd-dot { width:7px; height:7px; border-radius:50%; }
+      .cd-overview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+      .cd-stat { background:#fff; border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:16px; text-align:center; }
+      .cd-stat-val { font-family:var(--font-display); font-weight:700; font-size:22px; color:hsl(var(--primary)); }
+      .cd-stat-label { font-size:12px; color:hsl(var(--muted-foreground)); margin-top:4px; }
+      .cd-photos { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+      .cd-photo { border-radius:var(--radius); overflow:hidden; border:1px solid hsl(var(--border)); aspect-ratio:1; }
+      .cd-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
+      .cd-note-body { white-space:pre-wrap; font-size:14px; line-height:1.5; }
+      .cd-loading { text-align:center; padding:60px 20px; color:hsl(var(--muted-foreground)); }
+      .cd-form-card { background:#fff; border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+      .cd-form-card textarea, .cd-form-card input[type="text"], .cd-form-card input[type="url"], .cd-form-card select { width:100%; box-sizing:border-box; padding:8px 12px; border:1px solid hsl(var(--border)); border-radius:var(--radius); font-size:14px; font-family:var(--font-body); resize:vertical; }
+      .cd-form-card textarea:focus, .cd-form-card input:focus, .cd-form-card select:focus { outline:none; border-color:hsl(var(--accent)); box-shadow:0 0 0 2px hsl(var(--accent)/.15); }
+      .cd-form-row { display:flex; gap:8px; margin-top:10px; align-items:center; }
+      .cd-form-btn { padding:8px 18px; border-radius:var(--radius); font-size:13px; font-weight:600; border:none; cursor:pointer; background:hsl(var(--primary)); color:#fff; transition:opacity .15s; }
+      .cd-form-btn:hover { opacity:.9; }
+      .cd-form-btn:disabled { opacity:.5; cursor:not-allowed; }
+      .cd-form-error { color:hsl(0,84%,60%); font-size:13px; margin-top:6px; }
+      .cd-photo-tile { position:relative; border-radius:var(--radius); overflow:hidden; border:1px solid hsl(var(--border)); aspect-ratio:1; }
+      .cd-photo-tile img { width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
+      .cd-photo-badge { position:absolute; top:6px; right:6px; font-size:10px; font-weight:600; text-transform:uppercase; padding:2px 7px; border-radius:8px; background:hsl(var(--primary)/.85); color:#fff; letter-spacing:.3px; }
+      .lightbox { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; }
+      .lightbox.hidden { display:none; }
+      .lightbox-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.82); }
+      .lightbox-img { position:relative; max-width:92vw; max-height:88vh; border-radius:6px; box-shadow:0 4px 40px rgba(0,0,0,.5); }
+      .lightbox-close { position:absolute; top:14px; right:18px; z-index:10; background:rgba(0,0,0,.5); color:#fff; border:none; font-size:24px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+      .lightbox-close:hover { background:rgba(0,0,0,.75); }
+      @media (max-width:600px) {
+        .cd-cards { grid-template-columns:1fr; }
+        .cd-list-item { flex-direction:column; gap:6px; }
+        .cd-list-right { text-align:left; }
+        .cd-tab { padding:8px 12px; font-size:13px; }
+        .cd-form-row { flex-direction:column; align-items:stretch; }
+        .lightbox-img { max-width:96vw; max-height:80vh; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sidebar" id="sidebarMount"></div>
+
+      <main class="main-area">
+        <div class="page-header-row">
+          <div>
+            <a href="/clients" class="cd-back">&larr; Clients</a>
+            <h1 class="cd-name" id="clientName">Loading...</h1>
+            <div class="cd-sub" id="clientSub"></div>
+          </div>
+        </div>
+
+        <div class="main-content" id="mainContent">
+          <div class="cd-loading" id="loadingMsg">Loading client...</div>
+
+          <div id="clientContent" style="display:none;">
+            <div class="cd-actions" id="quickActions"></div>
+            <div class="cd-cards" id="cards" style="margin-top:18px;"></div>
+            <div class="cd-tabs" id="tabs"></div>
+            <div class="cd-tab-content" id="tabContent"></div>
+          </div>
+
+          <div id="errorMsg" style="display:none;" class="cd-empty"></div>
+        </div>
+      </main>
+    </div>
+
+    <div id="lightbox" class="lightbox hidden">
+      <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+      <button class="lightbox-close" id="lightboxClose">&times;</button>
+      <img class="lightbox-img" id="lightboxImg" src="" alt="Photo" />
+    </div>
+
+    <script src="/pages/js/api.js"></script>
+    <script src="/pages/js/client-detail.js"></script>
+    <script src="/pages/js/shell.js"></script>
+  </body>
+</html>

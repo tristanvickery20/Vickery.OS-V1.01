@@ -1,0 +1,177 @@
+TICKET 11 — CLIENT BOOK (JOBBER-LIKE LIST) + /api/clients (SORT=RECENT, SEARCH, STATUS FILTER)
+
+CONTEXT / NON-NEGOTIABLES
+- Default landing after login is already /clients (Ticket 9). Now make it REAL.
+- Google Sheets is the single source of truth.
+- Use NEW tabs created in Ticket 10:
+  - Clients, Properties
+- No mock data. If there are zero clients, show a clean empty state.
+- UI must feel Jobber-like: clean rows/cards, status label + colored dot, last activity, property preview, job description preview.
+- Mobile-first: list must be easily scrollable; rows tappable; no tiny hit targets.
+- Sorting: Clients sorted by last_activity_at DESC; fallback updated_at DESC; fallback created_at DESC.
+- Search filters by name/phone/email/address (property address_line1/city/state/zip).
+- Status filter supports status_code values (string). Default is “all”.
+
+GOAL
+Implement the Client Book screen at:
+- GET /clients (auth required)
+with data from:
+- GET /api/clients (auth required)
+
+DELIVERABLES
+1) Data access layer to read Clients + Properties from Sheets
+2) GET /api/clients endpoint:
+   - supports query params:
+     - q (string, optional)  // search term
+     - status (string, optional) // exact match; omit or "all" means no filter
+     - limit (number optional, default 200, max 500)
+     - sort (string optional, only “recent” needed for now)
+   - returns list of client rows with:
+     id
+     name
+     phone
+     email
+     status_code
+     last_activity_at
+     job_description
+     most_recent_property: { id, address_line1, city, state, zip }
+3) Update /pages/clients.html and /pages/js/clients.js to render the list:
+   - Search input (client-only)
+   - Filter pills or dropdown for status
+   - Main list of clickable rows
+   - Preserve scroll position when navigating back from detail (store in sessionStorage)
+4) Visual status system:
+   - Shared status map (frontend constant in clients.js for now):
+     active -> label “Active” dot blue
+     awaiting_response -> “Awaiting Response” dot gray
+     scheduled -> “Scheduled” dot blue
+     in_progress -> “In Progress” dot blue
+     awaiting_payment -> “Awaiting Payment” dot yellow
+     overdue -> “Overdue” dot red
+   - Unknown -> label = status_code, dot gray
+5) Click row navigates to:
+   - /clients/:clientId
+(For Ticket 11, this can be a placeholder “Client detail coming next” page OR link to a minimal page. But the route must exist and be auth-protected.)
+
+FILES TO CREATE / MODIFY
+
+A) SERVER: Data helpers (Sheets)
+Create/extend helpers to read tabs:
+- readTab(tabName): returns array of objects using header row for keys
+- Must handle:
+  - empty sheet
+  - missing headers (should not happen after Ticket 10 but be defensive)
+- Add small utilities:
+  - parseISODateSafe(value) -> Date or null
+  - normalizeStr(value) -> lowercase trimmed string
+  - safeNum(value) -> number or null
+
+B) SERVER: /api/clients endpoint
+Route: GET /api/clients (auth required)
+Implementation steps:
+1) Load clients = readTab("Clients")
+2) Load properties = readTab("Properties")
+3) Build lookup by client_id -> properties[]
+4) For each client, attach most_recent_property:
+   - Prefer primary property (is_primary truthy)
+   - Else use the property with latest updated_at or created_at
+   - Else null
+5) Filtering:
+   - status: if provided and not "all" -> exact match on client.status_code
+   - q:
+     - search across:
+       client.name
+       client.phone
+       client.email
+       client.job_description
+       property.address_line1
+       property.city
+       property.state
+       property.zip
+     - simple substring match, case-insensitive
+6) Sorting:
+   - sort key = last_activity_at else updated_at else created_at (date compare)
+   - DESC
+7) Limit:
+   - default 200
+   - cap 500
+8) Response JSON:
+   { ok: true, clients: [...] }
+
+C) SERVER: /clients/:clientId route (placeholder)
+Add protected page route:
+- GET /clients/:clientId -> serve /pages/client-detail.html (new placeholder)
+Create /pages/client-detail.html minimal:
+- Uses shell layout
+- Header “Client”
+- Shows clientId
+- Message: “Client detail (tabs, notes, photos) comes in Ticket 12.”
+- Back button to /clients
+Also include /pages/js/client-detail.js placeholder that can later fetch /api/clients/:id (Ticket 12).
+
+D) FRONTEND: /pages/clients.html
+Replace placeholder content with real UI:
+- Page header row:
+  - Title “Clients”
+  - Right side: small count “X” clients (optional)
+- Controls card:
+  - Search input (placeholder “Search clients…”)
+  - Status filter (dropdown or pills). Keep it simple:
+    All, Active, Awaiting Response, Scheduled, In Progress, Awaiting Payment, Overdue
+- List container:
+  - A div list (preferred for mobile) with rows styled like Jobber
+  - Each row:
+    left circle avatar (first letter)
+    center stack:
+      name (bold)
+      property preview: “address_line1, city”
+      last activity line: format MMM D (or “—” if none)
+      job description preview (60–90 chars)
+    right stack:
+      status label + dot
+- Empty state:
+  - “No clients yet.”
+  - CTA button: “Create new request” -> /crm/new OR /crm/leads depending on what exists
+
+E) FRONTEND: /pages/js/clients.js
+Implement:
+- loadClients({q,status}) -> calls /api/clients
+- render list
+- debounce search (250–350ms)
+- status filter change reloads
+- preserve scroll position:
+  - before navigating to detail, store scrollY and maybe last clientId
+  - on load, restore if coming back
+
+F) CSS: Use existing brand.css + shell.css
+Add minimal additions either in shell.css or a new clients.css:
+- .client-row
+- .client-sub
+- .status-pill
+- .dot
+Keep consistent with black/blue/white theme.
+
+IMPORTANT: DO NOT BREAK EXISTING PAGES
+- Do not remove existing /crm/dashboard, /crm/leads, etc.
+- Only add new pages/routes and new endpoint.
+
+ACCEPTANCE TESTS (MANUAL)
+1) Login -> /clients shows:
+   - If sheet empty: “No clients yet.”
+   - If data exists: list is sorted by most recent activity
+2) Search:
+   - typing filters results (name/phone/email/address)
+3) Status filter:
+   - selecting “Overdue” shows only overdue clients
+4) Click a row:
+   - navigates to /clients/{id} placeholder page
+   - back returns to list with scroll position preserved
+5) Mobile:
+   - list readable, rows tappable, no overflow issues
+
+OUTPUT REQUIREMENT
+- Implement all file changes.
+- At end, provide “Changed Files” list with brief notes.
+
+NOTE
+Ticket 12 will build the real client detail page with tabs and related records. Ticket 11 just builds the Client Book list + endpoint.
