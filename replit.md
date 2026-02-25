@@ -67,6 +67,9 @@ pages/
 - Protected: all /crm/* pages (302 redirect to /login) and /api/* endpoints (401 JSON)
 - Logout link in nav of all CRM pages
 
+## Architecture Note
+- **Pipeline view**: `/clients` is the single pipeline entry point, powered directly by the Leads tab. `handleGetClients` reads from `readTab("Leads")` and returns lead rows shaped as pipeline items. Each row links to `/crm/lead?id=<lead.id>`. The Clients/Properties tabs are still intact for `handleGetClientById` and sub-resource endpoints.
+
 ## Recent Changes
 - 2026-02-23: Notes + Photos MVP (Ticket 13) - POST /api/notes with validation/audit/touchClient, POST /api/attachments with file_type inference/audit/touchClient, lib/touchClient.js updates last_activity_at cell, Add Note form on Notes tab, Add Photo (URL) form on Photos tab with category badge, lightbox modal (X/backdrop/Escape close), fire-and-forget audit logging
 - 2026-02-23: Client Detail Page + Client-Scoped APIs (Ticket 12) - GET /api/clients/:id with primary property, GET /api/clients/:id/requests|quotes|jobs|notes|attachments, client-detail.html with header/cards/7 tabs (Overview/Requests/Quotes/Jobs/Invoices/Notes/Photos), quick action buttons (Call/Text/Email), property directions link, status badges, all data fetched in parallel, mobile-responsive

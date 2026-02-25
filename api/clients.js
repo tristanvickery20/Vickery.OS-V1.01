@@ -1,31 +1,6 @@
 const { readTab, parseISODateSafe, normalizeStr } = require("../lib/readTab");
 const url = require("url");
 
-function bestDate(client) {
-  return (
-    parseISODateSafe(client.last_activity_at) ||
-    parseISODateSafe(client.updated_at) ||
-    parseISODateSafe(client.created_at) ||
-    new Date(0)
-  );
-}
-
-function pickPrimaryProperty(properties, clientId) {
-  const props = properties.filter((p) => p.client_id === clientId);
-  if (props.length === 0) return null;
-
-  const primary = props.find(
-    (p) => p.is_primary === "true" || p.is_primary === "1" || p.is_primary === "yes"
-  );
-  if (primary) return primary;
-
-  return props.sort((a, b) => {
-    const da = parseISODateSafe(a.updated_at) || parseISODateSafe(a.created_at) || new Date(0);
-    const db = parseISODateSafe(b.updated_at) || parseISODateSafe(b.created_at) || new Date(0);
-    return db - da;
-  })[0];
-}
-
 function json(res, code, data) {
   res.writeHead(code, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -39,67 +14,21 @@ function sortDescByCreated(arr) {
   });
 }
 
-function digitsOnly(v) {
-  return String(v || "").replace(/\D/g, "");
-}
-
-function pickJobNumberFromLeadId(leadId) {
-  // Deterministic: prefer last 6 digits if present; else fallback to last 6 chars.
-  const s = String(leadId || "").trim();
+function pickJobNumber(lead) {
+  if (lead.job_number && String(lead.job_number).trim()) return String(lead.job_number).trim();
+  const s = String(lead.id || "").trim();
   if (!s) return "";
   const nums = s.replace(/\D/g, "");
   if (nums.length >= 6) return nums.slice(-6);
   return s.length >= 6 ? s.slice(-6) : s;
 }
 
-function pickBestLeadForClient(leads, client) {
-  // Deterministic join (no schema changes):
-  // 1) phone exact match (digits only)
-  // 2) email exact match (lower)
-  // 3) name substring match
-  // If multiple matches -> newest created_at wins.
-
-  const cPhone = digitsOnly(client.phone);
-  const cEmail = normalizeStr(client.email);
-  const cName = normalizeStr(client.name);
-
-  const withCreated = (l) => ({
-    lead: l,
-    d: parseISODateSafe(l.created_at) || new Date(0),
-  });
-
-  // phone
-  if (cPhone) {
-    const matches = leads
-      .filter((l) => digitsOnly(l.phone) && digitsOnly(l.phone) === cPhone)
-      .map(withCreated)
-      .sort((a, b) => b.d - a.d);
-    if (matches.length) return matches[0].lead;
-  }
-
-  // email
-  if (cEmail) {
-    const matches = leads
-      .filter((l) => normalizeStr(l.email) && normalizeStr(l.email) === cEmail)
-      .map(withCreated)
-      .sort((a, b) => b.d - a.d);
-    if (matches.length) return matches[0].lead;
-  }
-
-  // name contains (either direction)
-  if (cName) {
-    const matches = leads
-      .filter((l) => {
-        const ln = normalizeStr(l.name);
-        if (!ln) return false;
-        return ln.includes(cName) || cName.includes(ln);
-      })
-      .map(withCreated)
-      .sort((a, b) => b.d - a.d);
-    if (matches.length) return matches[0].lead;
-  }
-
-  return null;
+function bestSortDate(lead) {
+  return (
+    parseISODateSafe(lead.scheduled_date) ||
+    parseISODateSafe(lead.created_at) ||
+    new Date(0)
+  );
 }
 
 async function handleGetClients(req, res) {
@@ -110,82 +39,37 @@ async function handleGetClients(req, res) {
     const limitRaw = Number(parsed.query.limit) || 200;
     const limit = Math.min(Math.max(1, limitRaw), 500);
 
-    // NEW: include Leads to enrich list rows (scheduled_date, estimated_value, job_number)
-    const [clients, properties, leads] = await Promise.all([
-      readTab("Clients"),
-      readTab("Properties"),
-      readTab("Leads"),
-    ]);
+    const leads = await readTab("Leads");
 
-    const propsByClient = {};
-    for (const p of properties) {
-      const cid = p.client_id || "";
-      if (!cid) continue;
-      if (!propsByClient[cid]) propsByClient[cid] = [];
-      propsByClient[cid].push(p);
-    }
-
-    let results = clients.map((c) => {
-      const prop = pickPrimaryProperty(properties, c.id);
-      const bestLead = pickBestLeadForClient(leads, c);
-
-      return {
-        id: c.id || "",
-        name: c.name || "",
-        phone: c.phone || "",
-        email: c.email || "",
-        status_code: c.status_code || "",
-        last_activity_at: c.last_activity_at || "",
-        job_description: c.job_description || "",
-
-        // NEW FIELDS (for your “thin card” row):
-        scheduled_date: bestLead ? (bestLead.scheduled_date || "") : "",
-        estimated_value: bestLead ? (bestLead.estimated_value || "") : "",
-        lead_id: bestLead ? (bestLead.id || "") : "",
-        job_number: bestLead ? pickJobNumberFromLeadId(bestLead.id) : "",
-
-        most_recent_property: prop
-          ? {
-              id: prop.id || "",
-              address_line1: prop.address_line1 || "",
-              city: prop.city || "",
-              state: prop.state || "",
-              zip: prop.zip || "",
-            }
-          : null,
-
-        _allProps: propsByClient[c.id] || [],
-      };
-    });
+    let results = leads.map((l) => ({
+      id: l.id || "",
+      client_id: l.client_id || "",
+      job_number: pickJobNumber(l),
+      name: l.name || "",
+      phone: l.phone || "",
+      address: l.address || "",
+      status: l.status || "",
+      estimated_value: l.estimated_value || "",
+      scheduled_date: l.scheduled_date || "",
+      assigned_to: l.assigned_to || "",
+      notes: l.notes || "",
+    }));
 
     if (status && status !== "all") {
-      results = results.filter((c) => normalizeStr(c.status_code) === status);
+      results = results.filter((r) => normalizeStr(r.status) === status);
     }
 
     if (q) {
-      results = results.filter((c) => {
-        const fields = [
-          c.name,
-          c.phone,
-          c.email,
-          c.job_description,
-          c.scheduled_date,
-          c.estimated_value,
-          c.job_number,
-        ];
-
-        for (const p of c._allProps) {
-          fields.push(p.address_line1, p.city, p.state, p.zip);
-        }
+      results = results.filter((r) => {
+        const fields = [r.name, r.phone, r.address, r.notes, r.assigned_to, r.job_number, r.client_id];
         return fields.some((f) => normalizeStr(f).includes(q));
       });
     }
 
-    results.sort((a, b) => bestDate(b) - bestDate(a));
+    results.sort((a, b) => bestSortDate(b) - bestSortDate(a));
     results = results.slice(0, limit);
-    const output = results.map(({ _allProps, ...rest }) => rest);
 
-    json(res, 200, { ok: true, clients: output });
+    json(res, 200, { ok: true, clients: results });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -199,7 +83,14 @@ async function handleGetClientById(req, res) {
     const client = clients.find((c) => c.id === clientId);
     if (!client) return json(res, 404, { ok: false, error: "Client not found" });
 
-    const prop = pickPrimaryProperty(properties, clientId);
+    const props = properties.filter((p) => p.client_id === clientId);
+    const prop = props.find(
+      (p) => p.is_primary === "true" || p.is_primary === "1" || p.is_primary === "yes"
+    ) || props.sort((a, b) => {
+      const da = parseISODateSafe(a.updated_at) || parseISODateSafe(a.created_at) || new Date(0);
+      const db = parseISODateSafe(b.updated_at) || parseISODateSafe(b.created_at) || new Date(0);
+      return db - da;
+    })[0] || null;
 
     json(res, 200, {
       ok: true,

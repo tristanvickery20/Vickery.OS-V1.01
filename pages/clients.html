@@ -175,8 +175,7 @@
           </div>
 
           <div class="form-group" style="margin-bottom:0;">
-            <!-- IMPORTANT: id matches clients.js you pasted earlier -->
-            <select id="statusSelect">
+            <select id="statusFilter">
               <option value="all">All</option>
               <option value="active">Active</option>
               <option value="awaiting_response">Awaiting Response</option>
@@ -189,6 +188,10 @@
         </div>
 
         <!-- Client List -->
+        <div id="emptyState" class="empty-state" style="display:none;">
+          <h2>No leads yet</h2>
+          <p style="color:hsl(var(--muted-foreground));margin:0;">Add a lead to see it here.</p>
+        </div>
         <div id="clientList" class="client-list"></div>
       </div>
     </main>

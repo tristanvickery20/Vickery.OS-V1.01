@@ -1,0 +1,83 @@
+You are working inside my existing Node.js CRM repo. DO NOT redesign the UI. Keep the current dark theme + Jobber-like feel. Keep existing pages working. Only remove Leads/Requests from navigation and make the “Clients” page the single unified pipeline view powered by the Leads sheet.
+
+GOAL
+- “Clients” in the sidebar is the only pipeline nav item.
+- /clients list should be powered by the Leads tab (Leads = pipeline/work).
+- Clicking a row should open the existing lead detail page: /crm/lead?id=<LEAD_ID>
+- Keep Sheets normalized. Do NOT delete tabs.
+- Do NOT break /crm/lead, /api/leads, /api/leads/update, /api/leads/schedule.
+
+WHAT TO CHANGE
+
+1) SERVER: Update /api/clients to return Leads as “pipeline rows”
+- File: api/clients.js (or wherever handleGetClients is implemented)
+- Change handleGetClients so it reads from readTab("Leads") instead of readTab("Clients") + Properties.
+- Support query params:
+  - q (search term)
+  - status (exact match; “all” means no filter)
+  - limit (default 200 max 500)
+  - sort=recent
+- Search across:
+  - name, phone, address, notes, assigned_to, job_number, client_id
+- Sort “recent” by:
+  - scheduled_date (if present) DESC,
+  - else created_at DESC
+- Return each item shaped like:
+  {
+    id,                // lead id
+    client_id,
+    job_number,
+    name,
+    phone,
+    address,
+    status,
+    estimated_value,
+    scheduled_date,
+    assigned_to,
+    notes
+  }
+- Response JSON:
+  { ok: true, clients: [...] }
+NOTE: It still returns key “clients” to avoid frontend changes.
+
+2) FRONTEND: Update /pages/js/clients.js to render the new right-side fields
+- Keep dark theme and existing card styles.
+- Replace job_description preview with:
+  - Scheduled: <MMM D> (or “—”)
+  - Est: $<estimated_value> (or “—”)
+- Add Job # and Est on the far right (thin card right side).
+- Keep status pill and add a subtle “glow dot” next to status:
+  - blue glow for active/scheduled/in_progress
+  - gray glow for awaiting_response
+  - yellow glow for awaiting_payment
+  - red glow for overdue
+  - default gray
+- Click behavior:
+  - Each row link should go to /crm/lead?id=<lead.id>
+  - Preserve scroll position as already implemented.
+
+3) FRONTEND: /pages/clients.html
+- Ensure the status filter select id matches JS (statusFilter).
+- Ensure search input id matches JS (searchInput).
+- Keep layout.
+
+4) NAV / SIDEBAR
+- Remove “Leads” and “Requests” items from sidebar, leaving only “Clients” as the pipeline entry.
+- Do not delete the pages/routes; just hide from nav.
+
+5) SAFETY CHECKS
+- If Leads sheet returns empty, show “No clients yet” empty state.
+- If API fails, show a clean error card.
+- Do not add new dependencies.
+
+OUTPUT
+- Implement the changes directly in the repo.
+- At the end, print a “Changed Files” list with 1-line notes per file.
+- Then tell me exactly how to test:
+  - /api/clients
+  - /clients
+  - click-through to /crm/lead?id=...
+
+IMPORTANT
+- Keep existing /crm/lead detail page intact and working.
+- Don’t change index.js routing except if needed to keep /clients working.
