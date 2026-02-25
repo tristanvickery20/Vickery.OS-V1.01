@@ -1,131 +1,332 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard &bull; Vickery CRM</title>
-    <link rel="stylesheet" href="/pages/css/brand.css" />
-    <link rel="stylesheet" href="/pages/css/shell.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <div class="sidebar" id="sidebarMount"></div>
-      <main class="main-area">
-        <div class="page-header-row">
-          <h1>Dashboard</h1>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard &bull; Vickery CRM</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    .dash-section { margin-bottom: 28px; }
+
+    /* Today strip */
+    .today-strip {
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.22);
+      border-radius: 18px;
+      padding: 22px 24px 18px;
+    }
+    .today-strip .strip-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #60a5fa;
+      margin-bottom: 6px;
+    }
+    .today-strip .strip-big {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .today-strip .strip-sub {
+      font-size: 13px;
+      opacity: .7;
+      margin-bottom: 14px;
+    }
+    .progress-track {
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: #60a5fa;
+      transition: width .4s ease;
+      min-width: 0;
+    }
+    .progress-label {
+      margin-top: 6px;
+      font-size: 11px;
+      opacity: .55;
+    }
+
+    /* KPI grid */
+    .kpi-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 900px) { .kpi-cards { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .kpi-cards { grid-template-columns: 1fr; } }
+
+    .kpi-card2 {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 18px 20px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .kpi-card2 .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      opacity: .55;
+      margin-bottom: 12px;
+    }
+    .kpi-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 8px;
+    }
+    .kpi-row:last-child { border-bottom: none; }
+    .kpi-row-label { font-size: 13px; opacity: .7; }
+    .kpi-row-val {
+      font-size: 18px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .kpi-row-val.big { font-size: 22px; }
+    .card-view-link {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #60a5fa;
+      text-decoration: none;
+      opacity: .8;
+    }
+    .card-view-link:hover { opacity: 1; }
+
+    /* Today schedule list */
+    .schedule-list { display: flex; flex-direction: column; gap: 10px; }
+    .schedule-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color .15s;
+    }
+    .schedule-row:hover { border-color: rgba(96,165,250,0.35); }
+    .sch-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: rgba(59,130,246,0.18);
+      border: 1px solid rgba(59,130,246,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 14px; color: #fff;
+      flex: 0 0 38px;
+    }
+    .sch-mid { flex: 1; min-width: 0; }
+    .sch-name {
+      font-size: 15px; font-weight: 800;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sch-sub { font-size: 12px; opacity: .65; margin-top: 2px; }
+    .sch-right { flex: 0 0 auto; text-align: right; }
+    .sch-val { font-size: 14px; font-weight: 700; }
+
+    .spill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      white-space: nowrap;
+    }
+    .sd-blue   { border-color: rgba(96,165,250,.3);  background: rgba(96,165,250,.1);  color:#93c5fd; }
+    .sd-gray   { border-color: rgba(148,163,184,.2); background: rgba(148,163,184,.06); color:#94a3b8; }
+    .sd-yellow { border-color: rgba(251,191,36,.3);  background: rgba(251,191,36,.1);  color:#fcd34d; }
+    .sd-red    { border-color: rgba(251,113,133,.3); background: rgba(251,113,133,.1);  color:#fda4af; }
+
+    /* Recent activity */
+    .activity-list { display: flex; flex-direction: column; gap: 0; }
+    .activity-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      text-decoration: none;
+      color: inherit;
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .act-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex: 0 0 8px;
+      background: #60a5fa;
+    }
+    .act-name { flex: 1; font-size: 14px; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .act-right { font-size: 12px; opacity: .55; white-space: nowrap; flex: 0 0 auto; }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      opacity: .5;
+      margin: 0 0 12px 2px;
+    }
+
+    .empty-strip {
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px dashed rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .dash-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .dash-two-col { grid-template-columns: 1fr; } }
+
+    .refresh-bar {
+      display: flex; align-items: center; gap: 12px;
+    }
+    #statusText { font-size: 12px; opacity: .45; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="page-header-row">
+        <h1>Dashboard</h1>
+        <div class="refresh-bar">
+          <span id="statusText"></span>
           <button id="refreshBtn" class="btn-outline" type="button">Refresh</button>
         </div>
-        <div class="main-content">
-          <p id="status" class="status-text"></p>
+      </div>
 
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-label">Open Leads</div>
-              <div id="kpiOpenLeads" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Status not Closed/Paid</div>
-            </div>
+      <div class="main-content">
 
-            <div class="kpi-card">
-              <div class="kpi-label">Scheduled Today</div>
-              <div id="kpiScheduledToday" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Scheduled / In Progress today</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Estimated Pipeline (Open)</div>
-              <div id="kpiPipeline" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Sum of estimated value for open leads</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Deposit Risk</div>
-              <div id="kpiDepositRisk" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Scheduled without deposit received</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Hours This Week</div>
-              <div id="kpiHoursWeek" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Total logged hours (Mon-Sun UTC)</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Expenses This Week</div>
-              <div id="kpiExpensesWeek" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">All expense types combined</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Gas This Week</div>
-              <div id="kpiGasWeek" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Fuel expenses only</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Total Invoiced</div>
-              <div id="kpiInvoiced" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">All invoices sent</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Total Paid</div>
-              <div id="kpiPaid" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">All payments received</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Receivables</div>
-              <div id="kpiReceivables" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Invoiced minus paid</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Complete (Not Invoiced)</div>
-              <div id="kpiCompNotInv" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Work done, invoice pending</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Labor Cost This Week</div>
-              <div id="kpiLaborWeek" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Based on logged hours &times; rate</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Total Gross Profit</div>
-              <div id="kpiGrossProfit" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Revenue minus all costs</div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-label">Gross Margin %</div>
-              <div id="kpiGrossMargin" class="kpi-value">&mdash;</div>
-              <div class="kpi-desc">Profit as % of revenue</div>
-            </div>
-          </div>
-
-          <h2>At Risk: Scheduled Without Deposit</h2>
-          <div class="data-table-wrap">
-            <table id="riskTable">
-              <thead>
-                <tr>
-                  <th>Lead</th>
-                  <th>Status</th>
-                  <th>Tech</th>
-                  <th>When</th>
-                  <th>Est. $</th>
-                  <th>Dep. $ Recv</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <!-- Section 1: Today strip -->
+        <div class="dash-section" id="todaySection">
+          <div class="today-strip">
+            <div class="strip-label">Today</div>
+            <div class="strip-big" id="todayBig">&mdash;</div>
+            <div class="strip-sub" id="todaySub">&mdash;</div>
+            <div class="progress-track"><div class="progress-fill" id="todayProgress" style="width:0%"></div></div>
+            <div class="progress-label" id="todayProgressLabel"></div>
           </div>
         </div>
-      </main>
-    </div>
 
-    <script src="/pages/js/api.js"></script>
-    <script src="/pages/js/crm-dashboard.js"></script>
-    <script src="/pages/js/shell.js"></script>
-  </body>
+        <!-- Section 2: 4 KPI cards -->
+        <div class="dash-section">
+          <div class="kpi-cards">
+
+            <div class="kpi-card2">
+              <div class="card-title">Pipeline</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Total leads</span>
+                <span class="kpi-row-val big" id="pipTotal">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Awaiting approval</span>
+                <span class="kpi-row-val" id="pipAwaiting">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Active</span>
+                <span class="kpi-row-val" id="pipActive">&mdash;</span>
+              </div>
+              <a class="card-view-link" href="/clients">View all &rarr;</a>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Money (7 days)</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Quoted</span>
+                <span class="kpi-row-val" id="monQuoted">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Invoiced</span>
+                <span class="kpi-row-val" id="monInvoiced">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Paid</span>
+                <span class="kpi-row-val" id="monPaid">&mdash;</span>
+              </div>
+              <a class="card-view-link" href="/invoices">View invoices &rarr;</a>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Operations</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Scheduled (7 days)</span>
+                <span class="kpi-row-val big" id="opsSched">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Overdue</span>
+                <span class="kpi-row-val" id="opsOverdue">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Unassigned</span>
+                <span class="kpi-row-val" id="opsUnassigned">&mdash;</span>
+              </div>
+              <a class="card-view-link" href="/clients?status=scheduled">View scheduled &rarr;</a>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Closeout</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Completed (7 days)</span>
+                <span class="kpi-row-val big" id="clsComp">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Invoiced, not paid</span>
+                <span class="kpi-row-val" id="clsUnpaid">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Closed (30 days)</span>
+                <span class="kpi-row-val" id="clsClosed">&mdash;</span>
+              </div>
+              <a class="card-view-link" href="/clients">View pipeline &rarr;</a>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Section 3 + 4: two columns -->
+        <div class="dash-two-col">
+
+          <!-- Today's schedule -->
+          <div class="dash-section">
+            <div class="section-title">Today's Schedule</div>
+            <div class="schedule-list" id="scheduleList">
+              <div class="empty-strip">Loading&hellip;</div>
+            </div>
+          </div>
+
+          <!-- Recent activity -->
+          <div class="dash-section">
+            <div class="section-title">Recent Activity</div>
+            <div class="activity-list" id="activityList">
+              <div class="empty-strip">Loading&hellip;</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/pages/js/crm-dashboard.js"></script>
+  <script src="/pages/js/shell.js"></script>
+</body>
 </html>

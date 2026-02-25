@@ -6,8 +6,13 @@ function num(x) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function st(lead) {
+  return String(lead.status || "").toLowerCase().trim();
+}
+
 function isClosed(status) {
-  return status === "Closed" || status === "Paid";
+  const s = String(status || "").toLowerCase();
+  return s === "closed" || s === "paid";
 }
 
 function needsDeposit(lead) {
@@ -20,19 +25,15 @@ function needsDeposit(lead) {
 function parseLeadRow(headers, row) {
   const obj = {};
   headers.forEach((h, i) => (obj[h] = row[i] ?? ""));
-  // Normalize some fields
   obj.estimated_value = num(obj.estimated_value);
   obj.deposit_received = num(obj.deposit_received);
   obj.invoiced_amount = num(obj.invoiced_amount);
   obj.paid_amount = num(obj.paid_amount);
+  obj.quoted_price = num(obj.quoted_price);
   obj.deposit_required = obj.deposit_required === true || String(obj.deposit_required).toLowerCase() === "true";
   return obj;
 }
 
-/**
- * "This week" = Monday 00:00 UTC through Sunday 23:59 UTC.
- * Returns { start: Date, end: Date } for the current UTC week.
- */
 function getCurrentWeekUTC() {
   const now = new Date();
   const day = now.getUTCDay();
@@ -43,6 +44,29 @@ function getCurrentWeekUTC() {
   ));
   const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
   return { start: monday, end: sunday };
+}
+
+function todayUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+function nDaysAgo(n) {
+  const d = todayUTC();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d;
+}
+
+function nDaysFromNow(n) {
+  const d = todayUTC();
+  d.setUTCDate(d.getUTCDate() + n);
+  return d;
+}
+
+function parseDateStr(s) {
+  if (!s) return null;
+  const d = new Date(String(s).includes("T") ? s : s + "T00:00:00Z");
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function isDateInWeek(dateStr, week) {
@@ -67,10 +91,11 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, config] = await Promise.all([
+    const [leadsData, timeData, expData, quotesData, config] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
+      fetchTabRows(sheets, spreadsheetId, "Quotes!A1:G2000"),
       getConfig(),
     ]);
 
@@ -80,8 +105,132 @@ async function handleDashboard(req, res) {
       .filter((r) => r.some((cell) => String(cell || "").trim() !== ""))
       .map((r) => parseLeadRow(leadsData.headers, r));
 
-    const openLeads = leads.filter((l) => !isClosed(String(l.status || "")));
+    const today = todayUTC();
+    const week = getCurrentWeekUTC();
+    const ago7 = nDaysAgo(7);
+    const ago30 = nDaysAgo(30);
+    const next7 = nDaysFromNow(7);
 
+    // ── Today Summary ──
+    const todayStr = today.toISOString().split("T")[0];
+    const todayLeads = leads.filter((l) => {
+      const d = parseDateStr(l.scheduled_date);
+      return d && d.toISOString().split("T")[0] === todayStr;
+    });
+    const todayCompleted = todayLeads.filter((l) => {
+      const s = st(l);
+      return s === "complete" || s === "closed" || s === "paid";
+    }).length;
+    const todayPipelineValue = todayLeads.reduce((s, l) => s + (l.quoted_price || l.estimated_value || 0), 0);
+    const today_summary = {
+      scheduled: todayLeads.length,
+      completed: todayCompleted,
+      pending: todayLeads.length - todayCompleted,
+      pipeline_value: todayPipelineValue,
+    };
+
+    // ── Pipeline card ──
+    const openLeads = leads.filter((l) => !isClosed(l.status));
+    const awaitingApprovalStatuses = new Set(["estimate_sent", "approved", "deposit_required", "awaiting_response", "new"]);
+    const activeStatuses = new Set(["scheduled", "in_progress", "active"]);
+    const pipeline_card = {
+      total_leads: leads.length,
+      awaiting_approval: leads.filter((l) => awaitingApprovalStatuses.has(st(l))).length,
+      active: leads.filter((l) => activeStatuses.has(st(l))).length,
+    };
+
+    // ── Money card ──
+    const quotesHeaders = quotesData.headers;
+    const qCreatedIdx = quotesHeaders.indexOf("created_at");
+    const qPriceIdx = quotesHeaders.indexOf("quoted_price");
+    let quoted_7d = 0;
+    for (const row of quotesData.rows) {
+      const d = parseDateStr(row[qCreatedIdx]);
+      if (d && d >= ago7) quoted_7d += num(row[qPriceIdx]);
+    }
+
+    let invoiced_7d = 0;
+    let paid_7d = 0;
+    for (const l of leads) {
+      const invD = parseDateStr(l.invoice_date);
+      if (invD && invD >= ago7) invoiced_7d += l.invoiced_amount;
+      const paidD = parseDateStr(l.paid_date);
+      if (paidD && paidD >= ago7) paid_7d += l.paid_amount;
+    }
+
+    const money_card = {
+      quoted_7d: Math.round(quoted_7d * 100) / 100,
+      invoiced_7d: Math.round(invoiced_7d * 100) / 100,
+      paid_7d: Math.round(paid_7d * 100) / 100,
+    };
+
+    // ── Operations card ──
+    const scheduledNext7 = leads.filter((l) => {
+      const d = parseDateStr(l.scheduled_date);
+      return d && d >= today && d <= next7 && activeStatuses.has(st(l));
+    }).length;
+    const overdueCount = leads.filter((l) => st(l) === "overdue").length;
+    const unassignedCount = leads.filter((l) => {
+      const s = st(l);
+      return !l.assigned_to && (s === "scheduled" || s === "in_progress");
+    }).length;
+    const ops_card = {
+      scheduled_7d: scheduledNext7,
+      overdue: overdueCount,
+      unassigned: unassignedCount,
+    };
+
+    // ── Closeout card ──
+    const completedStatuses = new Set(["complete", "paid", "closed"]);
+    const completed_7d = leads.filter((l) => {
+      const d = parseDateStr(l.paid_date) || parseDateStr(l.invoice_date);
+      return completedStatuses.has(st(l)) && d && d >= ago7;
+    }).length;
+    const invoiced_not_paid = leads.filter((l) => l.invoiced_amount > l.paid_amount && l.invoiced_amount > 0).length;
+    const closed_30d = leads.filter((l) => {
+      const d = parseDateStr(l.paid_date) || parseDateStr(l.invoice_date);
+      return completedStatuses.has(st(l)) && d && d >= ago30;
+    }).length;
+    const closeout_card = {
+      completed_7d,
+      invoiced_not_paid,
+      closed_30d,
+    };
+
+    // ── Today's Schedule list ──
+    const today_schedule = todayLeads
+      .sort((a, b) => {
+        const da = parseDateStr(a.scheduled_date) || new Date(0);
+        const db = parseDateStr(b.scheduled_date) || new Date(0);
+        return da - db;
+      })
+      .map((l) => ({
+        id: l.id || "",
+        name: l.name || "",
+        status: l.status || "",
+        scheduled_date: l.scheduled_date || "",
+        value: l.quoted_price || l.estimated_value || 0,
+        assigned_to: l.assigned_to || "",
+        address: l.address || "",
+      }));
+
+    // ── Recent Activity ──
+    const recent_activity = leads
+      .filter((l) => l.last_activity_at || l.updated_at || l.created_at)
+      .sort((a, b) => {
+        const da = parseDateStr(a.last_activity_at) || parseDateStr(a.updated_at) || parseDateStr(a.created_at) || new Date(0);
+        const db = parseDateStr(b.last_activity_at) || parseDateStr(b.updated_at) || parseDateStr(b.created_at) || new Date(0);
+        return db - da;
+      })
+      .slice(0, 10)
+      .map((l) => ({
+        id: l.id || "",
+        name: l.name || "",
+        status: l.status || "",
+        last_activity_at: l.last_activity_at || l.updated_at || l.created_at || "",
+      }));
+
+    // ── Existing KPIs (preserved) ──
     const pipeline_estimated = openLeads.reduce((s, l) => s + num(l.estimated_value), 0);
     const deposits_held = leads.reduce((s, l) => s + num(l.deposit_received), 0);
     const invoiced_total = leads.reduce((s, l) => s + num(l.invoiced_amount), 0);
@@ -89,16 +238,14 @@ async function handleDashboard(req, res) {
     const receivables = Math.max(0, invoiced_total - paid_total);
 
     const risk = leads.filter((l) => {
-      const st = String(l.status || "");
-      if (st !== "Scheduled" && st !== "In Progress") return false;
+      const s = st(l);
+      if (s !== "scheduled" && s !== "in_progress") return false;
       if (!needsDeposit(l)) return false;
       if (num(l.deposit_received) > 0) return false;
       const override = String(l.deposit_override || "").toLowerCase() === "true";
       if (override) return false;
       return true;
     });
-
-    const week = getCurrentWeekUTC();
 
     const timeHeaders = timeData.headers;
     const dateIdx = timeHeaders.indexOf("date");
@@ -121,20 +268,14 @@ async function handleDashboard(req, res) {
       if (eDateIdx >= 0 && isDateInWeek(row[eDateIdx], week)) {
         const amt = num(row[eAmtIdx]);
         expenses_this_week += amt;
-        if (String(row[eTypeIdx] || "").toLowerCase() === "gas") {
-          gas_this_week += amt;
-        }
+        if (String(row[eTypeIdx] || "").toLowerCase() === "gas") gas_this_week += amt;
       }
     }
     expenses_this_week = Math.round(expenses_this_week * 100) / 100;
     gas_this_week = Math.round(gas_this_week * 100) / 100;
 
-    const completed_not_invoiced = leads.filter((l) => {
-      return String(l.status || "") === "Complete";
-    }).length;
+    const completed_not_invoiced = leads.filter((l) => st(l) === "complete").length;
 
-    // ── Job Costing KPIs ──
-    // Build per-lead labor minutes and expense cost lookups
     const tLeadIdx = timeData.headers.indexOf("lead_id");
     const tMinIdx2 = timeData.headers.indexOf("minutes");
     const laborMinByLead = {};
@@ -153,7 +294,6 @@ async function handleDashboard(req, res) {
       expCostByLead[lid] = (expCostByLead[lid] || 0) + num(row[eAmtIdx2]);
     }
 
-    // Weekly labor and expense costs (using existing week window)
     let total_labor_cost_this_week = 0;
     for (const row of timeData.rows) {
       if (dateIdx >= 0 && isDateInWeek(row[dateIdx], week)) {
@@ -162,9 +302,6 @@ async function handleDashboard(req, res) {
     }
     total_labor_cost_this_week = Math.round(((total_labor_cost_this_week / 60) * laborRateTech) * 100) / 100;
 
-    let total_expense_cost_this_week = expenses_this_week;
-
-    // Total gross profit and margin across all leads with revenue
     let totalRevenue = 0;
     let totalCost = 0;
     for (const l of leads) {
@@ -176,7 +313,9 @@ async function handleDashboard(req, res) {
       totalCost += labCost + expCost;
     }
     const gross_profit_total = Math.round((totalRevenue - totalCost) * 100) / 100;
-    const gross_margin_pct_total = totalRevenue > 0 ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 10000) / 100 : null;
+    const gross_margin_pct_total = totalRevenue > 0
+      ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 10000) / 100
+      : null;
 
     const kpis = {
       open_leads_count: openLeads.length,
@@ -191,13 +330,24 @@ async function handleDashboard(req, res) {
       gas_this_week,
       completed_not_invoiced,
       total_labor_cost_this_week,
-      total_expense_cost_this_week,
+      total_expense_cost_this_week: expenses_this_week,
       gross_profit_total,
       gross_margin_pct_total,
     };
 
     res.writeHead(200, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify({ ok: true, kpis, risk }));
+    return res.end(JSON.stringify({
+      ok: true,
+      kpis,
+      risk,
+      today_summary,
+      pipeline_card,
+      money_card,
+      ops_card,
+      closeout_card,
+      today_schedule,
+      recent_activity,
+    }));
   } catch (e) {
     res.writeHead(500, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ ok: false, error: e.message }));

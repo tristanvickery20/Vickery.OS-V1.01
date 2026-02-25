@@ -1,0 +1,60 @@
+TASK B — DASHBOARD UI REBUILD (JOBBER-LIKE) — BUDGET-SAFE
+
+Scope rules:
+- Only touch: /pages/crm-dashboard.html, /pages/js/crm-dashboard.js, and minimal CSS (shell.css or new dashboard.css).
+- Add/modify at most ONE API endpoint if needed (prefer /api/dashboard).
+- No new libraries.
+- No refactoring unrelated files.
+- Stop when dashboard layout matches spec. Print “Changed Files” and stop.
+
+DASHBOARD STRUCTURE (DARK THEME):
+Section 1: Today Summary strip (wide card)
+- Title: Today
+- Big line: “X scheduled • $Y pipeline”
+- Sub line: “Z completed • W pending”
+- Progress bar: completed/total scheduled (if total=0 show “No visits today”)
+
+Section 2: 4 KPI cards (stack mobile)
+Card 1: Pipeline
+- Lead count
+- Awaiting approval count (Estimate Sent/Approved/Deposit Required)
+- Active count (Scheduled/In Progress)
+
+Card 2: Money
+- Quoted (sum quoted_price last 7 days)
+- Invoiced (sum invoiced_amount last 7 days)
+- Paid (sum paid_amount last 7 days)
+
+Card 3: Operations
+- Scheduled next 7 days
+- Overdue count
+- Unassigned count (assigned_to empty and status in Scheduled/In Progress)
+
+Card 4: Closeout
+- Completed last 7 days (Complete/Paid/Closed)
+- Invoiced not paid count (invoiced_amount > paid_amount)
+- Closed last 30 days
+
+Each card has a small “View” link -> /clients (optionally add query param like ?status=Scheduled if supported; otherwise just /clients)
+
+Section 3: Today’s Schedule list
+- List records scheduled today: time, client name, status pill, value (quoted_price else estimated_value)
+- Click opens client detail (/clients/:id)
+- Empty state “No scheduled work today.”
+
+Section 4: Recent Activity
+- Last 10 by last_activity_at desc: name, status, date
+
+DATA RULES:
+- Use real data from existing Google Sheets-backed APIs.
+- Prefer using /api/dashboard if it exists; otherwise create or expand it to return aggregates + lists needed.
+- If some datasets aren’t available, show “Coming soon” in that card (do not fabricate numbers).
+- Avoid expensive per-item API calls; fetch once and compute in JS or server.
+
+SPARKLINES:
+Optional. Only implement if easy without libs using inline SVG polyline.
+If not implemented, skip them entirely to save time/complexity.
+
+Output:
+- Implement changes
+- Print Changed Files list
