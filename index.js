@@ -92,6 +92,22 @@ const server = http.createServer(async (req, res) => {
 
   // PUBLIC PAGES
   if (req.url === "/") {
+    return serveFile(res, path.join(__dirname, "pages/site-home.html"), "text/html");
+  }
+
+  if (req.url === "/services") {
+    return serveFile(res, path.join(__dirname, "pages/site-services.html"), "text/html");
+  }
+
+  if (req.url === "/about") {
+    return serveFile(res, path.join(__dirname, "pages/site-about.html"), "text/html");
+  }
+
+  if (req.url === "/contact") {
+    return serveFile(res, path.join(__dirname, "pages/site-contact.html"), "text/html");
+  }
+
+  if (req.url === "/crm") {
     const target = isAuthed(req) ? "/clients" : "/login";
     res.writeHead(302, { Location: target });
     return res.end();

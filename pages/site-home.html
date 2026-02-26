@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vickery Electric &mdash; Licensed Electrician in Southeast Texas</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .site-hero {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 72px 24px 56px;
+      text-align: center;
+    }
+    .site-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .site-hero .hero-sub {
+      font-size: 18px;
+      color: hsl(var(--muted-foreground));
+      max-width: 520px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+    .benefit-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .benefit-grid { grid-template-columns: 1fr; } }
+    .benefit-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 20px;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 1px 3px hsl(var(--primary) / 0.04);
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .benefit-card:hover {
+      box-shadow: 0 6px 20px hsl(var(--primary) / 0.10);
+      border-color: hsl(var(--primary) / 0.2);
+    }
+    .benefit-icon {
+      font-size: 36px;
+      margin-bottom: 14px;
+    }
+    .benefit-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+    }
+    .benefit-desc {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.55;
+    }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a {
+      color: hsl(var(--muted-foreground));
+      text-decoration: none;
+    }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 16px;
+      text-decoration: none;
+      transition: all .15s ease;
+      box-shadow: 0 4px 16px hsl(var(--primary) / 0.28);
+    }
+    .cta-btn:hover {
+      background: hsl(var(--primary) / 0.9);
+      box-shadow: 0 8px 24px hsl(var(--primary) / 0.32);
+      transform: translateY(-2px);
+    }
+    .nav-btn-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .nav-btn-link:hover { background: hsl(var(--primary) / 0.9); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.png" alt="Vickery Electric" class="header-logo" />
+        <span class="header-title">Vickery Electric</span>
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/about" data-page="about">About</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="site-hero">
+    <h1>Upfront Electrical Pricing<br>in Southeast Texas</h1>
+    <p class="hero-sub">Get an instant estimate in minutes. No waiting on callbacks. Licensed, insured, and ready to schedule.</p>
+    <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+  </section>
+
+  <div class="benefit-grid">
+    <div class="benefit-card">
+      <div class="benefit-icon">&#9889;</div>
+      <div class="benefit-title">Instant Estimate</div>
+      <p class="benefit-desc">Know your price before we ever show up. No surprises, no haggling — just clear, upfront numbers.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#9989;</div>
+      <div class="benefit-title">Licensed &amp; Insured</div>
+      <p class="benefit-desc">Fully licensed electricians with proper insurance coverage. Your home and investment are protected.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#128197;</div>
+      <div class="benefit-title">Fast Scheduling</div>
+      <p class="benefit-desc">We move fast. Most jobs are scheduled within days of your quote, not weeks.</p>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/services">Services</a> &nbsp;&middot;&nbsp;
+    <a href="/crm" style="opacity:.4;">Staff Login</a>
+  </footer>
+
+  <script>
+    var path = window.location.pathname;
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "home" && (path === "/" || path === "")) {
+        el.classList.add("active");
+      }
+    });
+  </script>
+</body>
+</html>

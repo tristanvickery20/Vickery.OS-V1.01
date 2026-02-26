@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About &mdash; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .about-content {
+      max-width: 700px;
+    }
+    .about-content p {
+      font-size: 16px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin: 32px 0 40px;
+    }
+    .value-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 22px 20px;
+      box-shadow: 0 1px 3px hsl(var(--primary) / 0.04);
+    }
+    .value-card .value-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .value-card p {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.5;
+      margin-bottom: 0;
+    }
+    .cta-row {
+      margin-top: 16px;
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 28px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: all .15s;
+      box-shadow: 0 4px 14px hsl(var(--primary) / 0.24);
+    }
+    .cta-btn:hover {
+      background: hsl(var(--primary) / 0.9);
+      transform: translateY(-1px);
+    }
+    .nav-btn-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .nav-btn-link:hover { background: hsl(var(--primary) / 0.9); }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.png" alt="Vickery Electric" class="header-logo" />
+        <span class="header-title">Vickery Electric</span>
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/about" data-page="about">About</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="about-content">
+      <h1>About Vickery Electric</h1>
+
+      <p>Vickery Electric is a licensed electrical contractor serving Southeast Texas. We built this company around one simple idea: customers deserve to know exactly what they're paying before any work begins.</p>
+
+      <p>That's why every job starts with an upfront quote — generated instantly online, no phone tag required. When we arrive on site, the price is already agreed upon. No surprises at invoice time.</p>
+
+      <h2>How We Work</h2>
+
+      <div class="values-grid">
+        <div class="value-card">
+          <div class="value-title">&#128203; Process-Driven</div>
+          <p>Every job is documented from first contact to final invoice. You get a clear record of what was done and why.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-title">&#128176; Upfront Pricing</div>
+          <p>Quote before we come, not after. Our instant quote tool gives you a real number in minutes, not days.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-title">&#9989; Licensed &amp; Insured</div>
+          <p>Fully licensed with the state of Texas and properly insured on every job. We do it right or we make it right.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-title">&#128221; Professional Documentation</div>
+          <p>Every visit is logged. You receive a summary of work completed, materials used, and photos when applicable.</p>
+        </div>
+      </div>
+
+      <p>We serve homeowners, landlords, and small business owners across Southeast Texas. If you're ready to get started, get a free instant quote below.</p>
+
+      <div class="cta-row">
+        <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/services">Services</a> &nbsp;&middot;&nbsp;
+    <a href="/crm" style="opacity:.4;">Staff Login</a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "about") el.classList.add("active");
+    });
+  </script>
+</body>
+</html>

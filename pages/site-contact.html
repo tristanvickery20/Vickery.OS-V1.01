@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact &mdash; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      max-width: 900px;
+      margin-bottom: 48px;
+    }
+    @media (max-width: 680px) { .contact-grid { grid-template-columns: 1fr; } }
+    .contact-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 1px 3px hsl(var(--primary) / 0.04);
+    }
+    .contact-card h2 {
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    .contact-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .contact-item-icon { font-size: 20px; flex: 0 0 24px; }
+    .contact-item-body { font-size: 15px; color: hsl(var(--foreground)); line-height: 1.5; }
+    .contact-item-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 2px;
+    }
+    .area-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .area-list li {
+      background: hsl(var(--secondary));
+      border: 1px solid hsl(var(--border));
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 13px;
+      color: hsl(var(--foreground));
+    }
+    .emergency-banner {
+      background: hsl(0 84% 60% / 0.07);
+      border: 1px solid hsl(0 84% 60% / 0.25);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      max-width: 900px;
+      margin-bottom: 32px;
+    }
+    .emergency-banner .emg-icon { font-size: 32px; }
+    .emergency-banner .emg-text h3 {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: hsl(0 70% 38%);
+      margin-bottom: 4px;
+    }
+    .emergency-banner .emg-text p {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      margin: 0;
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 28px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: all .15s;
+      box-shadow: 0 4px 14px hsl(var(--primary) / 0.24);
+    }
+    .cta-btn:hover {
+      background: hsl(var(--primary) / 0.9);
+      transform: translateY(-1px);
+    }
+    .nav-btn-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .nav-btn-link:hover { background: hsl(var(--primary) / 0.9); }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.png" alt="Vickery Electric" class="header-logo" />
+        <span class="header-title">Vickery Electric</span>
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/about" data-page="about">About</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <h1>Contact Us</h1>
+
+    <div class="emergency-banner">
+      <div class="emg-icon">&#9889;</div>
+      <div class="emg-text">
+        <h3>Electrical Emergency? Call Now.</h3>
+        <p>For urgent electrical issues — sparking outlets, burning smell, or power loss — call us directly. Don't wait.</p>
+      </div>
+    </div>
+
+    <div class="contact-grid">
+
+      <div class="contact-card">
+        <h2>&#128222; Get in Touch</h2>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">&#128222;</div>
+          <div class="contact-item-body">
+            <div class="contact-item-label">Phone</div>
+            (409) 555-0100
+          </div>
+        </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">&#9993;</div>
+          <div class="contact-item-body">
+            <div class="contact-item-label">Email</div>
+            info@vickeryelectric.com
+          </div>
+        </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">&#128336;</div>
+          <div class="contact-item-body">
+            <div class="contact-item-label">Hours</div>
+            Monday – Friday, 7am – 5pm<br>
+            <span class="muted small">Emergency calls accepted after hours</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-card">
+        <h2>&#128205; Service Area</h2>
+        <p class="muted" style="margin-bottom:16px;font-size:14px;">We serve Southeast Texas, including:</p>
+        <ul class="area-list">
+          <li>Beaumont</li>
+          <li>Port Arthur</li>
+          <li>Orange</li>
+          <li>Lumberton</li>
+          <li>Silsbee</li>
+          <li>Vidor</li>
+          <li>Groves</li>
+          <li>Nederland</li>
+          <li>Port Neches</li>
+          <li>Bridge City</li>
+        </ul>
+        <p class="muted small" style="margin-top:16px;">Not sure if we cover your area? Call or get a quote and we'll let you know.</p>
+      </div>
+
+    </div>
+
+    <p class="muted" style="margin-bottom:20px;">The fastest way to start a job is to get an instant online quote. We respond to quote requests the same business day.</p>
+    <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+
+  </main>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/services">Services</a> &nbsp;&middot;&nbsp;
+    <a href="/crm" style="opacity:.4;">Staff Login</a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "contact") el.classList.add("active");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+Goal: Add a simple public customer-facing marketing site into the existing Node HTTP server project, without touching CRM functionality, and without building the quote calculator yet (just link to /quote).
+
+Constraints (credit-conscious)
+	•	Minimal file changes.
+	•	Reuse existing styling/theme from /pages/css/brand.css (same header/nav/button classes).
+	•	Do not refactor the app or introduce frameworks.
+	•	Keep CRM routes protected exactly as they already are.
+
+⸻
+
+1) Routing changes (index.js)
+
+A) Make / public marketing homepage (NOT login redirect)
+	•	Replace current / behavior (it redirects to /login or /clients) with:
+	•	GET / should serve a new file: pages/site-home.html
+
+B) Add these new public routes:
+	•	GET /services → serve pages/site-services.html
+	•	GET /about → serve pages/site-about.html
+	•	(Optional but nice, minimal): GET /contact → serve pages/site-contact.html
+
+C) Keep CRM accessible and protected
+	•	Add a new route:
+	•	GET /crm should redirect to:
+	•	/clients if authed
+	•	/login if not authed
+	•	Do NOT change existing auth guard rules for /clients, /crm/*, /api/*, /invoices*.
+
+D) Leave /quote route as-is
+	•	Do not build quote logic. Just ensure nav/CTA buttons link to /quote.
+
+⸻
+
+2) Create the public pages (HTML only, minimal)
+
+Create these files:
+
+pages/site-home.html
+
+Use the same theme classes already in brand.css:
+	•	<link rel="stylesheet" href="/pages/css/brand.css" />
+	•	Use .app-header, .header-inner, .header-logo, .app-nav, .nav-inner, .nav-link, .nav-btn, .main-content, .kpi-card, .muted etc.
+
+Layout content (simple, clean, conversion-focused):
+	•	Header with logo (/pages/img/logo.png) and title “Vickery Electric”
+	•	Nav links: Home, Services, About, Contact
+	•	Primary CTA button in nav: “Free Instant Quote” → /quote
+	•	Main hero:
+	•	H1: “Upfront Electrical Pricing in Southeast Texas”
+	•	Subtext: “Get an instant estimate in minutes. No waiting on callbacks.”
+	•	Big CTA button → /quote
+	•	Add 3 simple “benefit cards” using .kpi-card:
+	•	“Instant Estimate”
+	•	“Licensed & Insured”
+	•	“Fast Scheduling”
+	•	Footer area with small “Staff Login” link to /login (so CRM isn’t obvious from the main nav)
+
+pages/site-services.html
+	•	Same header/nav as home
+	•	H1: “Services”
+	•	Simple service list in cards (panel upgrades, EV chargers, troubleshooting, lighting, generator hookups, small commercial)
+	•	Each card has a CTA button “Get Instant Quote” → /quote
+
+pages/site-about.html
+	•	Same header/nav
+	•	Short about copy: process-driven, upfront pricing, professional documentation
+	•	CTA → /quote
+
+pages/site-contact.html (optional but recommended)
+	•	Same header/nav
+	•	Basic contact section:
+	•	Phone placeholder
+	•	Service area list
+	•	CTA → /quote
+	•	Include “Emergency? Call now” text (no extra logic)
+
+⸻
+
+3) Active nav highlighting (super minimal)
+
+On each site page, add a tiny inline script that applies .active class to the correct nav link based on location.pathname. No separate JS file unless already needed.
+
+⸻
+
+4) Acceptance checks
+	•	Visiting / shows the marketing homepage (no redirect to login).
+	•	/services, /about, /contact load and match theme.
+	•	/quote still works exactly as before.
+	•	/crm redirects to /login when not authed, or /clients when authed.
+	•	/clients and /crm/* still require auth.
