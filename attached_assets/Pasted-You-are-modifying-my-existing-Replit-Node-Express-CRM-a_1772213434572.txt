@@ -1,0 +1,115 @@
+You are modifying my existing Replit Node/Express CRM app.
+
+GOAL
+Add a “Profit & Expense Calculator” page inside the CRM at:
+  /crm/calculator
+
+This calculator must:
+1) Match the existing dark CRM theme (same layout, header/nav, fonts, spacing, dark colors).
+2) Load DEFAULT values from the SAME Google Sheet used by my CRM + customer-facing site (NOT the old opensheet.elk.sh link).
+3) Defaults must reflect REAL “actuals” computed from Completed jobs in the last 30 days.
+4) User edits inside the calculator are TEMPORARY only (what-if). Never write calculator edits back to Sheets.
+5) You may refactor/reorganize code for maintainability (create new modules, split files, rename, etc.), but do not break existing CRM routes/features.
+
+DATA SOURCE (IMPORTANT)
+- Do NOT use opensheet.elk.sh anywhere.
+- Use the existing Google Sheets integration already in this project (googleapis / existing auth).
+- Use the same spreadsheetId + tabs the CRM already uses.
+- You are allowed to modify the Google Sheet and Apps Script (I provided it already) to support this.
+
+SHEET CONTRACT
+Create/maintain a sheet tab (or computed view) named:
+  Actuals_Rollup_30D
+with columns:
+  Key | Value
+
+The calculator page will populate inputs by matching Key to input IDs.
+
+ROLLUP RULES
+- Window: rolling last 30 days.
+- Include Completed jobs ONLY (completed is defined by Job Status, not paid invoice).
+- Job size buckets are based on Revenue thresholds:
+    Small: revenue < 300
+    Medium: 300 <= revenue < 1000
+    Large: revenue >= 1000
+- We do NOT store medium/large job types currently, so bucket is derived.
+- Utilization is “hours on site”: count only time entries categorized as on-site/work (not admin).
+- If only a few jobs exist (even 2), still compute averages from them (no fallback smoothing).
+- Labor burden rates (Journeyman/Apprentice) come from payroll/employee/time tab—use the cleanest source that exists in the workbook.
+- Overhead fields come from QBO category totals that are already being logged/imported into the workbook.
+- Owner salary is treated as a FIXED overhead expense.
+
+MATERIALS COST (NO DOUBLE COUNTING)
+We need materials COST without markup.
+- If true materials cost per job exists (purchases/expenses linked to job), use it.
+- If only billed materials exist (likely includes markup), estimate cost by reversing markup:
+    materials_cost_est = materials_billed / (1 + materials_markup_pct)
+  where materials_markup_pct is a Config value in the workbook.
+- If neither exists yet, use a temporary placeholder rule (but clearly isolate it so it can be replaced later).
+
+KEYS TO OUTPUT (minimum)
+Write these into Actuals_Rollup_30D as Key/Value pairs:
+Labor/ops:
+- numJourneymen
+- numApprentices
+- crewCount
+- hoursPerWorkerPerDay
+- daysPerWeek
+- utilizationPct
+
+Job mix + averages:
+- smallJobMix
+- mediumJobMix
+- largeJobMix
+- smallJobHours
+- mediumJobHours
+- largeJobHours
+- smallJobMaterials
+- mediumJobMaterials
+- largeJobMaterials
+
+Financial:
+- journeymanLaborBurden
+- apprenticeLaborBurden
+- vehicleInsurance
+- fuelCost
+- vehicleMaintenance
+- generalLiability
+- toolRepair
+- loanPayments
+- softwarePayments
+- marketingCost
+- ownerSalary
+
+OPTIONAL DEFAULTS (nice to have)
+- taxRate
+- targetProfitMargin
+- bidAccuracy
+- annualGrowthRate
+
+BACKEND API
+Implement a backend endpoint:
+  GET /api/actuals-rollup?windowDays=30
+It should read the Actuals_Rollup_30D tab from the CRM spreadsheet and return JSON like:
+  { "key": "value", ... }  (numbers)
+
+FRONTEND PAGE
+- Add CRM page route: /crm/calculator
+- Reuse the existing CRM shell + dark theme styling.
+- Build calculator UI in the CRM style.
+- On load, call /api/actuals-rollup?windowDays=30 and populate inputs.
+- Respect “touched” fields so user edits aren’t overwritten while typing.
+- Recompute outputs on every input change (existing behavior).
+
+CODE ORGANIZATION
+You are allowed to:
+- create a new route module (e.g., /api/actuals-rollup.js)
+- create a new view/template file for /crm/calculator
+- create shared helpers for Google Sheets reads
+Keep code readable and consistent with existing project patterns.
+
+DELIVERABLE
+1) Working /crm/calculator page with dark theme.
+2) Working /api/actuals-rollup endpoint pulling from the CRM spreadsheet.
+3) Actuals_Rollup_30D tab/view in the sheet generated/maintained via formulas or Apps Script.
+4) No dependency on opensheet.elk.sh anywhere.

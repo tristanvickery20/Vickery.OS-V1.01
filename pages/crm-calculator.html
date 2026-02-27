@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profit Calculator &bull; Vickery CRM</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .calc-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .calc-toolbar label { font-size: 13px; color: hsl(var(--muted-foreground)); }
+    .calc-toolbar select {
+      background: hsl(var(--input));
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      color: hsl(var(--foreground));
+      font-size: 13px;
+      padding: 6px 10px;
+    }
+    .calc-status {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      flex: 1;
+    }
+    .calc-status.ok   { color: #4ade80; background: rgba(74,222,128,.09); }
+    .calc-status.warn { color: #fbbf24; background: rgba(251,191,36,.09); }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .calc-grid { grid-template-columns: 1fr; } }
+
+    /* ── Cards ─────────────────────────────────────────────────────────── */
+    .calc-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 20px;
+      padding: 22px 20px;
+      margin-bottom: 20px;
+    }
+    .calc-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 16px;
+      letter-spacing: .01em;
+    }
+
+    /* ── Inputs ─────────────────────────────────────────────────────────── */
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .input-grid.single { grid-template-columns: 1fr; }
+    .input-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 520px) {
+      .input-grid, .input-grid.triple { grid-template-columns: 1fr; }
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field.span2 { grid-column: 1 / -1; }
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .field input[type=number] {
+      background: hsl(var(--input));
+      border: 1px solid hsl(var(--border));
+      border-radius: 10px;
+      color: hsl(var(--foreground));
+      font-size: 14px;
+      padding: 9px 12px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+      -moz-appearance: textfield;
+    }
+    .field input[type=number]::-webkit-outer-spin-button,
+    .field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .field input[type=number]:focus {
+      outline: none;
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+    }
+    .field-hint {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+      opacity: .7;
+      margin-top: -2px;
+    }
+
+    /* ── Error ───────────────────────────────────────────────────────────── */
+    .error-bar {
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.35);
+      border-radius: 10px;
+      color: #f87171;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+    .error-bar.hidden { display: none; }
+
+    /* ── Results ─────────────────────────────────────────────────────────── */
+    .results-section {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 20px;
+      padding: 22px 20px;
+      margin-bottom: 24px;
+    }
+    .results-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 700px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .stat-grid { grid-template-columns: 1fr; } }
+    .stat-box {
+      background: hsl(var(--secondary));
+      border: 1px solid hsl(var(--border));
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .stat-label { font-size: 13px; color: hsl(var(--muted-foreground)); }
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      white-space: nowrap;
+    }
+
+    /* ── Year projection cards ───────────────────────────────────────────── */
+    .years-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+    @media (max-width: 700px) { .years-grid { grid-template-columns: 1fr; } }
+    .year-card {
+      background: hsl(var(--secondary));
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .year-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 12px;
+    }
+    .year-cols { display: flex; flex-direction: column; gap: 10px; }
+    .year-scenario { display: flex; flex-direction: column; gap: 4px; }
+    .scenario-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); }
+    .scenario-value { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: hsl(var(--foreground)); }
+    .scenario-value.negative { color: #f87171; }
+    .scenario-bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,.07); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+    .bar-worst { background: #f87171; }
+    .bar-likely { background: hsl(var(--primary)); }
+    .bar-best   { background: #4ade80; }
+
+    /* ── Section divider ─────────────────────────────────────────────────── */
+    .results-divider {
+      border: none;
+      border-top: 1px solid hsl(var(--border));
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <main class="main-area">
+
+    <div class="page-header-row">
+      <h1>Profit Calculator</h1>
+    </div>
+
+    <div class="main-content">
+
+      <!-- Toolbar -->
+      <div class="calc-toolbar">
+        <label for="windowDays">Actuals window:</label>
+        <select id="windowDays">
+          <option value="30" selected>Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button class="btn-outline" id="reloadActuals" type="button">Reload Actuals</button>
+        <span class="calc-status" id="calcStatus">Loading&hellip;</span>
+      </div>
+
+      <div id="errorMessage" class="error-bar hidden"></div>
+
+      <div class="calc-grid">
+
+        <!-- LEFT COLUMN -->
+        <div>
+
+          <!-- Labor & Operations -->
+          <div class="calc-card">
+            <div class="calc-card-title">&#128101; Labor &amp; Operations</div>
+            <div class="input-grid">
+              <div class="field">
+                <label for="journeymanLaborBurden">Journeyman Burden ($/hr)</label>
+                <input type="number" id="journeymanLaborBurden" step="0.01" min="0" />
+              </div>
+              <div class="field">
+                <label for="apprenticeLaborBurden">Apprentice Burden ($/hr)</label>
+                <input type="number" id="apprenticeLaborBurden" step="0.01" min="0" />
+              </div>
+              <div class="field">
+                <label for="numJourneymen">Total Journeymen</label>
+                <input type="number" id="numJourneymen" min="0" step="1" />
+              </div>
+              <div class="field">
+                <label for="numApprentices">Total Apprentices</label>
+                <input type="number" id="numApprentices" min="0" step="1" />
+              </div>
+              <div class="field span2">
+                <label for="crewCount">Crew Count (1J+1A paired; extra J runs solo)</label>
+                <input type="number" id="crewCount" min="0" step="1" placeholder="e.g., 2" />
+              </div>
+              <div class="field">
+                <label for="hoursPerWorkerPerDay">Hours/Worker/Day</label>
+                <input type="number" id="hoursPerWorkerPerDay" min="0" max="24" step="0.25" />
+              </div>
+              <div class="field">
+                <label for="daysPerWeek">Days/Week</label>
+                <input type="number" id="daysPerWeek" min="1" max="7" step="1" />
+              </div>
+              <div class="field">
+                <label for="utilizationPct">Utilization (%)</label>
+                <input type="number" id="utilizationPct" min="0" max="100" step="1" placeholder="87" />
+              </div>
+              <div class="field">
+                <label for="prepDriveHoursPerJob">Prep/Drive hrs/Job</label>
+                <input type="number" id="prepDriveHoursPerJob" min="0" step="0.1" placeholder="e.g., 0.5" />
+              </div>
+              <div class="field">
+                <label for="overrunRatePct">Schedule Overrun (%)</label>
+                <input type="number" id="overrunRatePct" min="0" max="100" step="1" />
+              </div>
+              <div class="field">
+                <label for="cancelRatePct">Cancellation / No-Show (%)</label>
+                <input type="number" id="cancelRatePct" min="0" max="100" step="1" />
+              </div>
+              <div class="field">
+                <label for="leadsPerWeek">Leads/Week (optional)</label>
+                <input type="number" id="leadsPerWeek" min="0" step="1" />
+              </div>
+              <div class="field">
+                <label for="closeRatePct">Close Rate (%, optional)</label>
+                <input type="number" id="closeRatePct" min="0" max="100" step="1" />
+              </div>
+              <div class="field span2">
+                <label for="jobsPerWeek">Jobs/Week — manual override cap (leave blank to auto)</label>
+                <input type="number" id="jobsPerWeek" min="0" step="1" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Details -->
+          <div class="calc-card">
+            <div class="calc-card-title">&#128736; Job Details</div>
+            <p class="field-hint" style="margin-bottom:14px;">Mix must total 100%. Small &lt;$300 revenue, Medium $300–$999, Large $1,000+.</p>
+            <div class="input-grid triple" style="margin-bottom:14px;">
+              <div class="field">
+                <label for="smallJobMix">Small Mix (%)</label>
+                <input type="number" id="smallJobMix" min="0" max="100" step="1" />
+              </div>
+              <div class="field">
+                <label for="mediumJobMix">Medium Mix (%)</label>
+                <input type="number" id="mediumJobMix" min="0" max="100" step="1" />
+              </div>
+              <div class="field">
+                <label for="largeJobMix">Large Mix (%)</label>
+                <input type="number" id="largeJobMix" min="0" max="100" step="1" />
+              </div>
+            </div>
+            <div class="input-grid">
+              <div class="field">
+                <label for="smallJobHours">Small — Person-Hours</label>
+                <input type="number" id="smallJobHours" min="0" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="smallJobMaterials">Small — Materials ($)</label>
+                <input type="number" id="smallJobMaterials" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="mediumJobHours">Medium — Person-Hours</label>
+                <input type="number" id="mediumJobHours" min="0" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="mediumJobMaterials">Medium — Materials ($)</label>
+                <input type="number" id="mediumJobMaterials" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="largeJobHours">Large — Person-Hours</label>
+                <input type="number" id="largeJobHours" min="0" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="largeJobMaterials">Large — Materials ($)</label>
+                <input type="number" id="largeJobMaterials" min="0" step="0.01" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div>
+
+          <!-- Monthly Expenses -->
+          <div class="calc-card">
+            <div class="calc-card-title">&#128179; Monthly Expenses</div>
+            <div class="input-grid">
+              <div class="field">
+                <label for="vehicleInsurance">Vehicle Insurance</label>
+                <input type="number" id="vehicleInsurance" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="fuelCost">Fuel Cost</label>
+                <input type="number" id="fuelCost" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="vehicleMaintenance">Vehicle Maintenance</label>
+                <input type="number" id="vehicleMaintenance" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="generalLiability">General Liability</label>
+                <input type="number" id="generalLiability" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="toolRepair">Tool Repair</label>
+                <input type="number" id="toolRepair" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="loanPayments">Loan Payments</label>
+                <input type="number" id="loanPayments" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="softwarePayments">Software</label>
+                <input type="number" id="softwarePayments" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="marketingCost">Marketing</label>
+                <input type="number" id="marketingCost" min="0" step="0.01" />
+              </div>
+              <div class="field span2">
+                <label for="ownerSalary">Owner Salary (fixed overhead)</label>
+                <input type="number" id="ownerSalary" min="0" step="0.01" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Projections -->
+          <div class="calc-card">
+            <div class="calc-card-title">&#128200; Financial Projections</div>
+            <div class="input-grid">
+              <div class="field">
+                <label for="targetProfitMargin">Target Profit Margin (%)</label>
+                <input type="number" id="targetProfitMargin" min="0" max="90" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="taxRate">Tax Rate (%)</label>
+                <input type="number" id="taxRate" min="0" max="100" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="bidAccuracy">Bid Accuracy (±%)</label>
+                <input type="number" id="bidAccuracy" min="0" max="90" step="1" />
+                <span class="field-hint">How much revenue can vary from estimate</span>
+              </div>
+              <div class="field">
+                <label for="annualGrowthRate">Annual Growth Rate (%)</label>
+                <input type="number" id="annualGrowthRate" min="0" step="0.1" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="results-section">
+        <div class="results-title">Projected Profit Summary</div>
+
+        <div class="stat-grid">
+          <div class="stat-box"><span class="stat-label">Active Journeymen</span><span class="stat-val" id="activeJourneymen">—</span></div>
+          <div class="stat-box"><span class="stat-label">Active Apprentices</span><span class="stat-val" id="activeApprentices">—</span></div>
+          <div class="stat-box"><span class="stat-label">Active Workers</span><span class="stat-val" id="activeWorkers">—</span></div>
+          <div class="stat-box"><span class="stat-label">Paired Crews (1J+1A)</span><span class="stat-val" id="pairedCrews">—</span></div>
+          <div class="stat-box"><span class="stat-label">Solo-J Crews</span><span class="stat-val" id="soloJCrews">—</span></div>
+          <div class="stat-box"><span class="stat-label">Auto Jobs / Week</span><span class="stat-val" id="autoJobsPerWeek">—</span></div>
+          <div class="stat-box"><span class="stat-label">Annual Jobs</span><span class="stat-val" id="annualJobs">—</span></div>
+          <div class="stat-box"><span class="stat-label">Monthly Expenses</span><span class="stat-val" id="totalMonthlyExpenses">—</span></div>
+          <div class="stat-box"><span class="stat-label">Annual Expenses</span><span class="stat-val" id="annualExpenses">—</span></div>
+          <div class="stat-box"><span class="stat-label">Overhead / Job</span><span class="stat-val" id="overheadPerJob">—</span></div>
+          <div class="stat-box"><span class="stat-label">Effective Labor Rate</span><span class="stat-val" id="effectiveLaborRate">—</span></div>
+          <div class="stat-box"><span class="stat-label">Wtd Avg Profit / Job</span><span class="stat-val" id="weightedAverageProfit">—</span></div>
+          <div class="stat-box" style="grid-column:1/-1;"><span class="stat-label">Annual Gross Profit (variable)</span><span class="stat-val" id="annualGrossProfit">—</span></div>
+        </div>
+
+        <hr class="results-divider" />
+
+        <div class="years-grid">
+          <div id="year1"></div>
+          <div id="year2"></div>
+          <div id="year3"></div>
+        </div>
+      </div>
+
+    </div><!-- /.main-content -->
+  </main>
+</div>
+
+<script src="/pages/js/crm-calculator.js"></script>
+<script src="/pages/js/shell.js"></script>
+</body>
+</html>

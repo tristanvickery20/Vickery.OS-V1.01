@@ -1,0 +1,675 @@
+You are modifying my existing Replit Node/Express CRM app.
+
+GOAL
+Add a “Profit & Expense Calculator” page inside the CRM at:
+  /crm-calculator
+
+This calculator must:
+1) Match the existing dark CRM theme (same layout, header/nav, fonts, spacing, dark colors).
+2) Load DEFAULT values from the SAME Google Sheet used by my CRM + customer-facing site (NOT the old opensheet.elk.sh link).
+3) Defaults must reflect REAL “actuals” computed from Completed jobs in the last 30 days.
+4) User edits inside the calculator are TEMPORARY only (what-if). Never write calculator edits back to Sheets.
+5) You may refactor/reorganize code for maintainability (create new modules, split files, rename, etc.), but do not break existing CRM routes/features.
+
+DATA SOURCE (IMPORTANT)
+- Do NOT use opensheet.elk.sh anywhere.
+- Use the existing Google Sheets integration already in this project (googleapis / existing auth).
+- Use the same spreadsheetId + tabs the CRM already uses.
+- You are allowed to modify the Google Sheet and Apps Script (I provided it already) to support this.
+
+SHEET CONTRACT
+Create/maintain a sheet tab (or computed view) named:
+  Actuals_Rollup_30D
+with columns:
+  Key | Value
+
+The calculator page will populate inputs by matching Key to input IDs.
+
+ROLLUP RULES
+- Window: rolling last 30 days.
+- Include Completed jobs ONLY (completed is defined by Job Status, not paid invoice).
+- Job size buckets are based on Revenue thresholds:
+    Small: revenue < 300
+    Medium: 300 <= revenue < 1000
+    Large: revenue >= 1000
+- We do NOT store medium/large job types currently, so bucket is derived.
+- Utilization is “hours on site”: count only time entries categorized as on-site/work (not admin).
+- If only a few jobs exist (even 2), still compute averages from them (no fallback smoothing).
+- Labor burden rates (Journeyman/Apprentice) come from payroll/employee/time tab—use the cleanest source that exists in the workbook.
+- Overhead fields come from QBO category totals that are already being logged/imported into the workbook.
+- Owner salary is treated as a FIXED overhead expense.
+
+MATERIALS COST (NO DOUBLE COUNTING)
+We need materials COST without markup.
+- If true materials cost per job exists (purchases/expenses linked to job), use it.
+- If only billed materials exist (likely includes markup), estimate cost by reversing markup:
+    materials_cost_est = materials_billed / (1 + materials_markup_pct)
+  where materials_markup_pct is a Config value in the workbook.
+- If neither exists yet, use a temporary placeholder rule (but clearly isolate it so it can be replaced later).
+
+KEYS TO OUTPUT (minimum)
+Write these into Actuals_Rollup_30D as Key/Value pairs:
+Labor/ops:
+- numJourneymen
+- numApprentices
+- crewCount
+- hoursPerWorkerPerDay
+- daysPerWeek
+- utilizationPct
+
+Job mix + averages:
+- smallJobMix
+- mediumJobMix
+- largeJobMix
+- smallJobHours
+- mediumJobHours
+- largeJobHours
+- smallJobMaterials
+- mediumJobMaterials
+- largeJobMaterials
+
+Financial:
+- journeymanLaborBurden
+- apprenticeLaborBurden
+- vehicleInsurance
+- fuelCost
+- vehicleMaintenance
+- generalLiability
+- toolRepair
+- loanPayments
+- softwarePayments
+- marketingCost
+- ownerSalary
+
+OPTIONAL DEFAULTS (nice to have)
+- taxRate
+- targetProfitMargin
+- bidAccuracy
+- annualGrowthRate
+
+BACKEND API
+Implement a backend endpoint:
+  GET /api/actuals-rollup?windowDays=30
+It should read the Actuals_Rollup_30D tab from the CRM spreadsheet and return JSON like:
+  { "key": "value", ... }  (numbers)
+
+FRONTEND PAGE
+- Add CRM page route: /crm/calculator
+- Reuse the existing CRM shell + dark theme styling.
+- Build calculator UI in the CRM style.
+- On load, call /api/actuals-rollup?windowDays=30 and populate inputs.
+- Respect “touched” fields so user edits aren’t overwritten while typing.
+- Recompute outputs on every input change (existing behavior).
+
+CODE ORGANIZATION
+You are allowed to:
+- create a new route module (e.g., /api/actuals-rollup.js)
+- create a new view/template file for /crm/calculator
+- create shared helpers for Google Sheets reads
+Keep code readable and consistent with existing project patterns.
+
+DELIVERABLE
+1) Working /crm/calculator page with dark theme.
+2) Working /api/actuals-rollup endpoint pulling from the CRM spreadsheet.
+3) Actuals_Rollup_30D tab/view in the sheet generated/maintained via formulas or Apps Script.
+4) No dependency on opensheet.elk.sh anywhere.
+
+
+
+<!-- /index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Electrical Contractor Profit Calculator</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'] },
+          colors: { brandBlue: '#1E3A8A', brandLight: '#3B82F6' }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(to bottom right,#f0f4f8,#e2e8f0); margin:0;padding:0; }
+    #calculator { width:100%;max-width:100%;box-sizing:border-box; }
+  </style>
+</head>
+<body>
+<div id="calculator" class="flex flex-col items-center justify-start w-full py-6 px-2 sm:px-4 md:px-6 lg:px-8">
+
+  <!-- Header -->
+  <div class="flex flex-col items-center mb-6 text-center">
+    <img src="https://static1.squarespace.com/static/68c4103f5872916e9ce439e7/t/68d5df7700a0ab147d456406/1758846839299/IMG_8370.PNG"
+         alt="Company Logo" class="w-64 h-auto mb-4 drop-shadow-lg rounded-lg">
+    <h1 class="text-4xl font-extrabold text-brandBlue tracking-tight">Profit & Expense Calculator</h1>
+    <p class="text-gray-600 mt-2">Plan smarter. Grow stronger. Stay profitable.</p>
+  </div>
+
+  <!-- Inputs -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+    <!-- Labor & Job Info -->
+    <div class="space-y-6 w-full">
+      <div class="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200 w-full">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700">Labor & Operations</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="journeymanLaborBurden">Journeyman Labor Burden</label>
+            <input type="number" id="journeymanLaborBurden" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="apprenticeLaborBurden">Apprentice Labor Burden</label>
+            <input type="number" id="apprenticeLaborBurden" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="numJourneymen">Total Journeymen</label>
+            <input type="number" id="numJourneymen" min="0" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="numApprentices">Total Apprentices</label>
+            <input type="number" id="numApprentices" min="0" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+
+          <!-- Crew count -->
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="crewCount">Crew Count (1 crew = 1J+1A; extra J can run solo)</label>
+            <input type="number" id="crewCount" min="0" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none" placeholder="e.g., 2">
+          </div>
+
+          <!-- Schedule -->
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="hoursPerWorkerPerDay">Hours per Worker per Day</label>
+            <input type="number" id="hoursPerWorkerPerDay" min="0" max="24" step="0.25" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="daysPerWeek">Days per Week</label>
+            <input type="number" id="daysPerWeek" min="1" max="7" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="utilizationPct">Utilization (%)</label>
+            <input type="number" id="utilizationPct" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none" placeholder="87">
+          </div>
+
+          <!-- Realism knobs -->
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="prepDriveHoursPerJob">Prep/Drive Hours per Job</label>
+            <input type="number" id="prepDriveHoursPerJob" min="0" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none" placeholder="e.g., 0.5">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="overrunRatePct">Schedule Overrun (%)</label>
+            <input type="number" id="overrunRatePct" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="cancelRatePct">Cancellation/No-Show (%)</label>
+            <input type="number" id="cancelRatePct" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+
+          <!-- Optional demand cap -->
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="leadsPerWeek">Leads per Week (optional)</label>
+            <input type="number" id="leadsPerWeek" min="0" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="closeRatePct">Close Rate (%) (optional)</label>
+            <input type="number" id="closeRatePct" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+
+          <!-- Manual cap -->
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1" for="jobsPerWeek">Jobs per Week (manual override cap)</label>
+            <input type="number" id="jobsPerWeek" min="0" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none" placeholder="leave blank to auto-calc">
+          </div>
+
+          <!-- Mix -->
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="smallJobMix">Small Job Mix (%)</label><input type="number" id="smallJobMix" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="mediumJobMix">Medium Job Mix (%)</label><input type="number" id="mediumJobMix" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="largeJobMix">Large Job Mix (%)</label><input type="number" id="largeJobMix" min="0" max="100" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200 w-full">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700">Job Details</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="smallJobHours">Small Job Person-Hours</label><input type="number" id="smallJobHours" min="0" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="smallJobMaterials">Small Job Materials</label><input type="number" id="smallJobMaterials" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="mediumJobHours">Medium Job Person-Hours</label><input type="number" id="mediumJobHours" min="0" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="mediumJobMaterials">Medium Job Materials</label><input type="number" id="mediumJobMaterials" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="largeJobHours">Large Job Person-Hours</label><input type="number" id="largeJobHours" min="0" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="largeJobMaterials">Large Job Materials</label><input type="number" id="largeJobMaterials" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expenses & Financials -->
+    <div class="space-y-6 w-full">
+      <div class="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200 w-full">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700">Monthly Expenses</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="vehicleInsurance">Vehicle Insurance</label><input type="number" id="vehicleInsurance" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="fuelCost">Fuel Cost</label><input type="number" id="fuelCost" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="vehicleMaintenance">Vehicle Maintenance</label><input type="number" id="vehicleMaintenance" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="generalLiability">General Liability</label><input type="number" id="generalLiability" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="toolRepair">Tool Repair</label><input type="number" id="toolRepair" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="loanPayments">Loan Payments</label><input type="number" id="loanPayments" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="softwarePayments">Software Payments</label><input type="number" id="softwarePayments" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="marketingCost">Marketing Cost</label><input type="number" id="marketingCost" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+          <div><label class="block text-sm font-medium text-gray-600 mb-1" for="ownerSalary">Owner Salary</label><input type="number" id="ownerSalary" min="0" step="0.01" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none"></div>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow-lg border border-gray-200 w-full">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-700">Financial Projections</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="bidAccuracy" class="block text-sm font-medium text-gray-600 mb-1">Bid Accuracy (±%)</label>
+            <input type="number" id="bidAccuracy" min="0" max="90" step="1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label for="annualGrowthRate" class="block text-sm font-medium text-gray-600 mb-1">Annual Growth Rate (%)</label>
+            <input type="number" id="annualGrowthRate" min="0" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label for="taxRate" class="block text-sm font-medium text-gray-600 mb-1">Tax Rate (%)</label>
+            <input type="number" id="taxRate" min="0" max="100" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+          <div>
+            <label for="targetProfitMargin" class="block text-sm font-medium text-gray-600 mb-1">Target Profit Margin (%)</label>
+            <input type="number" id="targetProfitMargin" min="0" max="90" step="0.1" class="w-full p-3 rounded-xl border border-gray-200 shadow-inner focus:ring-2 focus:ring-brandLight focus:outline-none">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="mt-10 p-6 rounded-2xl shadow-xl bg-gray-50 border border-gray-200 w-full">
+    <h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Projected Profit Summary</h2>
+    <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4"></div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Active Journeymen</span><span id="activeJourneymen" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Active Apprentices</span><span id="activeApprentices" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Active Workers</span><span id="activeWorkers" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Paired Crews (1J+1A)</span><span id="pairedCrews" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Solo-J Crews</span><span id="soloJCrews" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
+        <span class="font-medium text-gray-600">Auto Jobs / Week</span><span id="autoJobsPerWeek" class="text-lg font-semibold text-gray-800">0</span>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Annual Jobs</span><span id="annualJobs" class="text-lg font-semibold text-gray-800">0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Total Monthly Expenses</span><span id="totalMonthlyExpenses" class="text-lg font-semibold text-gray-800">$0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Annual Expenses</span><span id="annualExpenses" class="text-lg font-semibold text-gray-800">$0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Overhead per Job</span><span id="overheadPerJob" class="text-lg font-semibold text-gray-800">$0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Effective Labor Rate</span><span id="effectiveLaborRate" class="text-lg font-semibold text-gray-800">$0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Weighted Avg. Profit / Job</span><span id="weightedAverageProfit" class="text-lg font-semibold text-gray-800">$0</span></div>
+      <div class="bg-white p-4 rounded-xl shadow-md flex justify-between items-center"><span class="font-medium text-gray-600">Annual Gross Profit</span><span id="annualGrossProfit" class="text-lg font-semibold text-gray-800">$0</span></div>
+    </div>
+
+    <template id="year-template">
+      <div class="bg-blue-50 p-4 rounded-xl shadow-md">
+        <h3 class="text-lg font-semibold text-blue-900 mb-2"></h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div class="p-3 bg-blue-100 rounded-lg flex flex-col items-center">
+            <span class="text-sm text-blue-700">Worst Case</span>
+            <span class="text-xl font-bold text-blue-900 profit-value">$0</span>
+            <div class="w-full h-2 mt-2 bg-red-200 rounded-full overflow-hidden">
+              <div class="h-2 bg-red-500 bar-worst" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="p-3 bg-blue-100 rounded-lg flex flex-col items-center">
+            <span class="text-sm text-blue-700">Likely</span>
+            <span class="text-xl font-bold text-blue-900 profit-value">$0</span>
+            <div class="w-full h-2 mt-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-2 bg-blue-500 bar-likely" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="p-3 bg-blue-100 rounded-lg flex flex-col items-center">
+            <span class="text-sm text-blue-700">Best Case</span>
+            <span class="text-xl font-bold text-blue-900 profit-value">$0</span>
+            <div class="w-full h-2 mt-2 bg-green-200 rounded-full overflow-hidden">
+              <div class="h-2 bg-green-500 bar-best" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div id="year1"></div>
+    <div id="year2"></div>
+    <div id="year3"></div>
+  </div>
+</div>
+
+<script>
+const GOOGLE_SHEET_URL = 'https://opensheet.elk.sh/100cNwo9t-Xg2QOeVOI1Ma7s7rRxdqP2R4UgblU4z-Ow/Calculator';
+
+// Only used if sheet lacks these 3
+const FIELD_DEFAULTS = { hoursPerWorkerPerDay: 8, daysPerWeek: 5, utilizationPct: 87 };
+
+// Solo-J effects
+const SOLO_UTIL_PENALTY = 0.30; // why: solo-J crews are less productive
+const SOLO_COST_UPLIFT  = 0.10; // why: some two-hand tasks take longer solo
+
+async function fetchAndPopulateData(){
+  try {
+    const res = await fetch(GOOGLE_SHEET_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+
+    const data = {};
+    rows.forEach(row => {
+      const key = row.Key ?? row.key ?? row[Object.keys(row)[0]];
+      const raw = row.Value ?? row.value ?? row[Object.keys(row)[1]];
+      const value = typeof raw === 'string' ? parseFloat(raw) : Number(raw);
+      if (key && Number.isFinite(value)) data[key] = value;
+    });
+
+    Object.entries(data).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && !el.dataset.touched) el.value = String(val);
+    });
+
+    ['hoursPerWorkerPerDay','daysPerWeek','utilizationPct'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const hasValue = el.value !== '' && !Number.isNaN(parseFloat(el.value));
+      if (!hasValue && !el.dataset.touched) el.value = String(FIELD_DEFAULTS[id]);
+    });
+
+  } catch (e) {
+    console.error("Sheet fetch failed:", e);
+    ['hoursPerWorkerPerDay','daysPerWeek','utilizationPct'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && (el.value === '' || Number.isNaN(parseFloat(el.value))) && !el.dataset.touched) {
+        el.value = String(FIELD_DEFAULTS[id]);
+      }
+    });
+  }
+}
+
+const fmtCurrency = (n) =>
+  (Number.isFinite(n) ? n : 0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2});
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+function numOr(id, d) { const el = document.getElementById(id); const v = parseFloat(el?.value); return Number.isFinite(v) ? v : d; }
+
+// Pair 1J+1A first, then solo-J, never solo-A
+function computeCrewDeployment(totalJ, totalA, crewCount) {
+  const J = Math.max(0, Math.floor(totalJ));
+  const A = Math.max(0, Math.floor(totalA));
+  const C = Math.max(0, Math.floor(crewCount));
+
+  const paired = Math.min(C, Math.min(J, A));
+  const remainingCrewSlots = C - paired;
+  const remainingJ = J - paired;
+
+  const soloJ = Math.min(remainingCrewSlots, Math.max(0, remainingJ));
+  const activeJ = paired + soloJ;
+  const activeA = paired;
+  const activeWorkers = activeJ + activeA;
+
+  return {
+    pairedCrews: paired,
+    soloJCrews: soloJ,
+    activeJourneymen: activeJ,
+    activeApprentices: activeA,
+    activeWorkers,
+    benchJourneymen: Math.max(0, J - activeJ),
+    benchApprentices: Math.max(0, A - activeA)
+  };
+}
+
+/* Capacity from person-hours + mix + ACTIVE workers + schedule settings */
+function computeJobsPerWeekRealistic(phS, phM, phL, mixS, mixM, mixL,
+                                     totalWorkers, hoursPerWorkerPerDay=8, daysPerWeek=5, util=0.87) {
+  const weeklyPersonHours = hoursPerWorkerPerDay * daysPerWeek * util * Math.max(0, totalWorkers);
+  const types = [];
+  if (mixS > 0 && phS > 0) types.push({h: phS, mix: mixS});
+  if (mixM > 0 && phM > 0) types.push({h: phM, mix: mixM});
+  if (mixL > 0 && phL > 0) types.push({h: phL, mix: mixL});
+  if (!types.length || weeklyPersonHours <= 0) return 0;
+
+  const buckets = types.map(t => ({...t, target: weeklyPersonHours * t.mix, done:0, count:0}));
+  let hoursLeft = weeklyPersonHours;
+
+  while (true) {
+    buckets.sort((a,b) => (b.target - b.done) - (a.target - a.done));
+    let placed = false;
+    for (const t of buckets) {
+      if (hoursLeft >= t.h) { t.done += t.h; t.count += 1; hoursLeft -= t.h; placed = true; break; }
+    }
+    if (!placed) break;
+  }
+  return buckets.reduce((s,t)=>s+t.count,0);
+}
+
+function calculateProfit() {
+  try {
+    // Inputs
+    const jRate = numOr('journeymanLaborBurden', 0);
+    const aRate = numOr('apprenticeLaborBurden', 0);
+
+    const totalJ = numOr('numJourneymen', 0);
+    const totalA = numOr('numApprentices', 0);
+    const crewCount = numOr('crewCount', 0);
+
+    const manualCap = numOr('jobsPerWeek', 0);
+
+    const hpd  = Math.min(24, Math.max(0, numOr('hoursPerWorkerPerDay', FIELD_DEFAULTS.hoursPerWorkerPerDay)));
+    const dpw  = Math.min(7,  Math.max(1, numOr('daysPerWeek', FIELD_DEFAULTS.daysPerWeek)));
+    const util = clamp01((numOr('utilizationPct', FIELD_DEFAULTS.utilizationPct)) / 100);
+
+    const overrun = clamp01(numOr('overrunRatePct', 0) / 100);
+    const cancel  = clamp01(numOr('cancelRatePct', 0) / 100);
+    const prepDrive = Math.max(0, numOr('prepDriveHoursPerJob', 0));
+
+    const leadsPerWeek = Math.max(0, numOr('leadsPerWeek', 0));
+    const closeRate    = clamp01(numOr('closeRatePct', 0) / 100);
+    const hasDemandCap = leadsPerWeek > 0 && closeRate > 0;
+
+    const growth  = clamp01(numOr('annualGrowthRate', 0) / 100);
+    const taxRate = clamp01(numOr('taxRate', 0) / 100);
+    const margin  = clamp01(numOr('targetProfitMargin', 0) / 100);
+    const bidAcc  = clamp01(numOr('bidAccuracy', 10) / 100);
+
+    const mixS = clamp01(numOr('smallJobMix', 0) / 100);
+    const mixM = clamp01(numOr('mediumJobMix', 0) / 100);
+    const mixL = clamp01(numOr('largeJobMix', 0) / 100);
+
+    const phS = Math.max(0, numOr('smallJobHours', 0));
+    const matS = Math.max(0, numOr('smallJobMaterials', 0));
+    const phM = Math.max(0, numOr('mediumJobHours', 0));
+    const matM = Math.max(0, numOr('mediumJobMaterials', 0));
+    const phL = Math.max(0, numOr('largeJobHours', 0));
+    const matL = Math.max(0, numOr('largeJobMaterials', 0));
+
+    const vehicleInsurance = Math.max(0, numOr('vehicleInsurance', 0));
+    const fuelCost = Math.max(0, numOr('fuelCost', 0));
+    const vehicleMaintenance = Math.max(0, numOr('vehicleMaintenance', 0));
+    const generalLiability = Math.max(0, numOr('generalLiability', 0));
+    const toolRepair = Math.max(0, numOr('toolRepair', 0));
+    const loanPayments = Math.max(0, numOr('loanPayments', 0));
+    const softwarePayments = Math.max(0, numOr('softwarePayments', 0));
+    const marketingCost = Math.max(0, numOr('marketingCost', 0));
+    const ownerSalary = Math.max(0, numOr('ownerSalary', 0));
+
+    // Validation
+    const eEl = document.getElementById('errorMessage');
+    const mixSum = mixS + mixM + mixL;
+    if (mixSum < 0.999 || mixSum > 1.001) { eEl.textContent = 'Job mix must sum to 100%.'; eEl.classList.remove('hidden'); return; }
+    if (margin >= 0.999) { eEl.textContent = 'Target margin cannot be 100%.'; eEl.classList.remove('hidden'); return; }
+    eEl.classList.add('hidden');
+
+    // Deploy crews
+    const deploy = computeCrewDeployment(totalJ, totalA, crewCount);
+
+    // Effective labor rate uses ACTIVE workers
+    const activeWorkers = deploy.activeWorkers;
+    const effectiveLaborRate =
+      activeWorkers > 0
+        ? (jRate * deploy.activeJourneymen + aRate * deploy.activeApprentices) / activeWorkers
+        : 0;
+
+    // Expenses
+    const totalMonthlyExpenses =
+      vehicleInsurance + fuelCost + vehicleMaintenance + generalLiability +
+      toolRepair + loanPayments + softwarePayments + marketingCost + ownerSalary;
+    const annualExpenses = totalMonthlyExpenses * 12;
+
+    // Effective hours per job for capacity (adds prep/drive + overruns)
+    const effS = (phS + prepDrive) * (1 + overrun);
+    const effM = (phM + prepDrive) * (1 + overrun);
+    const effL = (phL + prepDrive) * (1 + overrun);
+
+    // SOLO-J utilization penalty (capacity only)
+    const effWorkersForUtil = Math.max(0, activeWorkers - SOLO_UTIL_PENALTY * deploy.soloJCrews);
+    const utilEff = activeWorkers > 0 ? util * (effWorkersForUtil / activeWorkers) : 0;
+
+    // Supply capacity (use ACTIVE workers with adjusted utilization)
+    const supplyJobsPerWeek = computeJobsPerWeekRealistic(
+      effS, effM, effL, mixS, mixM, mixL,
+      activeWorkers, hpd, dpw, utilEff
+    );
+    const realizedSupply = supplyJobsPerWeek * (1 - cancel);
+
+    // Optional demand cap
+    const demandCap = hasDemandCap ? (leadsPerWeek * closeRate * (1 - cancel)) : Infinity;
+
+    // Auto jobs/week + manual override cap
+    const autoJobsPerWeek = Math.max(0, Math.min(realizedSupply, demandCap));
+    const jobsPerWeekEffective = manualCap > 0 ? Math.min(manualCap, autoJobsPerWeek) : autoJobsPerWeek;
+    const annualJobs = Math.max(0, Math.floor(jobsPerWeekEffective * 52));
+
+    // Solo-J cost uplift (labor hours inflated by solo crew share)
+    const activeCrews = deploy.pairedCrews + deploy.soloJCrews;
+    const soloShare = activeCrews > 0 ? (deploy.soloJCrews / activeCrews) : 0;
+    const hoursUpliftFactor = 1 + SOLO_COST_UPLIFT * soloShare;
+
+    // Job costs (materials + labor hours * uplift * rate)
+    const costS = matS + (phS * hoursUpliftFactor) * effectiveLaborRate;
+    const costM = matM + (phM * hoursUpliftFactor) * effectiveLaborRate;
+    const costL = matL + (phL * hoursUpliftFactor) * effectiveLaborRate;
+
+    // Profit/job at target margin
+    const profitFromCost = (c,m)=> c * (m / (1 - m));
+    const baseS = profitFromCost(costS, margin);
+    const baseM = profitFromCost(costM, margin);
+    const baseL = profitFromCost(costL, margin);
+
+    // Accuracy band
+    const lowS=baseS*(1-bidAcc), highS=baseS*(1+bidAcc);
+    const lowM=baseM*(1-bidAcc), highM=baseM*(1+bidAcc);
+    const lowL=baseL*(1-bidAcc), highL=baseL*(1+bidAcc);
+
+    // Mix-weighted profit/job
+    const weightedLow    = lowS*mixS + lowM*mixM + lowL*mixL;
+    const weightedLikely = baseS*mixS + baseM*mixM + baseL*mixL;
+    const weightedHigh   = highS*mixS + highM*mixM + highL*mixL;
+
+    // Variable profit (gross contribution)
+    const varProfitLow    = weightedLow    * annualJobs;
+    const varProfitLikely = weightedLikely * annualJobs;
+    const varProfitHigh   = weightedHigh   * annualJobs;
+
+    // Pre-tax and after-tax (no refunds when negative)
+    const preTaxLow    = varProfitLow    - annualExpenses;
+    const preTaxLikely = varProfitLikely - annualExpenses;
+    const preTaxHigh   = varProfitHigh   - annualExpenses;
+
+    const netAfterTax = (pre, tRate) => pre - Math.max(0, pre) * tRate; // why: tax only on positive income
+    const netLow    = netAfterTax(preTaxLow,    taxRate);
+    const netLikely = netAfterTax(preTaxLikely, taxRate);
+    const netHigh   = netAfterTax(preTaxHigh,   taxRate);
+
+    // Growth to Y2/Y3
+    const expGrowth = growth * 0.8;
+    const netWithGrowth = (varY1, years) => {
+      const varF = Math.pow(1 + growth, years);
+      const expF = Math.pow(1 + expGrowth, years);
+      const pre = varY1 * varF - annualExpenses * expF;
+      return netAfterTax(pre, taxRate);
+    };
+    const netLowY2    = netWithGrowth(varProfitLow,    1);
+    const netLikelyY2 = netWithGrowth(varProfitLikely, 1);
+    const netHighY2   = netWithGrowth(varProfitHigh,   1);
+    const netLowY3    = netWithGrowth(varProfitLow,    2);
+    const netLikelyY3 = netWithGrowth(varProfitLikely, 2);
+    const netHighY3   = netWithGrowth(varProfitHigh,   2);
+
+    // Display
+    const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+    setText('activeJourneymen', deploy.activeJourneymen.toString());
+    setText('activeApprentices', deploy.activeApprentices.toString());
+    setText('activeWorkers', deploy.activeWorkers.toString());
+    setText('pairedCrews', deploy.pairedCrews.toString());
+    setText('soloJCrews', deploy.soloJCrews.toString());
+
+    setText('autoJobsPerWeek', autoJobsPerWeek.toFixed(1));
+    setText('annualJobs', annualJobs.toLocaleString());
+    setText('totalMonthlyExpenses', fmtCurrency(totalMonthlyExpenses));
+    setText('annualExpenses', fmtCurrency(annualExpenses));
+    setText('overheadPerJob', annualJobs ? fmtCurrency(annualExpenses / annualJobs) : fmtCurrency(0));
+    setText('effectiveLaborRate', fmtCurrency(effectiveLaborRate));
+    setText('weightedAverageProfit', fmtCurrency(weightedLikely));
+    setText('annualGrossProfit', fmtCurrency(varProfitLikely)); // variable profit
+
+    function renderYear(id, title, worst, likely, best) {
+      const tpl = document.getElementById('year-template');
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('h3').textContent = title;
+
+      const vals = node.querySelectorAll('.profit-value');
+      vals[0].textContent = fmtCurrency(worst);
+      vals[1].textContent = fmtCurrency(likely);
+      vals[2].textContent = fmtCurrency(best);
+
+      const base = Math.max(worst, likely, best, 1);
+      const pct = (v) => Math.max(0, Math.min(100, (v / base) * 100));
+      node.querySelector('.bar-worst').style.width  = pct(worst)  + '%';
+      node.querySelector('.bar-likely').style.width = pct(likely) + '%';
+      node.querySelector('.bar-best').style.width   = pct(best)   + '%';
+
+      const c = document.getElementById(id);
+      c.innerHTML = '';
+      c.appendChild(node);
+    }
+    renderYear('year1', 'Year 1 – Net Profit Range', netLow, netLikely, netHigh);
+    renderYear('year2', 'Year 2 – Net Profit Range', netLowY2, netLikelyY2, netHighY2);
+    renderYear('year3', 'Year 3 – Net Profit Range', netLowY3, netLikelyY3, netHighY3);
+
+  } catch (e) {
+    console.error('Calculation Error:', e);
+    const eEl = document.getElementById('errorMessage');
+    eEl.textContent = 'Please ensure required fields are valid.';
+    eEl.classList.remove('hidden');
+  }
+}
+
+document.getElementById('calculator').addEventListener('input', calculateProfit);
+window.addEventListener('DOMContentLoaded', async () => {
+  document.querySelectorAll('#calculator input').forEach(el => {
+    el.addEventListener('input', () => { el.dataset.touched = '1'; });
+  });
+  await fetchAndPopulateData();
+  calculateProfit();
+});
+</script>
+</body>
+</html>
