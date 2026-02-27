@@ -15,6 +15,7 @@ const { handleGetExpenses, handleCreateExpense } = require("./api/expenses");
 const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
+const { handleActualsRollup } = require("./api/actuals-rollup");
 const {
   handleGetClients,
   handleGetClientById,
@@ -217,6 +218,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-audit.html"), "text/html");
   }
 
+  if (req.url === "/crm/calculator") {
+    return serveFile(res, path.join(__dirname, "pages/crm-calculator.html"), "text/html");
+  }
+
   if (req.url.startsWith("/crm/lead")) {
     return serveFile(res, path.join(__dirname, "pages/crm-lead.html"), "text/html");
   }
@@ -272,6 +277,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/attachments" && req.method === "POST") {
     return handleCreateAttachment(req, res);
+  }
+
+  if (req.url.startsWith("/api/actuals-rollup") && req.method === "GET") {
+    return handleActualsRollup(req, res);
   }
 
   if (req.url.startsWith("/api/dashboard") && req.method === "GET") {
