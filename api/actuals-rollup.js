@@ -81,13 +81,40 @@ async function writeRollup(sheets, rollup) {
   } catch { /* non-fatal */ }
 }
 
+async function readTimeSources(sheets) {
+  // Prefer TimeEntries tab (has hours column); fall back to Time tab (has minutes)
+  const timeEntries = await readTab(sheets, "TimeEntries");
+  const timeFallback = await readTab(sheets, "Time");
+
+  // Normalize both into { lead_id, minutes } objects
+  const normalize = (row) => {
+    const lid = row.lead_id;
+    if (!lid) return null;
+    let minutes = 0;
+    if (row.hours !== undefined && row.hours !== "") {
+      minutes = toNum(row.hours) * 60;
+    } else if (row.minutes !== undefined && row.minutes !== "") {
+      minutes = toNum(row.minutes);
+    } else if (row.start_time && row.end_time) {
+      // Fallback: compute from timestamps
+      const s = new Date(row.start_time), e = new Date(row.end_time);
+      if (!isNaN(s) && !isNaN(e) && e > s) minutes = (e - s) / 60000;
+    }
+    return { lead_id: lid, minutes, category: row.category || "" };
+  };
+
+  // Merge: use TimeEntries if it has any data, otherwise use Time
+  const source = timeEntries.length > 0 ? timeEntries : timeFallback;
+  return source.map(normalize).filter(Boolean);
+}
+
 async function computeRollup(windowDays) {
   const sheets = await getSheetsClient();
   await ensureRollupTab(sheets);
 
   const [leads, timeEntries, expenses, cfg] = await Promise.all([
     readTab(sheets, "Leads"),
-    readTab(sheets, "Time"),
+    readTimeSources(sheets),
     readTab(sheets, "Expenses"),
     getConfig(),
   ]);
@@ -112,12 +139,14 @@ async function computeRollup(windowDays) {
     timeByLead[lid] += toNum(t.minutes);
   }
 
-  // Index material expenses by lead_id
+  // Index material expenses by lead_id (check both type and category columns)
   const materialsByLead = {};
   for (const e of expenses) {
     const lid = e.lead_id;
     const type = (e.type || "").toLowerCase();
-    if (!lid || !type.includes("material")) continue;
+    const category = (e.category || "").toLowerCase();
+    const isMaterial = type.includes("material") || category.includes("material");
+    if (!lid || !isMaterial) continue;
     if (!materialsByLead[lid]) materialsByLead[lid] = 0;
     materialsByLead[lid] += toNum(e.amount);
   }
