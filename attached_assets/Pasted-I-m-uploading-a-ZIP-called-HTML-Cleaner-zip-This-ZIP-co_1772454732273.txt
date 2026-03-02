@@ -1,0 +1,69 @@
+I’m uploading a ZIP called “HTML-Cleaner.zip”. This ZIP contains a calculator UI/UX that I love.
+
+This Replit project already has a working V3 quote engine (Google Sheets powered), but the customer-facing UI is ugly.
+
+Your job:
+- KEEP the existing V3 calculation logic and Google Sheets-driven schema exactly as-is.
+- REPLACE ONLY the customer-facing quote UI with the UI/flow from the uploaded HTML-Cleaner.zip.
+- Do NOT redesign anything unnecessarily. Preserve fonts, spacing, step flow, multi-select behavior, qty inputs, and overall feel from the ZIP.
+- Do NOT change CRM pages/routes.
+- Do NOT break or modify the separate profit calculator in this repo.
+
+What I love about the ZIP UI:
+- Start with Residential vs Commercial.
+- Allow selecting multiple categories.
+- Allow selecting multiple niches within selected categories.
+- Allow quantity inputs for certain niches (e.g., can lights).
+- Smooth step wizard feeling.
+We want that exact selection experience.
+
+V3 requirements to add (while keeping the ZIP UI feel):
+NON-NEGOTIABLES:
+- Price shown BEFORE lead info.
+- No Good/Better/Best.
+- Stored quote snapshot JSON always (append-only events).
+- Optional add-ons.
+- Address/ZIP entered later triggers auto reprice (travel fee).
+- If no address yet: assume 45 min commute and show “$25 travel fee may apply”.
+- Evaluation should be rare; risk handled by “Not sure” buffers + photo gating.
+- Per-service minimums enforced.
+- Scheduling like Calendly (real slots + booking + rules).
+- Google Sheets controls logic (no hardcoded pricing).
+
+Flow requirement (important):
+- On the “Total/Review” screen, show BOTH:
+  1) Instant exact price (before lead info)
+  2) “Schedule now” slot picker (browse/select slot without entering lead info)
+- Only when user clicks “Confirm booking” do we collect:
+  name, phone, email, address, zip
+- After confirm:
+  - Apply travel fee from zip (auto reprice)
+  - If photo required, request photo upload before final booking
+  - Finalize booking and write it to Sheets
+
+Do NOT delete any old endpoints used by other calculators. Just make the quote page use the V3 endpoints.
+
+If the uploaded ZIP contains its own pricing logic, ignore it — replace it with calls to the existing V3 endpoints in THIS project:
+- GET /api/quote/config
+- POST /api/quote/start
+- POST /api/quote/calc
+- POST /api/quote/lock
+- GET /api/schedule/slots
+- POST /api/schedule/book
+- POST /api/quote/photo (if not present, create it)
+
+Acceptance tests:
+1) /quote looks and feels like the uploaded ZIP UI (same multi-select and qty behaviors).
+2) /quote still uses V3 Sheets engine for pricing and minimums.
+3) Price displays before lead info.
+4) Travel fee is applied only after address/zip is entered at confirm.
+5) Photo gating blocks booking only when required.
+6) Slot picker works (no double booking) and booking writes to Sheets.
+7) QuoteSnapshots logs start/priced/locked/photo_uploaded/booked events.
+8) CRM and profit calculator remain unchanged.
+
+Start by:
+1) Inspecting the ZIP and identifying its UI entry file(s) and assets.
+2) Mapping its categories/niches to the V3 JobTypes from /api/quote/config (use segment/category fields or add them safely if missing).
+3) Wiring the ZIP UI components to the existing V3 endpoints.
+Return a concise list of files you changed and how to test.

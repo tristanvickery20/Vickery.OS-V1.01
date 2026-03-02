@@ -1,5 +1,6 @@
 // api/schedule-slots.js
-// GET /api/schedule/slots?quote_id=QT-...
+// GET /api/schedule/slots?quote_id=QT-...   (locked quote — existing)
+// GET /api/schedule/slots?minutes=N          (browse before lock — new)
 
 const { getSheetsClient } = require("../lib/sheets");
 const { ensureTabHeaders }  = require("../lib/sheetsSchema");
@@ -24,16 +25,13 @@ function rowsToObjects(rows) {
   return data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] || ""])));
 }
 
-// Ensure SchedulerRules exists and has a default data row.
 async function ensureSchedulerRules(sheets, id) {
   await ensureTabHeaders("SchedulerRules");
   const r = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:J3" });
   const rows = r.data.values || [];
   if (rows.length < 2 || !rows[1]?.some(v => v)) {
     await sheets.spreadsheets.values.update({
-      spreadsheetId: id,
-      range: "SchedulerRules!A2",
-      valueInputOption: "RAW",
+      spreadsheetId: id, range: "SchedulerRules!A2", valueInputOption: "RAW",
       requestBody: { majorDimension: "ROWS", values: [SCHEDULER_DEFAULTS] },
     });
     console.log("[SchedulerRules] Default row written.");
@@ -58,7 +56,6 @@ async function loadBookings(sheets, id) {
 async function loadLockedSnapshot(sheets, id, quoteId) {
   const r = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "QuoteSnapshots!A:U" });
   const rows = rowsToObjects(r.data.values || []);
-  // Return the most recent 'locked' event for this quote
   return rows.filter(r => r.quote_id === quoteId && r.event_type === "locked").pop() || null;
 }
 
@@ -72,41 +69,52 @@ async function loadJobType(sheets, id, jobTypeId) {
 
 async function handleGetSlots(req, res) {
   try {
-    const url = new URL(req.url, "http://localhost");
-    const quoteId = url.searchParams.get("quote_id");
-    if (!quoteId) return json(res, 400, { ok: false, error: "quote_id required" });
+    const url          = new URL(req.url, "http://localhost");
+    const quoteId      = url.searchParams.get("quote_id");
+    const minutesParam = url.searchParams.get("minutes");
+
+    if (!quoteId && !minutesParam) {
+      return json(res, 400, { ok: false, error: "quote_id or minutes required" });
+    }
 
     const sheets = await getSheetsClient();
     const id     = SPREADSHEET_ID();
 
-    const [rules, bookings, snapshot] = await Promise.all([
+    const [rules, bookings] = await Promise.all([
       loadSchedulerRules(sheets, id),
       loadBookings(sheets, id),
-      loadLockedSnapshot(sheets, id, quoteId),
     ]);
 
-    if (!snapshot) {
-      return json(res, 400, { ok: false, error: "No locked quote found for this quote_id. Lock your price first." });
-    }
+    // Default duration comes from ?minutes param (pre-lock browsing)
+    let duration = minutesParam ? Math.max(30, Number(minutesParam) || 90) : 90;
+    let quote    = null;
 
-    const jobTypeId = snapshot.job_type_id || "";
-    const jobType   = jobTypeId ? await loadJobType(sheets, id, jobTypeId) : null;
-    const duration  = Number(jobType?.default_duration_minutes) || 90;
+    // If a quote_id was provided, try to resolve a locked snapshot for authoritative duration
+    if (quoteId) {
+      const snapshot = await loadLockedSnapshot(sheets, id, quoteId);
+      if (snapshot) {
+        const jobType = snapshot.job_type_id
+          ? await loadJobType(sheets, id, snapshot.job_type_id)
+          : null;
+        duration = Number(jobType?.default_duration_minutes) || 90;
+        quote = {
+          quote_id:      quoteId,
+          job_type_id:   snapshot.job_type_id,
+          final_price:   snapshot.final_price,
+          customer_name: snapshot.customer_name,
+          address:       snapshot.address,
+        };
+      }
+    }
 
     const slots = generateSlots(rules, bookings, duration, new Date());
 
     json(res, 200, {
       ok: true,
       slots,
-      timezone: rules.timezone || "America/Chicago",
+      timezone:         rules.timezone || "America/Chicago",
       duration_minutes: duration,
-      quote: {
-        quote_id:     quoteId,
-        job_type_id:  jobTypeId,
-        final_price:  snapshot.final_price,
-        customer_name: snapshot.customer_name,
-        address:       snapshot.address,
-      },
+      quote,
     });
   } catch (err) {
     console.error("[schedule-slots]", err.message);

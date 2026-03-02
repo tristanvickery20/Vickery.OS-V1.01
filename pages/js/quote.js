@@ -1,17 +1,21 @@
-// pages/js/quote.js — V3 Quote Flow: Segment → Category → Service → Details → Price → Schedule
+// pages/js/quote.js — V3 Quote Flow v2
+// Segment → Categories (multi-select) → Service + Qty → Details → Review (Price + Slots) → Confirm → [Photo] → Booked
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
   step: "segment",
-  segment: null,      // "Residential" | "Commercial"
-  category: null,     // e.g. "Outlets & Switches"
+  segment: null,
+  selectedCategories: [],   // string[]  — multi-select
   config: null,
   quoteId: null,
-  typeId: null,
+  typeId: null,             // selected job_type_id
+  qty: 1,                   // quantity for selected service
   answers: {},
   addons: [],
-  pricing: null,
-  lock: null,
+  pricing: null,            // server calc response
+  displayPrice: null,       // pricing.final_price × qty (no travel fee yet)
+  lock: null,               // server lock response
+  lockedDisplayPrice: null, // (base × qty) + travel_fee
   photoUploaded: false,
   slotsData: null,
   selectedSlot: null,
@@ -24,7 +28,7 @@ let repricTimer = null;
 async function boot() {
   setContent(loadingHTML("Loading services\u2026"));
   try {
-    const r = await fetch("/api/quote/config");
+    const r  = await fetch("/api/quote/config");
     S.config = await r.json();
     go("segment");
   } catch {
@@ -40,34 +44,36 @@ function go(step) {
 }
 
 function back() {
-  const prev = { category: "segment", service: "category", questions: "service", lead: "price" };
-  if (S.step === "price") {
+  if (S.step === "review") {
     const hasQs     = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
     const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length   || 0) > 0;
-    go(hasQs || hasAddons ? "questions" : "service");
-  } else if (prev[S.step]) {
-    go(prev[S.step]);
+    go(hasQs || hasAddons ? "questions" : "services");
+    return;
   }
+  const prev = { categories: "segment", services: "categories", questions: "services", confirm: "review", photo: "confirm" };
+  if (prev[S.step]) go(prev[S.step]);
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
 function renderStep() {
   document.getElementById("qProgress").innerHTML = progressHTML();
-  // Force animation replay by replacing the node
-  const el = document.getElementById("stepContent");
+  const el    = document.getElementById("stepContent");
   const clone = el.cloneNode(false);
   el.parentNode.replaceChild(clone, el);
+
   switch (S.step) {
-    case "segment":   clone.innerHTML = renderSegment();   break;
-    case "category":  clone.innerHTML = renderCategory();  break;
-    case "service":   clone.innerHTML = renderService();   break;
-    case "questions": clone.innerHTML = renderQuestions(); break;
-    case "price":     clone.innerHTML = renderPrice();     break;
-    case "lead":      clone.innerHTML = renderLead();      break;
-    case "confirmed": clone.innerHTML = renderConfirmed(); break;
-    case "schedule":  clone.innerHTML = renderSchedule();  break;
-    case "booked":    clone.innerHTML = renderBooked();    break;
-    default:          clone.innerHTML = errHTML("Unknown step."); break;
+    case "segment":    clone.innerHTML = renderSegment();    break;
+    case "categories": clone.innerHTML = renderCategories(); break;
+    case "services":   clone.innerHTML = renderServices();   break;
+    case "questions":  clone.innerHTML = renderQuestions();  break;
+    case "review":
+      clone.innerHTML = renderReview();
+      loadSlotsForReview();
+      break;
+    case "confirm":    clone.innerHTML = renderConfirm();    break;
+    case "photo":      clone.innerHTML = renderPhoto();      break;
+    case "booked":     clone.innerHTML = renderBooked();     break;
+    default:           clone.innerHTML = errHTML("Unknown step."); break;
   }
   bindEvents();
 }
@@ -75,8 +81,14 @@ function renderStep() {
 function setContent(html) { document.getElementById("stepContent").innerHTML = html; }
 
 function progressHTML() {
-  const steps = ["Segment", "Category", "Service", "Details", "Price"];
-  const idx = { segment: 0, category: 1, service: 2, questions: 3, price: 4, lead: 4, confirmed: 4, schedule: 4, booked: 4 };
+  const steps = ["Type", "Services", "Details", "Review", "Confirm"];
+  const idx   = {
+    segment: 0, categories: 0,
+    services: 1,
+    questions: 2,
+    review: 3,
+    confirm: 4, photo: 4, booked: 4,
+  };
   const cur = idx[S.step] ?? 0;
   return `<div class="q-progress">${steps.map((label, i) =>
     `<div class="q-prog-step ${i < cur ? "done" : ""} ${i === cur ? "active" : ""}">
@@ -93,12 +105,12 @@ function renderSegment() {
   return `
     <h2 class="q-heading">What type of property?</h2>
     <div class="q-seg-cards">
-      <button class="q-seg-card${S.segment === "Residential" ? " selected" : ""}" data-seg="Residential">
+      <button class="q-seg-card" data-seg="Residential">
         <div class="q-seg-icon">&#127968;</div>
         <div class="q-seg-name">Residential</div>
         <div class="q-seg-sub">Homes, condos &amp; apartments</div>
       </button>
-      <button class="q-seg-card${S.segment === "Commercial" ? " selected" : ""}" data-seg="Commercial">
+      <button class="q-seg-card" data-seg="Commercial">
         <div class="q-seg-icon">&#127970;</div>
         <div class="q-seg-name">Commercial</div>
         <div class="q-seg-sub">Offices, retail &amp; businesses</div>
@@ -106,23 +118,23 @@ function renderSegment() {
     </div>`;
 }
 
-// ── Step 2: Category ──────────────────────────────────────────────────────────
+// ── Step 2: Categories (multi-select) ─────────────────────────────────────────
 const CAT_ICONS = {
-  "Outlets & Switches":  "&#128268;",
-  "Lighting & Fans":     "&#128161;",
-  "Ventilation":         "&#127751;",
-  "Panel & Protection":  "&#9889;",
-  "EV Charging":         "&#128663;",
-  "Diagnostics":         "&#128269;",
+  "Outlets & Switches": "&#128268;",
+  "Lighting & Fans":    "&#128161;",
+  "Ventilation":        "&#127751;",
+  "Panel & Protection": "&#9889;",
+  "EV Charging":        "&#128663;",
+  "Diagnostics":        "&#128269;",
 };
 
-function renderCategory() {
+function renderCategories() {
   const types = (S.config?.jobTypes || []).filter(j => j.segment === S.segment);
   const cats  = [...new Set(types.map(t => t.category).filter(Boolean))];
 
   if (!cats.length) return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
-    <div class="q-card q-center">
+    <button class="q-back" onclick="back()">&#8592; Back</button>
+    <div class="q-center">
       <div class="q-icon">&#128295;</div>
       <h2 class="q-heading">Coming Soon</h2>
       <p class="q-muted">Commercial services are being added. Call us for a custom quote at
@@ -130,44 +142,72 @@ function renderCategory() {
     </div>`;
 
   return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
-    <h2 class="q-heading">What type of work?</h2>
+    <button class="q-back" onclick="back()">&#8592; Back</button>
+    <h2 class="q-heading">What type of work do you need?</h2>
+    <p class="q-muted" style="margin-bottom:20px;">Select all that apply &mdash; then tap <em>See Services</em>.</p>
     <div class="q-cat-cards">
-      ${cats.map(cat => `
-        <button class="q-cat-card${S.category === cat ? " selected" : ""}" data-cat="${escHtml(cat)}">
-          <div class="q-cat-icon">${CAT_ICONS[cat] || "&#128295;"}</div>
-          <div class="q-cat-name">${escHtml(cat)}</div>
-        </button>`).join("")}
-    </div>`;
+      ${cats.map(cat => {
+        const sel = S.selectedCategories.includes(cat);
+        return `
+          <button class="q-cat-card q-checkable${sel ? " selected" : ""}" data-cat="${escHtml(cat)}">
+            <span class="q-check-badge">${sel ? "&#10003;" : ""}</span>
+            <div class="q-cat-icon">${CAT_ICONS[cat] || "&#128295;"}</div>
+            <div class="q-cat-name">${escHtml(cat)}</div>
+          </button>`;
+      }).join("")}
+    </div>
+    <button class="q-btn-primary" id="nextCategories" style="margin-top:24px;"
+            ${S.selectedCategories.length ? "" : "disabled"}>
+      See Services &rarr;
+    </button>`;
 }
 
-// ── Step 3: Service ───────────────────────────────────────────────────────────
-function renderService() {
-  const types = (S.config?.jobTypes || []).filter(j =>
-    j.segment === S.segment && j.category === S.category
+// ── Step 3: Services (single select + qty) ────────────────────────────────────
+function renderServices() {
+  const allTypes = (S.config?.jobTypes || []).filter(j =>
+    j.segment === S.segment && S.selectedCategories.includes(j.category)
   );
 
-  if (!types.length) return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
-    <div class="q-card q-center">
+  if (!allTypes.length) return `
+    <button class="q-back" onclick="back()">&#8592; Back</button>
+    <div class="q-center">
       <div class="q-icon">&#128295;</div>
       <h2 class="q-heading">No Services Found</h2>
-      <p class="q-muted">No services available for this category yet. Call us at
+      <p class="q-muted">No services available for the selected categories. Call us at
         <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
     </div>`;
 
+  // Group by category
+  const grouped = {};
+  for (const t of allTypes) {
+    if (!grouped[t.category]) grouped[t.category] = [];
+    grouped[t.category].push(t);
+  }
+
   return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <button class="q-back" onclick="back()">&#8592; Back</button>
     <h2 class="q-heading">Which service do you need?</h2>
-    <div class="q-tiles">
-      ${types.map(t => `
-        <button class="q-tile${S.typeId === t.job_type_id ? " selected" : ""}"
-                data-type="${t.job_type_id}">
-          <div class="q-tile-name">${escHtml(t.name_public)}</div>
-          ${t.min_price ? `<div class="q-tile-sub">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
-        </button>`).join("")}
+    ${Object.entries(grouped).map(([cat, types]) => `
+      <div class="q-section-label">${escHtml(cat)}</div>
+      <div class="q-tiles">
+        ${types.map(t => `
+          <button class="q-tile${S.typeId === t.job_type_id ? " selected" : ""}"
+                  data-type="${escHtml(t.job_type_id)}">
+            <div class="q-tile-name">${escHtml(t.name_public)}</div>
+            ${t.min_price ? `<div class="q-tile-sub">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
+          </button>`).join("")}
+      </div>`).join("")}
+
+    <div class="q-qty-wrap" id="qtyWrap" ${S.typeId ? "" : 'style="display:none;"'}>
+      <div class="q-qty-label">How many?</div>
+      <div class="q-qty-ctrl">
+        <button class="q-qty-btn" id="qtyDec">&#8722;</button>
+        <span class="q-qty-val" id="qtyVal">${S.qty}</span>
+        <button class="q-qty-btn" id="qtyInc">&#43;</button>
+      </div>
     </div>
-    <button class="q-btn-primary" id="nextService" style="margin-top:24px;" ${S.typeId ? "" : "disabled"}>
+
+    <button class="q-btn-primary" id="nextService" style="margin-top:20px;" ${S.typeId ? "" : "disabled"}>
       Continue &rarr;
     </button>`;
 }
@@ -178,7 +218,7 @@ function renderQuestions() {
   const addons    = S.config?.addonsByType?.[S.typeId]   || [];
 
   return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <button class="q-back" onclick="back()">&#8592; Back</button>
     <h2 class="q-heading">Tell us about the job</h2>
     ${!questions.length && !addons.length ? `
       <p class="q-muted" style="margin-bottom:24px;">No additional details needed. Click below to see your price.</p>
@@ -196,6 +236,7 @@ function renderQuestions() {
             <div class="q-addon-body">
               <div class="q-addon-name">${escHtml(a.name_public)}</div>
               ${a.add_fee ? `<div class="q-addon-fee">+$${Number(a.add_fee).toLocaleString()}</div>` : ""}
+              ${a.description ? `<div class="q-addon-desc">${escHtml(a.description)}</div>` : ""}
             </div>
           </label>`).join("")}
       </div>
@@ -226,46 +267,84 @@ function renderQuestion(q) {
     </div>`;
 }
 
-// ── Step 5: Price ─────────────────────────────────────────────────────────────
-function renderPrice() {
-  if (!S.pricing) return loadingHTML("Calculating your price\u2026");
-  const p    = S.pricing;
-  const bnpl = p.final_price && p.final_price >= 200 ? Math.ceil(p.final_price / 12) : null;
+// ── Step 5: Review — price + slot picker (no lead info yet) ───────────────────
+function renderReview() {
+  const price    = S.displayPrice;
+  const bnpl     = price && price >= 200 ? Math.ceil(price / 12) : null;
+  const jobType  = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
+  const label    = jobType?.name_public || "";
 
   return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <button class="q-back" onclick="back()">&#8592; Back</button>
+    <h2 class="q-heading">Your Instant Price</h2>
+
     <div class="q-price-reveal">
-      <div class="q-price-label">Your Instant Price</div>
-      <div class="q-price-big">$${p.final_price != null ? Number(p.final_price).toLocaleString() : "\u2014"}</div>
-      <p class="q-price-sub">Exact price based on your answers.</p>
-      <div class="q-disclaimer travel-note">
+      <div class="q-price-label">Estimated Total</div>
+      <div class="q-price-big">$${price != null ? Number(price).toLocaleString() : "&mdash;"}</div>
+      <p class="q-price-sub">${S.qty > 1 ? `${S.qty}&times; ` : ""}${escHtml(label)}</p>
+      <div class="q-disclaimer">
         &#128205; A $25 travel fee may be applied once your address is confirmed.
       </div>
-      ${p.evaluation_flag ? `
+      ${S.pricing?.evaluation_flag ? `
         <div class="q-disclaimer warn">
-          &#9888;&#65039; This job may need an in-person evaluation first. We'll confirm when you lock your price.
+          &#9888;&#65039; This job may need an in-person evaluation first. We'll confirm with you.
         </div>` : ""}
-      ${bnpl ? `
-        <div class="q-bnpl">
-          As low as <strong>$${bnpl}/mo</strong> with flexible payment options.
-        </div>` : ""}
+      ${bnpl ? `<div class="q-bnpl">As low as <strong>$${bnpl}/mo</strong> with flexible payment options.</div>` : ""}
     </div>
-    <button class="q-btn-primary" id="lockPriceBtn" style="margin-top:28px;">
-      Lock My Price &amp; Schedule &rarr;
-    </button>`;
+
+    <div class="q-review-slots-section">
+      <h3 class="q-review-slots-heading">&#128197; Choose a Time</h3>
+      <p class="q-muted" style="margin-bottom:16px;">Browse available times. Your spot is reserved when you confirm.</p>
+      <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <button class="q-btn-primary" id="goConfirmBtn" ${S.selectedSlot ? "" : "disabled"}>
+        Confirm Booking &rarr;
+      </button>
+      <p class="q-muted" style="font-size:12px;text-align:center;margin-top:10px;">
+        Select a time above to continue
+      </p>
+    </div>`;
 }
 
-// ── Step 6: Lead Form ─────────────────────────────────────────────────────────
-function renderLead() {
-  const p = S.pricing;
+// ── Step 6: Confirm — lead form (slot + price shown above form) ────────────────
+function renderConfirm() {
+  const price  = S.displayPrice;
+  const tz     = S.slotsData?.timezone || "America/Chicago";
+  const slotDt = S.selectedSlot ? new Date(S.selectedSlot) : null;
+  const slotDate = slotDt
+    ? new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "long", day: "numeric" }).format(slotDt)
+    : "";
+  const slotTime = slotDt
+    ? new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(slotDt)
+    : "";
+
   return `
-    <button class="q-back" id="backBtn">\u2190 Back</button>
-    <h2 class="q-heading">Almost done!</h2>
-    <p class="q-muted" style="margin-bottom:20px;">
-      Your price: <strong>$${p?.final_price != null ? Number(p.final_price).toLocaleString() : "\u2014"}</strong>
-      <span style="font-size:12px;"> &mdash; travel fee confirmed with address</span>
-    </p>
-    <div class="q-form">
+    <button class="q-back" onclick="back()">&#8592; Back</button>
+    <h2 class="q-heading">Almost there!</h2>
+
+    <div class="q-confirm-summary">
+      <div class="q-confirm-row">
+        <span class="q-confirm-icon">&#128197;</span>
+        <div>
+          <div class="q-confirm-key">Appointment</div>
+          <div class="q-confirm-val">${escHtml(slotDate)}&nbsp;&bull;&nbsp;${escHtml(slotTime)}</div>
+        </div>
+      </div>
+      <div class="q-confirm-row">
+        <span class="q-confirm-icon">&#128181;</span>
+        <div>
+          <div class="q-confirm-key">Estimated Price</div>
+          <div class="q-confirm-val">
+            $${price != null ? Number(price).toLocaleString() : "&mdash;"}
+            <span class="q-confirm-note">&mdash; travel fee applied with your address</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="q-form" style="margin-top:24px;">
       <div class="q-field">
         <label class="q-label">Your Name <span class="q-req">*</span></label>
         <input type="text" id="ld_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
@@ -292,118 +371,51 @@ function renderLead() {
       </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
       <button class="q-btn-primary" id="submitLockBtn">
-        Confirm My Price &rarr;
+        Confirm &amp; Book &rarr;
       </button>
+      <p class="q-muted" style="font-size:12px;text-align:center;margin-top:10px;">
+        Secure booking &bull; No payment due now
+      </p>
     </div>`;
 }
 
-// ── Step 7: Confirmed (price locked, optional photo, choose time) ──────────────
-function renderConfirmed() {
-  const p         = S.lock || S.pricing;
-  const needsPhoto = p?.photo_required && !S.photoUploaded;
-
+// ── Step 7: Photo gate ────────────────────────────────────────────────────────
+function renderPhoto() {
   return `
-    <div class="q-confirmed">
-      <div class="q-confirmed-icon">&#9989;</div>
-      <h2 class="q-heading">Price Locked!</h2>
-      <div class="q-locked-price">$${p?.final_price != null ? Number(p.final_price).toLocaleString() : "\u2014"}</div>
-      ${p?.travel_fee ? `<p class="q-muted" style="margin-top:6px;">Includes $${p.travel_fee} travel fee.</p>` : ""}
-    </div>
-    ${needsPhoto ? `
-      <div class="q-photo-gate" id="photoSection">
-        <div class="q-photo-header">&#128247; One Quick Step</div>
-        <p class="q-muted" style="margin-bottom:16px;">
-          Upload a photo of your electrical panel to confirm compatibility before we schedule.
-        </p>
-        <label class="q-file-label">
-          Choose Photo
-          <input type="file" id="photoFile" accept="image/*" style="display:none;">
-        </label>
-        <div id="photoPreview" class="q-photo-preview" style="display:none;"></div>
-        <button class="q-btn-secondary" id="uploadPhotoBtn" style="display:none;margin-top:12px;">
-          Upload Photo
-        </button>
-        <div id="photoStatus" class="q-photo-status"></div>
-        <div id="afterPhotoSchedule" style="display:none;margin-top:16px;">
-          <button class="q-btn-primary" id="scheduleBtn">
-            &#128197; Choose a Time &rarr;
-          </button>
-        </div>
-      </div>
-    ` : `
-      <div class="q-next-step" style="margin-top:20px;">
-        <div class="q-next-icon">&#128197;</div>
-        <strong>You're one step away!</strong>
-        <p class="q-muted" style="margin-top:8px;">Choose a time that works for you.</p>
-        <button class="q-btn-primary" id="scheduleBtn" style="margin-top:16px;">
-          Choose a Time &rarr;
-        </button>
-      </div>
-    `}`;
-}
-
-// ── Step 8: Schedule (slot picker) ────────────────────────────────────────────
-function renderSchedule() {
-  if (!S.slotsData) return loadingHTML("Finding available times\u2026");
-
-  const { slots, timezone, quote } = S.slotsData;
-
-  if (!slots || !slots.length) {
-    return `
-      <h2 class="q-heading">Available Times</h2>
-      <div class="q-error-box" style="margin-top:12px;">
-        No available slots right now. We'll call you within one business day to schedule.
-      </div>
-      <p class="q-muted" style="margin-top:16px;text-align:center;">
-        Quote ID: <strong>${escHtml(S.quoteId)}</strong>
-      </p>`;
-  }
-
-  const groups = {};
-  for (const iso of slots) {
-    const dk = formatSlotDate(iso, timezone);
-    if (!groups[dk]) groups[dk] = [];
-    groups[dk].push(iso);
-  }
-
-  return `
-    <h2 class="q-heading">Choose a Time</h2>
-    <p class="q-muted" style="margin-bottom:20px;">
-      Price locked at <strong>$${Number(quote?.final_price || 0).toLocaleString()}</strong>.
-      Select a time and we'll see you there.
+    <h2 class="q-heading">One Quick Step</h2>
+    <p class="q-muted" style="margin-bottom:24px;">
+      Please upload a photo of your electrical panel so we can confirm compatibility before finalizing your booking.
     </p>
-    <div class="q-slot-groups">
-      ${Object.entries(groups).map(([date, daySlots]) => `
-        <div class="q-slot-group">
-          <div class="q-slot-date">${escHtml(date)}</div>
-          <div class="q-slot-row">
-            ${daySlots.map(iso => `
-              <button class="q-slot${S.selectedSlot === iso ? " selected" : ""}"
-                      data-iso="${escHtml(iso)}">
-                ${escHtml(formatSlotTime(iso, timezone))}
-              </button>`).join("")}
-          </div>
-        </div>`).join("")}
+    <div class="q-photo-gate">
+      <div class="q-photo-header">&#128247; Upload a Panel Photo</div>
+      <p class="q-muted" style="margin:8px 0 16px;">JPG, PNG or HEIC &bull; Max 10 MB</p>
+      <label class="q-file-label">
+        Choose Photo
+        <input type="file" id="photoFile" accept="image/*" style="display:none;">
+      </label>
+      <div id="photoPreview" class="q-photo-preview" style="display:none;"></div>
+      <button class="q-btn-secondary" id="uploadPhotoBtn" style="display:none;margin-top:12px;">
+        Upload Photo
+      </button>
+      <div id="photoStatus" class="q-photo-status"></div>
     </div>
-    <div id="slotErr" class="q-err" style="display:none;margin-top:12px;"></div>
-    <button class="q-btn-primary" id="bookBtn" style="margin-top:24px;"
-            ${S.selectedSlot ? "" : "disabled"}>
-      Book This Time &rarr;
+    <button class="q-btn-primary" id="finalizeBtn" style="display:none;margin-top:20px;">
+      Finalize Booking &rarr;
     </button>`;
 }
 
-// ── Step 9: Booked confirmation ───────────────────────────────────────────────
+// ── Step 8: Booked ────────────────────────────────────────────────────────────
 function renderBooked() {
-  const bk = S.booking;
-  const tz  = S.slotsData?.timezone || "America/Chicago";
-  const dt  = bk?.scheduled_datetime ? new Date(bk.scheduled_datetime) : null;
-
+  const bk   = S.booking;
+  const tz   = S.slotsData?.timezone || "America/Chicago";
+  const dt   = bk?.scheduled_datetime ? new Date(bk.scheduled_datetime) : null;
   const dateStr = dt
     ? new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(dt)
     : "";
   const timeStr = dt
     ? new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(dt)
     : "";
+  const displayPrice = S.lockedDisplayPrice ?? bk?.final_price;
 
   return `
     <div class="q-booked">
@@ -426,11 +438,11 @@ function renderBooked() {
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">&#128181; Price</span>
-          <span class="q-booking-val">$${Number(bk?.final_price || 0).toLocaleString()} locked</span>
+          <span class="q-booking-val">$${Number(displayPrice || 0).toLocaleString()} locked</span>
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">&#129534; Booking ID</span>
-          <span class="q-booking-val" style="font-family:monospace;font-size:13px;">${escHtml(bk?.booking_id || "")}</span>
+          <span class="q-booking-val" style="font-family:monospace;font-size:12px;">${escHtml(bk?.booking_id || "")}</span>
         </div>
       </div>
 
@@ -442,41 +454,68 @@ function renderBooked() {
 
 // ── Event Binding ─────────────────────────────────────────────────────────────
 function bindEvents() {
-  document.getElementById("backBtn")?.addEventListener("click", back);
-
-  // Segment cards — single click advances immediately
+  // Segment — click advances immediately
   document.querySelectorAll(".q-seg-card").forEach(btn => {
     btn.addEventListener("click", () => {
-      S.segment  = btn.dataset.seg;
-      S.category = null;
-      S.typeId   = null;
-      S.answers  = {};
-      S.addons   = [];
-      go("category");
+      S.segment            = btn.dataset.seg;
+      S.selectedCategories = [];
+      S.typeId             = null;
+      S.qty                = 1;
+      S.answers            = {};
+      S.addons             = [];
+      go("categories");
     });
   });
 
-  // Category cards — single click advances to service
-  document.querySelectorAll(".q-cat-card").forEach(btn => {
+  // Category — multi-select toggle
+  document.querySelectorAll(".q-cat-card.q-checkable").forEach(btn => {
     btn.addEventListener("click", () => {
-      S.category = btn.dataset.cat;
-      S.typeId   = null;
-      S.answers  = {};
-      S.addons   = [];
-      go("service");
+      const cat = btn.dataset.cat;
+      const idx = S.selectedCategories.indexOf(cat);
+      if (idx >= 0) S.selectedCategories.splice(idx, 1);
+      else S.selectedCategories.push(cat);
+      const sel = S.selectedCategories.includes(cat);
+      btn.classList.toggle("selected", sel);
+      const badge = btn.querySelector(".q-check-badge");
+      if (badge) badge.innerHTML = sel ? "&#10003;" : "";
+      const nextBtn = document.getElementById("nextCategories");
+      if (nextBtn) nextBtn.disabled = !S.selectedCategories.length;
     });
   });
 
-  // Service tiles — select then Continue
+  document.getElementById("nextCategories")?.addEventListener("click", () => {
+    if (!S.selectedCategories.length) return;
+    S.typeId  = null;
+    S.qty     = 1;
+    S.answers = {};
+    S.addons  = [];
+    go("services");
+  });
+
+  // Service tiles — single select
   document.querySelectorAll(".q-tile").forEach(btn => {
     btn.addEventListener("click", () => {
-      S.typeId = btn.dataset.type;
+      S.typeId  = btn.dataset.type;
       S.answers = {};
       S.addons  = [];
       document.querySelectorAll(".q-tile").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
+      const qtyWrap = document.getElementById("qtyWrap");
+      if (qtyWrap) qtyWrap.style.display = "";
       document.getElementById("nextService")?.removeAttribute("disabled");
     });
+  });
+
+  // Qty controls
+  document.getElementById("qtyDec")?.addEventListener("click", () => {
+    S.qty = Math.max(1, S.qty - 1);
+    const el = document.getElementById("qtyVal");
+    if (el) el.textContent = S.qty;
+  });
+  document.getElementById("qtyInc")?.addEventListener("click", () => {
+    S.qty = Math.min(20, S.qty + 1);
+    const el = document.getElementById("qtyVal");
+    if (el) el.textContent = S.qty;
   });
 
   document.getElementById("nextService")?.addEventListener("click", () => {
@@ -514,9 +553,14 @@ function bindEvents() {
   });
 
   document.getElementById("seePriceBtn")?.addEventListener("click", calcPrice);
-  document.getElementById("lockPriceBtn")?.addEventListener("click", () => go("lead"));
 
-  // ZIP reprice
+  // Review: slot selection (delegated via bindSlotEvents after async load)
+  document.getElementById("goConfirmBtn")?.addEventListener("click", () => {
+    if (!S.selectedSlot) return;
+    go("confirm");
+  });
+
+  // Confirm: ZIP reprice
   document.getElementById("ld_zip")?.addEventListener("input", e => {
     const zip = e.target.value.replace(/\D/g, "").slice(0, 5);
     e.target.value = zip;
@@ -526,29 +570,15 @@ function bindEvents() {
 
   document.getElementById("submitLockBtn")?.addEventListener("click", submitLock);
 
-  // Photo upload
+  // Photo
   document.getElementById("photoFile")?.addEventListener("change", onPhotoSelected);
   document.getElementById("uploadPhotoBtn")?.addEventListener("click", uploadPhoto);
-
-  // Schedule button
-  document.getElementById("scheduleBtn")?.addEventListener("click", loadSlots);
-
-  // Slot picker
-  document.querySelectorAll(".q-slot").forEach(btn => {
-    btn.addEventListener("click", () => {
-      S.selectedSlot = btn.dataset.iso;
-      document.querySelectorAll(".q-slot").forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
-      document.getElementById("bookBtn")?.removeAttribute("disabled");
-    });
-  });
-
-  document.getElementById("bookBtn")?.addEventListener("click", submitBooking);
+  document.getElementById("finalizeBtn")?.addEventListener("click", submitBooking);
 }
 
-// ── API Calls ──────────────────────────────────────────────────────────────────
+// ── API: Calculate price (& start session) ─────────────────────────────────────
 async function calcPrice() {
-  go("price");
+  go("review");
   document.getElementById("stepContent").innerHTML = loadingHTML("Calculating your price\u2026");
 
   try {
@@ -568,51 +598,114 @@ async function calcPrice() {
     });
     S.pricing = await cr.json();
     if (!S.pricing.ok && S.pricing.error) throw new Error(S.pricing.error);
-    go("price");
+
+    // qty-adjusted display price (travel fee not yet included)
+    S.displayPrice = S.pricing.final_price != null ? S.pricing.final_price * S.qty : null;
+    S.selectedSlot = null;
+
+    go("review");
   } catch (e) {
-    S.step = "price";
     document.getElementById("stepContent").innerHTML = errHTML("Could not calculate price: " + e.message);
   }
 }
 
+// ── Load slots into the review screen ─────────────────────────────────────────
+async function loadSlotsForReview() {
+  const section = document.getElementById("reviewSlotSection");
+  if (!section) return;
+
+  try {
+    const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
+    const minutes = Number(jobType?.default_duration_minutes) || 90;
+    const r       = await fetch(`/api/schedule/slots?minutes=${encodeURIComponent(minutes)}`);
+    const d       = await r.json();
+    if (!d.ok) throw new Error(d.error || "Could not load slots.");
+    S.slotsData     = d;
+    section.innerHTML = renderSlotGrid(d.slots, d.timezone);
+    bindSlotEvents();
+  } catch (e) {
+    section.innerHTML = `<div class="q-error-box">Could not load times: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderSlotGrid(slots, timezone) {
+  if (!slots || !slots.length) {
+    return `<div class="q-error-box">No available slots right now. We'll call you within one business day to schedule.</div>`;
+  }
+  const groups = {};
+  for (const iso of slots) {
+    const dk = formatSlotDate(iso, timezone);
+    if (!groups[dk]) groups[dk] = [];
+    groups[dk].push(iso);
+  }
+  return `<div class="q-slot-groups">${Object.entries(groups).map(([date, daySlots]) => `
+    <div class="q-slot-group">
+      <div class="q-slot-date">${escHtml(date)}</div>
+      <div class="q-slot-row">
+        ${daySlots.map(iso => `
+          <button class="q-slot${S.selectedSlot === iso ? " selected" : ""}" data-iso="${escHtml(iso)}">
+            ${escHtml(formatSlotTime(iso, timezone))}
+          </button>`).join("")}
+      </div>
+    </div>`).join("")}</div>`;
+}
+
+function bindSlotEvents() {
+  document.querySelectorAll(".q-slot").forEach(btn => {
+    btn.addEventListener("click", () => {
+      S.selectedSlot = btn.dataset.iso;
+      document.querySelectorAll(".q-slot").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      document.getElementById("goConfirmBtn")?.removeAttribute("disabled");
+      const hint = document.querySelector(".q-muted[style*='Select a time']");
+      if (hint) hint.style.display = "none";
+    });
+  });
+}
+
+// ── ZIP reprice on confirm step ────────────────────────────────────────────────
 async function reprice(zip) {
   const noteEl   = document.getElementById("zipNote");
   const updateEl = document.getElementById("priceUpdate");
   if (!noteEl || !updateEl) return;
-
   noteEl.style.display   = "block";
-  noteEl.textContent     = "Checking travel fee for your area\u2026";
+  noteEl.textContent     = "Checking travel fee\u2026";
   updateEl.style.display = "none";
 
   try {
     const r = await fetch("/api/quote/lock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, zip }),
     });
     const data = await r.json();
     if (data.final_price != null) {
       noteEl.style.display   = "none";
       updateEl.style.display = "block";
-      const delta = data.travel_fee > 0
+      // qty-adjusted: base × qty + flat travel fee
+      const baseUnit = data.final_price - (data.travel_fee || 0);
+      const adjTotal = baseUnit * S.qty + (data.travel_fee || 0);
+      const delta    = data.travel_fee > 0
         ? ` (includes $${data.travel_fee} travel fee)`
         : " (no travel fee for this area)";
-      updateEl.innerHTML = `Updated price: <strong>$${Number(data.final_price).toLocaleString()}</strong>${escHtml(delta)}`;
-      S.lock = data;
+      updateEl.innerHTML = `Updated price: <strong>$${Number(adjTotal).toLocaleString()}</strong>${escHtml(delta)}`;
+      S.lock = { ...data, lockedDisplayPrice: adjTotal };
     }
   } catch {
     noteEl.textContent = "Could not look up travel fee for this ZIP.";
   }
 }
 
+// ── Submit Lock ────────────────────────────────────────────────────────────────
 async function submitLock() {
-  const name    = val("ld_name"), phone = val("ld_phone"),
-        email   = val("ld_email"), address = val("ld_address"), zip = val("ld_zip");
+  const name    = val("ld_name");
+  const phone   = val("ld_phone");
+  const email   = val("ld_email");
+  const address = val("ld_address");
+  const zip     = val("ld_zip");
 
   const errEl = document.getElementById("leadErr");
-  const hide  = () => { if (errEl) errEl.style.display = "none"; };
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
-  hide();
+  if (errEl) errEl.style.display = "none";
 
   if (!name)                return show("Name is required.");
   if (!phone)               return show("Phone is required.");
@@ -624,17 +717,25 @@ async function submitLock() {
 
   try {
     const r = await fetch("/api/quote/lock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, name, phone, email, address, zip }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
-    S.lock = data;
-    go("confirmed");
+
+    // qty-adjusted locked price
+    const baseUnit          = data.final_price - (data.travel_fee || 0);
+    S.lockedDisplayPrice    = baseUnit * S.qty + (data.travel_fee || 0);
+    S.lock                  = { ...data, lockedDisplayPrice: S.lockedDisplayPrice };
+
+    if (data.photo_required && !S.photoUploaded) {
+      go("photo");
+    } else {
+      await submitBooking();
+    }
   } catch (e) {
     show(e.message);
-    if (btn) { btn.disabled = false; btn.textContent = "Confirm My Price \u2192"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Confirm & Book \u2192"; }
   }
 }
 
@@ -642,39 +743,40 @@ async function submitLock() {
 function onPhotoSelected(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const preview  = document.getElementById("photoPreview");
+  const preview   = document.getElementById("photoPreview");
   const uploadBtn = document.getElementById("uploadPhotoBtn");
-  const reader   = new FileReader();
-  reader.onload  = ev => {
-    preview.innerHTML = `<img src="${ev.target.result}" alt="Preview"
-      style="max-width:100%;max-height:200px;border-radius:10px;margin-top:8px;">`;
-    preview.style.display = "block";
+  const reader    = new FileReader();
+  reader.onload   = ev => {
+    if (preview) {
+      preview.innerHTML     = `<img src="${ev.target.result}" alt="Preview"
+        style="max-width:100%;max-height:200px;border-radius:10px;margin-top:8px;">`;
+      preview.style.display = "block";
+    }
     if (uploadBtn) uploadBtn.style.display = "block";
   };
   reader.readAsDataURL(file);
 }
 
 async function uploadPhoto() {
-  const file    = document.getElementById("photoFile")?.files[0];
+  const file     = document.getElementById("photoFile")?.files[0];
   const statusEl = document.getElementById("photoStatus");
-  const btn     = document.getElementById("uploadPhotoBtn");
+  const btn      = document.getElementById("uploadPhotoBtn");
   if (!file || !statusEl) return;
-
   if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
   statusEl.textContent = "Uploading\u2026";
 
   try {
     const base64 = await fileToBase64(file);
     const r = await fetch("/api/quote/photo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, filename: file.name, data: base64 }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || "Upload failed.");
     S.photoUploaded = true;
     statusEl.textContent = "\u2705 Photo uploaded!";
-    document.getElementById("afterPhotoSchedule").style.display = "block";
+    const finalizeBtn = document.getElementById("finalizeBtn");
+    if (finalizeBtn) finalizeBtn.style.display = "block";
     if (btn) btn.style.display = "none";
   } catch (e) {
     statusEl.textContent = "\u274C Upload failed: " + e.message;
@@ -691,41 +793,19 @@ function fileToBase64(file) {
   });
 }
 
-// ── Scheduling ────────────────────────────────────────────────────────────────
-async function loadSlots() {
-  go("schedule");
-  document.getElementById("stepContent").innerHTML = loadingHTML("Finding available times\u2026");
-
-  try {
-    const r = await fetch(`/api/schedule/slots?quote_id=${encodeURIComponent(S.quoteId)}`);
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error || "Could not load slots.");
-    S.slotsData = d;
-    go("schedule");
-  } catch (e) {
-    document.getElementById("stepContent").innerHTML = errHTML("Could not load availability: " + e.message);
-  }
-}
-
+// ── Submit Booking ────────────────────────────────────────────────────────────
 async function submitBooking() {
-  const errEl = document.getElementById("slotErr");
-  if (!S.selectedSlot) return;
-
-  const btn = document.getElementById("bookBtn");
-  if (btn) { btn.disabled = true; btn.textContent = "Booking\u2026"; }
-  if (errEl) errEl.style.display = "none";
-
   try {
-    const lockData = S.lock || S.pricing;
+    const lockData     = S.lock || S.pricing;
+    const displayPrice = S.lockedDisplayPrice ?? lockData?.final_price;
     const r = await fetch("/api/schedule/book", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        quote_id: S.quoteId,
+        quote_id:           S.quoteId,
         scheduled_datetime: S.selectedSlot,
-        address: lockData?.address || "",
-        customer_name: lockData?.customer_name || "",
-        final_price: lockData?.final_price,
+        address:            lockData?.address || "",
+        customer_name:      lockData?.customer_name || "",
+        final_price:        displayPrice,
       }),
     });
     const d = await r.json();
@@ -733,8 +813,10 @@ async function submitBooking() {
     S.booking = d;
     go("booked");
   } catch (e) {
+    const errEl = document.getElementById("leadErr");
     if (errEl) { errEl.textContent = e.message; errEl.style.display = "block"; }
-    if (btn) { btn.disabled = false; btn.textContent = "Book This Time \u2192"; }
+    const btn = document.getElementById("submitLockBtn");
+    if (btn) { btn.disabled = false; btn.textContent = "Confirm & Book \u2192"; }
   }
 }
 
