@@ -5,6 +5,7 @@ const path = require("path");
 const { handleQuoteApi } = require("./api/quote");
 const { handleQuoteConfig } = require("./api/quote-config");
 const { handleQuoteStart, handleQuoteCalc, handleQuoteLock } = require("./api/quote-engine");
+const { handlePhotoUpload } = require("./api/photo-upload");
 const { handleCreateLead, handleGetLeads } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
@@ -93,6 +94,13 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, filePath, mimeTypes[ext] || "application/octet-stream");
   }
 
+  if (req.url.startsWith("/uploads/")) {
+    const filePath = path.join(__dirname, req.url.split("?")[0]);
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic" };
+    return serveFile(res, filePath, mimeTypes[ext] || "application/octet-stream");
+  }
+
   // PUBLIC PAGES
   if (req.url === "/") {
     return serveFile(res, path.join(__dirname, "pages/site-home.html"), "text/html");
@@ -170,6 +178,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/quote/lock" && req.method === "POST") {
     return handleQuoteLock(req, res);
+  }
+
+  if (req.url === "/api/quote/photo" && req.method === "POST") {
+    return handlePhotoUpload(req, res);
   }
 
   if (req.url.startsWith("/api/quote") && req.method === "GET") {

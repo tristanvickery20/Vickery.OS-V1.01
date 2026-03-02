@@ -1,0 +1,67 @@
+BLOCK 3/4 — Build /quote UI (Theme-matched) + Photo Upload at Lock-In
+
+Goal: Create a customer-facing /quote page that matches your existing dark theme, follows V3 flow, and calls the APIs from blocks 1–2. Scheduling comes in block 4.
+
+Constraints:
+	•	Reuse pages/css/brand.css and existing header/nav styles.
+	•	Keep UI minimal, fast, mobile-first.
+	•	Price must show before lead info.
+	•	No Good/Better/Best.
+
+Work to do:
+	1.	Add route:
+
+	•	GET /quote should serve pages/quote.html (public).
+
+	2.	Create pages/quote.html
+
+	•	Use your existing header shell and nav button styles.
+	•	Steps layout:
+
+Step A: Service
+	•	Show clickable service tiles from /api/quote/config (JobTypes where active=true).
+	•	Selecting a service loads its questions + add-ons.
+
+Step B: Questions (3–5) + Add-ons
+	•	Render only questions tied to that job_type_id.
+	•	Answers as simple homeowner language.
+	•	Add-ons as toggles/checkboxes.
+
+Step C: Show Price (before lead info)
+	•	On “See my price”:
+	•	if quote_id not started → call /api/quote/start
+	•	call /api/quote/calc
+	•	Display:
+	•	“Your Instant Price: $X”
+	•	Small friendly line: “Exact price based on your answers.”
+	•	Under it show the travel disclaimer:
+	•	“A $25 travel fee may be applied once address is confirmed.”
+	•	BNPL block (text only for now): “As low as $__/mo with flexible payment options.”
+
+Step D: Lock My Price & Schedule
+	•	Button opens lead form:
+	•	name, phone, email
+	•	address + zip (zip required if you can’t parse it reliably)
+	•	On submit call /api/quote/lock
+	•	Update price live after zip entered (re-run lock call or a lightweight “reprice” call)
+
+	3.	Photo gating at lock-in
+If /api/quote/lock returns photo_required=true:
+
+	•	Show a photo upload section AFTER lock-in:
+	•	“Upload a quick panel photo to confirm compatibility.”
+	•	Implement simplest storage:
+	•	Accept image upload to server /uploads
+	•	Return a URL and append another QuoteSnapshots event_type=photo_uploaded with the URL in notes.
+(We can move to Drive later; keep it simple now.)
+
+	4.	Add a clean confirmation section:
+
+	•	“Price Locked” state
+	•	“Next: Choose a time” (scheduling in block 4)
+
+Acceptance checks:
+	•	/quote loads styled correctly (matches dark theme).
+	•	User can get price without entering contact info.
+	•	After lock-in, address/zip adjusts price with travel fee.
+	•	If photo required, upload appears after lock-in and logs event.
