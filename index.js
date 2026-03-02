@@ -373,10 +373,13 @@ const server = http.createServer(async (req, res) => {
 
 const { ensureAllHeaders } = require("./lib/sheetsSchema");
 const { ensureConfigDefaults } = require("./lib/config");
+const { seedQuoteSheetIfEmpty, logQuoteHealth } = require("./lib/quoteSeedInit");
 
 server.listen(5000, "0.0.0.0", () => {
   console.log("Server running on port 5000");
   ensureAllHeaders()
     .then(() => ensureConfigDefaults())
-    .catch(() => {});
+    .then(() => seedQuoteSheetIfEmpty())
+    .then(() => logQuoteHealth())
+    .catch((err) => console.error("[Startup]", err.message));
 });

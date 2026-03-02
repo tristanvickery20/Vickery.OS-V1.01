@@ -1,0 +1,118 @@
+We are fixing ONLY the V3 Quote Machine at route /quote.
+
+DO NOT:
+- Remove any other calculators.
+- Modify the profit calculator.
+- Refactor CRM.
+- Delete any legacy files.
+- Search-and-destroy anything globally.
+
+We are ONLY ensuring that:
+1) /quote uses the V3 engine.
+2) V3 sheet auto-seeds if empty.
+3) /api/quote/config returns real data.
+4) /quote shows services dynamically.
+5) Pricing uses V3 engine logic only.
+
+===============================
+STEP 1 — AUTO-SEED IF EMPTY
+===============================
+
+In the existing Sheets initialization logic:
+
+Add a function:
+
+seedQuoteSheetIfEmpty()
+
+Behavior:
+- Read JobTypes sheet.
+- If there are ZERO rows where active = TRUE:
+    → Insert all V3 seed data (Rates, JobTypes, Questions, AnswerOptions, AddOns, ServiceAreas, SchedulerRules).
+- If rows already exist:
+    → Do nothing.
+
+Call seedQuoteSheetIfEmpty() during server startup.
+
+DO NOT require admin token.
+DO NOT create new admin routes.
+
+===============================
+STEP 2 — ENSURE V3 ROUTES EXIST
+===============================
+
+Make sure these endpoints exist and are used by /quote:
+
+GET  /api/quote/config
+POST /api/quote/start
+POST /api/quote/calc
+POST /api/quote/lock
+
+These must:
+- Read from Google Sheets.
+- Use base_hours from JobTypes.
+- Apply ADD_HOURS from AnswerOptions.
+- Apply add_hours from AddOns.
+- Multiply by crew_loaded_hourly.
+- Add overhead_per_hour.
+- Margin solve using target_margin.
+- Enforce service_minimum.
+- Apply travel fee ONLY if zip provided.
+- If no zip provided:
+    → Return disclaimer:
+      "A $25 travel fee may be applied once address is confirmed."
+
+DO NOT use any per-unit pricing logic here.
+DO NOT modify any other calculator routes in the project.
+
+===============================
+STEP 3 — FORCE /quote TO USE V3
+===============================
+
+Edit ONLY pages/quote.html and its JS.
+
+Ensure:
+
+1) On page load:
+   fetch('/api/quote/config')
+
+2) Render jobTypes where active = TRUE.
+
+3) On “See My Price”:
+   - If no quote_id → call /api/quote/start.
+   - Then call /api/quote/calc.
+
+4) Display:
+   - final_price
+   - disclaimer (if provided)
+
+5) On “Lock My Price & Schedule”:
+   - Collect name, phone, email, address, zip.
+   - Call /api/quote/lock.
+   - Update price live if travel fee applied.
+
+Remove ONLY V3 page references to any old pricing endpoints.
+DO NOT modify any other page or calculator.
+
+===============================
+STEP 4 — STARTUP LOG CHECK
+===============================
+
+On server start, log:
+
+"V3 Quote Machine Active"
+"JobTypes loaded: X"
+"Crew rate: Y"
+
+If JobTypes > 0 and crew rate > 0:
+System healthy.
+
+===============================
+END STATE
+===============================
+
+After implementing:
+
+- Visiting /api/quote/config must return non-empty jobTypes.
+- Visiting /quote must show services.
+- Pricing must come from V3 engine.
+- Other calculators must remain untouched.
