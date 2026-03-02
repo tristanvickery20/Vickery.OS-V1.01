@@ -1,5 +1,5 @@
-// pages/js/quote.js — V3 Quote Flow v2
-// Segment → Categories (multi-select) → Service + Qty → Details → Review (Price + Slots) → Confirm → [Photo] → Booked
+// pages/js/quote.js — V3 Quote Flow v3 (reference design)
+// Type → Categories → Services + Qty → Details → Review (Price + Slots) → Confirm → [Photo] → Booked
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
@@ -13,7 +13,7 @@ const S = {
   answers: {},
   addons: [],
   pricing: null,            // server calc response
-  displayPrice: null,       // pricing.final_price × qty (no travel fee yet)
+  displayPrice: null,       // pricing.final_price × qty
   lock: null,               // server lock response
   lockedDisplayPrice: null, // (base × qty) + travel_fee
   photoUploaded: false,
@@ -26,13 +26,13 @@ let repricTimer = null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
-  setContent(loadingHTML("Loading services\u2026"));
+  setContent(loadingHTML("Loading\u2026"));
   try {
     const r  = await fetch("/api/quote/config");
     S.config = await r.json();
     go("segment");
   } catch {
-    setContent(errHTML("Could not load services. Please refresh the page."));
+    setContent(errHTML("Could not load services. Please refresh."));
   }
 }
 
@@ -50,7 +50,13 @@ function back() {
     go(hasQs || hasAddons ? "questions" : "services");
     return;
   }
-  const prev = { categories: "segment", services: "categories", questions: "services", confirm: "review", photo: "confirm" };
+  const prev = {
+    categories: "segment",
+    services:   "categories",
+    questions:  "services",
+    confirm:    "review",
+    photo:      "confirm",
+  };
   if (prev[S.step]) go(prev[S.step]);
 }
 
@@ -80,45 +86,76 @@ function renderStep() {
 
 function setContent(html) { document.getElementById("stepContent").innerHTML = html; }
 
+// ── Progress bar (horizontal tab style) ───────────────────────────────────────
 function progressHTML() {
-  const steps = ["Type", "Services", "Details", "Review", "Confirm"];
+  const steps = ["Type", "Categories", "Services", "Review", "Done"];
   const idx   = {
-    segment: 0, categories: 0,
-    services: 1,
-    questions: 2,
+    segment: 0, categories: 1,
+    services: 2, questions: 2,
     review: 3,
     confirm: 4, photo: 4, booked: 4,
   };
   const cur = idx[S.step] ?? 0;
-  return `<div class="q-progress">${steps.map((label, i) =>
-    `<div class="q-prog-step ${i < cur ? "done" : ""} ${i === cur ? "active" : ""}">
-       <div class="q-prog-dot">${i < cur ? "\u2713" : i + 1}</div>
-       <div class="q-prog-label">${label}</div>
-     </div>${i < steps.length - 1
-       ? `<div class="q-prog-line${i < cur ? " done" : ""}"></div>`
-       : ""}`
-  ).join("")}</div>`;
+
+  const parts = [];
+  steps.forEach((label, i) => {
+    const cls = i < cur ? "done" : i === cur ? "active" : "";
+    parts.push(`<div class="q-prog-step ${cls}">
+      <span class="q-prog-num">${i + 1}.</span>
+      <span class="q-prog-label">${label}</span>
+    </div>`);
+    if (i < steps.length - 1) parts.push(`<span class="q-prog-div">/</span>`);
+  });
+  return `<div class="q-progress">${parts.join("")}</div>`;
 }
 
-// ── Step 1: Segment ───────────────────────────────────────────────────────────
+// ── Step badge helper ──────────────────────────────────────────────────────────
+function stepHeader(num, title) {
+  return `<div class="q-step-header">
+    <div class="q-step-badge">${num}</div>
+    <h2 class="q-step-title">${title}</h2>
+  </div>`;
+}
+
+// ── Note bar helper ────────────────────────────────────────────────────────────
+const NOTE = `<div class="q-note-bar"><strong>Note:</strong> This is a rough estimate. Final pricing may vary based on on-site inspection.</div>`;
+
+// ── Step 1: Segment / Type ────────────────────────────────────────────────────
 function renderSegment() {
   return `
-    <h2 class="q-heading">What type of property?</h2>
-    <div class="q-seg-cards">
-      <button class="q-seg-card" data-seg="Residential">
-        <div class="q-seg-icon">&#127968;</div>
-        <div class="q-seg-name">Residential</div>
-        <div class="q-seg-sub">Homes, condos &amp; apartments</div>
+    <div class="q-hero">
+      <h1 class="q-hero-title">Get your estimate <span class="q-hero-accent">instantly</span></h1>
+      <p class="q-hero-sub">Select your service needs below and our smart calculator will generate a precise estimate for your project.</p>
+    </div>
+    ${stepHeader(1, "Project Type")}
+    <div class="q-type-list">
+      <div class="q-type-card${S.segment === "Residential" ? " selected" : ""}" data-seg="Residential">
+        <div class="q-type-icon-box">&#127968;</div>
+        <div class="q-type-text">
+          <div class="q-type-name">Residential</div>
+          <div class="q-type-sub">Home electrical upgrades, repairs, and installations.</div>
+        </div>
+        <div class="q-type-radio"></div>
+      </div>
+      <div class="q-type-card${S.segment === "Commercial" ? " selected" : ""}" data-seg="Commercial">
+        <div class="q-type-icon-box">&#127970;</div>
+        <div class="q-type-text">
+          <div class="q-type-name">Commercial</div>
+          <div class="q-type-sub">Office, retail, and industrial electrical solutions.</div>
+        </div>
+        <div class="q-type-radio"></div>
+      </div>
+    </div>
+    <div class="q-nav-row">
+      <div></div>
+      <button class="q-btn-next" id="nextSegment" ${S.segment ? "" : "disabled"}>
+        Next Step &rarr;
       </button>
-      <button class="q-seg-card" data-seg="Commercial">
-        <div class="q-seg-icon">&#127970;</div>
-        <div class="q-seg-name">Commercial</div>
-        <div class="q-seg-sub">Offices, retail &amp; businesses</div>
-      </button>
-    </div>`;
+    </div>
+    ${NOTE}`;
 }
 
-// ── Step 2: Categories (multi-select) ─────────────────────────────────────────
+// ── Step 2: Categories (multi-select list) ────────────────────────────────────
 const CAT_ICONS = {
   "Outlets & Switches": "&#128268;",
   "Lighting & Fans":    "&#128161;",
@@ -133,48 +170,52 @@ function renderCategories() {
   const cats  = [...new Set(types.map(t => t.category).filter(Boolean))];
 
   if (!cats.length) return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
     <div class="q-center">
       <div class="q-icon">&#128295;</div>
-      <h2 class="q-heading">Coming Soon</h2>
+      <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:8px;">Coming Soon</h2>
       <p class="q-muted">Commercial services are being added. Call us for a custom quote at
         <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
+    </div>
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <div></div>
     </div>`;
 
   return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
-    <h2 class="q-heading">What type of work do you need?</h2>
-    <p class="q-muted" style="margin-bottom:20px;">Select all that apply &mdash; then tap <em>See Services</em>.</p>
-    <div class="q-cat-cards">
+    ${stepHeader(2, "Categories")}
+    <div class="q-cat-list">
       ${cats.map(cat => {
         const sel = S.selectedCategories.includes(cat);
-        return `
-          <button class="q-cat-card q-checkable${sel ? " selected" : ""}" data-cat="${escHtml(cat)}">
-            <span class="q-check-badge">${sel ? "&#10003;" : ""}</span>
-            <div class="q-cat-icon">${CAT_ICONS[cat] || "&#128295;"}</div>
-            <div class="q-cat-name">${escHtml(cat)}</div>
-          </button>`;
+        return `<div class="q-cat-item${sel ? " selected" : ""}" data-cat="${escHtml(cat)}">
+          <span>${escHtml(cat)}</span>
+          <span class="q-cat-check">&#10003;</span>
+        </div>`;
       }).join("")}
     </div>
-    <button class="q-btn-primary" id="nextCategories" style="margin-top:24px;"
-            ${S.selectedCategories.length ? "" : "disabled"}>
-      See Services &rarr;
-    </button>`;
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="nextCategories" ${S.selectedCategories.length ? "" : "disabled"}>
+        Next Step &rarr;
+      </button>
+    </div>
+    ${NOTE}`;
 }
 
-// ── Step 3: Services (single select + qty) ────────────────────────────────────
+// ── Step 3: Services (checkbox select + qty) ──────────────────────────────────
 function renderServices() {
   const allTypes = (S.config?.jobTypes || []).filter(j =>
     j.segment === S.segment && S.selectedCategories.includes(j.category)
   );
 
   if (!allTypes.length) return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
     <div class="q-center">
       <div class="q-icon">&#128295;</div>
-      <h2 class="q-heading">No Services Found</h2>
-      <p class="q-muted">No services available for the selected categories. Call us at
-        <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
+      <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:8px;">No Services Found</h2>
+      <p class="q-muted">No services available yet for the selected categories.</p>
+    </div>
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <div></div>
     </div>`;
 
   // Group by category
@@ -184,20 +225,25 @@ function renderServices() {
     grouped[t.category].push(t);
   }
 
-  return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
-    <h2 class="q-heading">Which service do you need?</h2>
-    ${Object.entries(grouped).map(([cat, types]) => `
-      <div class="q-section-label">${escHtml(cat)}</div>
-      <div class="q-tiles">
-        ${types.map(t => `
-          <button class="q-tile${S.typeId === t.job_type_id ? " selected" : ""}"
-                  data-type="${escHtml(t.job_type_id)}">
-            <div class="q-tile-name">${escHtml(t.name_public)}</div>
-            ${t.min_price ? `<div class="q-tile-sub">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
-          </button>`).join("")}
-      </div>`).join("")}
+  const listHTML = Object.entries(grouped).map(([cat, types]) => `
+    <div class="q-cat-group-heading">${escHtml(cat)}</div>
+    <div class="q-svc-list">
+      ${types.map(t => {
+        const sel = S.typeId === t.job_type_id;
+        return `
+          <div class="q-svc-item${sel ? " selected" : ""}" data-type="${escHtml(t.job_type_id)}">
+            <div class="q-svc-checkbox">${sel ? "&#10003;" : ""}</div>
+            <div>
+              <div class="q-svc-name">${escHtml(t.name_public)}</div>
+              ${t.min_price ? `<div class="q-svc-price">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
+            </div>
+          </div>`;
+      }).join("")}
+    </div>`).join("");
 
+  return `
+    ${stepHeader(3, "Select Specific Services")}
+    ${listHTML}
     <div class="q-qty-wrap" id="qtyWrap" ${S.typeId ? "" : 'style="display:none;"'}>
       <div class="q-qty-label">How many?</div>
       <div class="q-qty-ctrl">
@@ -206,10 +252,13 @@ function renderServices() {
         <button class="q-qty-btn" id="qtyInc">&#43;</button>
       </div>
     </div>
-
-    <button class="q-btn-primary" id="nextService" style="margin-top:20px;" ${S.typeId ? "" : "disabled"}>
-      Continue &rarr;
-    </button>`;
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="nextService" ${S.typeId ? "" : "disabled"}>
+        Next Step &rarr;
+      </button>
+    </div>
+    ${NOTE}`;
 }
 
 // ── Step 4: Questions + Add-ons ───────────────────────────────────────────────
@@ -218,32 +267,37 @@ function renderQuestions() {
   const addons    = S.config?.addonsByType?.[S.typeId]   || [];
 
   return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
-    <h2 class="q-heading">Tell us about the job</h2>
+    ${stepHeader(3, "Project Details")}
     ${!questions.length && !addons.length ? `
-      <p class="q-muted" style="margin-bottom:24px;">No additional details needed. Click below to see your price.</p>
+      <p class="q-muted" style="margin-bottom:20px;">No additional details needed for this service.</p>
     ` : ""}
-    <div class="q-questions">
-      ${questions.map(q => renderQuestion(q)).join("")}
-    </div>
-    ${addons.length ? `
-      <div class="q-section-label">Optional Add-ons</div>
-      <div class="q-addons">
-        ${addons.map(a => `
-          <label class="q-addon${S.addons.includes(a.addon_id) ? " selected" : ""}">
-            <input type="checkbox" class="q-addon-check" value="${escHtml(a.addon_id)}"
-              ${S.addons.includes(a.addon_id) ? "checked" : ""}>
-            <div class="q-addon-body">
-              <div class="q-addon-name">${escHtml(a.name_public)}</div>
-              ${a.add_fee ? `<div class="q-addon-fee">+$${Number(a.add_fee).toLocaleString()}</div>` : ""}
-              ${a.description ? `<div class="q-addon-desc">${escHtml(a.description)}</div>` : ""}
-            </div>
-          </label>`).join("")}
+    <div class="q-card-section">
+      <div class="q-questions">
+        ${questions.map(q => renderQuestion(q)).join("")}
       </div>
-    ` : ""}
-    <button class="q-btn-primary" id="seePriceBtn" style="margin-top:24px;">
-      See My Price &rarr;
-    </button>`;
+      ${addons.length ? `
+        <div class="q-section-label" style="margin-top:${questions.length ? "24px" : "0"};">Optional Add-ons</div>
+        <div class="q-addons">
+          ${addons.map(a => `
+            <label class="q-addon${S.addons.includes(a.addon_id) ? " selected" : ""}">
+              <input type="checkbox" class="q-addon-check" value="${escHtml(a.addon_id)}"
+                ${S.addons.includes(a.addon_id) ? "checked" : ""}>
+              <div class="q-addon-body">
+                <div class="q-addon-name">${escHtml(a.name_public)}</div>
+                ${a.add_fee ? `<div class="q-addon-fee">+$${Number(a.add_fee).toLocaleString()}</div>` : ""}
+                ${a.description ? `<div class="q-addon-desc">${escHtml(a.description)}</div>` : ""}
+              </div>
+            </label>`).join("")}
+        </div>
+      ` : ""}
+    </div>
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="seePriceBtn">
+        See My Price &rarr;
+      </button>
+    </div>
+    ${NOTE}`;
 }
 
 function renderQuestion(q) {
@@ -267,48 +321,62 @@ function renderQuestion(q) {
     </div>`;
 }
 
-// ── Step 5: Review — price + slot picker (no lead info yet) ───────────────────
+// ── Step 5: Review — price + slot picker (no lead info) ───────────────────────
 function renderReview() {
-  const price    = S.displayPrice;
-  const bnpl     = price && price >= 200 ? Math.ceil(price / 12) : null;
-  const jobType  = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
-  const label    = jobType?.name_public || "";
+  const price   = S.displayPrice;
+  const bnpl    = price && price >= 200 ? Math.ceil(price / 12) : null;
+  const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
+  const label   = jobType?.name_public || "";
+
+  const slotLabel = S.selectedSlot
+    ? (() => {
+        const tz = S.slotsData?.timezone || "America/Chicago";
+        const d  = new Date(S.selectedSlot);
+        const date = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric" }).format(d);
+        const time = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+        return `${date} \u2022 ${time}`;
+      })()
+    : null;
 
   return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
-    <h2 class="q-heading">Your Instant Price</h2>
-
-    <div class="q-price-reveal">
-      <div class="q-price-label">Estimated Total</div>
-      <div class="q-price-big">$${price != null ? Number(price).toLocaleString() : "&mdash;"}</div>
-      <p class="q-price-sub">${S.qty > 1 ? `${S.qty}&times; ` : ""}${escHtml(label)}</p>
-      <div class="q-disclaimer">
-        &#128205; A $25 travel fee may be applied once your address is confirmed.
-      </div>
-      ${S.pricing?.evaluation_flag ? `
-        <div class="q-disclaimer warn">
-          &#9888;&#65039; This job may need an in-person evaluation first. We'll confirm with you.
-        </div>` : ""}
-      ${bnpl ? `<div class="q-bnpl">As low as <strong>$${bnpl}/mo</strong> with flexible payment options.</div>` : ""}
-    </div>
+    ${stepHeader(4, "Final Review &amp; Scheduling")}
 
     <div class="q-review-slots-section">
-      <h3 class="q-review-slots-heading">&#128197; Choose a Time</h3>
-      <p class="q-muted" style="margin-bottom:16px;">Browse available times. Your spot is reserved when you confirm.</p>
+      <div class="q-review-slots-heading">&#128197; Preferred Appointment Date</div>
+      <div class="q-review-date-field${slotLabel ? " has-slot" : ""}">
+        <span>&#128197;</span>
+        <span>${slotLabel || "Select a date &amp; time"}</span>
+      </div>
+      <p class="q-muted" style="font-size:13px;margin-top:8px;">
+        Note: Select a time slot below. Your spot is held when you confirm.
+      </p>
       <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
     </div>
 
-    <div style="margin-top:28px;">
-      <button class="q-btn-primary" id="goConfirmBtn" ${S.selectedSlot ? "" : "disabled"}>
+    <div class="q-price-footer">
+      <div class="q-price-footer-label">
+        Final Estimated Cost${S.qty > 1 ? ` (${S.qty}&times; ${escHtml(label)})` : ""}
+      </div>
+      <div class="q-price-footer-amount">
+        $${price != null ? Number(price).toLocaleString() : "0.00"}
+      </div>
+      <div class="q-price-footer-sub">
+        &#128205; A $25 travel fee may apply once your address is confirmed.
+        ${S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
+        ${bnpl ? ` &bull; As low as $${bnpl}/mo.` : ""}
+      </div>
+    </div>
+
+    <div class="q-nav-row" style="margin-top:20px;">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="goConfirmBtn" ${S.selectedSlot ? "" : "disabled"}>
         Confirm Booking &rarr;
       </button>
-      <p class="q-muted" style="font-size:12px;text-align:center;margin-top:10px;">
-        Select a time above to continue
-      </p>
-    </div>`;
+    </div>
+    ${NOTE}`;
 }
 
-// ── Step 6: Confirm — lead form (slot + price shown above form) ────────────────
+// ── Step 6: Confirm — lead form ────────────────────────────────────────────────
 function renderConfirm() {
   const price  = S.displayPrice;
   const tz     = S.slotsData?.timezone || "America/Chicago";
@@ -321,9 +389,7 @@ function renderConfirm() {
     : "";
 
   return `
-    <button class="q-back" onclick="back()">&#8592; Back</button>
-    <h2 class="q-heading">Almost there!</h2>
-
+    ${stepHeader(5, "Your Information")}
     <div class="q-confirm-summary">
       <div class="q-confirm-row">
         <span class="q-confirm-icon">&#128197;</span>
@@ -338,13 +404,12 @@ function renderConfirm() {
           <div class="q-confirm-key">Estimated Price</div>
           <div class="q-confirm-val">
             $${price != null ? Number(price).toLocaleString() : "&mdash;"}
-            <span class="q-confirm-note">&mdash; travel fee applied with your address</span>
+            <span class="q-confirm-note">&mdash; travel fee applied with address</span>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="q-form" style="margin-top:24px;">
+    <div class="q-form">
       <div class="q-field">
         <label class="q-label">Your Name <span class="q-req">*</span></label>
         <input type="text" id="ld_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
@@ -370,36 +435,39 @@ function renderConfirm() {
         <div class="q-price-update" id="priceUpdate" style="display:none;"></div>
       </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
-      <button class="q-btn-primary" id="submitLockBtn">
-        Confirm &amp; Book &rarr;
-      </button>
-      <p class="q-muted" style="font-size:12px;text-align:center;margin-top:10px;">
-        Secure booking &bull; No payment due now
-      </p>
-    </div>`;
+      <div class="q-nav-row" style="margin-top:8px;">
+        <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+        <button class="q-btn-next" id="submitLockBtn">
+          Confirm &amp; Book &rarr;
+        </button>
+      </div>
+    </div>
+    <p class="q-muted" style="font-size:12px;text-align:center;margin-top:16px;">
+      Secure booking &bull; No payment due now
+    </p>`;
 }
 
 // ── Step 7: Photo gate ────────────────────────────────────────────────────────
 function renderPhoto() {
   return `
-    <h2 class="q-heading">One Quick Step</h2>
-    <p class="q-muted" style="margin-bottom:24px;">
+    ${stepHeader(5, "One Quick Step")}
+    <p class="q-muted" style="margin-bottom:20px;">
       Please upload a photo of your electrical panel so we can confirm compatibility before finalizing your booking.
     </p>
     <div class="q-photo-gate">
       <div class="q-photo-header">&#128247; Upload a Panel Photo</div>
-      <p class="q-muted" style="margin:8px 0 16px;">JPG, PNG or HEIC &bull; Max 10 MB</p>
+      <p class="q-muted" style="font-size:13px;margin:6px 0 0;">JPG, PNG or HEIC &bull; Max 10 MB</p>
       <label class="q-file-label">
         Choose Photo
         <input type="file" id="photoFile" accept="image/*" style="display:none;">
       </label>
       <div id="photoPreview" class="q-photo-preview" style="display:none;"></div>
-      <button class="q-btn-secondary" id="uploadPhotoBtn" style="display:none;margin-top:12px;">
+      <button class="q-btn-next" id="uploadPhotoBtn" style="display:none;margin-top:12px;width:100%;">
         Upload Photo
       </button>
       <div id="photoStatus" class="q-photo-status"></div>
     </div>
-    <button class="q-btn-primary" id="finalizeBtn" style="display:none;margin-top:20px;">
+    <button class="q-btn-next" id="finalizeBtn" style="display:none;margin-top:20px;width:100%;">
       Finalize Booking &rarr;
     </button>`;
 }
@@ -420,9 +488,8 @@ function renderBooked() {
   return `
     <div class="q-booked">
       <div class="q-booked-icon">&#127881;</div>
-      <h2 class="q-heading">You're Booked!</h2>
+      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;">You're Booked!</h2>
       <p class="q-muted" style="margin-bottom:24px;">Here's your confirmation. We'll see you soon.</p>
-
       <div class="q-booking-card">
         <div class="q-booking-row">
           <span class="q-booking-key">&#128197; Date</span>
@@ -441,11 +508,10 @@ function renderBooked() {
           <span class="q-booking-val">$${Number(displayPrice || 0).toLocaleString()} locked</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">&#129534; Booking ID</span>
+          <span class="q-booking-key">&#129534; ID</span>
           <span class="q-booking-val" style="font-family:monospace;font-size:12px;">${escHtml(bk?.booking_id || "")}</span>
         </div>
       </div>
-
       <p class="q-muted" style="margin-top:24px;font-size:13px;">
         Questions? Call us at <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>
       </p>
@@ -454,52 +520,54 @@ function renderBooked() {
 
 // ── Event Binding ─────────────────────────────────────────────────────────────
 function bindEvents() {
-  // Segment — click advances immediately
-  document.querySelectorAll(".q-seg-card").forEach(btn => {
-    btn.addEventListener("click", () => {
-      S.segment            = btn.dataset.seg;
-      S.selectedCategories = [];
-      S.typeId             = null;
-      S.qty                = 1;
-      S.answers            = {};
-      S.addons             = [];
-      go("categories");
+  // Segment cards — click to select, Next Step to advance
+  document.querySelectorAll(".q-type-card").forEach(card => {
+    card.addEventListener("click", () => {
+      S.segment = card.dataset.seg;
+      document.querySelectorAll(".q-type-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      document.getElementById("nextSegment")?.removeAttribute("disabled");
     });
   });
 
-  // Category — multi-select toggle
-  document.querySelectorAll(".q-cat-card.q-checkable").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const cat = btn.dataset.cat;
+  document.getElementById("nextSegment")?.addEventListener("click", () => {
+    if (!S.segment) return;
+    S.selectedCategories = [];
+    S.typeId = null; S.qty = 1; S.answers = {}; S.addons = [];
+    go("categories");
+  });
+
+  // Category items — toggle
+  document.querySelectorAll(".q-cat-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const cat = item.dataset.cat;
       const idx = S.selectedCategories.indexOf(cat);
       if (idx >= 0) S.selectedCategories.splice(idx, 1);
       else S.selectedCategories.push(cat);
       const sel = S.selectedCategories.includes(cat);
-      btn.classList.toggle("selected", sel);
-      const badge = btn.querySelector(".q-check-badge");
-      if (badge) badge.innerHTML = sel ? "&#10003;" : "";
-      const nextBtn = document.getElementById("nextCategories");
-      if (nextBtn) nextBtn.disabled = !S.selectedCategories.length;
+      item.classList.toggle("selected", sel);
+      item.querySelector(".q-cat-check").style.visibility = sel ? "visible" : "hidden";
+      document.getElementById("nextCategories").disabled = !S.selectedCategories.length;
     });
   });
 
   document.getElementById("nextCategories")?.addEventListener("click", () => {
     if (!S.selectedCategories.length) return;
-    S.typeId  = null;
-    S.qty     = 1;
-    S.answers = {};
-    S.addons  = [];
+    S.typeId = null; S.qty = 1; S.answers = {}; S.addons = [];
     go("services");
   });
 
-  // Service tiles — single select
-  document.querySelectorAll(".q-tile").forEach(btn => {
-    btn.addEventListener("click", () => {
-      S.typeId  = btn.dataset.type;
-      S.answers = {};
-      S.addons  = [];
-      document.querySelectorAll(".q-tile").forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
+  // Service items — single select
+  document.querySelectorAll(".q-svc-item").forEach(item => {
+    item.addEventListener("click", () => {
+      S.typeId  = item.dataset.type;
+      S.answers = {}; S.addons = [];
+      document.querySelectorAll(".q-svc-item").forEach(i => {
+        i.classList.remove("selected");
+        i.querySelector(".q-svc-checkbox").innerHTML = "";
+      });
+      item.classList.add("selected");
+      item.querySelector(".q-svc-checkbox").innerHTML = "&#10003;";
       const qtyWrap = document.getElementById("qtyWrap");
       if (qtyWrap) qtyWrap.style.display = "";
       document.getElementById("nextService")?.removeAttribute("disabled");
@@ -526,7 +594,7 @@ function bindEvents() {
     else calcPrice();
   });
 
-  // Radio answers
+  // Questions
   document.querySelectorAll("input[type=radio]").forEach(radio => {
     radio.addEventListener("change", () => {
       const qid = radio.name.replace("q_", "");
@@ -535,8 +603,6 @@ function bindEvents() {
         .forEach(l => l.classList.toggle("selected", l.querySelector("input") === radio));
     });
   });
-
-  // Addon checkboxes
   document.querySelectorAll(".q-addon-check").forEach(cb => {
     cb.addEventListener("change", () => {
       if (cb.checked) { if (!S.addons.includes(cb.value)) S.addons.push(cb.value); }
@@ -544,17 +610,13 @@ function bindEvents() {
       cb.closest(".q-addon")?.classList.toggle("selected", cb.checked);
     });
   });
-
-  // Text inputs
   document.querySelectorAll(".q-text-input").forEach(inp => {
-    inp.addEventListener("change", () => {
-      S.answers[inp.name.replace("q_", "")] = inp.value;
-    });
+    inp.addEventListener("change", () => { S.answers[inp.name.replace("q_", "")] = inp.value; });
   });
 
   document.getElementById("seePriceBtn")?.addEventListener("click", calcPrice);
 
-  // Review: slot selection (delegated via bindSlotEvents after async load)
+  // Review: advance to confirm once slot selected
   document.getElementById("goConfirmBtn")?.addEventListener("click", () => {
     if (!S.selectedSlot) return;
     go("confirm");
@@ -576,7 +638,7 @@ function bindEvents() {
   document.getElementById("finalizeBtn")?.addEventListener("click", submitBooking);
 }
 
-// ── API: Calculate price (& start session) ─────────────────────────────────────
+// ── API: Calculate price ───────────────────────────────────────────────────────
 async function calcPrice() {
   go("review");
   document.getElementById("stepContent").innerHTML = loadingHTML("Calculating your price\u2026");
@@ -587,33 +649,27 @@ async function calcPrice() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
       });
       const sd = await sr.json();
-      if (!sd.quote_id) throw new Error("Could not start quote session.");
+      if (!sd.quote_id) throw new Error("Could not start session.");
       S.quoteId = sd.quote_id;
     }
-
     const cr = await fetch("/api/quote/calc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons }),
     });
     S.pricing = await cr.json();
     if (!S.pricing.ok && S.pricing.error) throw new Error(S.pricing.error);
-
-    // qty-adjusted display price (travel fee not yet included)
     S.displayPrice = S.pricing.final_price != null ? S.pricing.final_price * S.qty : null;
     S.selectedSlot = null;
-
     go("review");
   } catch (e) {
     document.getElementById("stepContent").innerHTML = errHTML("Could not calculate price: " + e.message);
   }
 }
 
-// ── Load slots into the review screen ─────────────────────────────────────────
+// ── Load slots for review screen ───────────────────────────────────────────────
 async function loadSlotsForReview() {
   const section = document.getElementById("reviewSlotSection");
   if (!section) return;
-
   try {
     const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
     const minutes = Number(jobType?.default_duration_minutes) || 90;
@@ -624,13 +680,13 @@ async function loadSlotsForReview() {
     section.innerHTML = renderSlotGrid(d.slots, d.timezone);
     bindSlotEvents();
   } catch (e) {
-    section.innerHTML = `<div class="q-error-box">Could not load times: ${escHtml(e.message)}</div>`;
+    section.innerHTML = `<div class="q-error-box" style="margin-top:12px;">Could not load times: ${escHtml(e.message)}</div>`;
   }
 }
 
 function renderSlotGrid(slots, timezone) {
   if (!slots || !slots.length) {
-    return `<div class="q-error-box">No available slots right now. We'll call you within one business day to schedule.</div>`;
+    return `<div class="q-error-box" style="margin-top:12px;">No available slots right now. We'll call you within one business day to schedule.</div>`;
   }
   const groups = {};
   for (const iso of slots) {
@@ -657,21 +713,28 @@ function bindSlotEvents() {
       document.querySelectorAll(".q-slot").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       document.getElementById("goConfirmBtn")?.removeAttribute("disabled");
-      const hint = document.querySelector(".q-muted[style*='Select a time']");
-      if (hint) hint.style.display = "none";
+      // Update the "field" display
+      const fieldEl = document.querySelector(".q-review-date-field");
+      if (fieldEl) {
+        const tz   = S.slotsData?.timezone || "America/Chicago";
+        const d    = new Date(S.selectedSlot);
+        const date = formatSlotDate(S.selectedSlot, tz);
+        const time = formatSlotTime(S.selectedSlot, tz);
+        fieldEl.innerHTML = `<span>&#128197;</span><span>${escHtml(date)} &bull; ${escHtml(time)}</span>`;
+        fieldEl.classList.add("has-slot");
+      }
     });
   });
 }
 
-// ── ZIP reprice on confirm step ────────────────────────────────────────────────
+// ── ZIP reprice ────────────────────────────────────────────────────────────────
 async function reprice(zip) {
   const noteEl   = document.getElementById("zipNote");
   const updateEl = document.getElementById("priceUpdate");
   if (!noteEl || !updateEl) return;
-  noteEl.style.display   = "block";
-  noteEl.textContent     = "Checking travel fee\u2026";
+  noteEl.style.display = "block";
+  noteEl.textContent   = "Checking travel fee\u2026";
   updateEl.style.display = "none";
-
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -681,7 +744,6 @@ async function reprice(zip) {
     if (data.final_price != null) {
       noteEl.style.display   = "none";
       updateEl.style.display = "block";
-      // qty-adjusted: base × qty + flat travel fee
       const baseUnit = data.final_price - (data.travel_fee || 0);
       const adjTotal = baseUnit * S.qty + (data.travel_fee || 0);
       const delta    = data.travel_fee > 0
@@ -722,17 +784,11 @@ async function submitLock() {
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
-
-    // qty-adjusted locked price
     const baseUnit          = data.final_price - (data.travel_fee || 0);
     S.lockedDisplayPrice    = baseUnit * S.qty + (data.travel_fee || 0);
     S.lock                  = { ...data, lockedDisplayPrice: S.lockedDisplayPrice };
-
-    if (data.photo_required && !S.photoUploaded) {
-      go("photo");
-    } else {
-      await submitBooking();
-    }
+    if (data.photo_required && !S.photoUploaded) go("photo");
+    else await submitBooking();
   } catch (e) {
     show(e.message);
     if (btn) { btn.disabled = false; btn.textContent = "Confirm & Book \u2192"; }
@@ -746,9 +802,9 @@ function onPhotoSelected(e) {
   const preview   = document.getElementById("photoPreview");
   const uploadBtn = document.getElementById("uploadPhotoBtn");
   const reader    = new FileReader();
-  reader.onload   = ev => {
+  reader.onload = ev => {
     if (preview) {
-      preview.innerHTML     = `<img src="${ev.target.result}" alt="Preview"
+      preview.innerHTML = `<img src="${ev.target.result}" alt="Preview"
         style="max-width:100%;max-height:200px;border-radius:10px;margin-top:8px;">`;
       preview.style.display = "block";
     }
@@ -764,7 +820,6 @@ async function uploadPhoto() {
   if (!file || !statusEl) return;
   if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
   statusEl.textContent = "Uploading\u2026";
-
   try {
     const base64 = await fileToBase64(file);
     const r = await fetch("/api/quote/photo", {
@@ -826,7 +881,6 @@ function formatSlotDate(iso, tz) {
     timeZone: tz, weekday: "short", month: "short", day: "numeric",
   }).format(new Date(iso));
 }
-
 function formatSlotTime(iso, tz) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true,
@@ -839,13 +893,10 @@ function escHtml(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
-
 function val(id) { return (document.getElementById(id)?.value || "").trim(); }
-
 function loadingHTML(msg) {
   return `<div class="q-loading"><div class="q-spinner"></div><p class="q-muted" style="margin-top:16px;">${msg}</p></div>`;
 }
-
 function errHTML(msg) {
   return `<div class="q-error-box" style="margin-top:24px;">${escHtml(msg)}</div>`;
 }

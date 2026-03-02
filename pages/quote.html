@@ -3,130 +3,422 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Instant Quote &bull; Vickery Electric</title>
+  <title>Instant Estimate Calculator &bull; Vickery Electric</title>
   <link rel="stylesheet" href="/pages/css/brand.css">
   <style>
-    /* ── Quote page container ──────────────────────────────────────── */
+    /* ── Page shell ────────────────────────────────────────────────── */
+    body { background: hsl(210 30% 96%); }
+
     .q-wrap {
-      max-width: 560px;
+      max-width: 480px;
       margin: 0 auto;
-      padding: 32px 20px 64px;
+      padding: 0 16px 80px;
     }
 
-    /* ── Progress bar ──────────────────────────────────────────────── */
+    /* ── Hero (step 1 only) ─────────────────────────────────────────── */
+    .q-hero {
+      text-align: center;
+      padding: 32px 8px 24px;
+    }
+    .q-hero-title {
+      font-family: var(--font-display);
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: hsl(var(--foreground));
+      letter-spacing: -0.03em;
+      margin-bottom: 14px;
+    }
+    .q-hero-accent {
+      color: hsl(var(--accent));
+    }
+    .q-hero-sub {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.6;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    /* ── Progress bar — horizontal tab style ────────────────────────── */
     .q-progress {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 0;
-      margin-bottom: 36px;
+      background: white;
+      border-radius: 50px;
+      padding: 10px 12px;
+      margin-bottom: 24px;
+      border: 1px solid hsl(var(--border));
+      box-shadow: 0 1px 4px hsl(0 0% 0% / 0.05);
     }
     .q-prog-step {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
+      align-items: baseline;
+      gap: 3px;
+      flex: 1;
+      justify-content: center;
+      cursor: default;
     }
-    .q-prog-dot {
-      width: 32px;
-      height: 32px;
+    .q-prog-num {
+      font-size: 12px;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      line-height: 1;
+    }
+    .q-prog-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap;
+    }
+    .q-prog-step.active .q-prog-num,
+    .q-prog-step.active .q-prog-label {
+      color: hsl(var(--primary));
+      font-weight: 800;
+    }
+    .q-prog-step.done .q-prog-num,
+    .q-prog-step.done .q-prog-label {
+      color: hsl(var(--primary));
+      font-weight: 700;
+    }
+    .q-prog-div {
+      color: hsl(var(--border));
+      font-size: 13px;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    @media (max-width: 360px) {
+      .q-prog-label { display: none; }
+      .q-prog-num { font-size: 11px; }
+    }
+
+    /* ── Step header (badge + title) ────────────────────────────────── */
+    .q-step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .q-step-badge {
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: hsl(var(--secondary));
-      color: hsl(var(--muted-foreground));
+      border: 2px solid hsl(var(--border));
       font-family: var(--font-display);
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 800;
+      color: hsl(var(--muted-foreground));
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid hsl(var(--border));
-      transition: all 0.2s;
+      flex-shrink: 0;
     }
-    .q-prog-step.active .q-prog-dot {
-      background: hsl(var(--primary));
-      color: white;
-      border-color: hsl(var(--primary));
-    }
-    .q-prog-step.done .q-prog-dot {
-      background: hsl(142 60% 45%);
-      color: white;
-      border-color: hsl(142 60% 45%);
-    }
-    .q-prog-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: hsl(var(--muted-foreground));
-      letter-spacing: 0.03em;
-      white-space: nowrap;
-    }
-    .q-prog-step.active .q-prog-label { color: hsl(var(--primary)); }
-    .q-prog-step.done .q-prog-label   { color: hsl(142 60% 38%); }
-    .q-prog-line {
-      width: 40px;
-      height: 2px;
-      background: hsl(var(--border));
-      margin-bottom: 18px;
-      transition: background 0.2s;
-    }
-    .q-prog-line.done { background: hsl(142 60% 45%); }
-    @media (max-width: 400px) {
-      .q-prog-line { width: 20px; }
-      .q-prog-label { display: none; }
-    }
-
-    /* ── Typography ────────────────────────────────────────────────── */
-    .q-heading {
+    .q-step-title {
       font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 21px;
+      font-weight: 800;
       color: hsl(var(--foreground));
       letter-spacing: -0.02em;
+    }
+
+    /* ── Type / Segment cards (full-width stacked) ───────────────────── */
+    .q-type-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-bottom: 20px;
     }
-    .q-muted { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
-    .q-req   { color: hsl(var(--destructive)); }
-
-    /* ── Service tiles ─────────────────────────────────────────────── */
-    .q-tiles {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-    @media (max-width: 380px) { .q-tiles { grid-template-columns: 1fr; } }
-    .q-tile {
+    .q-type-card {
       background: white;
       border: 2px solid hsl(var(--border));
       border-radius: 14px;
-      padding: 20px 16px;
-      text-align: left;
+      padding: 18px 18px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      font-family: var(--font-body);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      position: relative;
     }
-    .q-tile:hover {
-      border-color: hsl(var(--accent));
-      box-shadow: 0 4px 16px hsl(var(--accent) / 0.12);
-    }
-    .q-tile.selected {
+    .q-type-card:hover { border-color: hsl(var(--accent)); }
+    .q-type-card.selected {
       border-color: hsl(var(--primary));
-      background: hsl(var(--primary) / 0.04);
+      box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15);
     }
-    .q-tile-name {
+    .q-type-icon-box {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      background: hsl(var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+    .q-type-text { flex: 1; min-width: 0; }
+    .q-type-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 5px;
+    }
+    .q-type-sub {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.4;
+    }
+    .q-type-radio {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid hsl(var(--border));
+      flex-shrink: 0;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      transition: all 0.15s;
+      background: white;
+    }
+    .q-type-card.selected .q-type-radio {
+      border-color: hsl(var(--primary));
+      border-width: 6px;
+      background: white;
+    }
+
+    /* ── Category list items ────────────────────────────────────────── */
+    .q-cat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .q-cat-item {
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 10px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+    .q-cat-item:hover { border-color: hsl(var(--accent)); }
+    .q-cat-item.selected {
+      border-color: hsl(var(--primary));
+      color: hsl(var(--foreground));
+    }
+    .q-cat-check {
+      font-size: 16px;
+      color: hsl(var(--primary));
+      font-weight: 800;
+      visibility: hidden;
+    }
+    .q-cat-item.selected .q-cat-check { visibility: visible; }
+
+    /* ── Service items (checkbox style) ─────────────────────────────── */
+    .q-svc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .q-svc-item {
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .q-svc-item:hover { border-color: hsl(var(--accent)); }
+    .q-svc-item.selected { border-color: hsl(var(--primary)); }
+    .q-svc-checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid hsl(var(--border));
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s;
+      color: white;
+    }
+    .q-svc-item.selected .q-svc-checkbox {
+      background: hsl(var(--primary));
+      border-color: hsl(var(--primary));
+    }
+    .q-svc-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      line-height: 1.4;
+    }
+    .q-svc-price {
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 3px;
+    }
+    .q-cat-group-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: hsl(var(--primary));
+      margin: 16px 0 8px;
+    }
+    .q-cat-group-heading:first-child { margin-top: 0; }
+
+    /* ── Qty control ─────────────────────────────────────────────────── */
+    .q-qty-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding: 14px 18px;
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+    }
+    .q-qty-label {
       font-family: var(--font-display);
       font-size: 15px;
       font-weight: 700;
       color: hsl(var(--foreground));
-      margin-bottom: 4px;
     }
-    .q-tile-sub {
-      font-size: 12px;
-      color: hsl(var(--muted-foreground));
-      font-weight: 500;
+    .q-qty-ctrl { display: flex; align-items: center; gap: 16px; }
+    .q-qty-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid hsl(var(--primary));
+      background: white;
+      color: hsl(var(--primary));
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: all 0.15s;
+    }
+    .q-qty-btn:hover { background: hsl(var(--primary)); color: white; }
+    .q-qty-val {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      min-width: 32px;
+      text-align: center;
     }
 
-    /* ── Questions ─────────────────────────────────────────────────── */
+    /* ── Navigation row (← Back  |  Next Step →) ────────────────────── */
+    .q-nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 24px;
+    }
+    .q-btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .q-btn-back:hover { color: hsl(var(--foreground)); }
+    .q-btn-next {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 26px;
+      background: hsl(var(--primary));
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+    }
+    .q-btn-next:hover:not(:disabled) {
+      background: hsl(var(--accent));
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px hsl(var(--accent) / 0.3);
+    }
+    .q-btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Note bar ────────────────────────────────────────────────────── */
+    .q-note-bar {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: hsl(220 60% 96%);
+      border-radius: 10px;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+      text-align: center;
+      line-height: 1.5;
+    }
+    .q-note-bar strong { color: hsl(var(--primary)); }
+
+    /* ── Dark navy price footer card ─────────────────────────────────── */
+    .q-price-footer {
+      background: hsl(var(--foreground));
+      border-radius: 16px;
+      padding: 24px 24px;
+      color: white;
+      margin-top: 28px;
+    }
+    .q-price-footer-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 6px;
+    }
+    .q-price-footer-amount {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .q-price-footer-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 6px;
+    }
+
+    /* ── Questions ──────────────────────────────────────────────────── */
+    .q-card-section {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      border: 1px solid hsl(var(--border));
+      margin-bottom: 12px;
+    }
     .q-questions { display: flex; flex-direction: column; gap: 24px; }
-    .q-question  {}
     .q-question-prompt {
       font-family: var(--font-display);
       font-size: 15px;
@@ -140,7 +432,7 @@
       align-items: center;
       gap: 10px;
       padding: 12px 16px;
-      border: 2px solid hsl(var(--border));
+      border: 1.5px solid hsl(var(--border));
       border-radius: 10px;
       cursor: pointer;
       font-size: 14px;
@@ -150,37 +442,33 @@
       transition: all 0.15s;
     }
     .q-option:hover { border-color: hsl(var(--accent)); }
-    .q-option.selected {
-      border-color: hsl(var(--primary));
-      background: hsl(var(--primary) / 0.05);
-      color: hsl(var(--primary));
-    }
+    .q-option.selected { border-color: hsl(var(--primary)); color: hsl(var(--primary)); background: hsl(var(--primary) / 0.04); }
     .q-option input { display: none; }
     .q-text-input {
       width: 100%;
       padding: 12px 14px;
-      border: 2px solid hsl(var(--border));
+      border: 1.5px solid hsl(var(--border));
       border-radius: 10px;
       font-size: 15px;
       font-family: var(--font-body);
       background: white;
       color: hsl(var(--foreground));
       transition: border-color 0.15s;
+      box-sizing: border-box;
     }
-    .q-text-input:focus {
-      outline: none;
-      border-color: hsl(var(--accent));
-    }
+    .q-text-input:focus { outline: none; border-color: hsl(var(--accent)); }
+    .q-req { color: hsl(var(--destructive)); }
+    .q-muted { color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; }
 
-    /* ── Add-ons ───────────────────────────────────────────────────── */
+    /* ── Add-ons ────────────────────────────────────────────────────── */
     .q-section-label {
       font-family: var(--font-display);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: hsl(var(--muted-foreground));
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin: 28px 0 12px;
+      margin: 24px 0 10px;
     }
     .q-addons { display: flex; flex-direction: column; gap: 8px; }
     .q-addon {
@@ -188,80 +476,94 @@
       align-items: flex-start;
       gap: 12px;
       padding: 14px 16px;
-      border: 2px solid hsl(var(--border));
+      border: 1.5px solid hsl(var(--border));
       border-radius: 10px;
       cursor: pointer;
       background: white;
       transition: all 0.15s;
     }
     .q-addon:hover { border-color: hsl(var(--accent)); }
-    .q-addon.selected {
-      border-color: hsl(var(--primary));
-      background: hsl(var(--primary) / 0.04);
-    }
+    .q-addon.selected { border-color: hsl(var(--primary)); background: hsl(var(--primary) / 0.04); }
     .q-addon input { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; margin-top: 2px; accent-color: hsl(var(--primary)); }
     .q-addon-name { font-size: 14px; font-weight: 600; color: hsl(var(--foreground)); }
     .q-addon-fee  { font-size: 13px; font-weight: 700; color: hsl(var(--accent)); margin-top: 2px; }
     .q-addon-desc { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 4px; }
 
-    /* ── Price reveal ──────────────────────────────────────────────── */
-    .q-price-reveal {
-      text-align: center;
-      padding: 32px 24px;
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 20px;
-      box-shadow: 0 4px 24px hsl(var(--primary) / 0.06);
+    /* ── Review — slots section ─────────────────────────────────────── */
+    .q-review-slots-section { margin-top: 24px; }
+    .q-review-slots-heading {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 4px;
     }
-    .q-price-label {
+    .q-review-date-field {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .q-review-date-field.has-slot { color: hsl(var(--foreground)); border-color: hsl(var(--primary)); }
+
+    /* ── Slot picker ────────────────────────────────────────────────── */
+    .q-slot-groups { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+    .q-slot-date {
+      font-family: var(--font-display);
       font-size: 13px;
       font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: hsl(var(--muted-foreground));
       margin-bottom: 8px;
     }
-    .q-price-big {
+    .q-slot-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .q-slot {
+      padding: 10px 18px;
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 50px;
       font-family: var(--font-display);
-      font-size: 56px;
-      font-weight: 800;
-      color: hsl(var(--primary));
-      letter-spacing: -0.03em;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-    .q-price-sub {
       font-size: 14px;
-      color: hsl(var(--muted-foreground));
-      margin-bottom: 16px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      transition: all 0.15s;
     }
-    .q-disclaimer {
-      background: hsl(220 50% 97%);
-      border: 1px solid hsl(var(--border));
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 13px;
-      color: hsl(var(--muted-foreground));
-      margin-bottom: 10px;
-      text-align: left;
+    .q-slot:hover { border-color: hsl(var(--accent)); color: hsl(var(--accent)); }
+    .q-slot.selected { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: white; }
+
+    /* ── Confirm summary card ────────────────────────────────────────── */
+    .q-confirm-summary {
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
     }
-    .q-disclaimer.warn {
-      background: hsl(38 90% 97%);
-      border-color: hsl(38 90% 80%);
-      color: hsl(30 80% 35%);
+    .q-confirm-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid hsl(var(--border));
     }
-    .q-bnpl {
-      font-size: 13px;
-      color: hsl(var(--muted-foreground));
-      margin-top: 12px;
-      padding: 10px 14px;
-      background: hsl(142 50% 97%);
-      border: 1px solid hsl(142 50% 80%);
-      border-radius: 8px;
-    }
+    .q-confirm-row:last-child { border-bottom: none; }
+    .q-confirm-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .q-confirm-key { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: hsl(var(--muted-foreground)); margin-bottom: 2px; }
+    .q-confirm-val { font-size: 15px; font-weight: 700; color: hsl(var(--foreground)); }
+    .q-confirm-note { font-size: 12px; font-weight: 400; color: hsl(var(--muted-foreground)); }
 
     /* ── Lead form ─────────────────────────────────────────────────── */
-    .q-form { display: flex; flex-direction: column; gap: 4px; }
+    .q-form { display: flex; flex-direction: column; gap: 0; }
     .q-field { margin-bottom: 16px; }
     .q-label {
       display: block;
@@ -274,174 +576,80 @@
     .q-input {
       width: 100%;
       padding: 12px 14px;
-      border: 2px solid hsl(var(--border));
+      border: 1.5px solid hsl(var(--border));
       border-radius: 10px;
       font-size: 16px;
       font-family: var(--font-body);
       background: white;
       color: hsl(var(--foreground));
       transition: border-color 0.15s;
+      box-sizing: border-box;
     }
-    .q-input:focus {
-      outline: none;
-      border-color: hsl(var(--accent));
-      box-shadow: 0 0 0 3px hsl(var(--accent) / 0.12);
-    }
-    .q-zip-note {
-      font-size: 12px;
-      color: hsl(var(--muted-foreground));
-      margin-top: 6px;
-      font-style: italic;
-    }
+    .q-input:focus { outline: none; border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent) / 0.1); }
+    .q-zip-note { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 6px; font-style: italic; }
     .q-price-update {
-      font-size: 14px;
-      font-weight: 600;
-      color: hsl(var(--foreground));
-      margin-top: 6px;
-      padding: 8px 12px;
-      background: hsl(142 50% 97%);
-      border: 1px solid hsl(142 50% 80%);
-      border-radius: 8px;
+      font-size: 14px; font-weight: 600; color: hsl(var(--foreground));
+      margin-top: 6px; padding: 8px 12px;
+      background: hsl(142 50% 97%); border: 1px solid hsl(142 50% 80%); border-radius: 8px;
     }
     .q-err {
-      font-size: 14px;
-      color: hsl(var(--destructive));
-      font-weight: 600;
+      font-size: 14px; color: hsl(var(--destructive)); font-weight: 600;
       padding: 10px 14px;
-      background: hsl(0 84% 97%);
-      border: 1px solid hsl(0 84% 85%);
-      border-radius: 8px;
+      background: hsl(0 84% 97%); border: 1px solid hsl(0 84% 85%); border-radius: 8px;
       margin-bottom: 12px;
     }
-
-    /* ── Buttons ───────────────────────────────────────────────────── */
-    .q-btn-primary {
-      width: 100%;
-      padding: 15px 24px;
-      background: hsl(var(--primary));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-family: var(--font-display);
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: -0.01em;
-    }
-    .q-btn-primary:hover:not(:disabled) {
-      background: hsl(var(--accent));
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px hsl(var(--accent) / 0.3);
-    }
-    .q-btn-primary:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-    .q-btn-secondary {
-      width: 100%;
-      padding: 13px 24px;
-      background: white;
-      color: hsl(var(--primary));
-      border: 2px solid hsl(var(--primary));
-      border-radius: 12px;
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .q-btn-secondary:hover:not(:disabled) {
-      background: hsl(var(--primary));
-      color: white;
-    }
-    .q-back {
-      background: none;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      color: hsl(var(--muted-foreground));
-      cursor: pointer;
-      padding: 0;
-      margin-bottom: 20px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: color 0.15s;
-    }
-    .q-back:hover { color: hsl(var(--foreground)); }
-
-    /* ── Confirmed ─────────────────────────────────────────────────── */
-    .q-confirmed { text-align: center; margin-bottom: 28px; }
-    .q-confirmed-icon {
-      font-size: 56px;
-      margin-bottom: 12px;
-      display: block;
-    }
-    .q-locked-price {
-      font-family: var(--font-display);
-      font-size: 48px;
-      font-weight: 800;
-      color: hsl(var(--primary));
-      letter-spacing: -0.03em;
-      margin: 8px 0;
-    }
-    .q-next-step {
-      text-align: center;
-      padding: 24px;
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 16px;
-      margin-top: 20px;
-    }
-    .q-next-icon { font-size: 32px; margin-bottom: 8px; }
 
     /* ── Photo upload ───────────────────────────────────────────────── */
     .q-photo-gate {
-      padding: 24px;
-      background: hsl(220 50% 97%);
-      border: 2px solid hsl(var(--border));
-      border-radius: 16px;
-      margin-top: 20px;
+      padding: 20px;
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 14px;
     }
-    .q-photo-header {
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-      margin-bottom: 8px;
-    }
+    .q-photo-header { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: hsl(var(--foreground)); margin-bottom: 6px; }
     .q-file-label {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 10px 20px;
       background: hsl(var(--secondary));
-      border: 2px solid hsl(var(--border));
-      border-radius: 10px;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 50px;
       font-size: 14px;
       font-weight: 600;
       color: hsl(var(--foreground));
       cursor: pointer;
       transition: all 0.15s;
-      margin-top: 4px;
+      margin-top: 12px;
     }
     .q-file-label:hover { border-color: hsl(var(--accent)); }
     .q-photo-preview { margin-top: 12px; }
-    .q-photo-status {
-      font-size: 14px;
-      font-weight: 600;
-      margin-top: 10px;
-      min-height: 20px;
-      color: hsl(var(--foreground));
-    }
+    .q-photo-status { font-size: 14px; font-weight: 600; margin-top: 10px; min-height: 20px; }
 
-    /* ── Loading / Error ───────────────────────────────────────────── */
-    .q-loading {
-      text-align: center;
-      padding: 48px 24px;
+    /* ── Booked ─────────────────────────────────────────────────────── */
+    .q-booked { text-align: center; margin-bottom: 28px; }
+    .q-booked-icon { font-size: 64px; margin-bottom: 12px; display: block; }
+    .q-booking-card {
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 14px;
+      overflow: hidden;
     }
+    .q-booking-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .q-booking-row:last-child { border-bottom: none; }
+    .q-booking-key { min-width: 100px; font-size: 13px; font-weight: 600; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+    .q-booking-val { font-size: 14px; font-weight: 600; color: hsl(var(--foreground)); }
+
+    /* ── Loading / Error ────────────────────────────────────────────── */
+    .q-loading { text-align: center; padding: 48px 24px; }
     .q-spinner {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border: 3px solid hsl(var(--border));
       border-top-color: hsl(var(--primary));
       border-radius: 50%;
@@ -462,287 +670,11 @@
     .q-center { text-align: center; padding: 40px 24px; }
     .q-icon { font-size: 40px; margin-bottom: 12px; }
 
-    /* ── Slot picker ────────────────────────────────────────────────── */
-    .q-slot-groups { display: flex; flex-direction: column; gap: 20px; }
-    .q-slot-group  {}
-    .q-slot-date {
-      font-family: var(--font-display);
-      font-size: 14px;
-      font-weight: 700;
-      color: hsl(var(--muted-foreground));
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .q-slot-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .q-slot {
-      padding: 10px 18px;
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 10px;
-      font-family: var(--font-display);
-      font-size: 14px;
-      font-weight: 600;
-      color: hsl(var(--foreground));
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .q-slot:hover { border-color: hsl(var(--accent)); color: hsl(var(--accent)); }
-    .q-slot.selected {
-      background: hsl(var(--primary));
-      border-color: hsl(var(--primary));
-      color: white;
-    }
-
-    /* ── Segment cards (Residential / Commercial) ───────────────────── */
-    .q-seg-cards {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-top: 8px;
-    }
-    .q-seg-card {
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 20px;
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      font-family: var(--font-body);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .q-seg-card:hover {
-      border-color: hsl(var(--accent));
-      box-shadow: 0 6px 24px hsl(var(--accent) / 0.15);
-      transform: translateY(-2px);
-    }
-    .q-seg-card.selected {
-      border-color: hsl(var(--primary));
-      background: hsl(var(--primary) / 0.04);
-    }
-    .q-seg-icon { font-size: 42px; line-height: 1; }
-    .q-seg-name {
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-    }
-    .q-seg-sub {
-      font-size: 12px;
-      color: hsl(var(--muted-foreground));
-      line-height: 1.4;
-    }
-
-    /* ── Category cards ─────────────────────────────────────────────── */
-    .q-cat-cards {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-top: 8px;
-    }
-    @media (max-width: 380px) { .q-cat-cards { grid-template-columns: 1fr; } }
-    .q-cat-card {
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 14px;
-      padding: 20px 14px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      font-family: var(--font-body);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-    .q-cat-card:hover {
-      border-color: hsl(var(--accent));
-      box-shadow: 0 4px 16px hsl(var(--accent) / 0.12);
-      transform: translateY(-1px);
-    }
-    .q-cat-card.selected {
-      border-color: hsl(var(--primary));
-      background: hsl(var(--primary) / 0.04);
-    }
-    .q-cat-icon { font-size: 28px; line-height: 1; }
-    .q-cat-name {
-      font-family: var(--font-display);
-      font-size: 13px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-      line-height: 1.3;
-    }
-
-    /* ── Multi-select category cards — checkmark badge ─────────────── */
-    .q-cat-card.q-checkable { position: relative; }
-    .q-check-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid hsl(var(--border));
-      background: white;
-      font-size: 11px;
-      font-weight: 700;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
-    }
-    .q-cat-card.selected .q-check-badge {
-      background: hsl(var(--primary));
-      border-color: hsl(var(--primary));
-    }
-
-    /* ── Qty control ─────────────────────────────────────────────────── */
-    .q-qty-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 24px;
-      padding: 16px 20px;
-      background: hsl(220 50% 97%);
-      border: 1px solid hsl(var(--border));
-      border-radius: 12px;
-    }
-    .q-qty-label {
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-    }
-    .q-qty-ctrl {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .q-qty-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 2px solid hsl(var(--primary));
-      background: white;
-      color: hsl(var(--primary));
-      font-size: 20px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      transition: all 0.15s;
-    }
-    .q-qty-btn:hover {
-      background: hsl(var(--primary));
-      color: white;
-    }
-    .q-qty-val {
-      font-family: var(--font-display);
-      font-size: 24px;
-      font-weight: 800;
-      color: hsl(var(--foreground));
-      min-width: 32px;
-      text-align: center;
-    }
-
-    /* ── Review screen — slots section ──────────────────────────────── */
-    .q-review-slots-section {
-      margin-top: 32px;
-    }
-    .q-review-slots-heading {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-      margin-bottom: 4px;
-    }
-
-    /* ── Confirm summary card ────────────────────────────────────────── */
-    .q-confirm-summary {
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .q-confirm-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 16px 20px;
-      border-bottom: 1px solid hsl(var(--border));
-    }
-    .q-confirm-row:last-child { border-bottom: none; }
-    .q-confirm-icon {
-      font-size: 22px;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .q-confirm-key {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: hsl(var(--muted-foreground));
-      margin-bottom: 3px;
-    }
-    .q-confirm-val {
-      font-size: 15px;
-      font-weight: 700;
-      color: hsl(var(--foreground));
-    }
-    .q-confirm-note {
-      font-size: 12px;
-      font-weight: 400;
-      color: hsl(var(--muted-foreground));
-    }
-
     /* ── Step transitions ───────────────────────────────────────────── */
     #stepContent { animation: fadeSlide 0.18s ease; }
     @keyframes fadeSlide {
       from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── Booking confirmation ────────────────────────────────────────── */
-    .q-booked { text-align: center; margin-bottom: 28px; }
-    .q-booked-icon { font-size: 64px; margin-bottom: 12px; display: block; }
-    .q-booking-card {
-      background: white;
-      border: 2px solid hsl(var(--border));
-      border-radius: 16px;
-      overflow: hidden;
-      margin-top: 20px;
-    }
-    .q-booking-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 20px;
-      border-bottom: 1px solid hsl(var(--border));
-    }
-    .q-booking-row:last-child { border-bottom: none; }
-    .q-booking-key {
-      min-width: 100px;
-      font-size: 13px;
-      font-weight: 600;
-      color: hsl(var(--muted-foreground));
-      flex-shrink: 0;
-    }
-    .q-booking-val {
-      font-size: 14px;
-      font-weight: 600;
-      color: hsl(var(--foreground));
     }
   </style>
 </head>
@@ -752,7 +684,7 @@
       <a href="/">
         <img src="/pages/img/logo.png" alt="Vickery Electric" class="header-logo">
       </a>
-      <span class="header-title">Instant Quote</span>
+      <span class="header-title">Instant Estimate Calculator</span>
       <a href="tel:+14095550100" class="nav-btn" style="font-size:13px;">Call Us</a>
     </div>
   </header>
