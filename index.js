@@ -8,6 +8,7 @@ const { handleQuoteStart, handleQuoteCalc, handleQuoteLock } = require("./api/qu
 const { handlePhotoUpload } = require("./api/photo-upload");
 const { handleGetSlots }    = require("./api/schedule-slots");
 const { handleBook }        = require("./api/schedule-book");
+const { handleSeedQuote }   = require("./api/seed-quote");
 const { handleCreateLead, handleGetLeads } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
@@ -196,6 +197,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/quote") && req.method === "GET") {
     return handleQuoteApi(req, res);
+  }
+
+  if (req.url.startsWith("/admin/seed-quote") && req.method === "GET") {
+    return handleSeedQuote(req, res);
   }
 
   // AUTH GUARD: protected pages + remaining /api/*
