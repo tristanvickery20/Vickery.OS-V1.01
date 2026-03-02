@@ -53,12 +53,17 @@ pages/
 ## Key Features
 - **Quote Snapshots**: POST /api/quotes/create runs pricing, builds auditable JSON snapshot, upserts lead, appends to Quotes tab
 - **Deposit Gate**: Prevents scheduling large jobs (deposit_required=true) without deposit received or explicit override
-- **Auto Headers**: lib/sheetsSchema.js auto-creates tabs (Leads, Quotes, Time, Expenses, Audit, Config, Clients, Properties, Requests, Jobs, Visits, Notes, Attachments, Availability) and adds missing columns on server startup
+- **Auto Headers**: lib/sheetsSchema.js auto-creates tabs and adds missing columns on server startup; tabs include Leads, Quotes, Time, Expenses, Audit, Config, Clients, Properties, Requests, Jobs, Visits, Notes, Attachments, Availability, JobTypes, Questions, AnswerOptions, AddOns, Rates, ServiceAreas, QuoteSnapshots, Bookings, SchedulerRules
 - **Two Update Paths**: /api/leads/update (general) and /api/leads/schedule (with deposit gate enforcement)
 - **Apps Script Integration**: POST /api/apps/lead for secure lead creation via Apps Script
 - **Time Tracking**: Log work/drive/admin minutes per tech per lead. GET/POST /api/time
 - **Expense Tracking**: Log gas/material/parts/other expenses. GET/POST /api/expenses
 - **Dashboard KPIs**: hours_this_week, expenses_this_week, gas_this_week (Mon-Sun UTC week)
+- **V3 Public Quote Flow** (Block 3-4): /quote — 5-step customer flow (service tiles → questions/addons → price reveal → lead info → scheduling). All steps backed by live API calls.
+- **Quote Engine** (Block 1-2): /api/quote/config, /api/quote/start, /api/quote/calc, /api/quote/lock — reads JobTypes/Questions/AnswerOptions/AddOns/Rates/ServiceAreas; writes QuoteSnapshots; photo_required flag support
+- **Photo Upload**: POST /api/quote/photo — accepts base64 JSON, saves to /uploads/, logs QuoteSnapshots event
+- **Calendly-style Scheduling** (Block 4): GET /api/schedule/slots — generates available booking slots respecting lead time, working hours, buffer, max bookings/day, existing conflicts. POST /api/schedule/book — validates slot, writes Bookings + QuoteSnapshots booked events
+- **SchedulerRules sheet**: Editable scheduling config (timezone, hours, buffer, horizon, max bookings). Auto-created with defaults on first startup.
 
 ## Authentication
 - PIN-based login using CRM_PIN secret

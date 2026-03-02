@@ -6,6 +6,8 @@ const { handleQuoteApi } = require("./api/quote");
 const { handleQuoteConfig } = require("./api/quote-config");
 const { handleQuoteStart, handleQuoteCalc, handleQuoteLock } = require("./api/quote-engine");
 const { handlePhotoUpload } = require("./api/photo-upload");
+const { handleGetSlots }    = require("./api/schedule-slots");
+const { handleBook }        = require("./api/schedule-book");
 const { handleCreateLead, handleGetLeads } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
@@ -182,6 +184,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/quote/photo" && req.method === "POST") {
     return handlePhotoUpload(req, res);
+  }
+
+  if (req.url.startsWith("/api/schedule/slots") && req.method === "GET") {
+    return handleGetSlots(req, res);
+  }
+
+  if (req.url === "/api/schedule/book" && req.method === "POST") {
+    return handleBook(req, res);
   }
 
   if (req.url.startsWith("/api/quote") && req.method === "GET") {

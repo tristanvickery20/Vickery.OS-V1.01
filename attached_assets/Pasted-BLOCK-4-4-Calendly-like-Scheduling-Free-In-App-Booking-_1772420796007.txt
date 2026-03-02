@@ -1,0 +1,61 @@
+BLOCK 4/4 — Calendly-like Scheduling (Free, In-App) + Booking Writeback
+
+Goal: Provide real booking like Calendly: available slots, rules, confirmation, write-back to Sheets. No external paid tool required. Still credit-conscious.
+
+Constraints:
+	•	One crew, not split.
+	•	Lead time 24 hours.
+	•	Buffer 30 minutes.
+	•	Use Google Sheets for editable rules (so you don’t edit code later).
+	•	Confirmation page counts as “confirmation” for now; email/SMS can be later.
+
+Work to do:
+	1.	Add a new sheet tab (create if missing):
+SchedulerRules
+
+	•	timezone, lead_time_hours, buffer_minutes, horizon_days, workday_start, workday_end, saturday_start, saturday_end, sunday_enabled, max_bookings_per_day
+
+Populate defaults:
+	•	timezone: America/Chicago
+	•	lead_time_hours: 24
+	•	buffer_minutes: 30
+	•	horizon_days: 14
+	•	workday: 08:00–17:00
+	•	saturday: 09:00–13:00
+	•	sunday_enabled: FALSE
+	•	max_bookings_per_day: 3
+
+	2.	Add scheduling endpoints:
+
+	•	GET /api/schedule/slots?quote_id=...
+	•	Loads quote snapshot (latest locked event for that quote_id)
+	•	Reads duration from JobTypes.default_duration_minutes
+	•	Generates available slots next N days:
+	•	respects lead_time_hours
+	•	respects working hours
+	•	respects max_bookings_per_day
+	•	excludes conflicts from Bookings sheet
+	•	includes buffer_minutes
+	•	Returns list of ISO datetimes
+	•	POST /api/schedule/book
+	•	Body: { quote_id, scheduled_datetime }
+	•	Validate again server-side (still available)
+	•	Append row to Bookings
+	•	Append QuoteSnapshots event_type=booked
+	•	Return booking_id + confirmation details
+
+	3.	Update /quote UI to show slots after lock-in:
+
+	•	A “Choose a time” step that lists next available slots (tap to select)
+	•	Book button calls /api/schedule/book
+	•	Show confirmation screen:
+	•	Date/time
+	•	Address
+	•	Locked price
+	•	Booking ID
+
+Acceptance checks:
+	•	Slots appear only after quote is locked + address verified (+ photo if required).
+	•	Booking prevents double-booking.
+	•	Bookings write into Sheets.
+	•	Confirmation screen displays instantly.
