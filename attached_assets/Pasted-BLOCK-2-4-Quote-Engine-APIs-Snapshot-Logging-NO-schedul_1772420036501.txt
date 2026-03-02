@@ -1,0 +1,86 @@
+BLOCK 2/4 — Quote Engine APIs + Snapshot Logging (NO scheduling yet)
+
+Goal: Implement deterministic pricing APIs that match V3: price shown before lead info, no good/better/best, optional add-ons, address later triggers auto reprice, no address shows disclaimer, photo gating flagging, and append-only JSON snapshots.
+
+Constraints:
+	•	Do NOT build scheduling yet.
+	•	Do NOT integrate CRM.
+	•	Do NOT require login for /quote endpoints.
+	•	Append-only snapshots (no DB).
+
+Work to do:
+	1.	Create lib/quoteEngine.js
+Implement:
+
+Inputs
+	•	job_type_id
+	•	answers: {question_id: option_id}
+	•	addons: [addon_id]
+	•	address (optional) and/or zip (optional)
+
+Pricing rules (V3)
+	•	BaseHours = JobTypes.base_hours
+	•	Apply AnswerOptions in a deterministic order:
+	•	ADD_HOURS: add to hours
+	•	MULTIPLY_HOURS: multiply running hours
+	•	ADD_FEE: add to fees
+	•	REQUIRE_PHOTO: sets photo_required = true
+	•	FLAG_EVALUATION: sets evaluation_flag = true (should rarely be used)
+	•	Add add-ons:
+	•	hours += add_hours
+	•	fees += add_fee
+	•	material_allowance += addon.material_allowance
+	•	MaterialAllowance = JobType.material_allowance + sum(addon allowances)
+	•	LaborCost = hours * Rates.crew_loaded_hourly
+	•	OverheadCost = hours * Rates.overhead_per_hour
+	•	TrueCost = LaborCost + OverheadCost + MaterialAllowance + fees
+	•	SellPrice = TrueCost / (1 - Rates.target_margin)
+
+Minimums
+	•	SellPrice = MAX(SellPrice, Rates.service_minimum, JobType.min_price)
+
+Travel
+	•	If address/zip NOT provided:
+	•	Do NOT add travel fee to price.
+	•	Return travel_disclaimer = "A $25 travel fee may be applied once address is confirmed."
+	•	Also return assumed_commute_minutes = Rates.commute_assumed_minutes (45)
+	•	If zip provided:
+	•	Lookup travel fee from ServiceAreas:
+	•	CORE: 0
+	•	EXT: 25
+	•	OUTER: 50
+	•	Add travel fee to final price
+	•	If zip not in table, default to EXT ($25) and return note.
+
+Return object:
+	•	final_price (rounded to nearest $5 for clean pricing)
+	•	hours, labor_cost, overhead_cost, material_allowance, fees, travel_fee, address_provided boolean
+	•	photo_required boolean
+	•	evaluation_flag boolean
+	•	disclaimer string (only when no address or unknown zip)
+
+	2.	Add endpoints:
+
+	•	POST /api/quote/start
+	•	Creates quote_id (uuid)
+	•	Appends a QuoteSnapshots row with event_type = start
+	•	Returns {quote_id}
+	•	POST /api/quote/calc
+	•	Body: { quote_id, job_type_id, answers, addons } (NO lead info)
+	•	Runs quote engine WITHOUT travel fee (no address stage)
+	•	Appends QuoteSnapshots row event_type = priced with JSON blobs
+	•	Returns pricing payload + disclaimer + photo_required
+	•	POST /api/quote/lock
+	•	Body: { quote_id, job_type_id, answers, addons, customer_name, phone, email, address, zip }
+	•	Recalculate INCLUDING travel fee (zip required here; derive zip from address if possible; if not, ask zip in UI)
+	•	If photo_required, return photo_required=true and allow booking after photo upload (next block)
+	•	Append QuoteSnapshots row event_type = locked
+	•	Return final confirmed price payload
+
+	3.	Keep everything public and isolated from CRM auth logic.
+
+Acceptance checks:
+	•	You can get a price with just job type + answers (no lead).
+	•	Locking the quote with address changes price via travel fee.
+	•	QuoteSnapshots gets appended rows for start/priced/locked with JSON stored.
+	•	Photo-required flag returned for panel/EV/etc (based on JobTypes.requires_photo or AnswerOptions REQUIRE_PHOTO).
