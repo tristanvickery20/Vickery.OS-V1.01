@@ -1,8 +1,10 @@
-// pages/js/quote.js — V3 Quote Flow with Scheduling
+// pages/js/quote.js — V3 Quote Flow: Segment → Category → Service → Details → Price → Schedule
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
-  step: "service",
+  step: "segment",
+  segment: null,      // "Residential" | "Commercial"
+  category: null,     // e.g. "Outlets & Switches"
   config: null,
   quoteId: null,
   typeId: null,
@@ -11,9 +13,9 @@ const S = {
   pricing: null,
   lock: null,
   photoUploaded: false,
-  slotsData: null,    // { slots, timezone, duration_minutes, quote }
-  selectedSlot: null, // ISO string
-  booking: null,      // result from /api/schedule/book
+  slotsData: null,
+  selectedSlot: null,
+  booking: null,
 };
 
 let repricTimer = null;
@@ -24,7 +26,7 @@ async function boot() {
   try {
     const r = await fetch("/api/quote/config");
     S.config = await r.json();
-    go("service");
+    go("segment");
   } catch {
     setContent(errHTML("Could not load services. Please refresh the page."));
   }
@@ -38,38 +40,44 @@ function go(step) {
 }
 
 function back() {
-  const prev = { questions: "service", price: "questions", lead: "price" };
-  if (prev[S.step]) {
-    if (S.step === "price") {
-      const hasQs    = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
-      const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length || 0) > 0;
-      go(hasQs || hasAddons ? "questions" : "service");
-    } else {
-      go(prev[S.step]);
-    }
+  const prev = { category: "segment", service: "category", questions: "service", lead: "price" };
+  if (S.step === "price") {
+    const hasQs     = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
+    const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length   || 0) > 0;
+    go(hasQs || hasAddons ? "questions" : "service");
+  } else if (prev[S.step]) {
+    go(prev[S.step]);
   }
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
 function renderStep() {
   document.getElementById("qProgress").innerHTML = progressHTML();
+  // Force animation replay by replacing the node
+  const el = document.getElementById("stepContent");
+  const clone = el.cloneNode(false);
+  el.parentNode.replaceChild(clone, el);
   switch (S.step) {
-    case "service":   setContent(renderService());   break;
-    case "questions": setContent(renderQuestions()); break;
-    case "price":     setContent(renderPrice());     break;
-    case "lead":      setContent(renderLead());      break;
-    case "confirmed": setContent(renderConfirmed()); break;
-    case "schedule":  setContent(renderSchedule());  break;
-    case "booked":    setContent(renderBooked());    break;
-    default:          setContent(errHTML("Unknown step.")); break;
+    case "segment":   clone.innerHTML = renderSegment();   break;
+    case "category":  clone.innerHTML = renderCategory();  break;
+    case "service":   clone.innerHTML = renderService();   break;
+    case "questions": clone.innerHTML = renderQuestions(); break;
+    case "price":     clone.innerHTML = renderPrice();     break;
+    case "lead":      clone.innerHTML = renderLead();      break;
+    case "confirmed": clone.innerHTML = renderConfirmed(); break;
+    case "schedule":  clone.innerHTML = renderSchedule();  break;
+    case "booked":    clone.innerHTML = renderBooked();    break;
+    default:          clone.innerHTML = errHTML("Unknown step."); break;
   }
   bindEvents();
 }
 
+function setContent(html) { document.getElementById("stepContent").innerHTML = html; }
+
 function progressHTML() {
-  const steps = ["Service", "Questions", "Price", "Your Info", "Schedule"];
-  const idx   = { service: 0, questions: 1, price: 2, lead: 3, confirmed: 3, schedule: 4, booked: 4 };
-  const cur   = idx[S.step] ?? 0;
+  const steps = ["Segment", "Category", "Service", "Details", "Price"];
+  const idx = { segment: 0, category: 1, service: 2, questions: 3, price: 4, lead: 4, confirmed: 4, schedule: 4, booked: 4 };
+  const cur = idx[S.step] ?? 0;
   return `<div class="q-progress">${steps.map((label, i) =>
     `<div class="q-prog-step ${i < cur ? "done" : ""} ${i === cur ? "active" : ""}">
        <div class="q-prog-dot">${i < cur ? "\u2713" : i + 1}</div>
@@ -80,19 +88,77 @@ function progressHTML() {
   ).join("")}</div>`;
 }
 
-// ── Step A: Service ───────────────────────────────────────────────────────────
-function renderService() {
-  const types = (S.config?.jobTypes || []).filter(j => j.active !== false);
-  if (!types.length) return `
+// ── Step 1: Segment ───────────────────────────────────────────────────────────
+function renderSegment() {
+  return `
+    <h2 class="q-heading">What type of property?</h2>
+    <div class="q-seg-cards">
+      <button class="q-seg-card${S.segment === "Residential" ? " selected" : ""}" data-seg="Residential">
+        <div class="q-seg-icon">&#127968;</div>
+        <div class="q-seg-name">Residential</div>
+        <div class="q-seg-sub">Homes, condos &amp; apartments</div>
+      </button>
+      <button class="q-seg-card${S.segment === "Commercial" ? " selected" : ""}" data-seg="Commercial">
+        <div class="q-seg-icon">&#127970;</div>
+        <div class="q-seg-name">Commercial</div>
+        <div class="q-seg-sub">Offices, retail &amp; businesses</div>
+      </button>
+    </div>`;
+}
+
+// ── Step 2: Category ──────────────────────────────────────────────────────────
+const CAT_ICONS = {
+  "Outlets & Switches":  "&#128268;",
+  "Lighting & Fans":     "&#128161;",
+  "Ventilation":         "&#127751;",
+  "Panel & Protection":  "&#9889;",
+  "EV Charging":         "&#128663;",
+  "Diagnostics":         "&#128269;",
+};
+
+function renderCategory() {
+  const types = (S.config?.jobTypes || []).filter(j => j.segment === S.segment);
+  const cats  = [...new Set(types.map(t => t.category).filter(Boolean))];
+
+  if (!cats.length) return `
+    <button class="q-back" id="backBtn">\u2190 Back</button>
     <div class="q-card q-center">
-      <div class="q-icon">\u{1F527}</div>
-      <h2 class="q-heading">Services Coming Soon</h2>
-      <p class="q-muted">Our service menu is being set up. Check back shortly or call us at
+      <div class="q-icon">&#128295;</div>
+      <h2 class="q-heading">Coming Soon</h2>
+      <p class="q-muted">Commercial services are being added. Call us for a custom quote at
         <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
     </div>`;
 
   return `
-    <h2 class="q-heading">What can we help you with?</h2>
+    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <h2 class="q-heading">What type of work?</h2>
+    <div class="q-cat-cards">
+      ${cats.map(cat => `
+        <button class="q-cat-card${S.category === cat ? " selected" : ""}" data-cat="${escHtml(cat)}">
+          <div class="q-cat-icon">${CAT_ICONS[cat] || "&#128295;"}</div>
+          <div class="q-cat-name">${escHtml(cat)}</div>
+        </button>`).join("")}
+    </div>`;
+}
+
+// ── Step 3: Service ───────────────────────────────────────────────────────────
+function renderService() {
+  const types = (S.config?.jobTypes || []).filter(j =>
+    j.segment === S.segment && j.category === S.category
+  );
+
+  if (!types.length) return `
+    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <div class="q-card q-center">
+      <div class="q-icon">&#128295;</div>
+      <h2 class="q-heading">No Services Found</h2>
+      <p class="q-muted">No services available for this category yet. Call us at
+        <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
+    </div>`;
+
+  return `
+    <button class="q-back" id="backBtn">\u2190 Back</button>
+    <h2 class="q-heading">Which service do you need?</h2>
     <div class="q-tiles">
       ${types.map(t => `
         <button class="q-tile${S.typeId === t.job_type_id ? " selected" : ""}"
@@ -106,7 +172,7 @@ function renderService() {
     </button>`;
 }
 
-// ── Step B: Questions + Add-ons ───────────────────────────────────────────────
+// ── Step 4: Questions + Add-ons ───────────────────────────────────────────────
 function renderQuestions() {
   const questions = S.config?.questionsByType?.[S.typeId] || [];
   const addons    = S.config?.addonsByType?.[S.typeId]   || [];
@@ -130,7 +196,6 @@ function renderQuestions() {
             <div class="q-addon-body">
               <div class="q-addon-name">${escHtml(a.name_public)}</div>
               ${a.add_fee ? `<div class="q-addon-fee">+$${Number(a.add_fee).toLocaleString()}</div>` : ""}
-              ${a.description ? `<div class="q-addon-desc">${escHtml(a.description)}</div>` : ""}
             </div>
           </label>`).join("")}
       </div>
@@ -161,7 +226,7 @@ function renderQuestion(q) {
     </div>`;
 }
 
-// ── Step C: Price ─────────────────────────────────────────────────────────────
+// ── Step 5: Price ─────────────────────────────────────────────────────────────
 function renderPrice() {
   if (!S.pricing) return loadingHTML("Calculating your price\u2026");
   const p    = S.pricing;
@@ -174,11 +239,11 @@ function renderPrice() {
       <div class="q-price-big">$${p.final_price != null ? Number(p.final_price).toLocaleString() : "\u2014"}</div>
       <p class="q-price-sub">Exact price based on your answers.</p>
       <div class="q-disclaimer travel-note">
-        \u{1F4CD} A $25 travel fee may be applied once your address is confirmed.
+        &#128205; A $25 travel fee may be applied once your address is confirmed.
       </div>
       ${p.evaluation_flag ? `
         <div class="q-disclaimer warn">
-          \u26A0\uFE0F This job may need an in-person evaluation first. We'll confirm when you lock your price.
+          &#9888;&#65039; This job may need an in-person evaluation first. We'll confirm when you lock your price.
         </div>` : ""}
       ${bnpl ? `
         <div class="q-bnpl">
@@ -190,7 +255,7 @@ function renderPrice() {
     </button>`;
 }
 
-// ── Step D: Lead Form ─────────────────────────────────────────────────────────
+// ── Step 6: Lead Form ─────────────────────────────────────────────────────────
 function renderLead() {
   const p = S.pricing;
   return `
@@ -232,23 +297,21 @@ function renderLead() {
     </div>`;
 }
 
-// ── Step E: Confirmed (price locked, optional photo, then choose time) ─────────
+// ── Step 7: Confirmed (price locked, optional photo, choose time) ──────────────
 function renderConfirmed() {
   const p         = S.lock || S.pricing;
   const needsPhoto = p?.photo_required && !S.photoUploaded;
-  const canSchedule = !needsPhoto;
 
   return `
     <div class="q-confirmed">
-      <div class="q-confirmed-icon">\u2705</div>
+      <div class="q-confirmed-icon">&#9989;</div>
       <h2 class="q-heading">Price Locked!</h2>
       <div class="q-locked-price">$${p?.final_price != null ? Number(p.final_price).toLocaleString() : "\u2014"}</div>
       ${p?.travel_fee ? `<p class="q-muted" style="margin-top:6px;">Includes $${p.travel_fee} travel fee.</p>` : ""}
     </div>
-
     ${needsPhoto ? `
       <div class="q-photo-gate" id="photoSection">
-        <div class="q-photo-header">\u{1F4F7} One Quick Step</div>
+        <div class="q-photo-header">&#128247; One Quick Step</div>
         <p class="q-muted" style="margin-bottom:16px;">
           Upload a photo of your electrical panel to confirm compatibility before we schedule.
         </p>
@@ -263,13 +326,13 @@ function renderConfirmed() {
         <div id="photoStatus" class="q-photo-status"></div>
         <div id="afterPhotoSchedule" style="display:none;margin-top:16px;">
           <button class="q-btn-primary" id="scheduleBtn">
-            \u{1F4C5} Choose a Time &rarr;
+            &#128197; Choose a Time &rarr;
           </button>
         </div>
       </div>
     ` : `
       <div class="q-next-step" style="margin-top:20px;">
-        <div class="q-next-icon">\u{1F4C5}</div>
+        <div class="q-next-icon">&#128197;</div>
         <strong>You're one step away!</strong>
         <p class="q-muted" style="margin-top:8px;">Choose a time that works for you.</p>
         <button class="q-btn-primary" id="scheduleBtn" style="margin-top:16px;">
@@ -279,7 +342,7 @@ function renderConfirmed() {
     `}`;
 }
 
-// ── Step F: Schedule (slot picker) ────────────────────────────────────────────
+// ── Step 8: Schedule (slot picker) ────────────────────────────────────────────
 function renderSchedule() {
   if (!S.slotsData) return loadingHTML("Finding available times\u2026");
 
@@ -296,7 +359,6 @@ function renderSchedule() {
       </p>`;
   }
 
-  // Group by local date
   const groups = {};
   for (const iso of slots) {
     const dk = formatSlotDate(iso, timezone);
@@ -330,7 +392,7 @@ function renderSchedule() {
     </button>`;
 }
 
-// ── Step G: Booked confirmation ────────────────────────────────────────────────
+// ── Step 9: Booked confirmation ───────────────────────────────────────────────
 function renderBooked() {
   const bk = S.booking;
   const tz  = S.slotsData?.timezone || "America/Chicago";
@@ -345,29 +407,29 @@ function renderBooked() {
 
   return `
     <div class="q-booked">
-      <div class="q-booked-icon">\u{1F389}</div>
+      <div class="q-booked-icon">&#127881;</div>
       <h2 class="q-heading">You're Booked!</h2>
       <p class="q-muted" style="margin-bottom:24px;">Here's your confirmation. We'll see you soon.</p>
 
       <div class="q-booking-card">
         <div class="q-booking-row">
-          <span class="q-booking-key">\u{1F4C5} Date</span>
+          <span class="q-booking-key">&#128197; Date</span>
           <span class="q-booking-val">${escHtml(dateStr)}</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">\u{1F55B} Time</span>
+          <span class="q-booking-key">&#128347; Time</span>
           <span class="q-booking-val">${escHtml(timeStr)} (Central)</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">\u{1F4CD} Address</span>
+          <span class="q-booking-key">&#128205; Address</span>
           <span class="q-booking-val">${escHtml(bk?.address || "")}</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">\u{1F4B5} Price</span>
+          <span class="q-booking-key">&#128181; Price</span>
           <span class="q-booking-val">$${Number(bk?.final_price || 0).toLocaleString()} locked</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">\u{1F9FE} Booking ID</span>
+          <span class="q-booking-key">&#129534; Booking ID</span>
           <span class="q-booking-val" style="font-family:monospace;font-size:13px;">${escHtml(bk?.booking_id || "")}</span>
         </div>
       </div>
@@ -382,10 +444,35 @@ function renderBooked() {
 function bindEvents() {
   document.getElementById("backBtn")?.addEventListener("click", back);
 
-  // Service tiles
+  // Segment cards — single click advances immediately
+  document.querySelectorAll(".q-seg-card").forEach(btn => {
+    btn.addEventListener("click", () => {
+      S.segment  = btn.dataset.seg;
+      S.category = null;
+      S.typeId   = null;
+      S.answers  = {};
+      S.addons   = [];
+      go("category");
+    });
+  });
+
+  // Category cards — single click advances to service
+  document.querySelectorAll(".q-cat-card").forEach(btn => {
+    btn.addEventListener("click", () => {
+      S.category = btn.dataset.cat;
+      S.typeId   = null;
+      S.answers  = {};
+      S.addons   = [];
+      go("service");
+    });
+  });
+
+  // Service tiles — select then Continue
   document.querySelectorAll(".q-tile").forEach(btn => {
     btn.addEventListener("click", () => {
       S.typeId = btn.dataset.type;
+      S.answers = {};
+      S.addons  = [];
       document.querySelectorAll(".q-tile").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       document.getElementById("nextService")?.removeAttribute("disabled");
@@ -394,8 +481,8 @@ function bindEvents() {
 
   document.getElementById("nextService")?.addEventListener("click", () => {
     if (!S.typeId) return;
-    const hasQs    = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
-    const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length || 0) > 0;
+    const hasQs     = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
+    const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length   || 0) > 0;
     if (hasQs || hasAddons) go("questions");
     else calcPrice();
   });
@@ -443,10 +530,8 @@ function bindEvents() {
   document.getElementById("photoFile")?.addEventListener("change", onPhotoSelected);
   document.getElementById("uploadPhotoBtn")?.addEventListener("click", uploadPhoto);
 
-  // Choose a time button (confirmed step)
-  document.getElementById("scheduleBtn")?.addEventListener("click", () => {
-    loadSlots();
-  });
+  // Schedule button
+  document.getElementById("scheduleBtn")?.addEventListener("click", loadSlots);
 
   // Slot picker
   document.querySelectorAll(".q-slot").forEach(btn => {
@@ -464,7 +549,7 @@ function bindEvents() {
 // ── API Calls ──────────────────────────────────────────────────────────────────
 async function calcPrice() {
   go("price");
-  setContent(loadingHTML("Calculating your price\u2026"));
+  document.getElementById("stepContent").innerHTML = loadingHTML("Calculating your price\u2026");
 
   try {
     if (!S.quoteId) {
@@ -486,7 +571,7 @@ async function calcPrice() {
     go("price");
   } catch (e) {
     S.step = "price";
-    setContent(errHTML("Could not calculate price: " + e.message));
+    document.getElementById("stepContent").innerHTML = errHTML("Could not calculate price: " + e.message);
   }
 }
 
@@ -529,10 +614,10 @@ async function submitLock() {
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
   hide();
 
-  if (!name)                    return show("Name is required.");
-  if (!phone)                   return show("Phone is required.");
-  if (!address)                 return show("Address is required.");
-  if (!/^\d{5}$/.test(zip))     return show("Please enter a valid 5-digit ZIP code.");
+  if (!name)                return show("Name is required.");
+  if (!phone)               return show("Phone is required.");
+  if (!address)             return show("Address is required.");
+  if (!/^\d{5}$/.test(zip)) return show("Please enter a valid 5-digit ZIP code.");
 
   const btn = document.getElementById("submitLockBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Locking\u2026"; }
@@ -541,142 +626,147 @@ async function submitLock() {
     const r = await fetch("/api/quote/lock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons,
-        customer_name: name, phone, email, address, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, name, phone, email, address, zip }),
     });
-    S.lock = await r.json();
-    if (!S.lock.ok && S.lock.error) throw new Error(S.lock.error);
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || "Lock failed.");
+    S.lock = data;
     go("confirmed");
   } catch (e) {
-    show("Could not lock price: " + e.message);
+    show(e.message);
     if (btn) { btn.disabled = false; btn.textContent = "Confirm My Price \u2192"; }
   }
 }
 
-async function loadSlots() {
-  go("schedule");
-  setContent(loadingHTML("Finding available times\u2026"));
-
-  try {
-    const r = await fetch(`/api/schedule/slots?quote_id=${encodeURIComponent(S.quoteId)}`);
-    S.slotsData = await r.json();
-    if (!S.slotsData.ok && S.slotsData.error) throw new Error(S.slotsData.error);
-    S.selectedSlot = null;
-    go("schedule");
-  } catch (e) {
-    S.step = "schedule";
-    setContent(errHTML("Could not load available times: " + e.message));
-  }
-}
-
-async function submitBooking() {
-  if (!S.selectedSlot) return;
-
-  const errEl = document.getElementById("slotErr");
-  const btn   = document.getElementById("bookBtn");
-
-  if (errEl) errEl.style.display = "none";
-  if (btn)   { btn.disabled = true; btn.textContent = "Booking\u2026"; }
-
-  try {
-    const r = await fetch("/api/schedule/book", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, scheduled_datetime: S.selectedSlot }),
-    });
-    S.booking = await r.json();
-    if (!S.booking.ok && S.booking.error) throw new Error(S.booking.error);
-    go("booked");
-  } catch (e) {
-    if (errEl) { errEl.textContent = e.message; errEl.style.display = "block"; }
-    if (btn)   { btn.disabled = false; btn.textContent = "Book This Time \u2192"; }
-  }
-}
-
-// ── Photo Upload ──────────────────────────────────────────────────────────────
+// ── Photo upload ──────────────────────────────────────────────────────────────
 function onPhotoSelected(e) {
-  const file = e.target.files?.[0];
+  const file = e.target.files[0];
   if (!file) return;
-  const preview = document.getElementById("photoPreview");
-  const btn     = document.getElementById("uploadPhotoBtn");
-  if (preview) {
+  const preview  = document.getElementById("photoPreview");
+  const uploadBtn = document.getElementById("uploadPhotoBtn");
+  const reader   = new FileReader();
+  reader.onload  = ev => {
+    preview.innerHTML = `<img src="${ev.target.result}" alt="Preview"
+      style="max-width:100%;max-height:200px;border-radius:10px;margin-top:8px;">`;
     preview.style.display = "block";
-    const reader = new FileReader();
-    reader.onload = ev => {
-      preview.innerHTML = `<img src="${ev.target.result}" alt="Panel photo preview" style="max-width:100%;max-height:200px;border-radius:8px;">`;
-    };
-    reader.readAsDataURL(file);
-  }
-  if (btn) btn.style.display = "block";
-}
-
-async function uploadPhoto() {
-  const fileInput = document.getElementById("photoFile");
-  const statusEl  = document.getElementById("photoStatus");
-  const btn       = document.getElementById("uploadPhotoBtn");
-  const afterEl   = document.getElementById("afterPhotoSchedule");
-  const file      = fileInput?.files?.[0];
-  if (!file) return;
-
-  if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
-  if (statusEl) statusEl.textContent = "";
-
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    try {
-      const base64 = ev.target.result.split(",")[1];
-      const r = await fetch("/api/quote/photo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: S.quoteId, base64, mime_type: file.type, filename: file.name }),
-      });
-      const data = await r.json();
-      if (data.ok) {
-        S.photoUploaded = true;
-        if (statusEl) statusEl.innerHTML = "\u2705 Photo received!";
-        if (btn) btn.style.display = "none";
-        if (afterEl) afterEl.style.display = "block";
-        // Bind the newly shown schedule button
-        document.getElementById("scheduleBtn")?.addEventListener("click", loadSlots);
-      } else {
-        throw new Error(data.error || "Upload failed");
-      }
-    } catch (err) {
-      if (statusEl) statusEl.textContent = "Upload failed: " + err.message;
-      if (btn) { btn.disabled = false; btn.textContent = "Upload Photo"; }
-    }
-  };
-  reader.onerror = () => {
-    if (statusEl) statusEl.textContent = "Could not read file.";
-    if (btn) { btn.disabled = false; btn.textContent = "Upload Photo"; }
+    if (uploadBtn) uploadBtn.style.display = "block";
   };
   reader.readAsDataURL(file);
 }
 
-// ── Slot Formatting ────────────────────────────────────────────────────────────
-function formatSlotDate(iso, timezone) {
+async function uploadPhoto() {
+  const file    = document.getElementById("photoFile")?.files[0];
+  const statusEl = document.getElementById("photoStatus");
+  const btn     = document.getElementById("uploadPhotoBtn");
+  if (!file || !statusEl) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
+  statusEl.textContent = "Uploading\u2026";
+
+  try {
+    const base64 = await fileToBase64(file);
+    const r = await fetch("/api/quote/photo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quote_id: S.quoteId, filename: file.name, data: base64 }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Upload failed.");
+    S.photoUploaded = true;
+    statusEl.textContent = "\u2705 Photo uploaded!";
+    document.getElementById("afterPhotoSchedule").style.display = "block";
+    if (btn) btn.style.display = "none";
+  } catch (e) {
+    statusEl.textContent = "\u274C Upload failed: " + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = "Upload Photo"; }
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── Scheduling ────────────────────────────────────────────────────────────────
+async function loadSlots() {
+  go("schedule");
+  document.getElementById("stepContent").innerHTML = loadingHTML("Finding available times\u2026");
+
+  try {
+    const r = await fetch(`/api/schedule/slots?quote_id=${encodeURIComponent(S.quoteId)}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Could not load slots.");
+    S.slotsData = d;
+    go("schedule");
+  } catch (e) {
+    document.getElementById("stepContent").innerHTML = errHTML("Could not load availability: " + e.message);
+  }
+}
+
+async function submitBooking() {
+  const errEl = document.getElementById("slotErr");
+  if (!S.selectedSlot) return;
+
+  const btn = document.getElementById("bookBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Booking\u2026"; }
+  if (errEl) errEl.style.display = "none";
+
+  try {
+    const lockData = S.lock || S.pricing;
+    const r = await fetch("/api/schedule/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_id: S.quoteId,
+        scheduled_datetime: S.selectedSlot,
+        address: lockData?.address || "",
+        customer_name: lockData?.customer_name || "",
+        final_price: lockData?.final_price,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Booking failed.");
+    S.booking = d;
+    go("booked");
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message; errEl.style.display = "block"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Book This Time \u2192"; }
+  }
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function formatSlotDate(iso, tz) {
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "long", month: "long", day: "numeric",
+    timeZone: tz, weekday: "short", month: "short", day: "numeric",
   }).format(new Date(iso));
 }
 
-function formatSlotTime(iso, timezone) {
+function formatSlotTime(iso, tz) {
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone, hour: "numeric", minute: "2-digit", hour12: true,
+    timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true,
   }).format(new Date(iso));
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-function val(id)    { return document.getElementById(id)?.value?.trim() || ""; }
-function setContent(html) { document.getElementById("stepContent").innerHTML = html; }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function val(id) { return (document.getElementById(id)?.value || "").trim(); }
+
 function loadingHTML(msg) {
   return `<div class="q-loading"><div class="q-spinner"></div><p class="q-muted" style="margin-top:16px;">${msg}</p></div>`;
 }
-function errHTML(msg) { return `<div class="q-error-box">\u26A0\uFE0F ${escHtml(msg)}</div>`; }
-function escHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+function errHTML(msg) {
+  return `<div class="q-error-box" style="margin-top:24px;">${escHtml(msg)}</div>`;
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", boot);

@@ -1,0 +1,110 @@
+We are improving the /quote UI funnel structure.
+
+DO NOT:
+- Modify pricing logic.
+- Modify quote engine math.
+- Modify sheet calculation structure.
+- Modify other calculators.
+- Modify CRM.
+
+We are ONLY restructuring the customer UI flow.
+
+====================================
+STEP 1 — Extend JobTypes Schema
+====================================
+
+Add two columns to JobTypes sheet (if not present):
+
+segment
+category
+
+Update sheet header safely (append columns if missing).
+
+Do NOT remove existing columns.
+
+====================================
+STEP 2 — Update /api/quote/config
+====================================
+
+Ensure jobTypes returned include:
+
+{
+  job_type_id,
+  name_public,
+  segment,
+  category,
+  base_hours,
+  ...
+}
+
+No change to pricing logic.
+
+====================================
+STEP 3 — Update /quote Frontend Flow
+====================================
+
+Replace flat service selection with progressive funnel:
+
+Stage 1 — Segment Selection
+Show two large cards:
+- Residential
+- Commercial
+
+When selected:
+Store selectedSegment.
+
+Stage 2 — Category Selection
+From config.jobTypes:
+Filter where segment == selectedSegment.
+Extract unique categories.
+Render category cards.
+
+Stage 3 — Service Selection
+Filter jobTypes where:
+segment == selectedSegment
+AND category == selectedCategory.
+
+Display service tiles.
+
+Stage 4 — Details
+Render questions + add-ons (unchanged logic).
+
+Stage 5 — Price
+Call existing:
+- /api/quote/start
+- /api/quote/calc
+
+Display price + disclaimer.
+
+Stage 6 — Lock & Schedule
+Call existing /api/quote/lock
+Scheduling unchanged.
+
+====================================
+UI REQUIREMENTS
+====================================
+
+- Keep existing dark theme (brand.css).
+- Use smooth transitions between steps.
+- Show breadcrumb progress:
+  Segment > Category > Service > Details > Price
+- Add “Back” button at each stage.
+- No page reloads.
+- State stored in JS object.
+
+====================================
+IMPORTANT
+====================================
+
+Do NOT change:
+- QuoteSnapshots logic
+- Travel logic
+- Margin math
+- Minimum enforcement
+- Scheduling rules
+
+This is purely UI restructuring.
+
+After implementation:
+- /api/quote/config should still return same pricing structure.
+- /quote should now start with Residential / Commercial selection.
