@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { handleQuoteApi } = require("./api/quote");
+const { handleQuoteConfig } = require("./api/quote-config");
 const { handleCreateLead, handleGetLeads } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
@@ -152,6 +153,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/quotes/create" && req.method === "POST") {
     return handleCreateQuote(req, res);
+  }
+
+  if (req.url === "/api/quote/config" && req.method === "GET") {
+    return handleQuoteConfig(req, res);
   }
 
   if (req.url.startsWith("/api/quote") && req.method === "GET") {

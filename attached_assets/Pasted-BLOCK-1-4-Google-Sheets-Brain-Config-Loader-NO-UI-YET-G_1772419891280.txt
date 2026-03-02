@@ -1,0 +1,65 @@
+BLOCK 1/4 — Google Sheets “Brain” + Config Loader (NO UI YET)
+
+Goal: Set up a clean Google Sheets schema (create tabs + headers if missing), then build a small server-side config loader with caching. Do NOT build the quote page UI yet.
+
+Constraints (credit conscious):
+	•	Minimal edits, no refactors, no new frameworks.
+	•	Reuse existing googleapis setup in this repo (whatever is already used to read/write Sheets).
+	•	Keep CRM routes/auth untouched.
+	•	Create only a few new files, keep them small.
+
+Work to do:
+	1.	Environment config
+
+	•	Ensure there is a single place to read:
+	•	SPREADSHEET_ID
+	•	Google credentials (support either GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY)
+	•	Fail fast with a helpful error if missing.
+
+	2.	Ensure these sheet tabs exist (create if missing, do not overwrite if present):
+Create tabs with exact headers:
+
+JobTypes
+	•	job_type_id, name_public, base_hours, min_price, default_duration_minutes, requires_photo, instant_book_allowed, material_allowance, active
+
+Questions
+	•	question_id, job_type_id, prompt, input_type, required, sort_order
+
+AnswerOptions
+	•	option_id, question_id, label, effect_type, effect_value
+
+Allowed effect_type: ADD_HOURS, ADD_FEE, MULTIPLY_HOURS, REQUIRE_PHOTO, FLAG_EVALUATION
+
+AddOns
+	•	addon_id, job_type_id, name_public, add_hours, add_fee, material_allowance, active
+
+Rates (single row)
+	•	crew_loaded_hourly, overhead_per_hour, target_margin, service_minimum, commute_assumed_minutes, default_disclaimer_fee, pricing_version
+
+ServiceAreas
+	•	zip, zone, travel_fee
+
+QuoteSnapshots (append-only event log)
+	•	event_id, quote_id, created_at, event_type, job_type_id, selected_options_json, selected_addons_json, total_hours, labor_cost, overhead_cost, material_allowance, travel_fee, final_price, address_provided, pricing_version, status, customer_name, phone, email, address, notes
+
+Bookings
+	•	booking_id, quote_id, created_at, scheduled_datetime, duration_minutes, address, customer_name, status
+
+(ClosedJobs can be added later; skip for now.)
+	3.	Add server-side “config loader”
+Create something like lib/sheetsClient.js and lib/sheetsConfig.js:
+
+	•	Reads the above tabs into JSON.
+	•	Caches in memory for ~5 minutes.
+	•	Provide a function getConfig() returning:
+	•	jobTypes, questions (grouped by job_type_id), answerOptions (grouped by question_id), addOns (grouped by job_type_id), rates (single object), serviceAreas map.
+
+	4.	Add a minimal endpoint
+
+	•	GET /api/quote/config returns sanitized config needed by the quote UI (no secrets). Use cached config.
+
+Acceptance checks:
+	•	Server starts with spreadsheet configured.
+	•	Missing tabs are created once with headers.
+	•	GET /api/quote/config returns config JSON quickly (cached).
+	•	CRM still works exactly as-is.
