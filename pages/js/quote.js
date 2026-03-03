@@ -171,7 +171,7 @@ function renderCategories() {
     <div class="q-center">
       <div class="q-icon">&#128295;</div>
       <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:8px;">Coming Soon</h2>
-      <p class="q-muted">Commercial services are being added. Call us for a custom quote at
+      <p class="q-muted">${escHtml(S.segment)} services are being added. Call us for a custom quote at
         <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>.</p>
     </div>
     <div class="q-nav-row">
