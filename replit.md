@@ -50,6 +50,29 @@ pages/
 - **Public pages** (quote, login): Traditional header + nav layout.
 - **Default landing**: `/clients` (authenticated) or `/login` (unauthenticated).
 
+## Instant Estimator Engine
+
+| Secret | Effect |
+|---|---|
+| `ESTIMATOR_V2_SHEET_ID` set | V2 engine active — reads Assemblies, AssemblyItems, Tasks_Labor, Materials, Scenario_Drivers, Driver_Multipliers, Rates_Rules, Config from new sheet |
+| `ESTIMATOR_V2_SHEET_ID` absent | V1 engine (CRM_SHEET_ID JobTypes/Rates/etc.) — automatic fallback |
+
+Startup log prints `Estimator Mode: v2` or `v1`.
+
+### V2 Pricing Flow
+Assembly → labor_hours × qty → apply driver multipliers → add drive_hours → crew rate → material cost (AssemblyItems) + waste + markup → overhead % → risk multiplier → base_fee → true cost → 30% margin → minimums → travel fee (ServiceAreas from CRM) → round to $5
+
+### V2 Config Shape (lib/estimatorV2Config.js)
+Returns identical shape to `getQuoteConfig()`:
+- `jobTypes[]`, `questionsByType{}`, `optionsByQuestion{}`, `addonsByType{}`, `rates{}`, `serviceAreas{}`
+- Also returns `_v2` (internal data stripped from public `/api/quote/config` response)
+
+### Qty Bug Fix
+Server now handles qty fully for both V1 and V2:
+- Frontend passes `qty` to `/api/quote/calc` and `/api/quote/lock`
+- Server returns `final_price` inclusive of qty; frontend uses it directly
+- No client-side price multiplication
+
 ## Key Features
 - **Quote Snapshots**: POST /api/quotes/create runs pricing, builds auditable JSON snapshot, upserts lead, appends to Quotes tab
 - **Deposit Gate**: Prevents scheduling large jobs (deposit_required=true) without deposit received or explicit override

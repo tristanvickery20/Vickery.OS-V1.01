@@ -9,13 +9,11 @@ const S = {
   config: null,
   quoteId: null,
   typeId: null,             // selected job_type_id
-  qty: 1,                   // quantity for selected service
+  qty: 1,                   // quantity — sent to server, server returns final_price inclusive
   answers: {},
   addons: [],
-  pricing: null,            // server calc response
-  displayPrice: null,       // pricing.final_price × qty
-  lock: null,               // server lock response
-  lockedDisplayPrice: null, // (base × qty) + travel_fee
+  pricing: null,            // server calc response (final_price already qty-adjusted)
+  lock: null,               // server lock response (final_price already qty-adjusted)
   photoUploaded: false,
   slotsData: null,
   selectedSlot: null,
@@ -323,7 +321,7 @@ function renderQuestion(q) {
 
 // ── Step 5: Review — price + slot picker (no lead info) ───────────────────────
 function renderReview() {
-  const price   = S.displayPrice;
+  const price   = S.pricing?.final_price ?? null;
   const bnpl    = price && price >= 200 ? Math.ceil(price / 12) : null;
   const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
   const label   = jobType?.name_public || "";
@@ -378,7 +376,7 @@ function renderReview() {
 
 // ── Step 6: Confirm — lead form ────────────────────────────────────────────────
 function renderConfirm() {
-  const price  = S.displayPrice;
+  const price  = S.lock?.final_price ?? S.pricing?.final_price ?? null;
   const tz     = S.slotsData?.timezone || "America/Chicago";
   const slotDt = S.selectedSlot ? new Date(S.selectedSlot) : null;
   const slotDate = slotDt
@@ -483,7 +481,7 @@ function renderBooked() {
   const timeStr = dt
     ? new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(dt)
     : "";
-  const displayPrice = S.lockedDisplayPrice ?? bk?.final_price;
+  const displayPrice = S.lock?.final_price ?? bk?.final_price;
 
   return `
     <div class="q-booked">
@@ -654,11 +652,10 @@ async function calcPrice() {
     }
     const cr = await fetch("/api/quote/calc", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, qty: S.qty }),
     });
     S.pricing = await cr.json();
     if (!S.pricing.ok && S.pricing.error) throw new Error(S.pricing.error);
-    S.displayPrice = S.pricing.final_price != null ? S.pricing.final_price * S.qty : null;
     S.selectedSlot = null;
     go("review");
   } catch (e) {
@@ -744,13 +741,11 @@ async function reprice(zip) {
     if (data.final_price != null) {
       noteEl.style.display   = "none";
       updateEl.style.display = "block";
-      const baseUnit = data.final_price - (data.travel_fee || 0);
-      const adjTotal = baseUnit * S.qty + (data.travel_fee || 0);
-      const delta    = data.travel_fee > 0
+      const delta = data.travel_fee > 0
         ? ` (includes $${data.travel_fee} travel fee)`
         : " (no travel fee for this area)";
-      updateEl.innerHTML = `Updated price: <strong>$${Number(adjTotal).toLocaleString()}</strong>${escHtml(delta)}`;
-      S.lock = { ...data, lockedDisplayPrice: adjTotal };
+      updateEl.innerHTML = `Updated price: <strong>$${Number(data.final_price).toLocaleString()}</strong>${escHtml(delta)}`;
+      S.lock = data;
     }
   } catch {
     noteEl.textContent = "Could not look up travel fee for this ZIP.";
@@ -780,13 +775,11 @@ async function submitLock() {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, name, phone, email, address, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, qty: S.qty, customer_name: name, name, phone, email, address, zip }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
-    const baseUnit          = data.final_price - (data.travel_fee || 0);
-    S.lockedDisplayPrice    = baseUnit * S.qty + (data.travel_fee || 0);
-    S.lock                  = { ...data, lockedDisplayPrice: S.lockedDisplayPrice };
+    S.lock = data;
     if (data.photo_required && !S.photoUploaded) go("photo");
     else await submitBooking();
   } catch (e) {
@@ -851,8 +844,7 @@ function fileToBase64(file) {
 // ── Submit Booking ────────────────────────────────────────────────────────────
 async function submitBooking() {
   try {
-    const lockData     = S.lock || S.pricing;
-    const displayPrice = S.lockedDisplayPrice ?? lockData?.final_price;
+    const lockData = S.lock || S.pricing;
     const r = await fetch("/api/schedule/book", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -860,7 +852,7 @@ async function submitBooking() {
         scheduled_datetime: S.selectedSlot,
         address:            lockData?.address || "",
         customer_name:      lockData?.customer_name || "",
-        final_price:        displayPrice,
+        final_price:        lockData?.final_price,
       }),
     });
     const d = await r.json();

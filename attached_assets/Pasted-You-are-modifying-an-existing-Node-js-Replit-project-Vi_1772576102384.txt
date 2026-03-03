@@ -1,0 +1,279 @@
+You are modifying an existing Node.js Replit project (Vickery OS).
+
+DO NOT refactor or touch CRM functionality except where necessary for the public instant quote flow.
+
+We are migrating the estimator from the old CRM sheet structure to a new Google Sheet called "Instant Estimator v2".
+
+IMPORTANT CONTEXT:
+
+Existing secrets (already configured, do not rename):
+- CRM_SHEET_ID
+- GOOGLE_SERVICE_ACCOUNT_JSON
+- APPS_SCRIPT_URL
+- SESSION_SECRET
+- CRM_PIN
+
+We are adding ONE new secret:
+- ESTIMATOR_V2_SHEET_ID
+
+If ESTIMATOR_V2_SHEET_ID is missing, system must fall back to existing estimator logic.
+
+-----------------------------------
+GOAL
+-----------------------------------
+
+Migrate the PUBLIC instant quote engine to use Instant Estimator v2 sheet.
+
+Keep:
+- /api/quote/config
+- /api/quote/start
+- /api/quote/calc
+- /api/quote/lock
+- /api/schedule/slots
+- /api/schedule/book
+
+Keep the same frontend UI.
+Keep the same JSON response shape.
+
+Do NOT change CRM schema.
+Do NOT change QuoteSnapshots column structure.
+Do NOT remove old estimator logic.
+
+-----------------------------------
+INSTANT ESTIMATOR V2 STRUCTURE
+-----------------------------------
+
+Sheet ID: ESTIMATOR_V2_SHEET_ID
+
+Tabs:
+- Assemblies
+- AssemblyItems
+- Tasks_Labor
+- Materials
+- Scenario_Drivers
+- Driver_Multipliers
+- Rates_Rules
+- Config
+
+Assemblies contains:
+assembly_id
+serviceType
+category
+niche_name
+quote_class
+blended_labor_hours
+baseline_labor_hours
+dynamic_risk_multiplier
+risk_class
+travel_zone
+drive_time_hours
+base_fee
+
+AssemblyItems:
+assembly_id
+item_type (material|task)
+item_ref_id
+qty_per_unit
+task_ext_hours
+
+Tasks_Labor:
+task_id
+hours_per_unit
+
+Materials:
+material_id
+base_cost
+taxable
+
+Rates_Rules:
+key/value pairs including:
+journeymanLaborBurden
+apprenticeLaborBurden
+overheadRate
+materialsMarkup
+salesTaxRate
+minimumServiceFee
+riskLow
+riskMedium
+riskHigh
+driveTimeLocal
+driveTimeMid
+driveTimeFar
+
+Config:
+key/value pairs including:
+materialWastePct
+minQuoteTotal
+defaultLaborMix
+refreshIntervalHrs
+
+-----------------------------------
+IMPLEMENTATION PLAN
+-----------------------------------
+
+1) CREATE NEW MODULE: lib/estimatorV2Config.js
+
+Responsibilities:
+- Load all estimator tabs from ESTIMATOR_V2_SHEET_ID
+- Cache for Config.refreshIntervalHrs (default 12 hours)
+- Convert Assemblies into the SAME shape currently returned by /api/quote/config:
+
+Return:
+{
+  jobTypes: [...],
+  questionsByType: {...},
+  optionsByQuestion: {...},
+  addonsByType: {},
+  rates: {...},
+  serviceAreas: (still loaded from CRM_SHEET_ID)
+}
+
+Mapping:
+
+job_type_id = assembly_id
+name_public = niche_name
+segment = serviceType
+category = category
+base_hours = blended_labor_hours (fallback baseline)
+min_price = minimumServiceFee
+instant_book_allowed = (quote_class === "INSTANT")
+default_duration_minutes = ceil(base_hours*60/30)*30 (min 60)
+
+Scenario_Drivers apply to all services.
+Driver_Multipliers map into optionsByQuestion.
+
+-----------------------------------
+
+2) CREATE NEW MODULE: lib/quoteEngineV2.js
+
+Function:
+calculateQuoteV2({
+  assembly,
+  qty,
+  selectedDriverOptions,
+  rates,
+  serviceAreas,
+  zip
+})
+
+Pricing logic:
+
+labor_unit = blended_labor_hours || baseline
+labor_hours = labor_unit * qty
+
+Apply driver labor multipliers.
+
+drive_hours:
+- use assembly.drive_time_hours
+- else derive from travel_zone and Rates_Rules
+- else fallback 0.25
+
+crew rate:
+parse Config.defaultLaborMix (e.g. 1JW+1AP)
+crew_loaded_hourly =
+jw*journeymanLaborBurden +
+ap*apprenticeLaborBurden
+
+labor_cost = total_hours * crew_loaded_hourly
+
+materials:
+sum AssemblyItems where item_type=material:
+qty_per_unit * qty * Materials.base_cost
+
+Apply material multiplier.
+Apply waste (materialWastePct).
+Apply materialsMarkup.
+
+overhead_cost =
+(labor_cost + material_sell) * (overheadRate/100)
+
+risk:
+risk_class multiplier from Rates_Rules
+dynamic multiplier from Assemblies
+risk_multiplier = class * dynamic
+
+risk_cost_add =
+(labor_cost + material_sell) * (risk_multiplier - 1)
+
+true_cost =
+labor_cost +
+material_sell +
+overhead_cost +
+risk_cost_add +
+base_fee
+
+target_margin default 30%
+
+sell =
+true_cost / (1 - target_margin)
+
+sell =
+max(sell, minimumServiceFee, minQuoteTotal)
+
+Add travel_fee from CRM ServiceAreas if ZIP present.
+
+Round final price to nearest $5.
+
+Return EXACT same JSON keys as current engine:
+{
+  final_price,
+  hours,
+  labor_cost,
+  overhead_cost,
+  material_allowance,
+  fees,
+  travel_fee,
+  address_provided,
+  photo_required,
+  evaluation_flag,
+  pricing_version: "v2"
+}
+
+-----------------------------------
+
+3) FIX QTY BUG (CRITICAL)
+
+Currently frontend multiplies price locally.
+Server must handle qty fully.
+
+Changes:
+
+- /api/quote/calc must accept qty
+- /api/quote/lock must accept qty
+- Store qty inside selected_options_json:
+  JSON.stringify({ answers, qty })
+
+- Frontend must stop multiplying price client-side.
+  Always use pricing.final_price from server.
+
+-----------------------------------
+
+4) SCHEDULING UPDATE
+
+When booking:
+If snapshot exists:
+duration_minutes =
+ceil(total_hours*60/30)*30 (min 60)
+
+Do not depend on old JobTypes tab for duration.
+
+-----------------------------------
+
+5) FALLBACK SAFETY
+
+If ESTIMATOR_V2_SHEET_ID missing:
+Use old estimator logic.
+
+Log at startup:
+"Estimator Mode: v2" or "Estimator Mode: v1"
+
+-----------------------------------
+
+DELIVERABLES
+
+After changes:
+- List all new files created
+- List modified files
+- Confirm CRM endpoints unchanged
+- Confirm QuoteSnapshots schema unchanged
+- Confirm zero breaking changes to CRM dashboard

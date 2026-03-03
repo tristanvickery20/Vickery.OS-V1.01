@@ -374,9 +374,11 @@ const server = http.createServer(async (req, res) => {
 const { ensureAllHeaders } = require("./lib/sheetsSchema");
 const { ensureConfigDefaults } = require("./lib/config");
 const { seedQuoteSheetIfEmpty, backfillSegmentCategory, logQuoteHealth } = require("./lib/quoteSeedInit");
+const { isV2Mode } = require("./lib/estimatorV2Config");
 
 server.listen(5000, "0.0.0.0", () => {
   console.log("Server running on port 5000");
+  console.log(`Estimator Mode: ${isV2Mode() ? "v2" : "v1"}`);
   ensureAllHeaders()
     .then(() => ensureConfigDefaults())
     .then(() => seedQuoteSheetIfEmpty())

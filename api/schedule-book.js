@@ -32,6 +32,35 @@ function newId(prefix) {
   return `${prefix}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
+// Derive appointment duration from a locked snapshot.
+// V2: use total_hours stored in snapshot.
+// V1: look up JobTypes tab for default_duration_minutes.
+async function resolveDuration(sheets, snapshot) {
+  const DEFAULT = 90;
+
+  // V2: snapshot has total_hours — compute duration from it
+  if (String(snapshot.pricing_version || "").startsWith("v2")) {
+    const hrs = Number(snapshot.total_hours);
+    if (hrs > 0) {
+      return Math.max(60, Math.ceil((hrs * 60) / 30) * 30);
+    }
+    return DEFAULT;
+  }
+
+  // V1: look up JobTypes tab
+  try {
+    const jobTypeRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID(),
+      range: "JobTypes!A:Z",
+    });
+    const jobTypes = rowsToObjects(jobTypeRes.data.values || []);
+    const jt       = jobTypes.find(r => r.job_type_id === snapshot.job_type_id);
+    if (jt?.default_duration_minutes) return Number(jt.default_duration_minutes) || DEFAULT;
+  } catch { /* fall through */ }
+
+  return DEFAULT;
+}
+
 async function handleBook(req, res) {
   try {
     const body = await parseBody(req);
@@ -48,7 +77,6 @@ async function handleBook(req, res) {
     const sheets = await getSheetsClient();
     const id     = SPREADSHEET_ID();
 
-    // Load everything needed
     const [rulesRes, bookingsRes, snapshotsRes] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:J3" }),
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:H" }),
@@ -56,7 +84,7 @@ async function handleBook(req, res) {
     ]);
 
     // Parse rules
-    const rulesRows = rulesRes.data.values || [];
+    const rulesRows    = rulesRes.data.values || [];
     const rulesHeaders = rulesRows[0] || [];
     const rulesData    = rulesRows[1] || [];
     const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
@@ -68,23 +96,16 @@ async function handleBook(req, res) {
       return json(res, 400, { ok: false, error: "No locked quote found. Lock your price first." });
     }
 
-    // Load bookings and validate slot still available
-    const bookings    = rowsToObjects(bookingsRes.data.values || []);
-    let duration      = 90;
+    // Determine appointment duration
+    const duration = await resolveDuration(sheets, snapshot);
 
-    try {
-      const jobTypeRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "JobTypes!A:Z" });
-      const jobTypes   = rowsToObjects(jobTypeRes.data.values || []);
-      const jt         = jobTypes.find(r => r.job_type_id === snapshot.job_type_id);
-      if (jt?.default_duration_minutes) duration = Number(jt.default_duration_minutes) || 90;
-    } catch { /* use default */ }
-
+    // Validate slot still available
+    const bookings       = rowsToObjects(bookingsRes.data.values || []);
     const availableSlots = generateSlots(rules, bookings, duration, new Date());
     const slotIso        = slotDate.toISOString();
-    const isAvailable    = availableSlots.some(s => {
-      // Allow ±60 seconds tolerance for rounding
-      return Math.abs(new Date(s).getTime() - slotDate.getTime()) < 60000;
-    });
+    const isAvailable    = availableSlots.some(
+      s => Math.abs(new Date(s).getTime() - slotDate.getTime()) < 60000
+    );
 
     if (!isAvailable) {
       return json(res, 409, { ok: false, error: "That time slot is no longer available. Please choose another." });
@@ -101,7 +122,7 @@ async function handleBook(req, res) {
       now,
       slotIso,
       duration,
-      snapshot.address || "",
+      snapshot.address       || "",
       snapshot.customer_name || "",
       "confirmed",
     ];
@@ -116,17 +137,17 @@ async function handleBook(req, res) {
     // Write to QuoteSnapshots
     const snapRow = [
       eventId, quote_id, now, "booked",
-      snapshot.job_type_id || "",
-      snapshot.selected_options_json || "[]",
-      snapshot.selected_addons_json  || "[]",
+      snapshot.job_type_id            || "",
+      snapshot.selected_options_json  || "[]",
+      snapshot.selected_addons_json   || "[]",
       "", "", "", "", "",
-      snapshot.final_price || "",
-      "", snapshot.pricing_version || "1",
+      snapshot.final_price            || "",
+      "", snapshot.pricing_version    || "1",
       "booked",
-      snapshot.customer_name || "",
-      snapshot.phone || "",
-      snapshot.email || "",
-      snapshot.address || "",
+      snapshot.customer_name          || "",
+      snapshot.phone                  || "",
+      snapshot.email                  || "",
+      snapshot.address                || "",
       bookingId,
     ];
     await sheets.spreadsheets.values.append({
@@ -138,7 +159,7 @@ async function handleBook(req, res) {
     });
 
     json(res, 200, {
-      ok: true,
+      ok:                 true,
       booking_id:         bookingId,
       scheduled_datetime: slotIso,
       duration_minutes:   duration,
