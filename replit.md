@@ -35,7 +35,8 @@ pages/
   crm-time.html       # Time tracking (protected)
   crm-expenses.html   # Expense tracking (protected)
   crm-audit.html      # Audit log viewer (protected)
-  quote.html          # Instant quote calculator + Save as Lead (public)
+  quote.html          # Instant quote calculator (public, old white-card UI)
+  instant-estimate.html # Instant estimate wizard (dark-themed, full estimator flow)
   css/brand.css       # Shared brand stylesheet
   css/shell.css       # App shell layout (sidebar + main area)
   partials/sidebar.html # Sidebar HTML snippet (fetched client-side)
@@ -82,7 +83,8 @@ Server now handles qty fully for both V1 and V2:
 - **Time Tracking**: Log work/drive/admin minutes per tech per lead. GET/POST /api/time
 - **Expense Tracking**: Log gas/material/parts/other expenses. GET/POST /api/expenses
 - **Dashboard KPIs**: hours_this_week, expenses_this_week, gas_this_week (Mon-Sun UTC week)
-- **V3 Public Quote Flow** (Block 3-4): /quote — redesigned multi-step funnel: Type (Residential/Commercial) → Categories (multi-select with checkmark) → Service (single tile select + qty +/- input) → Details (questions/addons for selected service) → Review (price card + live slot picker pre-lock, no lead info yet) → Confirm (lead form + selected slot shown, ZIP triggers travel fee reprice) → [Photo gate if required] → Booked. GET /api/schedule/slots now accepts ?minutes=N for pre-lock browsing.
+- **V3 Public Quote Flow** (Block 3-4): /quote — multi-step funnel (old white-card UI preserved): Type → Categories → Service+Qty → Details (dynamic questions from 51-module estimator library, matched by service name fuzzy lookup) → Review (price + calendar slot picker) → Confirm (lead form + ZIP reprice) → [Photo gate] → Booked. Disqualifying module options navigate to a site-visit screen. Inline photo upload in questions step. GET /api/schedule/slots now accepts ?minutes=N for pre-lock browsing.
+- **Module Enrichment**: pages/js/quote.js boot() fetches /api/estimator/config alongside /api/quote/config and uses fuzzy name-matching (word overlap + partial-word credit, ≥52% threshold) to replace static questionsByType with per-service module questions from the estimator sheet. 25/54 job types matched and enriched.
 - **Quote Engine** (Block 1-2): /api/quote/config, /api/quote/start, /api/quote/calc, /api/quote/lock — reads JobTypes/Questions/AnswerOptions/AddOns/Rates/ServiceAreas; writes QuoteSnapshots; photo_required flag support
 - **Photo Upload**: POST /api/quote/photo — accepts base64 JSON, saves to /uploads/, logs QuoteSnapshots event
 - **Calendly-style Scheduling** (Block 4): GET /api/schedule/slots — generates available booking slots respecting lead time, working hours, buffer, max bookings/day, existing conflicts. POST /api/schedule/book — validates slot, writes Bookings + QuoteSnapshots booked events

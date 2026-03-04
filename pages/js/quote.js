@@ -10,6 +10,8 @@ const S = {
   quoteId: null,
   selectedServices: [],     // [{job_type_id, qty}] — multi-select services
   answers: {},              // answers for primary service questions
+  uncertain: {},            // module_id → true for "not sure" answers
+  photos: {},               // module_id → File[]
   addons: [],
   pricing: null,            // {final_price, services:[]} — summed across all services
   lock: null,               // server lock response
@@ -29,11 +31,92 @@ let repricTimer = null;
 async function boot() {
   setContent(loadingHTML("Loading\u2026"));
   try {
-    const r  = await fetch("/api/quote/config");
-    S.config = await r.json();
+    const [r1, r2] = await Promise.all([
+      fetch("/api/quote/config"),
+      fetch("/api/estimator/config?_=" + Date.now()),
+    ]);
+    S.config = await r1.json();
+    const est = await r2.json();
+    enrichConfigWithModules(S.config, est);
     go("segment");
-  } catch {
-    setContent(errHTML("Could not load services. Please refresh."));
+  } catch (e) {
+    setContent(errHTML("Could not load services. Please refresh. (" + e.message + ")"));
+  }
+}
+
+// ── Enrich config: replace static questions with dynamic module-based questions ─
+
+// Normalize a service name for fuzzy matching
+function _normName(s) {
+  return (s || "")
+    .replace(/\(.*?\)/g, "")              // strip parentheticals "(for kitchens"
+    .replace(/[\/&–—\-]/g, " ")           // separators → space
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
+// Return a set of significant words from a name
+function _wordSet(s) {
+  const STOP = new Set(["for", "the", "and", "with", "etc", "e.g", "new", "all"]);
+  return new Set(_normName(s).split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)));
+}
+
+// 0–1 similarity between two names (word overlap + partial-word credit)
+function _nameSim(a, b) {
+  const na = _normName(a), nb = _normName(b);
+  if (na === nb) return 1;
+  const wa = _wordSet(a), wb = _wordSet(b);
+  if (!wa.size || !wb.size) return 0;
+  let score = 0;
+  for (const w of wa) {
+    if (wb.has(w)) { score += 1; continue; }
+    // partial: covers "subpanel"↔"sub panel", "ev"↔"electric vehicle", etc.
+    for (const bw of wb) {
+      if (bw.startsWith(w) || w.startsWith(bw)) { score += 0.6; break; }
+    }
+  }
+  return score / Math.max(wa.size, wb.size);
+}
+
+function enrichConfigWithModules(config, est) {
+  if (!est?.services || !est?.modules) return;
+  const modMap = est.modules;
+  config.questionsByType   = config.questionsByType   || {};
+  config.optionsByQuestion = config.optionsByQuestion || {};
+
+  for (const jt of (config.jobTypes || [])) {
+    // Find the best-matching estimator service
+    let best = null, bestSim = 0;
+    for (const svc of est.services) {
+      const sim = _nameSim(jt.name_public, svc.service_name);
+      if (sim > bestSim) { bestSim = sim; best = svc; }
+    }
+    if (!best || bestSim < 0.52 || !best.modules?.length) continue;
+
+    const questions = [];
+    for (const mid of best.modules) {
+      if (mid === "UNCERTAINTY_BUFFER") continue;
+      const m = modMap[mid];
+      if (!m) continue;
+      questions.push({
+        question_id: m.module_id,
+        prompt:      m.question,
+        input_type:  m.input_type,
+        required:    m.input_type !== "photo",
+      });
+      if (m.options?.length) {
+        config.optionsByQuestion[m.module_id] = m.options.map(o => ({
+          option_id:  o.value,
+          label:      o.label,
+          disqualify: !!o.disqualify,
+          uncertain:  !!o.uncertain,
+          multiplier: o.multiplier || 1.0,
+        }));
+      }
+    }
+    config.questionsByType[jt.job_type_id] = questions;
+    jt._tier = best.tier;
   }
 }
 
@@ -57,6 +140,7 @@ function back() {
     categories: "segment",
     services:   "categories",
     questions:  "services",
+    sitevisit:  "questions",
     confirm:    "review",
     photo:      "confirm",
   };
@@ -75,6 +159,7 @@ function renderStep() {
     case "categories": clone.innerHTML = renderCategories(); break;
     case "services":   clone.innerHTML = renderServices();   break;
     case "questions":  clone.innerHTML = renderQuestions();  break;
+    case "sitevisit":  clone.innerHTML = renderSiteVisit();  break;
     case "review":
       clone.innerHTML = renderReview();
       loadSlotsForReview();
@@ -94,7 +179,7 @@ function progressHTML() {
   const steps = ["Type", "Categories", "Services", "Review", "Done"];
   const idx   = {
     segment: 0, categories: 1,
-    services: 2, questions: 2,
+    services: 2, questions: 2, sitevisit: 2,
     review: 3,
     confirm: 4, photo: 4, booked: 4,
   };
@@ -309,14 +394,53 @@ function renderQuestions() {
 }
 
 function renderQuestion(q) {
-  const options = S.config?.optionsByQuestion?.[q.question_id] || [];
+  const options  = S.config?.optionsByQuestion?.[q.question_id] || [];
+  const itype    = q.input_type || "single_select";
+
+  if (itype === "photo") {
+    const photoList = S.photos[q.question_id] || [];
+    const label = photoList.length
+      ? `&#128247; ${photoList.length} photo${photoList.length !== 1 ? "s" : ""} added`
+      : "&#128247; Add Photos (Optional)";
+    return `
+      <div class="q-question" data-qid="${q.question_id}">
+        <div class="q-question-prompt">${escHtml(q.prompt)}</div>
+        <label class="q-file-label" style="margin-top:8px;">
+          ${label}
+          <input type="file" class="q-photo-inline" data-qid="${escHtml(q.question_id)}"
+            accept="image/*" multiple style="display:none;">
+        </label>
+        <p class="q-muted" style="font-size:12px;margin:6px 0 0;">
+          Optional &mdash; photos help confirm the estimate
+        </p>
+      </div>`;
+  }
+
+  if (itype === "number") {
+    const cur = Number(S.answers[q.question_id] || 1);
+    return `
+      <div class="q-question" data-qid="${q.question_id}">
+        <div class="q-question-prompt">${escHtml(q.prompt)}${q.required ? " <span class='q-req'>*</span>" : ""}</div>
+        <div class="q-qty-wrap" style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <div class="q-qty-ctrl">
+            <button class="q-qty-btn q-num-dec" data-qid="${escHtml(q.question_id)}"
+              ${cur <= 1 ? "disabled" : ""}>&#8722;</button>
+            <span class="q-qty-val" id="numVal_${escHtml(q.question_id)}">${cur}</span>
+            <button class="q-qty-btn q-num-inc" data-qid="${escHtml(q.question_id)}"
+              ${cur >= 20 ? "disabled" : ""}>&#43;</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="q-question" data-qid="${q.question_id}">
       <div class="q-question-prompt">${escHtml(q.prompt)}${q.required ? " <span class='q-req'>*</span>" : ""}</div>
       ${options.length ? `
         <div class="q-options">
           ${options.map(o => `
-            <label class="q-option${S.answers[q.question_id] === o.option_id ? " selected" : ""}">
+            <label class="q-option${S.answers[q.question_id] === o.option_id ? " selected" : ""}"
+              data-dis="${o.disqualify ? "1" : ""}" data-unc="${o.uncertain ? "1" : ""}">
               <input type="radio" name="q_${q.question_id}" value="${escHtml(o.option_id)}"
                 ${S.answers[q.question_id] === o.option_id ? "checked" : ""}>
               ${escHtml(o.label)}
@@ -523,6 +647,31 @@ function renderBooked() {
     </div>`;
 }
 
+// ── Step: Site Visit Required ─────────────────────────────────────────────────
+function renderSiteVisit() {
+  return `
+    ${stepHeader(3, "Site Visit Required")}
+    <div class="q-card-section" style="text-align:center;padding:32px 20px;">
+      <div style="font-size:52px;margin-bottom:16px;">&#128203;</div>
+      <h3 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:12px;letter-spacing:-0.01em;">
+        An On-Site Estimate is Needed
+      </h3>
+      <p class="q-muted" style="max-width:400px;margin:0 auto 20px;">
+        Based on your answers, this project requires an in-person evaluation before we can give you an accurate price. Don't worry &mdash; the consultation is free!
+      </p>
+      <a href="tel:+14095550100"
+        style="display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:16px;font-weight:700;text-decoration:none;margin-bottom:12px;">
+        &#128222; Call (409) 555-0100
+      </a>
+      <p class="q-muted" style="font-size:13px;">We'll schedule your free consultation right away.</p>
+    </div>
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back to Questions</button>
+      <div></div>
+    </div>
+    ${NOTE}`;
+}
+
 // ── Event Binding ─────────────────────────────────────────────────────────────
 function bindEvents() {
   // Segment cards — click to select, Next Step to advance
@@ -621,15 +770,69 @@ function bindEvents() {
     else calcPrice();
   });
 
-  // Questions
+  // Questions — radio (with disqualify gate + uncertain tracking)
   document.querySelectorAll("input[type=radio]").forEach(radio => {
     radio.addEventListener("change", () => {
-      const qid = radio.name.replace("q_", "");
+      const qid   = radio.name.replace("q_", "");
+      const label = radio.closest("label[data-dis]");
       S.answers[qid] = radio.value;
+
+      if (label?.dataset.unc === "1") {
+        S.uncertain[qid] = true;
+      } else {
+        delete S.uncertain[qid];
+      }
+
+      if (label?.dataset.dis === "1") {
+        go("sitevisit");
+        return;
+      }
       radio.closest(".q-options")?.querySelectorAll(".q-option")
         .forEach(l => l.classList.toggle("selected", l.querySelector("input") === radio));
     });
   });
+
+  // Questions — number steppers
+  document.querySelectorAll(".q-num-dec").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const qid = btn.dataset.qid;
+      const cur = Number(S.answers[qid] || 1);
+      const nv  = Math.max(1, cur - 1);
+      S.answers[qid] = nv;
+      const el = document.getElementById("numVal_" + qid);
+      if (el) el.textContent = nv;
+      btn.disabled = nv <= 1;
+      btn.nextElementSibling?.nextElementSibling?.removeAttribute("disabled");
+    });
+  });
+  document.querySelectorAll(".q-num-inc").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const qid = btn.dataset.qid;
+      const cur = Number(S.answers[qid] || 1);
+      const nv  = Math.min(20, cur + 1);
+      S.answers[qid] = nv;
+      const el = document.getElementById("numVal_" + qid);
+      if (el) el.textContent = nv;
+      btn.disabled = nv >= 20;
+      btn.previousElementSibling?.previousElementSibling?.removeAttribute("disabled");
+    });
+  });
+
+  // Questions — inline photo pickers
+  document.querySelectorAll(".q-photo-inline").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const qid = inp.dataset.qid;
+      if (!S.photos[qid]) S.photos[qid] = [];
+      Array.from(inp.files).forEach(f => S.photos[qid].push(f));
+      const lbl = inp.closest("label.q-file-label");
+      if (lbl) {
+        const count = S.photos[qid].length;
+        lbl.childNodes[0].textContent =
+          "\uD83D\uDCF7 " + count + " photo" + (count !== 1 ? "s" : "") + " added";
+      }
+    });
+  });
+
   document.querySelectorAll(".q-addon-check").forEach(cb => {
     cb.addEventListener("change", () => {
       if (cb.checked) { if (!S.addons.includes(cb.value)) S.addons.push(cb.value); }
