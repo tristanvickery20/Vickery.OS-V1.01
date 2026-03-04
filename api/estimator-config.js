@@ -56,14 +56,27 @@ async function handleEstimatorConfig(req, res) {
 // ── GET /api/estimator/health ────────────────────────────────────────────────
 async function handleEstimatorHealth(req, res) {
   try {
+    const sheetId = process.env.ESTIMATOR_V2_SHEET_ID;
+    if (!sheetId) {
+      return json(res, 500, { ok: false, error: "Estimator sheet not configured. Set ESTIMATOR_V2_SHEET_ID.", warnings: [] }, NO_CACHE);
+    }
+
+    // Fetch sheet name from API metadata
+    let sheet_name = "unknown";
+    try {
+      const { getSheetsClient } = require("../lib/sheets");
+      const sheets = await getSheetsClient();
+      const meta   = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+      sheet_name   = meta.data.properties?.title || "unknown";
+    } catch { /* non-fatal */ }
+
     const raw  = await getEstimatorConfig();
     const cfg  = normalizeConfig(raw);
     const warnings = [];
 
-    if (!cfg.services.length)          warnings.push("Estimator_ServiceMatrix is empty — no services loaded.");
+    if (!cfg.services.length)             warnings.push("Estimator_ServiceMatrix is empty — no services loaded.");
     if (!Object.keys(cfg.modules).length) warnings.push("Estimator_Modules is empty — no modules loaded.");
 
-    // Warn on any service referencing a missing module
     for (const svc of cfg.services) {
       for (const mid of svc.modules) {
         if (!cfg.modules[mid]) warnings.push(`Service "${svc.service_id}" references unknown module "${mid}".`);
@@ -81,7 +94,8 @@ async function handleEstimatorHealth(req, res) {
 
     json(res, 200, {
       ok: true,
-      sheet_id: (process.env.CRM_SHEET_ID || "").slice(0, 8) + "…",
+      sheet_name,
+      sheet_id: sheetId,
       cache_age_ms: getCacheAge(),
       services_count: cfg.services.length,
       modules_count: Object.keys(cfg.modules).length,

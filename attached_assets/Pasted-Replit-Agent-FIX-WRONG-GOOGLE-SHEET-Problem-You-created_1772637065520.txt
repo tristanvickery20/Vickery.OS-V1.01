@@ -1,0 +1,88 @@
+Replit Agent — FIX WRONG GOOGLE SHEET
+
+Problem:
+You created and seeded the estimator tabs in the WRONG Google Sheet.
+
+Current wrong sheet:
+"Vickery Electric - CRM Master"
+
+Correct sheet that MUST be used for the estimator:
+"Instant_Estimator_v2_FeedbackVendor"
+
+You must fix this without breaking the CRM or any existing calculators.
+
+GOALS
+1. Move ALL estimator-related tabs from the CRM Master sheet to the Instant_Estimator_v2_FeedbackVendor sheet.
+2. Ensure all estimator code ONLY reads/writes to the Instant_Estimator_v2_FeedbackVendor sheet.
+3. Prevent the estimator system from ever writing to the CRM Master sheet again.
+4. Do not delete any CRM data.
+
+Estimator tabs that must exist ONLY in Instant_Estimator_v2_FeedbackVendor:
+
+Estimator_Modules
+Estimator_ServiceMatrix
+Leads_QuoteSnapshots
+
+If these tabs exist in the CRM Master sheet, COPY their contents into the Instant_Estimator_v2_FeedbackVendor sheet.
+
+If the tabs do not exist in the Instant_Estimator_v2_FeedbackVendor sheet, create them and copy the data.
+
+After copying:
+- Leave the CRM Master sheet untouched (do NOT delete anything there).
+- But ensure the estimator code never references it again.
+
+CODE CHANGES REQUIRED
+
+1. Find the environment variable used for estimator configuration.
+Create or use this variable:
+
+ESTIMATOR_SHEET_ID
+
+2. Update the estimator config loader to use ONLY:
+
+process.env.ESTIMATOR_SHEET_ID
+
+and NEVER fallback to the CRM sheet id.
+
+3. Ensure the following endpoints use ESTIMATOR_SHEET_ID only:
+
+/api/estimator/config
+/api/estimator/quote
+/api/estimator/health
+
+4. If ESTIMATOR_SHEET_ID is missing, throw a clear error:
+
+"Estimator sheet not configured. Set ESTIMATOR_SHEET_ID."
+
+5. Update the health endpoint so it reports:
+
+sheet_name
+sheet_id
+services_count
+modules_count
+
+so we can verify the correct sheet is being used.
+
+SAFETY RULES
+
+- Do NOT modify CRM data.
+- Do NOT remove any existing CRM tabs.
+- Do NOT remove other calculators.
+- Only migrate estimator-related tabs.
+
+FINAL TESTS
+
+After fixing:
+
+1. /api/estimator/health must show the sheet name:
+"Instant_Estimator_v2_FeedbackVendor"
+
+2. /api/estimator/config must return modules and services.
+
+3. The estimator page must display the questions again.
+
+At the end, tell me:
+
+- which sheet id is now used
+- which tabs were copied
+- confirmation the CRM sheet is no longer used by estimator code
