@@ -9,7 +9,7 @@ const { generateSlots }     = require("../lib/slotEngine");
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
 const SCHEDULER_DEFAULTS = [
-  "America/Chicago", "24", "30", "14",
+  "America/Chicago", "24", "30", "180",
   "08:00", "17:00", "09:00", "13:00",
   "FALSE", "3",
 ];
