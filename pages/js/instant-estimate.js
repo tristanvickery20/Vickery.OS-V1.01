@@ -102,9 +102,15 @@ function renderSegment() {
 // ── Step 2: Service ───────────────────────────────────────────────────────────
 function renderService() {
   setProgress(2);
-  const svcs = (S.config.services||[]).filter(sv => sv.segment===S.segment && sv.enabled!==false);
-  const TC = { instant:"tier-instant", instant_with_safeguards:"tier-safeguards", site_visit_required:"tier-site-visit" };
-  const TL = { instant:"Instant", instant_with_safeguards:"Instant", site_visit_required:"Site Visit" };
+  const all  = (S.config.services||[]).filter(sv => sv.segment===S.segment && sv.enabled!==false);
+  const TC   = { instant:"tier-instant", instant_with_safeguards:"tier-safeguards", site_visit_required:"tier-site-visit" };
+  const TL   = { instant:"Instant", instant_with_safeguards:"Instant Quote", site_visit_required:"Site Visit" };
+  const isInstant = s => s.tier !== "site_visit_required";
+
+  // Sort: instant first, site_visit last
+  const instant   = all.filter(isInstant);
+  const siteVisit = all.filter(s => !isInstant(s));
+  const svcs      = [...instant, ...siteVisit];
 
   if (!svcs.length) {
     show(`<div class="warn-banner">⚠️ No services found for segment "${esc(S.segment)}" in Google Sheets (Estimator_ServiceMatrix).</div>
@@ -113,16 +119,22 @@ function renderService() {
     return;
   }
 
+  function svcCard(sv) {
+    return `<div class="svc-card${S.service?.service_id===sv.service_id?" picked":""}" data-id="${sv.service_id}">
+      <span class="svc-name">${esc(sv.service_name)}</span>
+      <span class="tier-badge ${TC[sv.tier]||""}">${TL[sv.tier]||sv.tier}</span>
+    </div>`;
+  }
+
+  const listHtml = [
+    instant.length   ? `<div class="svc-section-label">⚡ Instant Quote Available</div>${instant.map(svcCard).join("")}`   : "",
+    siteVisit.length ? `<div class="svc-section-label">📋 Requires Site Visit</div>${siteVisit.map(svcCard).join("")}` : "",
+  ].join("");
+
   show(`
     <input class="search-box" id="svcSearch" placeholder="Search services…" autocomplete="off"/>
-    <div class="service-list" id="svcList">
-      ${svcs.map(sv => `
-        <div class="svc-card${S.service?.service_id===sv.service_id?" picked":""}" data-id="${sv.service_id}">
-          <span class="svc-name">${esc(sv.service_name)}</span>
-          <span class="tier-badge ${TC[sv.tier]||""}">${TL[sv.tier]||sv.tier}</span>
-        </div>`).join("")}
-    </div>
-    ${S.service?.tier==="site_visit_required"?`<div class="site-visit-notice">⚠️ This service requires an on-site assessment for an accurate estimate.</div>`:""}
+    <div class="service-list" id="svcList">${listHtml}</div>
+    ${S.service?.tier==="site_visit_required"?`<div class="site-visit-notice">⚠️ This service needs an on-site assessment — no instant questions, but we'll call to schedule a free visit.</div>`:""}
     <div class="actions">
       <button class="btn btn-ghost" id="backSeg">← Back</button>
       <button class="btn btn-primary" id="nextSvc"${S.service?"":" disabled"}>Next →</button>
@@ -133,6 +145,10 @@ function renderService() {
     const q = this.value.toLowerCase();
     document.querySelectorAll(".svc-card").forEach(c => {
       c.style.display = c.querySelector(".svc-name").textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+    document.querySelectorAll(".svc-section-label").forEach(lbl => {
+      const anyVisible = [...lbl.nextElementSibling?.querySelectorAll?.(".svc-card")||[]].some(c=>c.style.display!=="none");
+      lbl.style.display = anyVisible ? "" : "none";
     });
   });
   document.querySelectorAll(".svc-card").forEach(c => c.addEventListener("click", () => {
@@ -244,15 +260,15 @@ function renderPhotoModule(m) {
         <button class="thumb-remove" data-idx="${i}">✕</button></div>`
       ).join("")}
     </div>
-    <p class="photo-hint">At least 1 photo required to continue.</p>
+    <p class="photo-hint">${stored.length ? stored.length+" photo(s) added — or tap Next to continue." : "Optional — adding photos helps us confirm the estimate, but you can skip."}</p>
   </div>`;
 }
 
 function bindModuleEvents(m) {
   const nextBtn = $("modNext");
   const check = () => {
-    nextBtn.disabled = m.input_type==="photo" ? !(S.photos[m.module_id]?.length)
-                     : m.input_type==="number" ? false
+    nextBtn.disabled = m.input_type==="number" ? false
+                     : m.input_type==="photo"  ? false   // photos are optional — skip allowed
                      : !S.answers[m.module_id];
   };
   if (m.input_type !== "photo" && m.input_type !== "number") {
