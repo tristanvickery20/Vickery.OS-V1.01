@@ -42,7 +42,7 @@ const {
   handleUpdateInvoice,
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
-const { handleEstimatorConfig, handleEstimatorQuote } = require("./api/estimator-config");
+const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote } = require("./api/estimator-config");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -56,13 +56,13 @@ function readBody(req) {
   });
 }
 
-function serveFile(res, filePath, contentType) {
+function serveFile(res, filePath, contentType, extraHeaders = {}) {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       return res.end("File not found");
     }
-    res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "no-cache" });
+    res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "no-cache", ...extraHeaders });
     res.end(content);
   });
 }
@@ -70,8 +70,11 @@ function serveFile(res, filePath, contentType) {
 const server = http.createServer(async (req, res) => {
   // STATIC FILES
   if (req.url.startsWith("/pages/js/")) {
-    const filePath = path.join(__dirname, req.url);
-    return serveFile(res, filePath, "application/javascript");
+    const filePath = path.join(__dirname, req.url.split("?")[0]);
+    const extraHeaders = req.url.includes("instant-estimate")
+      ? { "Cache-Control": "no-store, max-age=0" }
+      : {};
+    return serveFile(res, filePath, "application/javascript", extraHeaders);
   }
 
   if (req.url.startsWith("/pages/css/")) {
@@ -133,7 +136,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === "/instant-estimate") {
-    return serveFile(res, path.join(__dirname, "pages/instant-estimate.html"), "text/html");
+    return serveFile(res, path.join(__dirname, "pages/instant-estimate.html"), "text/html",
+      { "Cache-Control": "no-store, max-age=0" });
   }
 
   if (req.url === "/login" && req.method === "GET") {
@@ -208,11 +212,16 @@ const server = http.createServer(async (req, res) => {
     return handleSeedQuote(req, res);
   }
 
-  if (req.url === "/api/estimator/config" && req.method === "GET") {
+  const _epath = req.url.split("?")[0];
+  if (_epath === "/api/estimator/config" && req.method === "GET") {
     return handleEstimatorConfig(req, res);
   }
 
-  if (req.url === "/api/estimator/quote" && req.method === "POST") {
+  if (_epath === "/api/estimator/health" && req.method === "GET") {
+    return handleEstimatorHealth(req, res);
+  }
+
+  if (_epath === "/api/estimator/quote" && req.method === "POST") {
     return handleEstimatorQuote(req, res);
   }
 

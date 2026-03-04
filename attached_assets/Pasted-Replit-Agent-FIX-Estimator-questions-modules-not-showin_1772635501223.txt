@@ -1,0 +1,116 @@
+Replit Agent — FIX: Estimator questions/modules not showing on /instant-estimate
+
+Context:
+- We already added Google Sheets–driven estimator config (Estimator_Modules + Estimator_ServiceMatrix) and a customer-facing wizard page /instant-estimate.
+- Problem: NONE of the new questions are showing up on the website.
+- Goal: Fix the bug end-to-end with minimal disruption. Do not remove or break any existing CRM pages or any other calculators.
+
+Hard requirements:
+1) Make /instant-estimate reliably show the module questions for the selected service (render driven by modules_csv from config).
+2) If config is missing/empty, show an on-page error with a clear message (don’t fail silently).
+3) Add an on-page “Debug” accordion that shows:
+   - Config loaded timestamp
+   - #services, #modules
+   - Selected service_id
+   - Selected modules list
+   - Raw config JSON (collapsed)
+4) Make it resilient to data shape differences:
+   - backend might return modules as `modules` or `modulesById`
+   - services might include `modules_csv` or `modulesCsv`
+   - module options might be in `options` already parsed OR `options_json` as a string
+   Your code must normalize all of this.
+5) Force cache busting so iPhone/Safari doesn’t keep old JS:
+   - add a version query string to script include OR set response headers to disable caching for /instant-estimate and its JS.
+6) Do not assume file size limits; prioritize clarity and correctness.
+
+Step-by-step tasks for you to implement:
+
+A) BACKEND: add a one-shot “config diagnostics” endpoint (do not require auth)
+- Add GET /api/estimator/health
+- It should return:
+  {
+    ok: boolean,
+    sheet_id: "...",
+    cache_age_ms: number|null,
+    services_count: number,
+    modules_count: number,
+    sample_service: {service_id, service_name, modules_csv, tier},
+    sample_module: {module_id, question, input_type},
+    warnings: [..strings..]
+  }
+- Warnings should include:
+  - missing tabs
+  - empty Estimator_Modules
+  - empty Estimator_ServiceMatrix
+  - any service with modules_csv referencing missing module_ids
+
+B) BACKEND: fix the config loader so it always returns normalized JSON:
+GET /api/estimator/config must always return:
+{
+  updatedAt: ISO_STRING,
+  services: [
+    {
+      service_id,
+      service_name,
+      segment,
+      tier,
+      enabled,
+      qty_min,
+      qty_max,
+      modules: [ "MODULE_ID_1", ... ]   // NOTE: array, already split/trimmed
+    }
+  ],
+  modules: {
+    "MODULE_ID": {
+      module_id,
+      question,
+      input_type,
+      options: [ {value,label,multiplier,disqualify,uncertain} ] // parsed + normalized
+    }
+  }
+}
+Implementation notes:
+- Parse modules_csv into array: split(',').trim().filter(Boolean)
+- Parse enabled: accept TRUE/FALSE, true/false, 1/0
+- Parse options_json if present; if options already present, use it.
+- Ensure every module has `options` as an array (empty array ok for photo/number).
+- If module_id referenced by a service is missing from modules, add a warning in /health.
+
+C) FRONTEND: rewrite the wizard render so it cannot silently fail
+- On /instant-estimate:
+  1) fetch /api/estimator/config
+  2) render service list
+  3) on service click:
+     - compute selectedModules = service.modules
+     - render each module question in order
+- Render rules by input_type:
+  - single_select: radio-card buttons
+  - multi_select: checkbox list
+  - number: numeric stepper with min/max (use service qty bounds if module is QUANTITY)
+  - photo: file input + thumbnails; store files in memory (for now)
+- If selectedModules is empty => show banner “This service has no modules configured in Google Sheets (modules_csv empty).”
+- If a module_id is missing => show banner “Config error: module X missing in Estimator_Modules.”
+- Add the Debug accordion described above and populate it with live state.
+
+D) CACHE / iPhone SAFARI
+- Ensure instant-estimate.html includes JS like:
+  <script src="/js/instant-estimate.js?v=2026-03-04-1"></script>
+- Also add response headers on /instant-estimate and /js/instant-estimate.js:
+  Cache-Control: no-store, max-age=0
+
+E) QUICK SELF-TESTS (you must do these)
+1) Open /api/estimator/health and confirm counts > 0.
+2) Open /instant-estimate:
+   - confirm it shows #services and service buttons
+   - click a service and confirm questions appear
+3) If anything is empty, fix seeding/ensureTabsAndHeaders/seedModulesIfEmpty/seedServicesIfEmpty so it actually populates.
+
+Deliverables:
+- Commit/produce updated backend + frontend code.
+- Tell me exactly which files you changed and where the bug was (e.g. modulesById mismatch, options_json not parsed, modules_csv not split, JS not loading, caching).
+- Confirm the questions are visible on /instant-estimate.
+
+Do NOT:
+- Remove or rename existing CRM routes.
+- Remove other calculators.
+- Change the overall dark theme.

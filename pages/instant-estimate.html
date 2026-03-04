@@ -95,6 +95,16 @@
     /* Misc */
     .status-msg{text-align:center;padding:60px 20px;color:var(--muted)}
     .error-msg{color:#f87171}
+    /* Warning banner */
+    .warn-banner{background:#2d1a00;border:1px solid #92400e;border-radius:var(--r);padding:14px 18px;color:#fcd34d;font-size:.85rem;margin-bottom:18px;line-height:1.7}
+    /* Debug accordion */
+    .debug-box{background:#0a1018;border:1px solid #2d4060;border-radius:var(--r);font-size:.78rem;color:var(--muted)}
+    .debug-toggle{cursor:pointer;padding:10px 16px;user-select:none;list-style:none;display:block}
+    .debug-body{padding:12px 16px 16px;border-top:1px solid #1e2d40;display:flex;flex-direction:column;gap:6px}
+    .debug-row{display:flex;justify-content:space-between;gap:8px;word-break:break-all}
+    .debug-row span:first-child{color:var(--muted);flex-shrink:0;min-width:120px}
+    .debug-row span:last-child{color:var(--text)}
+    .debug-pre{font-size:.68rem;white-space:pre-wrap;word-break:break-all;overflow:auto;max-height:200px;margin-top:8px;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -113,6 +123,6 @@
   </div>
   <div id="stepContent"><div class="status-msg">Loading…</div></div>
 </div>
-<script src="/pages/js/instant-estimate.js"></script>
+<script src="/pages/js/instant-estimate.js?v=2026-03-04-2"></script>
 </body>
 </html>
