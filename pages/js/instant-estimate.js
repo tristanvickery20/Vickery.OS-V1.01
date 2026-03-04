@@ -167,23 +167,44 @@ async function renderResult() {
     ${Object.entries(S.answers).map(([k,v])=>`<div class="rs-row"><span class="rs-lbl">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}
   </div>`;
   const retryBtn=`<button class="btn btn-ghost" onclick="reset();renderSegment()">← Start Over</button>`;
-  if(S.disqualified){
-    $('stepContent').innerHTML=`<div class="outcome-card outcome-site-visit">
-      <div class="outcome-icon">📋</div><h2>Site Visit Required</h2>
-      <p>Based on your answers, this service requires an on-site assessment before we can provide an accurate quote. We'll schedule a free visit.</p>
-      ${summary}
-      <div class="actions" style="justify-content:center">${retryBtn}<a class="btn btn-gold" href="/contact">Request Site Visit →</a></div>
-    </div>`; return;
-  }
   try {
     const r=await fetch('/api/estimator/quote',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({segment:S.segment,service_id:S.service.service_id,service_name:S.service.service_name,qty:S.qty,answersByModule:S.answers,photoCount})});
     const d=await r.json();
+    const tier=d.tier_result||(S.disqualified?'needs_site_visit':'instant_with_safeguards');
+
+    if(tier==='needs_site_visit'){
+      $('stepContent').innerHTML=`<div class="outcome-card outcome-site-visit">
+        <div class="outcome-icon">📋</div><h2>Site Visit Required</h2>
+        <p>${esc(d.message||'An on-site assessment is required before we can provide an accurate quote.')}</p>
+        ${d.reasons?.length?`<ul class="reason-list">${d.reasons.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
+        ${summary}
+        <div class="actions" style="justify-content:center">${retryBtn}<a class="btn btn-gold" href="/contact">Request Free Site Visit →</a></div>
+      </div>`; return;
+    }
+    if(tier==='needs_photos'){
+      $('stepContent').innerHTML=`<div class="outcome-card outcome-site-visit">
+        <div class="outcome-icon">📸</div><h2>Photos Required</h2>
+        <p>${esc(d.message||'Please go back and upload the required photos to receive an instant estimate.')}</p>
+        ${summary}
+        <div class="actions" style="justify-content:center">${retryBtn}</div>
+      </div>`; return;
+    }
+    const hasPricing=d.total>0;
+    const riskPct=d.risk_multiplier?Math.round((d.risk_multiplier-1)*100):0;
+    const contPct=d.contingency_pct?Math.round(d.contingency_pct*100):0;
     $('stepContent').innerHTML=`<div class="outcome-card outcome-instant">
       <div class="outcome-icon">✅</div><h2>Estimate Ready</h2>
       <p>${esc(d.message||'Your estimate has been generated!')}</p>
+      ${hasPricing?`<div class="price-preview">
+        <div class="price-line"><span>Base estimate</span><span>$${d.subtotal?.toLocaleString()||'—'}</span></div>
+        ${riskPct?`<div class="price-line muted"><span>Risk adjustment</span><span>+${riskPct}%</span></div>`:''}
+        ${contPct?`<div class="price-line muted"><span>Contingency buffer</span><span>+${contPct}%</span></div>`:''}
+        <div class="price-line total-line"><span>Estimated Total</span><span>$${d.total?.toLocaleString()||'—'}</span></div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:8px">Final pricing confirmed at time of booking. Travel fee may apply.</div>
+      </div>`:`<div class="price-preview">Our team will confirm pricing when we reach out to schedule.</div>`}
       ${summary}
-      <div class="price-preview">Estimated total: <strong>We'll confirm pricing when we call to schedule.</strong></div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:16px">Reference: ${esc(d.lead_id||'')}</div>
       <div class="actions" style="justify-content:center">${retryBtn}<a class="btn btn-primary" href="/contact">Book Appointment →</a></div>
     </div>`;
   } catch(e){

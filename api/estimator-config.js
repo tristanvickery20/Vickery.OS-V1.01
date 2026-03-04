@@ -1,8 +1,11 @@
 // api/estimator-config.js
 // GET  /api/estimator/config  — return normalized modules + services config
-// POST /api/estimator/quote   — validated stub (full pricing logic in Prompt 3)
+// POST /api/estimator/quote   — full pricing engine (Prompt 3)
 
-const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
+const crypto = require("crypto");
+const { getEstimatorConfig }             = require("../lib/estimatorModulesConfig");
+const { evaluateService, computePrice, getBasePrice } = require("../lib/estimatorEngine");
+const { writeLeadSnapshot }              = require("../lib/estimatorSnapshot");
 
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -28,51 +31,109 @@ async function handleEstimatorConfig(req, res) {
 }
 
 async function handleEstimatorQuote(req, res) {
+  const lead_id      = "LE-" + crypto.randomBytes(5).toString("hex").toUpperCase();
+  const created_at   = new Date().toISOString();
+  let   snapshotBase = { lead_id, created_at_iso: created_at };
+
   try {
     const body = await readBody(req);
-    const { segment, service_id, service_name, qty, answersByModule, photoCount } = body;
+    const { segment, service_id, service_name, qty = 1,
+            answersByModule = {}, photoCount = 0,
+            customer_name = "", customer_phone = "", customer_email = "" } = body;
 
     if (!segment || !service_id) {
+      await writeLeadSnapshot({ ...snapshotBase, service_id, segment, status: "error",
+        snapshot_json: JSON.stringify({ error: "Missing segment or service_id", body }) });
       return json(res, 400, { ok: false, error: "segment and service_id are required" });
     }
 
-    // Compute aggregate risk multiplier from answers (placeholder; real math in Prompt 3)
-    const config = await getEstimatorConfig();
+    // Load config
+    const config  = await getEstimatorConfig();
     const service = (config.services || []).find(s => s.service_id === service_id);
-    const tier_result = service?.tier || "instant_with_safeguards";
-
-    // Tally any disqualify flags from answers
-    let disqualified = tier_result === "site_visit_required";
-    if (!disqualified && service) {
-      const modules_csv = (service.modules_csv || "").split(",").map(m => m.trim()).filter(Boolean);
-      for (const mid of modules_csv) {
-        const mod = config.modulesById[mid];
-        const ans = answersByModule?.[mid];
-        if (mod && ans) {
-          const opt = (mod.options || []).find(o => o.value === ans);
-          if (opt?.disqualify) { disqualified = true; break; }
-        }
-      }
+    if (!service) {
+      await writeLeadSnapshot({ ...snapshotBase, service_id, segment, status: "error",
+        snapshot_json: JSON.stringify({ error: "Unknown service_id" }) });
+      return json(res, 400, { ok: false, error: `Unknown service: ${service_id}` });
     }
 
-    const result_tier = disqualified ? "site_visit_required" : "instant_with_safeguards";
-    const message = disqualified
-      ? "Based on your answers, an on-site assessment is required before we can provide pricing."
-      : `Thank you! We've received your estimate request for ${service_name || service_id}. Our team will call to confirm pricing and schedule your appointment.`;
+    // Evaluate risk + disqualify
+    const eval_ = evaluateService(config.modulesById, service, answersByModule, photoCount);
+    const { tier_result, reasons, risk_multiplier, contingency_pct, required_photos_missing } = eval_;
 
-    console.log(`[estimator/quote] service=${service_id} tier=${result_tier} qty=${qty} photos=${photoCount||0}`);
+    // Base price from existing calculator (or placeholder)
+    let basePrice = 0, priceSource = "placeholder";
+    if (tier_result !== "needs_site_visit") {
+      const bp = await getBasePrice(service_id, service_name || service.service_name, qty);
+      basePrice   = bp.final_price;
+      priceSource = bp.source;
+    }
+
+    // Apply risk + contingency
+    const { subtotal, total } = computePrice(basePrice, risk_multiplier, contingency_pct);
+
+    const canPrice = tier_result !== "needs_site_visit" && tier_result !== "needs_photos";
+    const status   = tier_result === "needs_site_visit" ? "needs_site_visit"
+                   : tier_result === "needs_photos"     ? "needs_photos"
+                   : priceSource === "placeholder"      ? "quoted_placeholder"
+                   : "quoted";
+
+    const snapshot = {
+      config_version: config.updatedAt,
+      service, qty, segment,
+      answersByModule, photoCount,
+      risk_multiplier, contingency_pct,
+      basePrice, priceSource,
+      subtotal: canPrice ? subtotal : 0,
+      total:    canPrice ? total    : 0,
+      tier_result, reasons,
+    };
+
+    // Write snapshot row — always, even failures
+    await writeLeadSnapshot({
+      ...snapshotBase,
+      customer_name, customer_phone, customer_email,
+      segment,
+      service_id,
+      service_name: service.service_name,
+      tier_result,
+      risk_multiplier,
+      contingency_pct,
+      subtotal: canPrice ? subtotal : 0,
+      total:    canPrice ? total    : 0,
+      answers_json:   JSON.stringify(answersByModule),
+      snapshot_json:  JSON.stringify(snapshot),
+      photo_urls_json: "[]",
+      status,
+    });
+
+    const message = tier_result === "needs_site_visit"
+      ? "Based on your answers, an on-site assessment is required before we can provide a firm quote."
+      : tier_result === "needs_photos"
+      ? "Photos are required for this service to proceed with an instant quote."
+      : priceSource === "placeholder"
+      ? `Thank you! We'll contact you to confirm pricing for your ${service.service_name}.`
+      : `Your estimate is ready! Pricing reflects job complexity and site conditions.`;
+
+    console.log(`[estimator/quote] lead=${lead_id} service=${service_id} tier=${tier_result} total=${total} src=${priceSource}`);
 
     json(res, 200, {
-      ok:          true,
-      tier_result: result_tier,
-      disqualified,
+      ok: true,
+      lead_id,
+      tier_result,
+      reasons,
+      risk_multiplier,
+      contingency_pct,
+      subtotal: canPrice ? subtotal : 0,
+      total:    canPrice ? total    : 0,
+      price_source: priceSource,
+      status,
       message,
-      subtotal:    0,
-      total:       0,
-      payload_echo: { segment, service_id, qty, photoCount },
     });
+
   } catch (err) {
     console.error("[estimator/quote]", err.message);
+    await writeLeadSnapshot({ ...snapshotBase, status: "error",
+      snapshot_json: JSON.stringify({ error: err.message }) }).catch(() => {});
     json(res, 500, { ok: false, error: err.message });
   }
 }
