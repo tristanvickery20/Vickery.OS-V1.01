@@ -132,7 +132,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === "/quote") {
-    return serveFile(res, path.join(__dirname, "pages/quote.html"), "text/html");
+    res.writeHead(302, { Location: "/instant-estimate" });
+    return res.end();
   }
 
   if (req.url === "/instant-estimate") {
