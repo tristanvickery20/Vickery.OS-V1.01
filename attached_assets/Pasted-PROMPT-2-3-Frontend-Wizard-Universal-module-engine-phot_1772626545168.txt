@@ -1,0 +1,52 @@
+PROMPT 2/3 — Frontend Wizard: Universal module engine + photo gates + risk gating UX
+
+You are continuing from Prompt 1 changes. Do not refactor unrelated pages. Keep dark CRM theme. Keep files <=200 lines. Minimal extra dependencies (prefer none).
+
+GOAL:
+Build the customer-facing multi-step wizard on /instant-estimate that:
+1) Lets user pick: segment (residential/commercial) -> service
+2) Dynamically renders the exact modules listed in that service’s modules_csv (from config)
+3) Enforces risk mitigations:
+   - If a module answer has disqualify=true OR service tier is site_visit_required -> no instant quote; show “Schedule Site Visit” outcome.
+   - If photo module is present (PANEL_PHOTO or WORK_AREA_PHOTOS), require upload before allowing an instant quote path.
+   - If user chooses “Not sure” style options, apply UNCERTAINTY_BUFFER module (contingency) (actual math in Prompt 3, but UI should clearly warn).
+4) Produces a single payload JSON of:
+   { segment, service_id, qty, answersByModule:{...}, photos:{panel?:[], workArea?:[]} }
+
+UI REQUIREMENTS (keep it simple, clean, iPhone-friendly):
+- Stepper at top: Segment → Service → Details → Result
+- Segment toggle buttons (Residential / Commercial)
+- Service picker list filtered by segment and enabled=TRUE
+- When service picked: render questions one-by-one in order of modules_csv
+- For single_select: buttons or radio cards (large tap targets)
+- For number/quantity: stepper +/- with bounds (qty_min/qty_max if set; else sane default 1..20)
+- For photo: <input type="file" accept="image/*" multiple> with thumbnails preview and remove option
+- “Not sure” answers should be present where applicable (based on options_json); if missing, add a UI “Not sure” option client-side with multiplier placeholder and flags it as uncertain.
+
+OUTCOME SCREEN:
+- If disqualified (site visit required): show message + CTA button “Request Site Visit”
+- If allowed: show “Get Quote” button (it will call POST /api/estimator/quote)
+- Do NOT finalize pricing math yet; just show placeholder totals returned by backend (Prompt 3 will implement real logic).
+- Always show a summary box:
+  - Service name
+  - Quantity
+  - Answers chosen
+  - Photos attached (count)
+
+BACKEND CHANGES (minimal for this prompt):
+- Implement POST /api/estimator/quote as a temporary stub:
+  - Validate payload
+  - Return JSON: { ok:true, tier_result:"instant"|"...", message:"...", subtotal:0, total:0 }
+- Do not do Google Sheets write yet (Prompt 3).
+
+FRONTEND FILES (suggested):
+- public/instant-estimate.html (main)
+- public/js/instant-estimate.js (wizard engine)
+- public/css (only if needed; prefer Tailwind classes)
+
+ACCEPTANCE CHECKLIST:
+- Works on mobile (iPhone) with big tap targets and scroll.
+- Service selection drives modules.
+- Photo gate prevents proceeding if required photos missing.
+- Disqualify answers force “site visit” outcome.
+- POST /api/estimator/quote receives full payload and returns stub result, shown on Result step.

@@ -42,6 +42,7 @@ const {
   handleUpdateInvoice,
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
+const { handleEstimatorConfig, handleEstimatorQuote } = require("./api/estimator-config");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -131,6 +132,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/quote.html"), "text/html");
   }
 
+  if (req.url === "/instant-estimate") {
+    return serveFile(res, path.join(__dirname, "pages/instant-estimate.html"), "text/html");
+  }
+
   if (req.url === "/login" && req.method === "GET") {
     return serveFile(res, path.join(__dirname, "pages/login.html"), "text/html");
   }
@@ -201,6 +206,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/admin/seed-quote") && req.method === "GET") {
     return handleSeedQuote(req, res);
+  }
+
+  if (req.url === "/api/estimator/config" && req.method === "GET") {
+    return handleEstimatorConfig(req, res);
+  }
+
+  if (req.url === "/api/estimator/quote" && req.method === "POST") {
+    return handleEstimatorQuote(req, res);
   }
 
   // AUTH GUARD: protected pages + remaining /api/*

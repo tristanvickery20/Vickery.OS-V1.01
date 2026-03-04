@@ -1,0 +1,118 @@
+PROMPT 1/3 — Foundation: Data model + Google Sheet–driven config + API wiring (minimal refactor)
+
+You are working inside my existing Replit Node.js app (CRM + calculator already exists). DO NOT rewrite the app. DO NOT remove any existing calculators (I have another profit calculator—leave it alone). Keep the existing dark CRM theme. Keep file sizes <= 200 lines (split into small modules if needed). Make the smallest changes possible.
+
+GOAL:
+Create a Google-Sheets-driven “Estimator Config System” that defines:
+1) Universal Question Modules (risk mitigation)
+2) Service Risk Matrix (which modules each service uses + tiering rules)
+3) Config can be edited in Google Sheets without code changes
+
+REQUIREMENTS:
+- Add new backend endpoints:
+  - GET /api/estimator/config
+  - POST /api/estimator/quote (stub for now; full logic comes in Prompt 3)
+- Add new frontend route/page:
+  - /instant-estimate  (customer-facing wizard page)
+- Config must load from Google Sheets; cache it in memory (5 min) to reduce API calls.
+- Every service will be driven by sheet config, not hardcoded.
+- All risks must be mitigated by: question / photo gate / multiplier / disqualify-to-site-visit.
+- Use ONLY existing deps if possible; googleapis is already present.
+
+SECRETS / ENV (read them but don’t force me to add more than needed):
+- GOOGLE_SERVICE_ACCOUNT_JSON   (service account JSON string)
+- GOOGLE_SHEET_ID               (the spreadsheet id)
+- ESTIMATOR_CONFIG_CACHE_MS      (optional; default 300000)
+
+SHEETS (create tabs if missing; if they exist, do not break existing columns):
+A) Estimator_Modules
+Columns (exact headers):
+- module_id (string, e.g. HOME_AGE)
+- question (string)
+- input_type (enum: single_select | multi_select | number | photo)
+- options_json (JSON string for answer options; for single_select: [{value,label,multiplier,disqualify}] )
+- applies_to (string tags; optional)
+- notes (optional)
+
+B) Estimator_ServiceMatrix
+Columns:
+- service_id (string)
+- service_name (string)
+- segment (enum: residential | commercial)
+- tier (enum: instant | instant_with_safeguards | site_visit_required)
+- modules_csv (comma list of module_id in order)
+- qty_min (number; optional)
+- qty_max (number; optional)
+- disqualify_rules_json (JSON string; optional; evaluated in Prompt 3)
+- base_price_mode (enum: existing_calculator | placeholder)
+- enabled (TRUE/FALSE)
+
+C) Leads_QuoteSnapshots
+Columns:
+- created_at_iso
+- lead_id
+- customer_name
+- customer_phone
+- customer_email
+- segment
+- service_id
+- service_name
+- tier_result
+- risk_multiplier
+- contingency_pct
+- subtotal
+- total
+- answers_json (full payload)
+- snapshot_json (full quote snapshot for reconstruction later)
+- photo_urls_json
+- status (enum: quoted | needs_site_visit | needs_photos | error)
+
+SEED DATA:
+- Auto-seed Estimator_Modules with these universal modules (exact module_ids):
+  PROPERTY_TYPE, HOME_AGE, ATTIC_ACCESS, CRAWLSPACE_ACCESS, CEILING_HEIGHT, WALL_TYPE,
+  DISTANCE_FROM_PANEL, PANEL_SPACE, PANEL_PHOTO, EXISTING_BOX, FIXTURE_TYPE, QUANTITY,
+  ROOM_TYPE, OUTDOOR_INSTALL, NEW_DEDICATED_CIRCUIT, WORK_AREA_PHOTOS, UNCERTAINTY_BUFFER
+
+- Auto-seed Estimator_ServiceMatrix with my service list (from user), de-duplicated:
+  * Make a best-effort mapping:
+    - Troubleshooting (flickering lights), Whole-House Rewiring, Partial Home Rewiring,
+      Commercial Rewiring, Fire alarm systems, Transformer Installation,
+      Standby Generator Installation, Backup Generator Installation & Maintenance
+      => tier = site_visit_required
+    - Everything else => tier = instant_with_safeguards by default
+  * segment: if it clearly says office/warehouse/parking lot/emergency/exit/signage/bus duct/heavy machinery/UPS/fire alarm/transformer => commercial else residential
+  * modules_csv:
+    - lighting/fixtures/fans: PROPERTY_TYPE,HOME_AGE,CEILING_HEIGHT,ATTIC_ACCESS,EXISTING_BOX,FIXTURE_TYPE,QUANTITY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+    - outlets/switches/gfci/dimmers/smart: PROPERTY_TYPE,HOME_AGE,WALL_TYPE,DISTANCE_FROM_PANEL,ROOM_TYPE,QUANTITY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+    - dedicated circuits/new circuits/EV/hot tub/pool: PROPERTY_TYPE,HOME_AGE,PANEL_SPACE,PANEL_PHOTO,DISTANCE_FROM_PANEL,NEW_DEDICATED_CIRCUIT,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+    - outdoor/landscape/motion/security: PROPERTY_TYPE,HOME_AGE,OUTDOOR_INSTALL,WALL_TYPE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+    - panel/subpanel/service upgrade/surge: PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,PANEL_SPACE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+    - commercial lighting retrofits/ballast/bulb: PROPERTY_TYPE,CEILING_HEIGHT,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+IMPLEMENTATION TASKS:
+1) Create a small Google Sheets helper:
+   - lib/sheetsClient.js: builds auth client from GOOGLE_SERVICE_ACCOUNT_JSON
+   - lib/sheetsConfig.js: functions:
+     - ensureTabsAndHeaders()
+     - seedModulesIfEmpty()
+     - seedServicesIfEmpty()
+     - loadEstimatorConfig() -> { modulesById, services[], updatedAt }
+   Keep each file <=200 lines.
+2) Add GET /api/estimator/config:
+   - Calls ensure+seed once on startup or lazily on first request
+   - Returns normalized config JSON:
+     { services:[...], modules:{MODULE_ID:{question,input_type,options:[...]}} }
+3) Add /instant-estimate page wiring:
+   - Serve a new HTML file: public/instant-estimate.html
+   - Keep styling consistent with existing dark CRM theme (Tailwind ok).
+   - For now it can just load config and show a “config loaded” UI and service picker (wizard comes in Prompt 2).
+4) Ensure index.js routes:
+   - route /instant-estimate -> serves the html
+   - route /api/estimator/config -> returns JSON
+
+ACCEPTANCE CHECKLIST:
+- App starts, /instant-estimate loads.
+- It fetches /api/estimator/config successfully.
+- Sheets tabs are created if missing; seed runs only if tabs empty.
+- Nothing else in CRM breaks; other calculators remain untouched.
+- No file exceeds 200 lines.
