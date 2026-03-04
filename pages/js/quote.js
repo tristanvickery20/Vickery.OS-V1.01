@@ -8,17 +8,20 @@ const S = {
   selectedCategories: [],   // string[]  — multi-select
   config: null,
   quoteId: null,
-  typeId: null,             // selected job_type_id
-  qty: 1,                   // quantity — sent to server, server returns final_price inclusive
-  answers: {},
+  selectedServices: [],     // [{job_type_id, qty}] — multi-select services
+  answers: {},              // answers for primary service questions
   addons: [],
-  pricing: null,            // server calc response (final_price already qty-adjusted)
-  lock: null,               // server lock response (final_price already qty-adjusted)
+  pricing: null,            // {final_price, services:[]} — summed across all services
+  lock: null,               // server lock response
   photoUploaded: false,
   slotsData: null,
   selectedSlot: null,
   booking: null,
 };
+
+// ── Helpers for primary service ────────────────────────────────────────────────
+function primaryTypeId() { return S.selectedServices[0]?.job_type_id || null; }
+function primaryQty()    { return S.selectedServices[0]?.qty || 1; }
 
 let repricTimer = null;
 
@@ -43,8 +46,10 @@ function go(step) {
 
 function back() {
   if (S.step === "review") {
-    const hasQs     = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
-    const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length   || 0) > 0;
+    const pid       = primaryTypeId();
+    const single    = S.selectedServices.length === 1;
+    const hasQs     = single && (S.config?.questionsByType?.[pid]?.length || 0) > 0;
+    const hasAddons = single && (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     go(hasQs || hasAddons ? "questions" : "services");
     return;
   }
@@ -227,22 +232,23 @@ function renderServices() {
     <div class="q-cat-group-heading">${escHtml(cat)}</div>
     <div class="q-svc-list">
       ${types.map(t => {
-        const sel = S.typeId === t.job_type_id;
+        const existing = S.selectedServices.find(s => s.job_type_id === t.job_type_id);
+        const sel = !!existing;
         const tid = escHtml(t.job_type_id);
+        const qty = existing?.qty || 1;
         return `
           <div class="q-svc-card${sel ? " selected" : ""}" data-type="${tid}">
             <div class="q-svc-item">
               <div class="q-svc-checkbox">${sel ? "&#10003;" : ""}</div>
               <div>
                 <div class="q-svc-name">${escHtml(t.name_public)}</div>
-                ${t.min_price ? `<div class="q-svc-price">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
               </div>
             </div>
             <div class="q-svc-qty-row" ${sel ? "" : 'style="display:none;"'}>
               <span class="q-qty-label">How many?</span>
               <div class="q-qty-ctrl">
                 <button class="q-qty-btn q-qty-dec" data-type="${tid}">&#8722;</button>
-                <span class="q-qty-val" id="qtyVal_${tid}">${sel ? S.qty : 1}</span>
+                <span class="q-qty-val" id="qtyVal_${tid}">${qty}</span>
                 <button class="q-qty-btn q-qty-inc" data-type="${tid}">&#43;</button>
               </div>
             </div>
@@ -255,7 +261,7 @@ function renderServices() {
     ${listHTML}
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-      <button class="q-btn-next" id="nextService" ${S.typeId ? "" : "disabled"}>
+      <button class="q-btn-next" id="nextService" ${S.selectedServices.length ? "" : "disabled"}>
         Next Step &rarr;
       </button>
     </div>
@@ -264,8 +270,9 @@ function renderServices() {
 
 // ── Step 4: Questions + Add-ons ───────────────────────────────────────────────
 function renderQuestions() {
-  const questions = S.config?.questionsByType?.[S.typeId] || [];
-  const addons    = S.config?.addonsByType?.[S.typeId]   || [];
+  const pid       = primaryTypeId();
+  const questions = S.config?.questionsByType?.[pid] || [];
+  const addons    = S.config?.addonsByType?.[pid]   || [];
 
   return `
     ${stepHeader(3, "Project Details")}
@@ -324,10 +331,14 @@ function renderQuestion(q) {
 
 // ── Step 5: Review — price + slot picker (no lead info) ───────────────────────
 function renderReview() {
-  const price   = S.pricing?.final_price ?? null;
-  const bnpl    = price && price >= 200 ? Math.ceil(price / 12) : null;
-  const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
-  const label   = jobType?.name_public || "";
+  const price  = S.pricing?.final_price ?? null;
+  const bnpl   = price && price >= 200 ? Math.ceil(price / 12) : null;
+
+  // Build a label from all selected services
+  const svcLabel = S.selectedServices.map(svc => {
+    const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+    return svc.qty > 1 ? `${svc.qty}× ${jt?.name_public || svc.job_type_id}` : (jt?.name_public || svc.job_type_id);
+  }).join(", ");
 
   const slotLabel = S.selectedSlot
     ? (() => {
@@ -344,7 +355,7 @@ function renderReview() {
 
     <div class="q-price-footer">
       <div class="q-price-footer-label">
-        Final Estimated Cost${S.qty > 1 ? ` (${S.qty}&times; ${escHtml(label)})` : ""}
+        Final Estimated Cost${svcLabel ? ` &mdash; ${escHtml(svcLabel)}` : ""}
       </div>
       <div class="q-price-footer-amount">
         $${price != null ? Number(price).toLocaleString() : "0.00"}
@@ -534,7 +545,7 @@ function bindEvents() {
   document.getElementById("nextSegment")?.addEventListener("click", () => {
     if (!S.segment) return;
     S.selectedCategories = [];
-    S.typeId = null; S.qty = 1; S.answers = {}; S.addons = [];
+    S.selectedServices = []; S.answers = {}; S.addons = [];
     go("categories");
   });
 
@@ -554,45 +565,34 @@ function bindEvents() {
 
   document.getElementById("nextCategories")?.addEventListener("click", () => {
     if (!S.selectedCategories.length) return;
-    S.typeId = null; S.qty = 1; S.answers = {}; S.addons = [];
+    S.selectedServices = []; S.answers = {}; S.addons = [];
     go("services");
   });
 
-  // Service cards — toggle select/deselect, inline qty
+  // Service cards — multi-select toggle with individual inline qty
   document.querySelectorAll(".q-svc-card").forEach(card => {
     card.querySelector(".q-svc-item")?.addEventListener("click", () => {
       const typeId  = card.dataset.type;
       const qtyRow  = card.querySelector(".q-svc-qty-row");
       const cbEl    = card.querySelector(".q-svc-checkbox");
+      const idx     = S.selectedServices.findIndex(s => s.job_type_id === typeId);
 
-      if (S.typeId === typeId) {
-        // Deselect
-        S.typeId = null;
-        S.qty    = 1;
+      if (idx >= 0) {
+        // Deselect this service
+        S.selectedServices.splice(idx, 1);
         card.classList.remove("selected");
         if (cbEl)   cbEl.innerHTML = "";
         if (qtyRow) qtyRow.style.display = "none";
-        document.getElementById("nextService")?.setAttribute("disabled", "");
       } else {
-        // Deselect any previously selected card
-        document.querySelectorAll(".q-svc-card").forEach(c => {
-          c.classList.remove("selected");
-          const cb = c.querySelector(".q-svc-checkbox");
-          const qr = c.querySelector(".q-svc-qty-row");
-          if (cb) cb.innerHTML = "";
-          if (qr) qr.style.display = "none";
-        });
-        S.typeId  = typeId;
-        S.qty     = 1;
-        S.answers = {};
-        S.addons  = [];
+        // Select this service (add to list, keep others)
+        S.selectedServices.push({ job_type_id: typeId, qty: 1 });
         card.classList.add("selected");
         if (cbEl)   cbEl.innerHTML = "&#10003;";
         if (qtyRow) qtyRow.style.display = "";
         const valEl = document.getElementById("qtyVal_" + typeId);
-        if (valEl)  valEl.textContent = S.qty;
-        document.getElementById("nextService")?.removeAttribute("disabled");
+        if (valEl)  valEl.textContent = 1;
       }
+      document.getElementById("nextService")?.toggleAttribute("disabled", S.selectedServices.length === 0);
     });
   });
 
@@ -600,24 +600,30 @@ function bindEvents() {
   document.querySelectorAll(".q-qty-dec").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      S.qty = Math.max(1, S.qty - 1);
-      const valEl = document.getElementById("qtyVal_" + btn.dataset.type);
-      if (valEl) valEl.textContent = S.qty;
+      const typeId = btn.dataset.type;
+      const svc    = S.selectedServices.find(s => s.job_type_id === typeId);
+      if (svc) { svc.qty = Math.max(1, svc.qty - 1); }
+      const valEl = document.getElementById("qtyVal_" + typeId);
+      if (valEl) valEl.textContent = svc?.qty ?? 1;
     });
   });
   document.querySelectorAll(".q-qty-inc").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      S.qty = Math.min(20, S.qty + 1);
-      const valEl = document.getElementById("qtyVal_" + btn.dataset.type);
-      if (valEl) valEl.textContent = S.qty;
+      const typeId = btn.dataset.type;
+      const svc    = S.selectedServices.find(s => s.job_type_id === typeId);
+      if (svc) { svc.qty = Math.min(20, svc.qty + 1); }
+      const valEl = document.getElementById("qtyVal_" + typeId);
+      if (valEl) valEl.textContent = svc?.qty ?? 1;
     });
   });
 
   document.getElementById("nextService")?.addEventListener("click", () => {
-    if (!S.typeId) return;
-    const hasQs     = (S.config?.questionsByType?.[S.typeId]?.length || 0) > 0;
-    const hasAddons = (S.config?.addonsByType?.[S.typeId]?.length   || 0) > 0;
+    if (!S.selectedServices.length) return;
+    const pid       = primaryTypeId();
+    const single    = S.selectedServices.length === 1;
+    const hasQs     = single && (S.config?.questionsByType?.[pid]?.length || 0) > 0;
+    const hasAddons = single && (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     if (hasQs || hasAddons) go("questions");
     else calcPrice();
   });
@@ -680,12 +686,27 @@ async function calcPrice() {
       if (!sd.quote_id) throw new Error("Could not start session.");
       S.quoteId = sd.quote_id;
     }
-    const cr = await fetch("/api/quote/calc", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, qty: S.qty }),
-    });
-    S.pricing = await cr.json();
-    if (!S.pricing.ok && S.pricing.error) throw new Error(S.pricing.error);
+
+    // Calc price for each selected service, then sum
+    const results = await Promise.all(S.selectedServices.map(svc =>
+      fetch("/api/quote/calc", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quote_id: S.quoteId,
+          job_type_id: svc.job_type_id,
+          answers: S.answers,
+          addons: S.addons,
+          qty: svc.qty,
+        }),
+      }).then(r => r.json())
+    ));
+
+    for (const res of results) {
+      if (!res.ok && res.error) throw new Error(res.error);
+    }
+
+    const totalPrice = results.reduce((sum, r) => sum + (r.final_price || 0), 0);
+    S.pricing = { ok: true, final_price: totalPrice, services: results, evaluation_flag: results.some(r => r.evaluation_flag) };
     S.selectedSlot = null;
     go("review");
   } catch (e) {
@@ -698,8 +719,11 @@ async function loadSlotsForReview() {
   const section = document.getElementById("reviewSlotSection");
   if (!section) return;
   try {
-    const jobType = (S.config?.jobTypes || []).find(j => j.job_type_id === S.typeId);
-    const minutes = Number(jobType?.default_duration_minutes) || 90;
+    // Sum durations of all selected services
+    const minutes = S.selectedServices.reduce((total, svc) => {
+      const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+      return total + (Number(jt?.default_duration_minutes) || 60);
+    }, 0) || 90;
     const r       = await fetch(`/api/schedule/slots?minutes=${encodeURIComponent(minutes)}`);
     const d       = await r.json();
     if (!d.ok) throw new Error(d.error || "Could not load slots.");
@@ -765,7 +789,7 @@ async function reprice(zip) {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, zip }),
     });
     const data = await r.json();
     if (data.final_price != null) {
@@ -805,7 +829,7 @@ async function submitLock() {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: S.typeId, answers: S.answers, addons: S.addons, qty: S.qty, customer_name: name, name, phone, email, address, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
