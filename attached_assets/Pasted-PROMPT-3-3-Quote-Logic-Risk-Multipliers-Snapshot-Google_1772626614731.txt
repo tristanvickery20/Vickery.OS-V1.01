@@ -1,0 +1,81 @@
+PROMPT 3/3 — Quote Logic + Risk Multipliers + Snapshot + Google Sheets write (+ optional Drive upload via Apps Script)
+
+Continue from Prompts 1–2. Keep minimal changes. Keep files <=200 lines. Do not remove other calculators. Do not break CRM.
+
+GOAL:
+Implement the real estimator engine:
+1) Compute risk_multiplier from module answers (multiplying answer multipliers)
+2) Apply contingency_pct when uncertain answers exist (UNCERTAINTY_BUFFER module)
+3) Enforce disqualify rules and tiering:
+   - If service tier is site_visit_required => tier_result=needs_site_visit (no price)
+   - If any answer disqualify=true => tier_result=needs_site_visit
+   - If required photos missing => tier_result=needs_photos (no price)
+4) Pricing mode:
+   - If base_price_mode == existing_calculator: call the existing quote logic already in the repo (whatever /api/quote uses) using service_id + qty + any needed inputs; then apply risk_multiplier and contingency.
+   - If placeholder: use a simple placeholder base (e.g. $0 subtotal) but still store snapshot; mark status as quoted_placeholder.
+   IMPORTANT: do not delete old pricing systems—just integrate when possible.
+
+CRITICAL BUSINESS RULE:
+Every lead must store a quote snapshot (JSON) so I can reconstruct what was quoted later even if pricing changes.
+Write a row to Leads_QuoteSnapshots for every POST /api/estimator/quote attempt (even failures, status=error).
+
+OPTIONAL PHOTO UPLOAD (do if feasible without paid services):
+- Support an Apps Script upload endpoint:
+  Secret: APPS_SCRIPT_UPLOAD_URL (optional)
+  Behavior:
+   - If APPS_SCRIPT_UPLOAD_URL exists:
+     - convert images to base64 on backend (or accept base64 from frontend) and POST to Apps Script
+     - Apps Script returns public or shareable Drive URLs
+     - store photo_urls_json in sheet
+   - If APPS_SCRIPT_UPLOAD_URL missing:
+     - do not attempt storage; treat required-photo services as needs_photos unless user provided photos AND you can store them locally temporarily
+     - but safest: if required photos cannot be uploaded => tier_result=needs_site_visit (risk mitigated)
+
+SHEETS WRITE:
+On each quote request, append to Leads_QuoteSnapshots with:
+- lead_id (uuid)
+- created_at_iso
+- customer fields (if you have them; if not, keep blank)
+- service fields
+- tier_result
+- risk_multiplier
+- contingency_pct
+- subtotal (base subtotal before contingency; still store 0 if unknown)
+- total
+- answers_json (payload answers)
+- snapshot_json (FULL quote object: config version, pricing inputs, computed values, disqualify reasons)
+- photo_urls_json
+- status (quoted | needs_site_visit | needs_photos | error)
+
+IMPLEMENTATION DETAILS:
+- Create lib/estimatorEngine.js:
+  - evaluateService(config, payload) -> {tier_result, reasons[], risk_multiplier, contingency_pct, required_photos_missing:boolean}
+  - computePrice(baseSubtotal, risk_multiplier, contingency_pct) -> {subtotal,total}
+- Update POST /api/estimator/quote:
+  - Load config (cached)
+  - Validate payload vs service modules
+  - Run evaluateService
+  - If tier_result allows pricing:
+     - get baseSubtotal via existing calculator OR placeholder
+     - compute totals
+  - Always write snapshot row to sheet
+  - Return JSON response including:
+     { ok:true, tier_result, reasons, risk_multiplier, contingency_pct, subtotal, total, lead_id }
+
+DISQUALIFY RULES (minimum):
+- If WALL_TYPE == Brick/masonry => needs_site_visit
+- If CEILING_HEIGHT == Over 18 ft => needs_site_visit
+- If DISTANCE_FROM_PANEL == Detached building => needs_site_visit
+- If HOME_AGE == Before 1950 AND service is circuit/panel/rewiring => needs_site_visit
+- If PANEL_SPACE == No for EV/circuits => needs_site_visit unless service is “subpanel install”
+
+UNCERTAINTY BUFFER:
+- If any selected option value includes “Not sure” OR payload marks uncertain=true => contingency_pct = 0.15 else 0
+
+ACCEPTANCE CHECKLIST:
+- Quotes return tier_result correctly and reasons show why.
+- risk_multiplier changes when different answers selected.
+- Every quote attempt writes a row to Leads_QuoteSnapshots with snapshot_json populated.
+- If disqualified, totals are 0 and status indicates needs_site_visit (or needs_photos).
+- No paid services added; all changes are within free Google + existing deps.
+- No file exceeds 200 lines.

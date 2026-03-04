@@ -4,171 +4,91 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Instant Estimate — Vickery Electric</title>
-  <link rel="stylesheet" href="/pages/css/quote.css" />
   <style>
-    :root {
-      --navy:   #0f1c2e;
-      --navy2:  #16273d;
-      --accent: #2563eb;
-      --gold:   #f59e0b;
-      --text:   #e2e8f0;
-      --muted:  #94a3b8;
-      --card:   #1e2f45;
-      --border: #2d4060;
-      --radius: 12px;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--navy);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      min-height: 100vh;
-    }
-    header {
-      background: var(--navy2);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    header .logo { font-weight: 700; font-size: 1rem; color: var(--text); }
-    header a.cta {
-      background: var(--accent);
-      color: #fff;
-      padding: 8px 18px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: .85rem;
-      font-weight: 600;
-    }
-    .wrapper {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 40px 20px 80px;
-    }
-    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
-    h1 span { color: var(--gold); }
-    .sub { color: var(--muted); margin-bottom: 36px; line-height: 1.6; }
-
-    /* Progress bar */
-    .progress-bar {
-      display: flex;
-      gap: 0;
-      margin-bottom: 36px;
-      border-radius: var(--radius);
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .progress-step {
-      flex: 1;
-      text-align: center;
-      padding: 10px 4px;
-      font-size: .75rem;
-      font-weight: 600;
-      color: var(--muted);
-      background: var(--navy2);
-      border-right: 1px solid var(--border);
-    }
-    .progress-step:last-child { border-right: none; }
-    .progress-step.active { background: var(--accent); color: #fff; }
-    .progress-step.done   { background: var(--card);  color: var(--gold); }
-
-    /* Segment picker */
-    .seg-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .seg-card {
-      background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px 20px;
-      cursor: pointer;
-      transition: border-color .15s, transform .1s;
-      text-align: center;
-    }
-    .seg-card:hover  { border-color: var(--accent); transform: translateY(-2px); }
-    .seg-card.picked { border-color: var(--accent); background: #1e3560; }
-    .seg-card .icon  { font-size: 2.2rem; margin-bottom: 10px; }
-    .seg-card .label { font-weight: 700; font-size: 1rem; }
-    .seg-card .desc  { font-size: .8rem; color: var(--muted); margin-top: 4px; }
-
+    :root{--navy:#0f1c2e;--navy2:#16273d;--accent:#2563eb;--gold:#f59e0b;--text:#e2e8f0;--muted:#94a3b8;--card:#1e2f45;--border:#2d4060;--r:12px}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--navy);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    header{background:var(--navy2);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+    .logo{font-weight:700;font-size:1rem}
+    a.cta{background:var(--accent);color:#fff;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600}
+    .wrapper{max-width:680px;margin:0 auto;padding:32px 16px 80px}
+    h1{font-size:1.8rem;font-weight:800;margin-bottom:6px}
+    h1 span{color:var(--gold)}
+    .sub{color:var(--muted);margin-bottom:28px;line-height:1.6;font-size:.95rem}
+    /* Progress */
+    .progress-bar{display:flex;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);margin-bottom:28px}
+    .progress-step{flex:1;text-align:center;padding:9px 2px;font-size:.72rem;font-weight:700;color:var(--muted);background:var(--navy2);border-right:1px solid var(--border)}
+    .progress-step:last-child{border-right:none}
+    .progress-step.active{background:var(--accent);color:#fff}
+    .progress-step.done{background:var(--card);color:var(--gold)}
+    /* Segment */
+    .seg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+    .seg-card{background:var(--card);border:2px solid var(--border);border-radius:var(--r);padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .15s,transform .1s}
+    .seg-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .seg-card.picked{border-color:var(--accent);background:#1e3560}
+    .seg-card .icon{font-size:2rem;margin-bottom:8px}
+    .seg-card .label{font-weight:700;font-size:.95rem}
+    .seg-card .desc{font-size:.78rem;color:var(--muted);margin-top:4px}
     /* Service list */
-    .service-list { display: flex; flex-direction: column; gap: 10px; }
-    .svc-card {
-      background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      transition: border-color .15s;
-    }
-    .svc-card:hover  { border-color: var(--accent); }
-    .svc-card.picked { border-color: var(--accent); background: #1e3560; }
-    .svc-card .svc-name { font-weight: 600; flex: 1; }
-    .svc-card .tier-badge {
-      font-size: .7rem;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .tier-instant        { background: #064e3b; color: #6ee7b7; }
-    .tier-safeguards     { background: #1e3a5f; color: #93c5fd; }
-    .tier-site_visit     { background: #451a03; color: #fcd34d; }
-    .site-visit-notice {
-      background: #2d1a00;
-      border: 1px solid #92400e;
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      color: #fcd34d;
-      font-size: .88rem;
-      margin-top: 16px;
-      display: none;
-    }
-
-    /* Action buttons */
-    .actions { margin-top: 32px; display: flex; justify-content: flex-end; gap: 12px; }
-    .btn {
-      padding: 12px 28px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: .95rem;
-      border: none;
-      cursor: pointer;
-      transition: opacity .15s;
-    }
-    .btn:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-primary  { background: var(--accent); color: #fff; }
-    .btn-ghost    { background: transparent; color: var(--muted); border: 1px solid var(--border); }
-
-    /* Status / error */
-    .status-msg {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--muted);
-      font-size: .95rem;
-    }
-    .error-msg { color: #f87171; }
-    .search-box {
-      width: 100%;
-      padding: 10px 14px;
-      background: var(--navy2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: .9rem;
-      margin-bottom: 14px;
-      outline: none;
-    }
-    .search-box:focus { border-color: var(--accent); }
+    .search-box{width:100%;padding:10px 14px;background:var(--navy2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.9rem;margin-bottom:12px;outline:none}
+    .search-box:focus{border-color:var(--accent)}
+    .service-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+    .svc-card{background:var(--card);border:2px solid var(--border);border-radius:var(--r);padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:border-color .15s}
+    .svc-card:hover{border-color:var(--accent)}
+    .svc-card.picked{border-color:var(--accent);background:#1e3560}
+    .svc-name{font-weight:600;flex:1;font-size:.92rem}
+    .tier-badge{font-size:.68rem;padding:3px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+    .tier-instant{background:#064e3b;color:#6ee7b7}
+    .tier-safeguards{background:#1e3a5f;color:#93c5fd}
+    .tier-site-visit{background:#451a03;color:#fcd34d}
+    .site-visit-notice{background:#2d1a00;border:1px solid #92400e;border-radius:var(--r);padding:14px 18px;color:#fcd34d;font-size:.85rem;margin-top:12px}
+    /* Module question */
+    .module-header{margin-bottom:24px}
+    .module-progress{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+    .module-question{font-size:1.2rem;font-weight:700;line-height:1.4}
+    /* Options */
+    .option-grid{display:flex;flex-direction:column;gap:10px}
+    .option-btn{background:var(--card);border:2px solid var(--border);border-radius:var(--r);padding:14px 20px;text-align:left;font-size:.95rem;font-weight:500;color:var(--text);cursor:pointer;transition:border-color .12s,background .12s;width:100%}
+    .option-btn:hover{border-color:var(--accent)}
+    .option-btn.selected{border-color:var(--accent);background:#1e3560;font-weight:700}
+    /* Number stepper */
+    .qty-stepper{display:flex;align-items:center;gap:24px;justify-content:center;padding:32px 0}
+    .qty-btn{background:var(--card);border:2px solid var(--border);border-radius:50%;width:52px;height:52px;font-size:1.5rem;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .12s}
+    .qty-btn:not(:disabled):hover{border-color:var(--accent)}
+    .qty-btn:disabled{opacity:.35;cursor:not-allowed}
+    .qty-val{font-size:2.4rem;font-weight:800;min-width:60px;text-align:center}
+    /* Photo */
+    .photo-zone{display:flex;flex-direction:column;gap:12px}
+    .photo-label{background:var(--card);border:2px dashed var(--border);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;font-size:.95rem;color:var(--muted);transition:border-color .15s}
+    .photo-label:hover{border-color:var(--accent)}
+    .thumb-row{display:flex;flex-wrap:wrap;gap:8px}
+    .thumb-wrap{position:relative}
+    .thumb{width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid var(--border)}
+    .thumb-remove{position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .photo-hint{font-size:.8rem;color:var(--muted)}
+    /* Actions */
+    .actions{margin-top:28px;display:flex;justify-content:flex-end;gap:10px}
+    .btn{padding:12px 26px;border-radius:10px;font-weight:700;font-size:.9rem;border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;display:inline-block}
+    .btn:disabled{opacity:.35;cursor:not-allowed}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+    .btn-gold{background:var(--gold);color:#1a0;color:#7c2d12}
+    /* Outcome */
+    .outcome-card{background:var(--card);border-radius:var(--r);padding:28px 24px;border:2px solid var(--border)}
+    .outcome-instant{border-color:#1d4ed8}
+    .outcome-site-visit{border-color:#92400e}
+    .outcome-icon{font-size:2.5rem;margin-bottom:12px}
+    .outcome-card h2{font-size:1.4rem;font-weight:800;margin-bottom:10px}
+    .outcome-card p{color:var(--muted);font-size:.92rem;margin-bottom:20px;line-height:1.6}
+    .price-preview{background:var(--navy2);border-radius:10px;padding:16px 20px;text-align:center;font-size:1rem;margin-top:16px;color:var(--muted)}
+    .price-preview strong{color:var(--text)}
+    /* Result summary */
+    .result-summary{background:var(--navy2);border-radius:10px;padding:14px 16px;margin:16px 0;display:flex;flex-direction:column;gap:6px}
+    .rs-row{display:flex;justify-content:space-between;font-size:.83rem;gap:8px}
+    .rs-lbl{color:var(--muted);flex-shrink:0}
+    /* Misc */
+    .status-msg{text-align:center;padding:60px 20px;color:var(--muted)}
+    .error-msg{color:#f87171}
   </style>
 </head>
 <body>
@@ -176,157 +96,17 @@
   <div class="logo">⚡ Vickery Electric</div>
   <a class="cta" href="tel:+19185550100">Call Us</a>
 </header>
-
 <div class="wrapper">
   <h1>Get your estimate <span>instantly</span></h1>
-  <p class="sub">Answer a few quick questions and we'll generate a precise estimate for your project — no phone call required.</p>
-
+  <p class="sub">Answer a few questions and we'll generate a precise estimate — no phone call required.</p>
   <div class="progress-bar">
     <div class="progress-step active" id="ps1">1. Type</div>
     <div class="progress-step"        id="ps2">2. Service</div>
     <div class="progress-step"        id="ps3">3. Details</div>
-    <div class="progress-step"        id="ps4">4. Estimate</div>
+    <div class="progress-step"        id="ps4">4. Result</div>
   </div>
-
-  <div id="stepContent"><div class="status-msg">Loading configuration…</div></div>
+  <div id="stepContent"><div class="status-msg">Loading…</div></div>
 </div>
-
-<script>
-(function () {
-  const S = { segment: null, service: null, config: null };
-
-  /* ── fetch config ────────────────────────────────────────────────── */
-  async function init() {
-    try {
-      const r = await fetch("/api/estimator/config");
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || "Config load failed");
-      S.config = d;
-      renderSegmentStep();
-    } catch (e) {
-      document.getElementById("stepContent").innerHTML =
-        `<div class="status-msg error-msg">Could not load configuration: ${e.message}</div>`;
-    }
-  }
-
-  /* ── step 1: segment ─────────────────────────────────────────────── */
-  function renderSegmentStep() {
-    setProgress(1);
-    document.getElementById("stepContent").innerHTML = `
-      <div class="seg-grid">
-        <div class="seg-card" data-seg="residential">
-          <div class="icon">🏠</div>
-          <div class="label">Residential</div>
-          <div class="desc">Home electrical upgrades, repairs, and installations.</div>
-        </div>
-        <div class="seg-card" data-seg="commercial">
-          <div class="icon">🏢</div>
-          <div class="label">Commercial</div>
-          <div class="desc">Office, retail, and industrial electrical solutions.</div>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn btn-primary" id="nextSeg" disabled>Next Step →</button>
-      </div>`;
-
-    document.querySelectorAll(".seg-card").forEach(card => {
-      card.addEventListener("click", () => {
-        document.querySelectorAll(".seg-card").forEach(c => c.classList.remove("picked"));
-        card.classList.add("picked");
-        S.segment = card.dataset.seg;
-        document.getElementById("nextSeg").disabled = false;
-      });
-    });
-    document.getElementById("nextSeg").addEventListener("click", renderServiceStep);
-  }
-
-  /* ── step 2: service ─────────────────────────────────────────────── */
-  function renderServiceStep() {
-    setProgress(2);
-    const services = (S.config.services || []).filter(sv => sv.segment === S.segment);
-    const tierLabel = { instant: "Instant", instant_with_safeguards: "Instant", site_visit_required: "Site Visit" };
-    const tierClass = { instant: "tier-instant", instant_with_safeguards: "tier-safeguards", site_visit_required: "tier-site_visit" };
-
-    document.getElementById("stepContent").innerHTML = `
-      <input class="search-box" id="svcSearch" placeholder="Search services…" autocomplete="off" />
-      <div class="service-list" id="svcList">
-        ${services.map(sv => `
-          <div class="svc-card" data-id="${sv.service_id}" data-tier="${sv.tier}">
-            <span class="svc-name">${sv.service_name}</span>
-            <span class="tier-badge ${tierClass[sv.tier] || ''}">${tierLabel[sv.tier] || sv.tier}</span>
-          </div>`).join("")}
-      </div>
-      <div class="site-visit-notice" id="svNotice">
-        ⚠️ This service typically requires an on-site assessment before we can provide an accurate estimate.
-        Selecting it will connect you with our team to schedule a free site visit.
-      </div>
-      <div class="actions">
-        <button class="btn btn-ghost" id="backSeg">← Back</button>
-        <button class="btn btn-primary" id="nextSvc" disabled>Next Step →</button>
-      </div>`;
-
-    document.getElementById("svcSearch").addEventListener("input", function () {
-      const q = this.value.toLowerCase();
-      document.querySelectorAll(".svc-card").forEach(c => {
-        c.style.display = c.querySelector(".svc-name").textContent.toLowerCase().includes(q) ? "" : "none";
-      });
-    });
-
-    document.querySelectorAll(".svc-card").forEach(card => {
-      card.addEventListener("click", () => {
-        document.querySelectorAll(".svc-card").forEach(c => c.classList.remove("picked"));
-        card.classList.add("picked");
-        S.service = services.find(sv => sv.service_id === card.dataset.id);
-        document.getElementById("nextSvc").disabled = false;
-        document.getElementById("svNotice").style.display =
-          card.dataset.tier === "site_visit_required" ? "block" : "none";
-      });
-    });
-
-    document.getElementById("backSeg").addEventListener("click", renderSegmentStep);
-    document.getElementById("nextSvc").addEventListener("click", renderDetailsStub);
-  }
-
-  /* ── step 3: details stub (wizard — Prompt 2) ────────────────────── */
-  function renderDetailsStub() {
-    setProgress(3);
-    const modules = (S.service.modules_csv || "").split(",").map(m => m.trim()).filter(Boolean);
-    const mods    = modules.map(mid => S.config.modulesById[mid]).filter(Boolean);
-    document.getElementById("stepContent").innerHTML = `
-      <div style="background:var(--card);border-radius:var(--radius);padding:24px 20px;margin-bottom:20px;">
-        <div style="font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Selected Service</div>
-        <div style="font-weight:700;font-size:1.1rem;margin-bottom:16px;">${S.service.service_name}</div>
-        <div style="font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">
-          Risk modules for this service (${mods.length})
-        </div>
-        ${mods.map(m => `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-            <span style="font-size:.75rem;background:var(--navy2);padding:2px 8px;border-radius:20px;color:var(--muted);min-width:60px;text-align:center;">${m.input_type}</span>
-            <span style="font-size:.9rem;">${m.question}</span>
-          </div>`).join("")}
-        <div style="margin-top:16px;padding:14px;background:var(--navy2);border-radius:8px;color:var(--muted);font-size:.85rem;">
-          ✦ Full question wizard coming in Phase 2. Config verified: <strong>${mods.length} modules loaded</strong>.
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn btn-ghost" id="backSvc">← Back</button>
-      </div>`;
-
-    document.getElementById("backSvc").addEventListener("click", renderServiceStep);
-  }
-
-  /* ── helpers ─────────────────────────────────────────────────────── */
-  function setProgress(step) {
-    for (let i = 1; i <= 4; i++) {
-      const el = document.getElementById("ps" + i);
-      el.classList.remove("active", "done");
-      if (i < step)  el.classList.add("done");
-      if (i === step) el.classList.add("active");
-    }
-  }
-
-  init();
-})();
-</script>
+<script src="/pages/js/instant-estimate.js"></script>
 </body>
 </html>
