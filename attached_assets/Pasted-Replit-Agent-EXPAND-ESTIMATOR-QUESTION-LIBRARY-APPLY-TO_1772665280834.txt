@@ -1,0 +1,231 @@
+Replit Agent — EXPAND ESTIMATOR QUESTION LIBRARY + APPLY TO ALL SERVICES + RENDER ON WEBSITE
+
+Problem:
+Our estimator Google Sheet only contains a few modules/questions. We need a complete universal + tailored question library, then assign the right questions to every service in Estimator_ServiceMatrix, and ensure /instant-estimate renders them dynamically.
+
+Hard rules:
+- Use ONLY process.env.ESTIMATOR_SHEET_ID
+- Do NOT touch the CRM sheet.
+- Do NOT remove other calculators.
+- Do NOT hardcode questions in the frontend. Everything must come from the sheet.
+
+Sheet tabs (must exist in ESTIMATOR_SHEET_ID):
+- Estimator_Modules
+- Estimator_ServiceMatrix
+
+A) Populate / upsert Estimator_Modules (do not wipe existing)
+1) Implement an UPSERT: match by module_id.
+   - If module_id exists: update question/input_type/options_json (unless existing question is non-empty and differs; in that case, keep existing and add a warning in console).
+   - If missing: append a new row.
+2) Add these module_ids with their question + input_type + options_json (JSON string) exactly as defined below.
+
+MODULE DEFINITIONS TO ADD (create if missing):
+
+Universal:
+- PROPERTY_TYPE (single_select)
+  options_json: [{"value":"single_family","label":"Single-family home"},{"value":"townhome_duplex","label":"Townhome / Duplex"},{"value":"apartment_condo","label":"Apartment / Condo"},{"value":"detached_building","label":"Detached garage / workshop"},{"value":"commercial","label":"Commercial building","disqualify":true}]
+- HOME_AGE (single_select)
+  options_json: [{"value":"2000_plus","label":"2000 or newer","multiplier":1.0},{"value":"1980_1999","label":"1980–1999","multiplier":1.05},{"value":"1950_1979","label":"1950–1979","multiplier":1.15},{"value":"pre_1950","label":"Before 1950","multiplier":1.25,"uncertain":true},{"value":"not_sure","label":"Not sure","multiplier":1.10,"uncertain":true}]
+- OCCUPIED (single_select)
+  options_json: [{"value":"yes","label":"Yes"},{"value":"no","label":"No"}]
+- ACCESS_DIFFICULTY (single_select)
+  options_json: [{"value":"easy","label":"Easy access","multiplier":1.0},{"value":"some_obstacles","label":"Some obstacles","multiplier":1.1},{"value":"tight_hard","label":"Tight / hard access","multiplier":1.25},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- CEILING_HEIGHT (single_select)
+  options_json: [{"value":"lt9","label":"Under 9 ft","multiplier":1.0},{"value":"9_12","label":"9–12 ft","multiplier":1.1},{"value":"12_18","label":"12–18 ft","multiplier":1.4},{"value":"gt18","label":"Over 18 ft","disqualify":true},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- ATTIC_ACCESS (single_select)
+  options_json: [{"value":"full","label":"Yes — full attic access","multiplier":1.0},{"value":"limited","label":"Yes — limited access","multiplier":1.25},{"value":"none","label":"No attic access","multiplier":1.5},{"value":"not_sure","label":"Not sure","multiplier":1.2,"uncertain":true}]
+- CRAWLSPACE_ACCESS (single_select)
+  options_json: [{"value":"yes","label":"Yes"},{"value":"no","label":"No"},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- WALL_TYPE (single_select)
+  options_json: [{"value":"drywall","label":"Drywall","multiplier":1.0},{"value":"plaster","label":"Plaster","multiplier":1.3},{"value":"brick","label":"Brick / masonry","disqualify":true},{"value":"tile","label":"Tile","multiplier":1.5},{"value":"wood","label":"Wood / paneling","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- PANEL_LOCATION (single_select)
+  options_json: [{"value":"same_room","label":"Same room","multiplier":1.0},{"value":"nearby","label":"Nearby","multiplier":1.1},{"value":"far","label":"Far / across the house","multiplier":1.25},{"value":"detached","label":"Detached building","disqualify":true},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- PANEL_PHOTO (photo) options_json: []
+- WORK_AREA_PHOTOS (photo) options_json: []
+- EXISTING_POWER_PRESENT (single_select)
+  options_json: [{"value":"yes","label":"Yes"},{"value":"no","label":"No","multiplier":1.25},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- DRYWALL_REPAIR_NEEDED (single_select)
+  options_json: [{"value":"ok","label":"Yes, small drywall cuts/patching is okay"},{"value":"no","label":"No","disqualify":true},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- PERMIT_ALLOWED (single_select)
+  options_json: [{"value":"yes","label":"Yes"},{"value":"no","label":"No","disqualify":true},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- UNCERTAINTY_BUFFER (single_select)
+  question: "If anything is unknown, we include a contingency to protect accuracy."
+  options_json: [{"value":"auto","label":"Auto","multiplier":1.0}]
+
+Tailored:
+- LIGHTING_EXISTING_LOCATION (single_select)
+  options_json: [{"value":"replace","label":"Replace existing light","multiplier":1.0},{"value":"new","label":"New location","multiplier":1.25},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- RECESSED_LIGHT_CEILING_TYPE (single_select)
+  options_json: [{"value":"drywall","label":"Drywall","multiplier":1.0},{"value":"plaster","label":"Plaster","multiplier":1.3},{"value":"drop","label":"Drop ceiling","multiplier":1.15},{"value":"wood","label":"Wood","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- RECESSED_LIGHT_INSULATION (single_select)
+  options_json: [{"value":"yes","label":"Yes","multiplier":1.1},{"value":"no","label":"No","multiplier":1.0},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- RECESSED_LIGHT_COUNT (number) options_json: []
+- UNDERCABINET_POWER (single_select)
+  options_json: [{"value":"yes","label":"Yes, power is available","multiplier":1.0},{"value":"no","label":"No, power is not available","multiplier":1.25},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- UNDERCABINET_TYPE (single_select)
+  options_json: [{"value":"plugin","label":"Plug-in","multiplier":1.0},{"value":"hardwired","label":"Hardwired","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.05,"uncertain":true}]
+- FIXTURE_SUPPLIED_BY (single_select)
+  options_json: [{"value":"customer","label":"Customer provides","multiplier":1.0},{"value":"electrician","label":"Electrician supplies","multiplier":1.0},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- FIXTURE_WEIGHT (single_select)
+  options_json: [{"value":"standard","label":"Standard","multiplier":1.0},{"value":"heavy","label":"Heavy / oversized (needs extra support)","multiplier":1.35},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- FAN_EXISTING_BOX (single_select)
+  options_json: [{"value":"yes","label":"Yes","multiplier":1.0},{"value":"no","label":"No","multiplier":1.25},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- FAN_CONTROL_TYPE (single_select)
+  options_json: [{"value":"pull","label":"Pull chain","multiplier":1.0},{"value":"wall","label":"Wall switch","multiplier":1.05},{"value":"remote","label":"Remote","multiplier":1.1},{"value":"not_sure","label":"Not sure","multiplier":1.05,"uncertain":true}]
+- OUTDOOR_EXPOSURE (single_select)
+  options_json: [{"value":"yes","label":"Yes, exposed to rain/weather","multiplier":1.2},{"value":"some","label":"Some exposure","multiplier":1.1},{"value":"no","label":"No","multiplier":1.0},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- MOTION_SENSOR_LOCATION_HEIGHT (single_select)
+  options_json: [{"value":"lt10","label":"Under 10 ft","multiplier":1.0},{"value":"10_18","label":"10–18 ft","multiplier":1.2},{"value":"gt18","label":"Over 18 ft","disqualify":true},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- DIMMER_LOAD_TYPE (single_select)
+  options_json: [{"value":"led","label":"LED lights","multiplier":1.0},{"value":"incandescent","label":"Incandescent / halogen","multiplier":1.0},{"value":"fan_motor","label":"Fan motor","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- DIMMER_LED_COMPAT (single_select)
+  options_json: [{"value":"yes","label":"Yes, dimmable LEDs","multiplier":1.0},{"value":"no","label":"No / not sure if dimmable","multiplier":1.1,"uncertain":true},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- DIMMER_STYLE (single_select)
+  options_json: [{"value":"toggle_slider","label":"Toggle + slider","multiplier":1.0},{"value":"paddle","label":"Paddle","multiplier":1.0},{"value":"smart_dimmer","label":"Smart dimmer","multiplier":1.1},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- DEVICE_BRAND (single_select)
+  options_json: [{"value":"lutron","label":"Lutron","multiplier":1.0},{"value":"leviton","label":"Leviton","multiplier":1.0},{"value":"eaton","label":"Eaton","multiplier":1.0},{"value":"any","label":"Any / no preference","multiplier":1.0},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- SMART_PLATFORM (single_select)
+  options_json: [{"value":"none","label":"None"},{"value":"alexa","label":"Alexa"},{"value":"google","label":"Google"},{"value":"homekit","label":"Apple HomeKit"},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- SMART_NEUTRAL_WIRE (single_select)
+  options_json: [{"value":"yes","label":"Yes","multiplier":1.0},{"value":"no","label":"No","multiplier":1.2},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- OUTLET_LOCATION_TYPE (single_select)
+  options_json: [{"value":"general","label":"General room","multiplier":1.0},{"value":"kitchen","label":"Kitchen / countertop","multiplier":1.1},{"value":"bath","label":"Bathroom","multiplier":1.1},{"value":"garage","label":"Garage","multiplier":1.1},{"value":"outdoor","label":"Outdoor","multiplier":1.2},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- GFCI_EXISTING (single_select)
+  options_json: [{"value":"replace","label":"Replacing existing GFCI","multiplier":1.0},{"value":"add_new","label":"Adding new GFCI","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- DEDICATED_CIRCUIT_APPLIANCE (single_select)
+  options_json: [{"value":"microwave","label":"Microwave"},{"value":"dishwasher","label":"Dishwasher"},{"value":"disposal","label":"Garbage disposal"},{"value":"refrigerator","label":"Refrigerator"},{"value":"dryer","label":"Dryer"},{"value":"range","label":"Range / oven"},{"value":"water_heater","label":"Water heater"},{"value":"hvac","label":"HVAC"},{"value":"other","label":"Other / not sure","uncertain":true}]
+- DEDICATED_CIRCUIT_VOLTAGE (single_select)
+  options_json: [{"value":"120","label":"120V","multiplier":1.0},{"value":"240","label":"240V","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- DEDICATED_CIRCUIT_DISTANCE (single_select)
+  options_json: [{"value":"lt25","label":"Under 25 ft","multiplier":1.0},{"value":"25_50","label":"25–50 ft","multiplier":1.1},{"value":"50_100","label":"50–100 ft","multiplier":1.25},{"value":"gt100","label":"Over 100 ft","multiplier":1.5},{"value":"not_sure","label":"Not sure","multiplier":1.15,"uncertain":true}]
+- EV_CHARGER_TYPE (single_select)
+  options_json: [{"value":"lvl1","label":"Level 1 (120V)","multiplier":1.0},{"value":"lvl2","label":"Level 2 (240V)","multiplier":1.2},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- EV_HARDWIRE_OR_PLUG (single_select)
+  options_json: [{"value":"hardwired","label":"Hardwired","multiplier":1.0},{"value":"plug_in","label":"Plug-in (NEMA outlet)","multiplier":1.1},{"value":"not_sure","label":"Not sure","multiplier":1.05,"uncertain":true}]
+- EV_PANEL_CAPACITY (single_select)
+  options_json: [{"value":"yes","label":"Yes","multiplier":1.0},{"value":"no","label":"No","disqualify":true},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- HOT_TUB_POOL_EQUIPMENT (single_select)
+  options_json: [{"value":"hot_tub","label":"Hot tub"},{"value":"pool_pump","label":"Pool pump"},{"value":"heater","label":"Pool/spa heater"},{"value":"combo","label":"More than one","multiplier":1.25},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- GENERATOR_TYPE (single_select)
+  options_json: [{"value":"portable","label":"Portable w/ transfer switch","multiplier":1.0},{"value":"standby","label":"Standby whole-home","disqualify":true},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- TRANSFER_SWITCH_LOCATION (single_select)
+  options_json: [{"value":"near_panel","label":"Near the panel","multiplier":1.0},{"value":"garage","label":"Garage","multiplier":1.1},{"value":"exterior","label":"Exterior wall","multiplier":1.15},{"value":"not_sure","label":"Not sure","multiplier":1.1,"uncertain":true}]
+- SURGE_TYPE (single_select)
+  options_json: [{"value":"whole_home","label":"Whole-home (at panel)","multiplier":1.0},{"value":"point_of_use","label":"Point-of-use","multiplier":1.0},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- PANEL_WORK_TYPE (single_select)
+  options_json: [{"value":"add_breaker","label":"Add a breaker","multiplier":1.0},{"value":"replace_breaker","label":"Replace a breaker","multiplier":1.0},{"value":"subpanel","label":"Install a subpanel","multiplier":1.25},{"value":"upgrade","label":"Upgrade main panel/service","disqualify":true},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- PANEL_BRAND (single_select)
+  options_json: [{"value":"square_d","label":"Square D"},{"value":"siemens","label":"Siemens"},{"value":"eaton","label":"Eaton"},{"value":"ge","label":"GE"},{"value":"fpe","label":"Federal Pacific (FPE)","disqualify":true},{"value":"zinsco","label":"Zinsco","disqualify":true},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- TROUBLESHOOTING_SYMPTOM (single_select)
+  options_json: [{"value":"flicker","label":"Flickering lights"},{"value":"dead","label":"Dead outlet/circuit"},{"value":"trips","label":"Breaker trips"},{"value":"burning","label":"Burning smell / hot devices","disqualify":true},{"value":"partial","label":"Partial power in house"},{"value":"other","label":"Other / not sure","uncertain":true}]
+- COMMERCIAL_CEILING_TYPE (single_select)
+  options_json: [{"value":"open","label":"Open ceiling"},{"value":"drop","label":"Drop ceiling"},{"value":"hard_lid","label":"Hard lid"},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- COMMERCIAL_WORKING_HOURS (single_select)
+  options_json: [{"value":"business","label":"Business hours"},{"value":"after_hours","label":"After-hours","multiplier":1.25},{"value":"weekend","label":"Weekend","multiplier":1.25},{"value":"not_sure","label":"Not sure","uncertain":true}]
+- FIRE_ALARM_SCOPE (single_select)
+  options_json: [{"value":"new","label":"New install","disqualify":true},{"value":"repair","label":"Repair","disqualify":true},{"value":"inspect","label":"Inspection/testing","disqualify":true},{"value":"not_sure","label":"Not sure","disqualify":true}]
+
+B) Apply modules to EVERY service in Estimator_ServiceMatrix (update modules_csv)
+Implement a category-based assignment using service_name keywords:
+
+1) Troubleshooting keywords (always diagnostic / site visit):
+   if service_name contains "Troubleshooting" OR "Flickering" OR "Breaker Tripping" (when phrased as issue) OR "Issues"
+   -> tier = site_visit_required
+   -> modules_csv = PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,TROUBLESHOOTING_SYMPTOM,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+2) Rewiring / transformer / bus duct / heavy machinery / fire alarm / UPS:
+   if contains "Rewiring" OR "Transformer" OR "Bus Duct" OR "Heavy Machinery" OR "Fire alarm" OR "UPS"
+   -> tier = site_visit_required
+   -> modules_csv = PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+   (If commercial, also append COMMERCIAL_WORKING_HOURS,COMMERCIAL_CEILING_TYPE)
+
+3) Lighting installs/retrofits/controls:
+   if contains "Lighting" OR "Chandelier" OR "Fixture" OR "Recessed" OR "Can" OR "Under-Cabinet" OR "Ballast" OR "Bulb" OR "Retrofit" OR "Timers" OR "Control"
+   -> modules_csv baseline:
+      PROPERTY_TYPE,HOME_AGE,CEILING_HEIGHT,WALL_TYPE,ATTIC_ACCESS,LIGHTING_EXISTING_LOCATION,FIXTURE_SUPPLIED_BY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+   - If contains "Recessed" or "Can" append:
+      RECESSED_LIGHT_CEILING_TYPE,RECESSED_LIGHT_INSULATION,RECESSED_LIGHT_COUNT
+   - If contains "Under-Cabinet" append:
+      UNDERCABINET_POWER,UNDERCABINET_TYPE
+   - If contains "Chandelier" or "Fixture Installation" append:
+      FIXTURE_WEIGHT
+
+4) Ceiling fans:
+   if contains "Ceiling Fan"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,CEILING_HEIGHT,ATTIC_ACCESS,FAN_EXISTING_BOX,FAN_CONTROL_TYPE,FIXTURE_SUPPLIED_BY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+5) Dimmers:
+   if contains "Dimmer"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,WALL_TYPE,DIMMER_LOAD_TYPE,DIMMER_LED_COMPAT,DIMMER_STYLE,DEVICE_BRAND,FIXTURE_SUPPLIED_BY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+6) Smart switches/outlets / home automation:
+   if contains "Smart" OR "Home Automation"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,WALL_TYPE,SMART_PLATFORM,SMART_NEUTRAL_WIRE,DEVICE_BRAND,FIXTURE_SUPPLIED_BY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+7) Outlets / GFCI / new outlets / switch-outlet repair:
+   if contains "Outlet" OR "GFCI" OR "Switch & Outlet Repair" OR "Switch" (but not "Transfer Switch")
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,WALL_TYPE,OUTLET_LOCATION_TYPE,EXISTING_POWER_PRESENT,FIXTURE_SUPPLIED_BY,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+   - If contains "GFCI" append GFCI_EXISTING
+
+8) Dedicated circuits / new circuits / appliance installs / HVAC wiring:
+   if contains "Dedicated" OR "New Circuit" OR "Appliances" OR "HVAC"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_LOCATION,PANEL_PHOTO,DEDICATED_CIRCUIT_APPLIANCE,DEDICATED_CIRCUIT_VOLTAGE,DEDICATED_CIRCUIT_DISTANCE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+9) EV chargers:
+   if contains "EV"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,EV_CHARGER_TYPE,EV_HARDWIRE_OR_PLUG,EV_PANEL_CAPACITY,DEDICATED_CIRCUIT_DISTANCE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+10) Hot tub / pool:
+   if contains "Hot Tub" OR "Pool"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,HOT_TUB_POOL_EQUIPMENT,DEDICATED_CIRCUIT_DISTANCE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+11) Surge protection:
+   if contains "Surge"
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,SURGE_TYPE,PANEL_BRAND,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+12) Panel/subpanel/service upgrades/fusebox conversion/breaker repair:
+   if contains "Panel" OR "Subpanel" OR "Fuse Box" OR "Breaker" OR "Service Upgrade"
+   - If it’s an issue/tripping already handled above, skip.
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,PANEL_WORK_TYPE,PANEL_BRAND,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+   - If contains "Upgrade" or "Conversion" keep tier=instant_with_safeguards (not site visit) BUT enforce panel photo required.
+
+13) Generators:
+   if contains "Generator" OR "Transfer Switch"
+   - Standby generator installs: tier = site_visit_required
+   - Portable generator hookup/transfer switch: instant_with_safeguards
+   -> modules_csv:
+      PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,GENERATOR_TYPE,TRANSFER_SWITCH_LOCATION,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER
+
+Also:
+- Ensure segment is set properly (commercial keywords: office, warehouse, parking lot, emergency/exit, signage, bus duct, heavy machinery, UPS, fire alarm, transformer).
+- Ensure enabled remains TRUE.
+
+C) Website wiring (frontend)
+1) Ensure /instant-estimate fetches /api/estimator/config and renders modules in service.modules order.
+2) Add support for input types:
+   - single_select, number, photo
+3) Ensure “Not sure” selections mark answers.uncertain=true to trigger UNCERTAINTY_BUFFER logic later.
+4) Display the questions as the module.question text.
+5) Add a visible debug panel showing:
+   - services_count
+   - modules_count
+   - selected_service_id
+   - selected module ids
+
+D) Validation gates (minimum)
+- If a service’s modules include PANEL_PHOTO or WORK_AREA_PHOTOS, do not allow “Get Quote” until user uploads at least 1 photo.
+- If any selected option has disqualify=true, show “Site Visit Required” immediately.
+
+Output:
+- Tell me how many modules were added/updated.
+- Tell me how many services had modules_csv updated.
+- Confirm /instant-estimate now shows tailored questions for dimmers and appliance/dedicated circuits.

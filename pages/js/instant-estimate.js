@@ -73,6 +73,7 @@ function renderDebug() {
       <div class="debug-row"><span>Modules</span><span>${modCount}</span></div>
       <div class="debug-row"><span>Selected service</span><span>${esc(S.service?.service_id ?? "—")}</span></div>
       <div class="debug-row"><span>Selected modules</span><span>${selMods.length ? esc(selMods.join(", ")) : "—"}</span></div>
+      <div class="debug-row"><span>Uncertain answers</span><span>${Object.keys(S.uncertain||{}).join(", ")||"none"}</span></div>
       <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:.75rem">Raw config JSON</summary>
         <pre class="debug-pre">${esc(JSON.stringify(cfg, null, 2))}</pre>
       </details>
@@ -230,10 +231,12 @@ function renderModule() {
 function renderSelectModule(m) {
   const opts = [...(m.options||[])];
   if (!opts.some(o => /not sure|unknown|unsure/i.test(o.label||"")))
-    opts.push({ value:"_unsure", label:"Not sure / skip", multiplier:1.1 });
+    opts.push({ value:"_unsure", label:"Not sure / skip", multiplier:1.1, uncertain:true });
   return `<div class="option-grid">${opts.map(o =>
     `<button class="option-btn${S.answers[m.module_id]===o.value?" selected":""}"
-      data-val="${esc(o.value)}" data-dis="${o.disqualify?"1":""}">${esc(o.label)}</button>`
+      data-val="${esc(o.value)}"
+      data-dis="${o.disqualify?"1":""}"
+      data-unc="${o.uncertain?"1":""}">${esc(o.label)}</button>`
   ).join("")}</div>`;
 }
 
@@ -271,9 +274,33 @@ function bindModuleEvents(m) {
                      : m.input_type==="photo"  ? false   // photos are optional — skip allowed
                      : !S.answers[m.module_id];
   };
+
+  // UNCERTAINTY_BUFFER has exactly one option ("Auto") — auto-select and advance immediately
+  if (m.module_id === "UNCERTAINTY_BUFFER") {
+    S.answers[m.module_id] = "auto";
+    setTimeout(() => { S.idx++; renderModule(); }, 350);
+    return;
+  }
+
   if (m.input_type !== "photo" && m.input_type !== "number") {
     document.querySelectorAll(".option-btn").forEach(btn => btn.addEventListener("click", () => {
+      // ── Disqualify gate ───────────────────────────────────────────────────
+      if (btn.dataset.dis === "1") {
+        S.answers[m.module_id] = btn.dataset.val;
+        document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        // Brief visual pause so the user sees their selection before the result renders
+        setTimeout(() => renderResult(true), 400);
+        return;
+      }
+      // ── Normal selection ──────────────────────────────────────────────────
       S.answers[m.module_id] = btn.dataset.val;
+      if (btn.dataset.unc === "1") {
+        if (!S.uncertain) S.uncertain = {};
+        S.uncertain[m.module_id] = true;
+      } else {
+        if (S.uncertain) delete S.uncertain[m.module_id];
+      }
       document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       check();
@@ -328,7 +355,8 @@ async function renderResult(siteVisitForced) {
     const r = await fetch("/api/estimator/quote", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ segment:S.segment, service_id:S.service.service_id,
-        service_name:S.service.service_name, qty:S.qty, answersByModule:S.answers, photoCount }),
+        service_name:S.service.service_name, qty:S.qty, answersByModule:S.answers,
+        uncertainModules: S.uncertain||{}, photoCount }),
     });
     const d = await r.json();
     const tier = d.tier_result || (siteVisitForced ? "needs_site_visit" : "instant_with_safeguards");
