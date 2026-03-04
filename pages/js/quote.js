@@ -228,12 +228,23 @@ function renderServices() {
     <div class="q-svc-list">
       ${types.map(t => {
         const sel = S.typeId === t.job_type_id;
+        const tid = escHtml(t.job_type_id);
         return `
-          <div class="q-svc-item${sel ? " selected" : ""}" data-type="${escHtml(t.job_type_id)}">
-            <div class="q-svc-checkbox">${sel ? "&#10003;" : ""}</div>
-            <div>
-              <div class="q-svc-name">${escHtml(t.name_public)}</div>
-              ${t.min_price ? `<div class="q-svc-price">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
+          <div class="q-svc-card${sel ? " selected" : ""}" data-type="${tid}">
+            <div class="q-svc-item">
+              <div class="q-svc-checkbox">${sel ? "&#10003;" : ""}</div>
+              <div>
+                <div class="q-svc-name">${escHtml(t.name_public)}</div>
+                ${t.min_price ? `<div class="q-svc-price">From $${Number(t.min_price).toLocaleString()}</div>` : ""}
+              </div>
+            </div>
+            <div class="q-svc-qty-row" ${sel ? "" : 'style="display:none;"'}>
+              <span class="q-qty-label">How many?</span>
+              <div class="q-qty-ctrl">
+                <button class="q-qty-btn q-qty-dec" data-type="${tid}">&#8722;</button>
+                <span class="q-qty-val" id="qtyVal_${tid}">${sel ? S.qty : 1}</span>
+                <button class="q-qty-btn q-qty-inc" data-type="${tid}">&#43;</button>
+              </div>
             </div>
           </div>`;
       }).join("")}
@@ -242,14 +253,6 @@ function renderServices() {
   return `
     ${stepHeader(3, "Select Specific Services")}
     ${listHTML}
-    <div class="q-qty-wrap" id="qtyWrap" ${S.typeId ? "" : 'style="display:none;"'}>
-      <div class="q-qty-label">How many?</div>
-      <div class="q-qty-ctrl">
-        <button class="q-qty-btn" id="qtyDec">&#8722;</button>
-        <span class="q-qty-val" id="qtyVal">${S.qty}</span>
-        <button class="q-qty-btn" id="qtyInc">&#43;</button>
-      </div>
-    </div>
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextService" ${S.typeId ? "" : "disabled"}>
@@ -339,18 +342,6 @@ function renderReview() {
   return `
     ${stepHeader(4, "Final Review &amp; Scheduling")}
 
-    <div class="q-review-slots-section">
-      <div class="q-review-slots-heading">&#128197; Preferred Appointment Date</div>
-      <div class="q-review-date-field${slotLabel ? " has-slot" : ""}">
-        <span>&#128197;</span>
-        <span>${slotLabel || "Select a date &amp; time"}</span>
-      </div>
-      <p class="q-muted" style="font-size:13px;margin-top:8px;">
-        Note: Select a time slot below. Your spot is held when you confirm.
-      </p>
-      <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
-    </div>
-
     <div class="q-price-footer">
       <div class="q-price-footer-label">
         Final Estimated Cost${S.qty > 1 ? ` (${S.qty}&times; ${escHtml(label)})` : ""}
@@ -363,6 +354,18 @@ function renderReview() {
         ${S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
         ${bnpl ? ` &bull; As low as $${bnpl}/mo.` : ""}
       </div>
+    </div>
+
+    <div class="q-review-slots-section">
+      <div class="q-review-slots-heading">&#128197; Preferred Appointment Date</div>
+      <div class="q-review-date-field${slotLabel ? " has-slot" : ""}">
+        <span>&#128197;</span>
+        <span>${slotLabel || "Select a date &amp; time"}</span>
+      </div>
+      <p class="q-muted" style="font-size:13px;margin-top:8px;">
+        Note: Select a time slot below. Your spot is held when you confirm.
+      </p>
+      <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
     </div>
 
     <div class="q-nav-row" style="margin-top:20px;">
@@ -555,33 +558,60 @@ function bindEvents() {
     go("services");
   });
 
-  // Service items — single select
-  document.querySelectorAll(".q-svc-item").forEach(item => {
-    item.addEventListener("click", () => {
-      S.typeId  = item.dataset.type;
-      S.answers = {}; S.addons = [];
-      document.querySelectorAll(".q-svc-item").forEach(i => {
-        i.classList.remove("selected");
-        i.querySelector(".q-svc-checkbox").innerHTML = "";
-      });
-      item.classList.add("selected");
-      item.querySelector(".q-svc-checkbox").innerHTML = "&#10003;";
-      const qtyWrap = document.getElementById("qtyWrap");
-      if (qtyWrap) qtyWrap.style.display = "";
-      document.getElementById("nextService")?.removeAttribute("disabled");
+  // Service cards — toggle select/deselect, inline qty
+  document.querySelectorAll(".q-svc-card").forEach(card => {
+    card.querySelector(".q-svc-item")?.addEventListener("click", () => {
+      const typeId  = card.dataset.type;
+      const qtyRow  = card.querySelector(".q-svc-qty-row");
+      const cbEl    = card.querySelector(".q-svc-checkbox");
+
+      if (S.typeId === typeId) {
+        // Deselect
+        S.typeId = null;
+        S.qty    = 1;
+        card.classList.remove("selected");
+        if (cbEl)   cbEl.innerHTML = "";
+        if (qtyRow) qtyRow.style.display = "none";
+        document.getElementById("nextService")?.setAttribute("disabled", "");
+      } else {
+        // Deselect any previously selected card
+        document.querySelectorAll(".q-svc-card").forEach(c => {
+          c.classList.remove("selected");
+          const cb = c.querySelector(".q-svc-checkbox");
+          const qr = c.querySelector(".q-svc-qty-row");
+          if (cb) cb.innerHTML = "";
+          if (qr) qr.style.display = "none";
+        });
+        S.typeId  = typeId;
+        S.qty     = 1;
+        S.answers = {};
+        S.addons  = [];
+        card.classList.add("selected");
+        if (cbEl)   cbEl.innerHTML = "&#10003;";
+        if (qtyRow) qtyRow.style.display = "";
+        const valEl = document.getElementById("qtyVal_" + typeId);
+        if (valEl)  valEl.textContent = S.qty;
+        document.getElementById("nextService")?.removeAttribute("disabled");
+      }
     });
   });
 
-  // Qty controls
-  document.getElementById("qtyDec")?.addEventListener("click", () => {
-    S.qty = Math.max(1, S.qty - 1);
-    const el = document.getElementById("qtyVal");
-    if (el) el.textContent = S.qty;
+  // Inline qty dec/inc buttons (stop propagation so they don't toggle the card)
+  document.querySelectorAll(".q-qty-dec").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      S.qty = Math.max(1, S.qty - 1);
+      const valEl = document.getElementById("qtyVal_" + btn.dataset.type);
+      if (valEl) valEl.textContent = S.qty;
+    });
   });
-  document.getElementById("qtyInc")?.addEventListener("click", () => {
-    S.qty = Math.min(20, S.qty + 1);
-    const el = document.getElementById("qtyVal");
-    if (el) el.textContent = S.qty;
+  document.querySelectorAll(".q-qty-inc").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      S.qty = Math.min(20, S.qty + 1);
+      const valEl = document.getElementById("qtyVal_" + btn.dataset.type);
+      if (valEl) valEl.textContent = S.qty;
+    });
   });
 
   document.getElementById("nextService")?.addEventListener("click", () => {
