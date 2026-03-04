@@ -510,36 +510,97 @@
       font-size: 17px;
       font-weight: 700;
       color: hsl(var(--foreground));
-      margin-bottom: 4px;
+      margin-bottom: 12px;
     }
-    .q-review-date-field {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 18px;
+
+    /* ── Calendar ────────────────────────────────────────────────────── */
+    .q-cal {
       background: white;
       border: 1.5px solid hsl(var(--border));
-      border-radius: 12px;
-      font-size: 15px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .q-cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .q-cal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    .q-cal-nav {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: hsl(var(--foreground));
+      padding: 4px 10px;
+      border-radius: 8px;
+      line-height: 1;
+      transition: background 0.15s;
+    }
+    .q-cal-nav:hover { background: hsl(var(--border)); }
+    .q-cal-body { padding: 10px 12px 14px; }
+    .q-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .q-cal-dow {
+      text-align: center;
+      font-size: 11px;
       font-weight: 600;
       color: hsl(var(--muted-foreground));
-      margin-top: 10px;
+      padding: 4px 0 8px;
+      letter-spacing: 0.03em;
+    }
+    .q-cal-day {
+      text-align: center;
+      padding: 9px 0;
+      font-size: 14px;
+      border-radius: 50%;
+      transition: all 0.15s;
+      line-height: 1;
+    }
+    .q-cal-day.available {
+      color: hsl(var(--primary));
+      font-weight: 700;
       cursor: pointer;
     }
-    .q-review-date-field.has-slot { color: hsl(var(--foreground)); border-color: hsl(var(--primary)); }
+    .q-cal-day.available:hover { background: hsl(var(--primary) / 0.1); }
+    .q-cal-day.selected-date {
+      background: hsl(var(--primary)) !important;
+      color: white !important;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .q-cal-day.unavailable {
+      color: hsl(var(--muted-foreground));
+      opacity: 0.35;
+    }
+    .q-cal-day.empty { visibility: hidden; }
+    .q-cal-day.today { text-decoration: underline; }
 
-    /* ── Slot picker ────────────────────────────────────────────────── */
-    .q-slot-groups { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
-    .q-slot-date {
-      font-family: var(--font-display);
+    /* ── Time slots (shown after date picked) ───────────────────────── */
+    .q-time-slots {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .q-time-heading {
       font-size: 13px;
       font-weight: 700;
       color: hsl(var(--muted-foreground));
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
-    .q-slot-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .q-time-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .q-slot {
       padding: 10px 18px;
       background: white;
@@ -554,6 +615,19 @@
     }
     .q-slot:hover { border-color: hsl(var(--accent)); color: hsl(var(--accent)); }
     .q-slot.selected { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: white; }
+    .q-selected-summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: hsl(var(--primary) / 0.07);
+      border: 1.5px solid hsl(var(--primary) / 0.25);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: hsl(var(--primary));
+    }
 
     /* ── Confirm summary card ────────────────────────────────────────── */
     .q-confirm-summary {

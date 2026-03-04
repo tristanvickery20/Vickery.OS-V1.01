@@ -368,14 +368,7 @@ function renderReview() {
     </div>
 
     <div class="q-review-slots-section">
-      <div class="q-review-slots-heading">&#128197; Preferred Appointment Date</div>
-      <div class="q-review-date-field${slotLabel ? " has-slot" : ""}">
-        <span>&#128197;</span>
-        <span>${slotLabel || "Select a date &amp; time"}</span>
-      </div>
-      <p class="q-muted" style="font-size:13px;margin-top:8px;">
-        Note: Select a time slot below. Your spot is held when you confirm.
-      </p>
+      <div class="q-review-slots-heading">&#128197; Pick a Date &amp; Time</div>
       <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
     </div>
 
@@ -708,6 +701,7 @@ async function calcPrice() {
     const totalPrice = results.reduce((sum, r) => sum + (r.final_price || 0), 0);
     S.pricing = { ok: true, final_price: totalPrice, services: results, evaluation_flag: results.some(r => r.evaluation_flag) };
     S.selectedSlot = null;
+    _calDayKey     = null;
     go("review");
   } catch (e) {
     document.getElementById("stepContent").innerHTML = errHTML("Could not calculate price: " + e.message);
@@ -727,53 +721,178 @@ async function loadSlotsForReview() {
     const r       = await fetch(`/api/schedule/slots?minutes=${encodeURIComponent(minutes)}`);
     const d       = await r.json();
     if (!d.ok) throw new Error(d.error || "Could not load slots.");
-    S.slotsData     = d;
-    section.innerHTML = renderSlotGrid(d.slots, d.timezone);
-    bindSlotEvents();
+    S.slotsData = d;
+    _calDayMap  = buildDayMap(d.slots || [], d.timezone);
+
+    // Initialize calendar view to the first available month
+    const firstSlot = (d.slots || [])[0];
+    if (firstSlot) {
+      const firstDate = new Date(firstSlot);
+      const tz  = d.timezone || "America/Chicago";
+      const fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric" });
+      const parts = fmt.formatToParts(firstDate);
+      _calViewYear  = Number(parts.find(p => p.type === "year").value);
+      _calViewMonth = Number(parts.find(p => p.type === "month").value) - 1;
+    } else {
+      const now = new Date();
+      _calViewYear  = now.getFullYear();
+      _calViewMonth = now.getMonth();
+    }
+    // Auto-select the first available day if none chosen yet
+    if (!_calDayKey) {
+      _calDayKey = Object.keys(_calDayMap).sort()[0] || null;
+    }
+
+    renderCalendar();
   } catch (e) {
     section.innerHTML = `<div class="q-error-box" style="margin-top:12px;">Could not load times: ${escHtml(e.message)}</div>`;
   }
 }
 
-function renderSlotGrid(slots, timezone) {
-  if (!slots || !slots.length) {
-    return `<div class="q-error-box" style="margin-top:12px;">No available slots right now. We'll call you within one business day to schedule.</div>`;
-  }
-  const groups = {};
+// ── Calendar state ─────────────────────────────────────────────────────────────
+let _calViewYear  = null;   // number — year being displayed
+let _calViewMonth = null;   // number — 0-based month being displayed
+let _calDayKey    = null;   // 'YYYY-MM-DD' — currently selected calendar day
+let _calDayMap    = {};     // { 'YYYY-MM-DD': [iso, ...] }
+
+// Build a map of date-key → slots using the timezone
+function buildDayMap(slots, tz) {
+  const map = {};
   for (const iso of slots) {
-    const dk = formatSlotDate(iso, timezone);
-    if (!groups[dk]) groups[dk] = [];
-    groups[dk].push(iso);
+    const d    = new Date(iso);
+    const fmt  = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+    const parts = fmt.formatToParts(d);
+    const y   = parts.find(p => p.type === "year").value;
+    const mo  = parts.find(p => p.type === "month").value;
+    const day = parts.find(p => p.type === "day").value;
+    const key = `${y}-${mo}-${day}`;
+    if (!map[key]) map[key] = [];
+    map[key].push(iso);
   }
-  return `<div class="q-slot-groups">${Object.entries(groups).map(([date, daySlots]) => `
-    <div class="q-slot-group">
-      <div class="q-slot-date">${escHtml(date)}</div>
-      <div class="q-slot-row">
-        ${daySlots.map(iso => `
-          <button class="q-slot${S.selectedSlot === iso ? " selected" : ""}" data-iso="${escHtml(iso)}">
-            ${escHtml(formatSlotTime(iso, timezone))}
-          </button>`).join("")}
-      </div>
-    </div>`).join("")}</div>`;
+  return map;
 }
 
-function bindSlotEvents() {
+function todayKey(tz) {
+  const fmt  = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+  const parts = fmt.formatToParts(new Date());
+  return `${parts.find(p => p.type === "year").value}-${parts.find(p => p.type === "month").value}-${parts.find(p => p.type === "day").value}`;
+}
+
+function renderCalendar() {
+  const section = document.getElementById("reviewSlotSection");
+  if (!section) return;
+  const tz    = S.slotsData?.timezone || "America/Chicago";
+  const today = todayKey(tz);
+
+  const year  = _calViewYear;
+  const month = _calViewMonth;  // 0-based
+
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const title = `${monthNames[month]} ${year}`;
+
+  // First day of month (0=Sun)
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dows = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  let cells = dows.map(d => `<div class="q-cal-dow">${d}</div>`).join("");
+
+  // Empty cells before 1st
+  for (let i = 0; i < firstDow; i++) cells += `<div class="q-cal-day empty"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mo  = String(month + 1).padStart(2, "0");
+    const dy  = String(d).padStart(2, "0");
+    const key = `${year}-${mo}-${dy}`;
+    const isAvail   = !!_calDayMap[key];
+    const isSel     = _calDayKey === key;
+    const isToday   = key === today;
+    let cls = "q-cal-day";
+    if (isSel)        cls += " selected-date";
+    else if (isAvail) cls += " available";
+    else              cls += " unavailable";
+    if (isToday)      cls += " today";
+    cells += `<div class="${cls}" data-datekey="${key}">${d}</div>`;
+  }
+
+  const timeHTML = _calDayKey && _calDayMap[_calDayKey]
+    ? renderTimeSlots(_calDayKey, tz)
+    : "";
+
+  // Summary line if slot already selected
+  const sumHTML = S.selectedSlot ? `
+    <div class="q-selected-summary">
+      &#10003;&nbsp; ${escHtml(formatSlotDate(S.selectedSlot, tz))} &bull; ${escHtml(formatSlotTime(S.selectedSlot, tz))}
+    </div>` : "";
+
+  section.innerHTML = `
+    <div class="q-cal">
+      <div class="q-cal-header">
+        <button class="q-cal-nav" id="calPrev">&#8249;</button>
+        <div class="q-cal-title">${escHtml(title)}</div>
+        <button class="q-cal-nav" id="calNext">&#8250;</button>
+      </div>
+      <div class="q-cal-body">
+        <div class="q-cal-grid">${cells}</div>
+        ${timeHTML}
+      </div>
+    </div>
+    ${sumHTML}`;
+
+  bindCalendarEvents();
+}
+
+function renderTimeSlots(dateKey, tz) {
+  const slots = _calDayMap[dateKey] || [];
+  const fmt   = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" });
+  const label = fmt.format(new Date(slots[0] || Date.now()));
+  return `
+    <div class="q-time-slots">
+      <div class="q-time-heading">${escHtml(label)}</div>
+      <div class="q-time-row">
+        ${slots.map(iso => `
+          <button class="q-slot${S.selectedSlot === iso ? " selected" : ""}" data-iso="${escHtml(iso)}">
+            ${escHtml(formatSlotTime(iso, tz))}
+          </button>`).join("")}
+      </div>
+    </div>`;
+}
+
+function bindCalendarEvents() {
+  // Prev / Next month
+  document.getElementById("calPrev")?.addEventListener("click", () => {
+    _calViewMonth--;
+    if (_calViewMonth < 0) { _calViewMonth = 11; _calViewYear--; }
+    renderCalendar();
+  });
+  document.getElementById("calNext")?.addEventListener("click", () => {
+    _calViewMonth++;
+    if (_calViewMonth > 11) { _calViewMonth = 0; _calViewYear++; }
+    renderCalendar();
+  });
+
+  // Day click — only available days
+  document.querySelectorAll(".q-cal-day.available, .q-cal-day.selected-date").forEach(el => {
+    el.addEventListener("click", () => {
+      _calDayKey = el.dataset.datekey;
+      // Clear slot selection if changing date
+      if (S.selectedSlot && !(_calDayMap[_calDayKey] || []).includes(S.selectedSlot)) {
+        S.selectedSlot = null;
+        document.getElementById("goConfirmBtn")?.setAttribute("disabled", "");
+      }
+      renderCalendar();
+    });
+  });
+
+  // Time slot click
   document.querySelectorAll(".q-slot").forEach(btn => {
     btn.addEventListener("click", () => {
       S.selectedSlot = btn.dataset.iso;
       document.querySelectorAll(".q-slot").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       document.getElementById("goConfirmBtn")?.removeAttribute("disabled");
-      // Update the "field" display
-      const fieldEl = document.querySelector(".q-review-date-field");
-      if (fieldEl) {
-        const tz   = S.slotsData?.timezone || "America/Chicago";
-        const d    = new Date(S.selectedSlot);
-        const date = formatSlotDate(S.selectedSlot, tz);
-        const time = formatSlotTime(S.selectedSlot, tz);
-        fieldEl.innerHTML = `<span>&#128197;</span><span>${escHtml(date)} &bull; ${escHtml(time)}</span>`;
-        fieldEl.classList.add("has-slot");
-      }
+      // Re-render to show summary line
+      renderCalendar();
     });
   });
 }
