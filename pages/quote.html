@@ -142,6 +142,7 @@
       position: relative;
     }
     .q-type-card:hover { border-color: hsl(var(--accent)); }
+    .q-type-card:focus, .q-type-card:focus-visible { outline: none; box-shadow: none; }
     .q-type-card.selected {
       border-color: hsl(var(--primary));
       box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15);
@@ -210,6 +211,7 @@
       color: hsl(var(--foreground));
     }
     .q-cat-item:hover { border-color: hsl(var(--accent)); }
+    .q-cat-item:focus, .q-cat-item:focus-visible { outline: none; box-shadow: none; }
     .q-cat-item.selected {
       border-color: hsl(var(--primary));
       color: hsl(var(--foreground));
@@ -238,7 +240,11 @@
       background: white;
     }
     .q-svc-card:hover { border-color: hsl(var(--accent)); }
-    .q-svc-card.selected { border-color: hsl(var(--primary)); }
+    .q-svc-card.selected { border-color: hsl(var(--primary)); box-shadow: none; }
+    .q-svc-card *:focus,
+    .q-svc-card *:focus-visible,
+    .q-svc-item:focus,
+    .q-svc-item:focus-visible { outline: none; box-shadow: none; }
     .q-svc-item {
       background: white;
       padding: 16px 18px;
@@ -327,6 +333,7 @@
       transition: all 0.15s;
     }
     .q-qty-btn:hover { background: hsl(var(--primary)); color: white; }
+    .q-qty-btn:focus, .q-qty-btn:focus-visible { outline: none; box-shadow: none; }
     .q-qty-val {
       font-family: var(--font-display);
       font-size: 24px;

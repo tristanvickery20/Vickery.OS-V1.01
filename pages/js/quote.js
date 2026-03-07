@@ -130,9 +130,8 @@ function go(step) {
 function back() {
   if (S.step === "review") {
     const pid       = primaryTypeId();
-    const single    = S.selectedServices.length === 1;
-    const hasQs     = single && (S.config?.questionsByType?.[pid]?.length || 0) > 0;
-    const hasAddons = single && (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
+    const hasQs     = (S.config?.questionsByType?.[pid]?.length || 0) > 0;
+    const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     go(hasQs || hasAddons ? "questions" : "services");
     return;
   }
@@ -395,7 +394,11 @@ function renderQuestions() {
 
 function renderQuestion(q) {
   const options  = S.config?.optionsByQuestion?.[q.question_id] || [];
-  const itype    = q.input_type || "single_select";
+  // yesno with no options → synthesize Yes / No choices
+  const itype = q.input_type || "single_select";
+  const effectiveOptions = (itype === "yesno" && !options.length)
+    ? [{ option_id: "yes", label: "Yes" }, { option_id: "no", label: "No" }]
+    : options;
 
   if (itype === "photo") {
     const photoList = S.photos[q.question_id] || [];
@@ -436,9 +439,9 @@ function renderQuestion(q) {
   return `
     <div class="q-question" data-qid="${q.question_id}">
       <div class="q-question-prompt">${escHtml(q.prompt)}${q.required ? " <span class='q-req'>*</span>" : ""}</div>
-      ${options.length ? `
+      ${effectiveOptions.length ? `
         <div class="q-options">
-          ${options.map(o => `
+          ${effectiveOptions.map(o => `
             <label class="q-option${S.answers[q.question_id] === o.option_id ? " selected" : ""}"
               data-dis="${o.disqualify ? "1" : ""}" data-unc="${o.uncertain ? "1" : ""}">
               <input type="radio" name="q_${q.question_id}" value="${escHtml(o.option_id)}"
@@ -763,9 +766,8 @@ function bindEvents() {
   document.getElementById("nextService")?.addEventListener("click", () => {
     if (!S.selectedServices.length) return;
     const pid       = primaryTypeId();
-    const single    = S.selectedServices.length === 1;
-    const hasQs     = single && (S.config?.questionsByType?.[pid]?.length || 0) > 0;
-    const hasAddons = single && (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
+    const hasQs     = (S.config?.questionsByType?.[pid]?.length || 0) > 0;
+    const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     if (hasQs || hasAddons) go("questions");
     else calcPrice();
   });
