@@ -1,0 +1,83 @@
+Good. Do not change architecture now. We are in QC and production-readiness mode.
+
+Goal:
+Prove whether this estimator is actually safe to use for real quoting at a fair profit.
+
+Priority:
+1. Material cost readiness
+2. Service-by-service scenario validation
+3. Margin sanity / field realism
+4. Final service safety classification
+
+Rules:
+- Do not redesign UI
+- Do not remove the fixes already made
+- Keep Google Sheets as source of truth
+- Do not invent fake production data and pretend it is validated
+- Where real material data is missing, use explicit “blocked by missing sheet data” language
+- Focus on the most common residential services first
+
+Tasks:
+
+1) Build a production QC matrix for all instant-quoted services
+For every service, output:
+- service_id
+- service name
+- labor pricing active: yes/no
+- material pricing active: yes/no
+- key drivers connected: yes/no
+- disqualification logic active: yes/no
+- service minimum active: yes/no
+- safe to instant quote: yes/no/review
+- blocker if not safe
+
+2) Run scenario validation for every common residential service
+For each service, test at minimum:
+- baseline easy case
+- normal case
+- difficult case
+- stacked difficult case
+- “not sure” or uncertainty case if applicable
+- minimum-charge case
+Show:
+- inputs used
+- quote returned
+- driver effects applied
+- whether the result seems internally consistent
+- whether the price progression is logical
+
+3) Stress test pricing logic for bad outputs
+Detect and report:
+- suspiciously low quotes
+- suspiciously high quotes
+- quotes where stacked modifiers explode too hard
+- quotes where modifiers barely move price when they should
+- services where minimum charge hides bad underlying math
+- services where material absence makes quote too risky
+
+4) Validate materials readiness
+Using the existing material_path_report.md, identify:
+- top 10 most important material rows to fill first
+- which services are most distorted by missing material values
+- which services can still be reasonably quoted labor-heavy for now
+- which services should be blocked from instant quote until materials are filled
+
+5) Create final production classification
+Each service must be labeled:
+- PRODUCTION_READY
+- READY_WITH_REVIEW_FLAG
+- MANUAL_QUOTE_ONLY
+Reason must be explicit.
+
+6) Deliver final QC reports
+Create:
+- estimator_production_qc_matrix.csv
+- estimator_scenario_validation_report.md
+- estimator_material_readiness_report.md
+- estimator_service_classification.md
+
+Acceptance standard:
+- every instant-quoted service has a clear production status
+- no service remains in an ambiguous “maybe okay” state
+- top material gaps are prioritized
+- I can look at the reports and know exactly what is safe to turn on live right now

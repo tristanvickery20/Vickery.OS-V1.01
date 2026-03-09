@@ -1,0 +1,26 @@
+service_id,service_name,segment,assembly_id,labor_active,material_active,key_drivers_connected,disqualify_logic,service_minimum,easy_price,hard_price,stacked_price,stack_ratio,price_progression_ok,flags,safe_to_instant_quote,blocker
+CEILING_FAN_INSTALL,"Ceiling Fan Installation",residential,A004,YES,NO (all $0),YES,YES,YES,$230,$555,$805,3.50,YES,ALL_MATERIALS_MISSING,YES,
+LIGHT_FIXTURE_INSTALL,"Light Fixture Installation",residential,A003,YES,NO (all $0),YES,YES,YES,$235,$1,050,$1,475,6.28,YES,STACK_EXPLODES|ALL_MATERIALS_MISSING,REVIEW,Stacked multipliers >5× baseline
+RECESSED_LIGHTING,"Recessed Lighting Installation",residential,A001,YES,NO (all $0),YES,YES,YES,$330,$1,645,$2,325,7.05,YES,STACK_EXPLODES|ALL_MATERIALS_MISSING,REVIEW,Stacked multipliers >5× baseline
+DIMMER_SWITCH,"Dimmer / Smart Switch Installation",residential,A008,YES,NO (all $0),YES,YES,YES,$170,$285,$345,2.03,YES,ALL_MATERIALS_MISSING,YES,
+OUTLET_INSTALL,"Outlet / Receptacle Installation",residential,A011,YES,NO (all $0),YES,YES,YES,$190,$365,$445,2.34,YES,ALL_MATERIALS_MISSING,YES,
+GFCI_OUTLET,"GFCI Outlet Installation",residential,A012,YES,NO (all $0),YES,YES,YES,$195,$390,$480,2.46,YES,ALL_MATERIALS_MISSING,YES,
+EV_CHARGER,"EV Charger Installation",residential,A028,YES,NO (all $0),YES,YES,YES,$360,$595,$910,2.53,YES,ALL_MATERIALS_MISSING,YES,
+HOT_TUB_CIRCUIT,"Hot Tub / Spa Electrical Circuit",residential,A029,YES,YES,YES,YES,YES,$590,$735,$1,025,1.74,YES,none,YES,
+PANEL_UPGRADE,"Electrical Panel Upgrade",residential,A019,YES,YES,YES,YES,YES,$1,070,$1,370,$1,460,1.36,YES,none,YES,
+SUBPANEL_INSTALL,"Sub-Panel Installation",residential,A020,YES,YES,YES,YES,YES,$660,$860,$915,1.39,YES,none,YES,
+SURGE_PROTECTOR,"Whole-Home Surge Protector",residential,A024,YES,YES,YES,YES,YES,$230,$260,$275,1.20,YES,none,YES,
+OUTDOOR_LIGHTING,"Outdoor / Landscape Lighting",residential,A005,YES,NO (all $0),YES,YES,YES,$200,$775,$1,090,5.45,YES,STACK_EXPLODES|ALL_MATERIALS_MISSING,REVIEW,Stacked multipliers >5× baseline
+MOTION_SECURITY_LIGHT,"Motion / Security Light Installation",residential,A006,YES,NO (all $0),YES,YES,YES,$205,$860,$1,350,6.59,YES,STACK_EXPLODES|ALL_MATERIALS_MISSING,REVIEW,Stacked multipliers >5× baseline
+SMOKE_CO_DETECTOR,"Smoke / CO Detector Installation",residential,A030,YES,NO (all $0),YES,YES,YES,$155,$205,$215,1.39,YES,ALL_MATERIALS_MISSING,YES,
+COMM_LIGHTING_RETROFIT,"Commercial Lighting Retrofit",commercial,A037,YES,NO (all $0),YES,PARTIAL,YES,$225,$725,$1,065,4.73,YES,ALL_MATERIALS_MISSING,YES,
+BALLAST_REPLACE,"Ballast / Bulb Replacement",commercial,A036,YES,NO (all $0),YES,PARTIAL,YES,$220,$560,$665,3.02,YES,ALL_MATERIALS_MISSING,YES,
+EXIT_EMERGENCY_LIGHTS,"Exit / Emergency Light Installation",commercial,A034,YES,NO (all $0),YES,PARTIAL,YES,$240,$770,$1,125,4.69,YES,ALL_MATERIALS_MISSING,REVIEW,All materials $0 + HIGH risk job
+TROUBLESHOOT_FLICKER,"Troubleshooting – Flickering Lights",residential,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+REWIRE_WHOLE_HOUSE,"Whole-House Rewiring",residential,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+REWIRE_PARTIAL,"Partial Home Rewiring",residential,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+REWIRE_COMMERCIAL,"Commercial Rewiring",commercial,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+FIRE_ALARM,"Fire Alarm System",commercial,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+TRANSFORMER_INSTALL,"Transformer Installation",commercial,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+GENERATOR_STANDBY,"Standby Generator Installation",residential,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
+GENERATOR_BACKUP,"Backup Generator Installation & Maintenance",residential,N/A,N/A,N/A,N/A,YES,N/A,N/A,N/A,N/A,N/A,N/A,SITE_VISIT_ONLY,NO,Always requires site visit — by design
