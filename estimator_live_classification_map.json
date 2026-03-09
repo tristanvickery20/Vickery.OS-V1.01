@@ -1,0 +1,242 @@
+{
+  "generated_at": "2026-03-09T15:06:23.096Z",
+  "source": "lib/serviceClassification.js",
+  "summary": {
+    "PRODUCTION_READY": 3,
+    "READY_WITH_REVIEW_FLAG": 7,
+    "MANUAL_QUOTE_ONLY": 15
+  },
+  "services": {
+    "CEILING_FAN_INSTALL": {
+      "status": "PRODUCTION_READY",
+      "quoteAllowed": true,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "low-risk",
+      "blockerReason": null
+    },
+    "SURGE_PROTECTOR": {
+      "status": "PRODUCTION_READY",
+      "quoteAllowed": true,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "low-risk",
+      "blockerReason": null
+    },
+    "SMOKE_CO_DETECTOR": {
+      "status": "PRODUCTION_READY",
+      "quoteAllowed": true,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "low-risk",
+      "blockerReason": null
+    },
+    "LIGHT_FIXTURE_INSTALL": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": 3.75,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Materials will be confirmed and added separately at actuals. Typical gap: $40–$120 per fixture.",
+      "blockerReason": null
+    },
+    "RECESSED_LIGHTING": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": 3.5,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Materials will be confirmed and added separately at actuals. Typical gap: $20–$60 per light.",
+      "blockerReason": null
+    },
+    "DIMMER_SWITCH": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": null,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Dimmer switch cost (~$22–$45) will be added at actuals.",
+      "blockerReason": null
+    },
+    "OUTLET_INSTALL": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": null,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Outlet + box + wire materials (~$20–$35) will be added at actuals.",
+      "blockerReason": null
+    },
+    "GFCI_OUTLET": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": null,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). GFCI device + box (~$25–$45) will be added at actuals.",
+      "blockerReason": null
+    },
+    "OUTDOOR_LIGHTING": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": 3.75,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Outdoor fixture + weatherproof materials (~$50–$150) will be added at actuals.",
+      "blockerReason": null
+    },
+    "MOTION_SECURITY_LIGHT": {
+      "status": "READY_WITH_REVIEW_FLAG",
+      "quoteAllowed": true,
+      "reviewFlag": true,
+      "stackCap": 3.75,
+      "materialGap": "understated",
+      "materialNote": "Material allowance is $0 (placeholder data). Motion light fixture + weatherproof materials (~$35–$100) will be added at actuals.",
+      "blockerReason": null
+    },
+    "EV_CHARGER": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Instant pricing blocked: ~$230 in sell price understated from missing WIR-011 (10/2 cable) + DEV-008 (EV receptacle). Manual quote required."
+    },
+    "HOT_TUB_CIRCUIT": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Instant pricing blocked: ~$200 in missing materials (WIR-011, PNL-007). Partial material data present but unreliable at scale. Manual quote required."
+    },
+    "PANEL_UPGRADE": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Instant pricing blocked: panel materials (PNL-005, PNL-006, WIR-009) have ~$350+ gap at retail sell price. Labor-only quote would lose money. Manual quote required."
+    },
+    "SUBPANEL_INSTALL": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Instant pricing blocked: subpanel + feeder cable (WIR-012) materials missing. Manual quote required."
+    },
+    "COMM_LIGHTING_RETROFIT": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Commercial service: all materials $0 + site-visit required for scope + permitting."
+    },
+    "BALLAST_REPLACE": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Commercial service: all materials $0 + site-visit required for scope."
+    },
+    "EXIT_EMERGENCY_LIGHTS": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "blocking",
+      "blockerReason": "Commercial service: all materials $0 + HIGH risk class + site-visit required."
+    },
+    "TROUBLESHOOT_FLICKER": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "REWIRE_WHOLE_HOUSE": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "REWIRE_PARTIAL": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "REWIRE_COMMERCIAL": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "FIRE_ALARM": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "TRANSFORMER_INSTALL": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "GENERATOR_STANDBY": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    },
+    "GENERATOR_BACKUP": {
+      "status": "MANUAL_QUOTE_ONLY",
+      "quoteAllowed": false,
+      "reviewFlag": false,
+      "stackCap": null,
+      "materialGap": "n/a",
+      "blockerReason": "By design — tier=site_visit_required."
+    }
+  },
+  "assembly_to_service": {
+    "A001": "RECESSED_LIGHTING",
+    "A003": "LIGHT_FIXTURE_INSTALL",
+    "A004": "CEILING_FAN_INSTALL",
+    "A005": "OUTDOOR_LIGHTING",
+    "A006": "MOTION_SECURITY_LIGHT",
+    "A008": "DIMMER_SWITCH",
+    "A011": "OUTLET_INSTALL",
+    "A012": "GFCI_OUTLET",
+    "A019": "PANEL_UPGRADE",
+    "A020": "SUBPANEL_INSTALL",
+    "A024": "SURGE_PROTECTOR",
+    "A028": "EV_CHARGER",
+    "A029": "HOT_TUB_CIRCUIT",
+    "A030": "SMOKE_CO_DETECTOR",
+    "A034": "EXIT_EMERGENCY_LIGHTS",
+    "A036": "BALLAST_REPLACE",
+    "A037": "COMM_LIGHTING_RETROFIT",
+    "A015": "REWIRE_WHOLE_HOUSE",
+    "A016": "REWIRE_PARTIAL",
+    "A040": "REWIRE_COMMERCIAL",
+    "A053": "GENERATOR_BACKUP",
+    "A046": "TRANSFORMER_INSTALL"
+  }
+}

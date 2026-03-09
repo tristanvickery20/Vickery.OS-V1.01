@@ -1,11 +1,13 @@
 // api/estimator-config.js
-// GET  /api/estimator/config  — normalized config for frontend
-// GET  /api/estimator/health  — diagnostics
-// POST /api/estimator/quote   — full pricing engine
+// GET  /api/estimator/config          — normalized config for frontend
+// GET  /api/estimator/health          — diagnostics
+// GET  /api/estimator/classification  — internal/admin classification map (auth-protected)
+// POST /api/estimator/quote           — full pricing engine
 
 const crypto = require("crypto");
 const { getEstimatorConfig, getCacheAge } = require("../lib/estimatorModulesConfig");
 const { evaluateService, computePrice, getBasePrice } = require("../lib/estimatorEngine");
+const { getAllClassifications } = require("../lib/serviceClassification");
 const { writeLeadSnapshot } = require("../lib/estimatorSnapshot");
 
 const NO_CACHE = { "Content-Type": "application/json", "Cache-Control": "no-store, max-age=0" };
@@ -183,4 +185,52 @@ async function handleEstimatorQuote(req, res) {
   }
 }
 
-module.exports = { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote };
+// ── GET /api/estimator/classification ────────────────────────────────────────
+// Internal/admin endpoint. Returns live classification map for all services.
+// Shows: classification, quote_allowed, review_flag, material_gap, stack_cap, blocker.
+async function handleEstimatorClassification(req, res) {
+  try {
+    const raw = await getEstimatorConfig();
+    const allCls = getAllClassifications();
+
+    const services = (raw.services || []).map(s => {
+      const svcId = s.service_id;
+      const cls   = allCls[svcId] || { status: "UNCLASSIFIED", quoteAllowed: true, reviewFlag: false, stackCap: null, materialGap: "unknown", blockerReason: null };
+      return {
+        service_id:         svcId,
+        service_name:       s.service_name,
+        segment:            s.segment,
+        tier:               s.tier,
+        classification:     cls.status,
+        quote_allowed:      cls.quoteAllowed,
+        review_flag:        cls.reviewFlag,
+        material_gap:       cls.materialGap,
+        stack_cap_active:   cls.stackCap != null,
+        stack_cap_value:    cls.stackCap,
+        blocker_reason:     cls.blockerReason || null,
+        material_note:      cls.materialNote || null,
+      };
+    });
+
+    const summary = {
+      PRODUCTION_READY:       services.filter(s => s.classification === "PRODUCTION_READY").length,
+      READY_WITH_REVIEW_FLAG: services.filter(s => s.classification === "READY_WITH_REVIEW_FLAG").length,
+      MANUAL_QUOTE_ONLY:      services.filter(s => s.classification === "MANUAL_QUOTE_ONLY").length,
+      UNCLASSIFIED:           services.filter(s => s.classification === "UNCLASSIFIED").length,
+    };
+
+    json(res, 200, {
+      ok: true,
+      generated_at: new Date().toISOString(),
+      source: "lib/serviceClassification.js",
+      summary,
+      services,
+      assembly_to_service_map: allCls._assemblyToService || {},
+    }, NO_CACHE);
+  } catch (err) {
+    console.error("[estimator/classification]", err.message);
+    json(res, 500, { ok: false, error: err.message }, NO_CACHE);
+  }
+}
+
+module.exports = { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification };

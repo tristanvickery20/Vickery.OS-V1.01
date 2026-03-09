@@ -42,7 +42,7 @@ const {
   handleUpdateInvoice,
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
-const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote } = require("./api/estimator-config");
+const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -223,6 +223,10 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath === "/api/estimator/quote" && req.method === "POST") {
     return handleEstimatorQuote(req, res);
+  }
+
+  if (_epath === "/api/estimator/classification" && req.method === "GET") {
+    return handleEstimatorClassification(req, res);
   }
 
   // AUTH GUARD: protected pages + remaining /api/*

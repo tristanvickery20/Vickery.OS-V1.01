@@ -6,6 +6,12 @@
 // Engine selection:
 //   ESTIMATOR_V2_SHEET_ID set → V2 engine (lib/quoteEngineV2)
 //   otherwise                 → V1 engine (lib/quoteEngine)
+//
+// Classification enforcement (lib/serviceClassification):
+//   MANUAL_QUOTE_ONLY      → blocked; returns manual_review response (no price)
+//   READY_WITH_REVIEW_FLAG → priced; attaches material-gap disclosure + review flags
+//   PRODUCTION_READY       → normal instant quote
+//   UNCLASSIFIED           → allowed (raw V2 assembly, no estimator service mapping)
 
 const crypto = require("crypto");
 const { getSheetsClient }       = require("../lib/sheets");
@@ -13,6 +19,7 @@ const { getActiveConfig, isV2Mode } = require("../lib/estimatorV2Config");
 const { getEstimatorConfig }    = require("../lib/estimatorModulesConfig");
 const { calculateQuote }        = require("../lib/quoteEngine");
 const { calculateQuoteV2 }      = require("../lib/quoteEngineV2");
+const { getClassification, resolveServiceId } = require("../lib/serviceClassification");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
@@ -157,7 +164,8 @@ function checkDisqualify(config, modulesById, answers) {
 
 // ── Unified price calculation ─────────────────────────────────────────────────
 // prebuiltDriverOptions: if provided, use instead of resolveOptions (module-format answers)
-function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriverOptions }) {
+// stackCap: combined multiplier ceiling from service classification (null = no cap)
+function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriverOptions, stackCap }) {
   qty = Math.max(1, Math.round(Number(qty) || 1));
 
   if (isV2Mode() && config._v2) {
@@ -179,6 +187,7 @@ function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriv
       v2Data:       config._v2,
       serviceAreas: config.serviceAreas,
       zip,
+      stackCap:     stackCap ?? null,
     });
   }
 
@@ -235,6 +244,31 @@ async function handleQuoteCalc(req, res) {
     const resolvedQty  = Math.max(1, Math.round(Number(qty) || 1));
     const modulesById  = estRaw.modulesById || {};
 
+    // ── Classification enforcement ────────────────────────────────────────────
+    const serviceId    = resolveServiceId(job_type_id);
+    const cls          = getClassification(serviceId);
+
+    if (!cls.quoteAllowed) {
+      console.log(`[quote/calc] BLOCKED job_type_id=${job_type_id} service=${serviceId} status=${cls.status} reason=${cls.blockerReason}`);
+      const sheets = await getSheetsClient();
+      await appendSnapshot(sheets, {
+        event_id: newEventId(), quote_id, event_type: "blocked",
+        job_type_id, status: "manual_review_required",
+        notes: cls.blockerReason,
+      });
+      return json(res, 200, {
+        ok: true, quote_id, qty: resolvedQty,
+        final_price: 0, hours: 0, labor_cost: 0, overhead_cost: 0,
+        material_allowance: 0, travel_fee: 0, address_provided: false,
+        pricing_version: "v2",
+        evaluation_flag: true,
+        manual_review_required: true,
+        classification: cls.status,
+        disqualify_reason: cls.blockerReason,
+        _trace: { service_id: serviceId, classification: cls.status, quote_allowed: false, blocker: cls.blockerReason },
+      });
+    }
+
     // Resolve module-format answers (CEILING_HEIGHT, WALL_TYPE, etc.) → driver options + disqualify
     const { selectedDriverOptions: moduleDriverOpts, disqualifiedBy } = resolveModuleAnswers(modulesById, answers);
 
@@ -248,12 +282,44 @@ async function handleQuoteCalc(req, res) {
         material_allowance: 0, travel_fee: 0, address_provided: false,
         pricing_version: "v2", evaluation_flag: true,
         disqualify_reason: `"${disq.label}" requires an on-site evaluation.`,
+        _trace: { service_id: serviceId, classification: cls.status, disqualified_by: disq },
       });
     }
 
-    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: null, prebuiltDriverOptions: moduleDriverOpts });
+    const pricing = computePrice({
+      config, jobType, answers, addons, qty: resolvedQty, zip: null,
+      prebuiltDriverOptions: moduleDriverOpts,
+      stackCap: cls.stackCap,
+    });
+
     if (moduleDriverOpts.length) {
       console.log(`[quote/calc] ${job_type_id} module drivers: ${moduleDriverOpts.map(d => d._debug_source).join(", ")}`);
+    }
+    if (pricing.stack_cap_trace?.cap_applied) {
+      console.log(`[quote/calc] stack cap applied: ${job_type_id} uncapped=${pricing.stack_cap_trace.uncapped_multiplier} → capped=${pricing.stack_cap_trace.applied_multiplier}`);
+    }
+
+    // Build response — attach review flags for READY_WITH_REVIEW_FLAG services
+    const responsePayload = {
+      ok: true, quote_id, qty: resolvedQty,
+      ...pricing,
+      _trace: {
+        service_id:            serviceId,
+        classification:        cls.status,
+        quote_allowed:         true,
+        review_flag:           cls.reviewFlag,
+        material_gap:          cls.materialGap,
+        stack_cap_configured:  cls.stackCap,
+        drivers_applied:       moduleDriverOpts.map(d => d._debug_source),
+        uncapped_multiplier:   pricing.stack_cap_trace?.uncapped_multiplier,
+        capped_multiplier:     pricing.stack_cap_trace?.applied_multiplier,
+        cap_applied:           pricing.stack_cap_trace?.cap_applied,
+      },
+    };
+
+    if (cls.reviewFlag) {
+      responsePayload.review_flag         = true;
+      responsePayload.material_disclosure = cls.materialNote || "Material allowance is $0 (placeholder data). Materials to be confirmed and added at actuals.";
     }
 
     const sheets = await getSheetsClient();
@@ -262,7 +328,7 @@ async function handleQuoteCalc(req, res) {
       quote_id,
       event_type:           "priced",
       job_type_id,
-      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty }),
+      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty, classification: cls.status }),
       selected_addons_json:  JSON.stringify(addons || []),
       total_hours:           pricing.hours,
       labor_cost:            pricing.labor_cost,
@@ -272,10 +338,10 @@ async function handleQuoteCalc(req, res) {
       final_price:           pricing.final_price,
       address_provided:      false,
       pricing_version:       pricing.pricing_version,
-      status:                "priced",
+      status:                cls.reviewFlag ? "priced_review_required" : "priced",
     });
 
-    json(res, 200, { ok: true, quote_id, qty: resolvedQty, ...pricing });
+    json(res, 200, responsePayload);
   } catch (err) {
     console.error("[quote/calc]", err.message);
     json(res, 500, { ok: false, error: err.message });
@@ -297,6 +363,32 @@ async function handleQuoteLock(req, res) {
     const jobType = config.jobTypes.find(j => j.job_type_id === job_type_id);
     if (!jobType) return json(res, 400, { ok: false, error: `Unknown job_type_id: ${job_type_id}` });
 
+    // ── Classification enforcement ────────────────────────────────────────────
+    const serviceId = resolveServiceId(job_type_id);
+    const cls       = getClassification(serviceId);
+
+    if (!cls.quoteAllowed) {
+      console.log(`[quote/lock] BLOCKED job_type_id=${job_type_id} service=${serviceId} status=${cls.status}`);
+      const sheets = await getSheetsClient();
+      await appendSnapshot(sheets, {
+        event_id: newEventId(), quote_id, event_type: "blocked",
+        job_type_id, status: "manual_review_required",
+        customer_name: customer_name || "", phone: phone || "", email: email || "",
+        address: address || "", notes: cls.blockerReason,
+      });
+      return json(res, 200, {
+        ok: true, quote_id, qty: Math.max(1, Math.round(Number(qty) || 1)),
+        final_price: 0, hours: 0, labor_cost: 0, overhead_cost: 0,
+        material_allowance: 0, travel_fee: 0, address_provided: false,
+        pricing_version: "v2",
+        evaluation_flag: true,
+        manual_review_required: true,
+        classification: cls.status,
+        disqualify_reason: cls.blockerReason,
+        _trace: { service_id: serviceId, classification: cls.status, quote_allowed: false, blocker: cls.blockerReason },
+      });
+    }
+
     // Derive ZIP: explicit param first, then extract from address
     let resolvedZip = (zip && String(zip).trim()) || null;
     if (!resolvedZip && address) {
@@ -307,7 +399,38 @@ async function handleQuoteLock(req, res) {
     const resolvedQty  = Math.max(1, Math.round(Number(qty) || 1));
     const modulesById  = estRaw.modulesById || {};
     const { selectedDriverOptions: moduleDriverOpts } = resolveModuleAnswers(modulesById, answers);
-    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: resolvedZip, prebuiltDriverOptions: moduleDriverOpts });
+
+    const pricing = computePrice({
+      config, jobType, answers, addons, qty: resolvedQty, zip: resolvedZip,
+      prebuiltDriverOptions: moduleDriverOpts,
+      stackCap: cls.stackCap,
+    });
+
+    if (pricing.stack_cap_trace?.cap_applied) {
+      console.log(`[quote/lock] stack cap applied: ${job_type_id} uncapped=${pricing.stack_cap_trace.uncapped_multiplier} → capped=${pricing.stack_cap_trace.applied_multiplier}`);
+    }
+
+    const lockResponse = {
+      ok: true, quote_id, qty: resolvedQty,
+      ...pricing,
+      customer_name: customer_name || null,
+      _trace: {
+        service_id:           serviceId,
+        classification:       cls.status,
+        quote_allowed:        true,
+        review_flag:          cls.reviewFlag,
+        material_gap:         cls.materialGap,
+        stack_cap_configured: cls.stackCap,
+        cap_applied:          pricing.stack_cap_trace?.cap_applied,
+        uncapped_multiplier:  pricing.stack_cap_trace?.uncapped_multiplier,
+        capped_multiplier:    pricing.stack_cap_trace?.applied_multiplier,
+      },
+    };
+
+    if (cls.reviewFlag) {
+      lockResponse.review_flag         = true;
+      lockResponse.material_disclosure = cls.materialNote || "Material allowance is $0 (placeholder data). Materials to be confirmed and added at actuals.";
+    }
 
     const sheets = await getSheetsClient();
     await appendSnapshot(sheets, {
@@ -315,7 +438,7 @@ async function handleQuoteLock(req, res) {
       quote_id,
       event_type:            "locked",
       job_type_id,
-      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty }),
+      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty, classification: cls.status }),
       selected_addons_json:  JSON.stringify(addons || []),
       total_hours:           pricing.hours,
       labor_cost:            pricing.labor_cost,
@@ -325,20 +448,14 @@ async function handleQuoteLock(req, res) {
       final_price:           pricing.final_price,
       address_provided:      pricing.address_provided,
       pricing_version:       pricing.pricing_version,
-      status:                pricing.photo_required ? "awaiting_photo" : "locked",
+      status:                cls.reviewFlag ? "locked_review_required" : (pricing.photo_required ? "awaiting_photo" : "locked"),
       customer_name:         customer_name || "",
       phone:                 phone         || "",
       email:                 email         || "",
       address:               address       || "",
     });
 
-    json(res, 200, {
-      ok: true,
-      quote_id,
-      qty: resolvedQty,
-      ...pricing,
-      customer_name: customer_name || null,
-    });
+    json(res, 200, lockResponse);
   } catch (err) {
     console.error("[quote/lock]", err.message);
     json(res, 500, { ok: false, error: err.message });

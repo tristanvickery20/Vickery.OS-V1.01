@@ -1,0 +1,111 @@
+Use the completed QC outputs as the source of truth and now implement the production-hardening changes needed to make the estimator safe to launch in its current state.
+
+Inputs you must use:
+- estimator_production_qc_matrix.csv
+- estimator_scenario_validation_report.md
+- estimator_material_readiness_report.md
+- estimator_service_classification.md
+- scripts/run_qc_analysis.js
+
+Goal:
+Turn the QC findings into enforced system behavior.
+Do not re-audit. Do not redesign. Implement the guardrails and classifications exactly.
+
+Rules:
+- Keep Google Sheets as source of truth
+- Do not invent fake material pricing
+- Do not silently allow MANUAL_QUOTE_ONLY services to instant-quote
+- Do not remove existing fixes
+- Keep changes traceable and production-minded
+- Preserve existing CRM / calculator behavior outside the estimator
+- If a service has missing material data, handle it exactly per its classification
+- Any multiplier cap or guardrail must be configurable and clearly documented
+
+Tasks:
+
+1) Enforce service classification in live estimator behavior
+Using estimator_service_classification.md, make the estimator enforce these statuses:
+- PRODUCTION_READY:
+  - allow normal instant quote
+- READY_WITH_REVIEW_FLAG:
+  - allow instant quote
+  - attach a clear review/material-disclosure flag in the response payload
+  - mark lead/quote as needing review or materials-to-be-confirmed
+- MANUAL_QUOTE_ONLY:
+  - block instant pricing
+  - return a manual-review response instead of a price
+  - do this consistently in every quote path
+
+2) Implement stacked-modifier guardrail
+The QC found stack explosion on:
+- RECESSED_LIGHTING
+- LIGHT_FIXTURE_INSTALL
+- MOTION_SECURITY_LIGHT
+- OUTDOOR_LIGHTING
+
+Add a combined-multiplier cap system so worst-case stacked difficulty does not create absurd quotes.
+Requirements:
+- make the cap configurable
+- default these flagged services to a cap in the 3.5x–4.0x range based on QC findings
+- apply the cap only to combined driver multiplier behavior, not to service minimums or other unrelated logic
+- log/debug when the cap is hit
+- include the pre-cap and post-cap multiplier in internal trace output
+
+3) Enforce material-gap handling by classification
+Based on estimator_material_readiness_report.md:
+- PRODUCTION_READY services: quote normally
+- READY_WITH_REVIEW_FLAG services:
+  - keep quoting
+  - add explicit material-gap disclosure in output payload / lead metadata
+  - do not pretend materials are included if they are currently zeroed
+- MANUAL_QUOTE_ONLY services:
+  - do not quote
+  - explain internally in the returned reason that materials/risk make instant quoting unsafe
+
+4) Make the classification visible internally
+Add an internal/admin/QC-readable output showing for each service:
+- classification
+- quote allowed yes/no
+- review flag yes/no
+- material gap status
+- stack cap active yes/no
+- blocker reason if manual only
+
+This can be a JSON endpoint, admin debug route, or internal report file, whichever fits the codebase best.
+
+5) Preserve auditability
+For every estimate response, make sure internal trace/debug can show:
+- service id
+- classification
+- drivers applied
+- uncapped combined multiplier
+- capped combined multiplier if capped
+- material total used
+- review flags
+- manual-only blocker reason if blocked
+
+6) Do not fake missing materials
+Do not add estimated placeholder material values.
+If material data is missing, preserve the gap and enforce handling through classification and flags only.
+
+7) Add/update deliverables
+Create:
+- estimator_launch_guardrails_report.md
+- estimator_live_classification_map.json
+- estimator_stack_cap_report.md
+- exact file list changed
+- exact logic summary for each change
+
+Verification required:
+Show live before/after verification for at least:
+- one PRODUCTION_READY service
+- one READY_WITH_REVIEW_FLAG service
+- one MANUAL_QUOTE_ONLY service
+- one capped stacked-difficulty scenario
+- one disqualified/commercial/manual-review scenario
+
+Acceptance standard:
+- no MANUAL_QUOTE_ONLY service can return a live instant price
+- READY_WITH_REVIEW_FLAG services still quote but clearly carry review/material flags
+- stack explosion is controlled for flagged services
+- all behavior matches the QC classification files
