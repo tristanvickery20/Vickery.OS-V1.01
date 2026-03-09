@@ -137,10 +137,11 @@ async function handleEstimatorQuote(req, res) {
     const eval_ = evaluateService(raw.modulesById, service, answersByModule, photoCount);
     const { tier_result, reasons, risk_multiplier, contingency_pct } = eval_;
 
-    let basePrice = 0, priceSource = "placeholder";
+    let basePrice = 0, priceSource = "placeholder", debugDrivers = [];
     if (tier_result !== "needs_site_visit") {
-      const bp = await getBasePrice(service_id, service_name || service.service_name, qty);
+      const bp = await getBasePrice(service_id, service_name || service.service_name, qty, answersByModule, raw.modulesById);
       basePrice = bp.final_price; priceSource = bp.source;
+      debugDrivers = bp.debug_drivers || [];
     }
 
     const { subtotal, total } = computePrice(basePrice, risk_multiplier, contingency_pct);
@@ -169,9 +170,10 @@ async function handleEstimatorQuote(req, res) {
       ? `Thank you! We'll contact you to confirm pricing for your ${service.service_name}.`
       : "Your estimate is ready! Pricing reflects job complexity and site conditions.";
 
-    console.log(`[estimator/quote] lead=${lead_id} svc=${service_id} tier=${tier_result} total=${canPrice?total:0}`);
+    console.log(`[estimator/quote] lead=${lead_id} svc=${service_id} tier=${tier_result} total=${canPrice?total:0} drivers=[${debugDrivers.join(",")}]`);
     json(res, 200, { ok:true, lead_id, tier_result, reasons, risk_multiplier, contingency_pct,
-      subtotal: canPrice?subtotal:0, total: canPrice?total:0, price_source: priceSource, status, message });
+      subtotal: canPrice?subtotal:0, total: canPrice?total:0, price_source: priceSource, status, message,
+      debug_drivers: debugDrivers });
 
   } catch (err) {
     console.error("[estimator/quote]", err.message);

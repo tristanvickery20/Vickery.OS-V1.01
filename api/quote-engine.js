@@ -8,10 +8,11 @@
 //   otherwise                 → V1 engine (lib/quoteEngine)
 
 const crypto = require("crypto");
-const { getSheetsClient }  = require("../lib/sheets");
+const { getSheetsClient }       = require("../lib/sheets");
 const { getActiveConfig, isV2Mode } = require("../lib/estimatorV2Config");
-const { calculateQuote }   = require("../lib/quoteEngine");
-const { calculateQuoteV2 } = require("../lib/quoteEngineV2");
+const { getEstimatorConfig }    = require("../lib/estimatorModulesConfig");
+const { calculateQuote }        = require("../lib/quoteEngine");
+const { calculateQuoteV2 }      = require("../lib/quoteEngineV2");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
@@ -111,8 +112,52 @@ function applyQtyV1(pricing, qty) {
   };
 }
 
+// ── Module-answer resolver ────────────────────────────────────────────────────
+// Converts module-format answers { CEILING_HEIGHT: "lt9", ... } into:
+//   selectedDriverOptions: [{ effect_type, effect_value }, ...]
+//   disqualifiedBy: { question_id, option_id, label } | null
+// Used server-side to apply enriched-question multipliers and disqualify rules.
+function resolveModuleAnswers(modulesById, answers) {
+  const selectedDriverOptions = [];
+  let disqualifiedBy = null;
+  for (const [mid, val] of Object.entries(answers || {})) {
+    if (!val || val === "_unsure") continue;
+    const mod = (modulesById || {})[mid];
+    if (!mod) continue;
+    const opt = (mod.options || []).find(o => o.value === val);
+    if (!opt) continue;
+    if (opt.disqualify) {
+      disqualifiedBy = disqualifiedBy || { question_id: mid, option_id: val, label: opt.label };
+    }
+    const mult = Number(opt.multiplier);
+    if (isFinite(mult) && mult !== 1.0) {
+      selectedDriverOptions.push({
+        effect_type:  "MULTIPLY_HOURS",
+        effect_value: mult,
+        _debug_source: `${mid}:${val}(×${mult})`,
+      });
+    }
+  }
+  return { selectedDriverOptions, disqualifiedBy };
+}
+
+// ── Disqualify check — checks both enriched (module) and V2 driver options ───
+function checkDisqualify(config, modulesById, answers) {
+  // 1. Module-based disqualify (enriched questions: CEILING_HEIGHT, PROPERTY_TYPE, etc.)
+  const { disqualifiedBy } = resolveModuleAnswers(modulesById, answers);
+  if (disqualifiedBy) return disqualifiedBy;
+  // 2. V2 driver-based disqualify (non-enriched questions from optionsByQuestion)
+  for (const [qid, oid] of Object.entries(answers || {})) {
+    const options = config.optionsByQuestion[qid] || [];
+    const match   = options.find(o => o.option_id === oid);
+    if (match?.disqualify) return { question_id: qid, option_id: oid, label: match.label };
+  }
+  return null;
+}
+
 // ── Unified price calculation ─────────────────────────────────────────────────
-function computePrice({ config, jobType, answers, addons, qty, zip }) {
+// prebuiltDriverOptions: if provided, use instead of resolveOptions (module-format answers)
+function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriverOptions }) {
   qty = Math.max(1, Math.round(Number(qty) || 1));
 
   if (isV2Mode() && config._v2) {
@@ -122,8 +167,10 @@ function computePrice({ config, jobType, answers, addons, qty, zip }) {
     );
     if (!assembly) throw new Error(`Assembly not found for ${jobType.job_type_id}`);
 
-    // Resolve driver multiplier options (stored in optionsByQuestion)
-    const selectedDriverOptions = resolveOptions(config, answers);
+    // Use pre-resolved module options when available; fall back to V2 driver options
+    const moduleDriverOpts  = prebuiltDriverOptions || [];
+    const v2DriverOpts      = resolveOptions(config, answers);
+    const selectedDriverOptions = [...moduleDriverOpts, ...v2DriverOpts];
 
     return calculateQuoteV2({
       assembly,
@@ -181,12 +228,33 @@ async function handleQuoteCalc(req, res) {
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
     if (!job_type_id) return json(res, 400, { ok: false, error: "job_type_id required" });
 
-    const config  = await getActiveConfig();
+    const [config, estRaw] = await Promise.all([getActiveConfig(), getEstimatorConfig().catch(() => ({ modulesById: {} }))]);
     const jobType = config.jobTypes.find(j => j.job_type_id === job_type_id);
     if (!jobType) return json(res, 400, { ok: false, error: `Unknown job_type_id: ${job_type_id}` });
 
-    const resolvedQty = Math.max(1, Math.round(Number(qty) || 1));
-    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: null });
+    const resolvedQty  = Math.max(1, Math.round(Number(qty) || 1));
+    const modulesById  = estRaw.modulesById || {};
+
+    // Resolve module-format answers (CEILING_HEIGHT, WALL_TYPE, etc.) → driver options + disqualify
+    const { selectedDriverOptions: moduleDriverOpts, disqualifiedBy } = resolveModuleAnswers(modulesById, answers);
+
+    // Server-side disqualify guard (module-based + V2 driver-based)
+    const disq = disqualifiedBy || checkDisqualify(config, {}, answers);
+    if (disq) {
+      console.log(`[quote/calc] disqualified qid=${disq.question_id} opt=${disq.option_id}`);
+      return json(res, 200, {
+        ok: true, quote_id, qty: resolvedQty,
+        final_price: 0, hours: 0, labor_cost: 0, overhead_cost: 0,
+        material_allowance: 0, travel_fee: 0, address_provided: false,
+        pricing_version: "v2", evaluation_flag: true,
+        disqualify_reason: `"${disq.label}" requires an on-site evaluation.`,
+      });
+    }
+
+    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: null, prebuiltDriverOptions: moduleDriverOpts });
+    if (moduleDriverOpts.length) {
+      console.log(`[quote/calc] ${job_type_id} module drivers: ${moduleDriverOpts.map(d => d._debug_source).join(", ")}`);
+    }
 
     const sheets = await getSheetsClient();
     await appendSnapshot(sheets, {
@@ -225,7 +293,7 @@ async function handleQuoteLock(req, res) {
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
     if (!job_type_id) return json(res, 400, { ok: false, error: "job_type_id required" });
 
-    const config  = await getActiveConfig();
+    const [config, estRaw] = await Promise.all([getActiveConfig(), getEstimatorConfig().catch(() => ({ modulesById: {} }))]);
     const jobType = config.jobTypes.find(j => j.job_type_id === job_type_id);
     if (!jobType) return json(res, 400, { ok: false, error: `Unknown job_type_id: ${job_type_id}` });
 
@@ -236,8 +304,10 @@ async function handleQuoteLock(req, res) {
       if (match) resolvedZip = match[1];
     }
 
-    const resolvedQty = Math.max(1, Math.round(Number(qty) || 1));
-    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: resolvedZip });
+    const resolvedQty  = Math.max(1, Math.round(Number(qty) || 1));
+    const modulesById  = estRaw.modulesById || {};
+    const { selectedDriverOptions: moduleDriverOpts } = resolveModuleAnswers(modulesById, answers);
+    const pricing = computePrice({ config, jobType, answers, addons, qty: resolvedQty, zip: resolvedZip, prebuiltDriverOptions: moduleDriverOpts });
 
     const sheets = await getSheetsClient();
     await appendSnapshot(sheets, {

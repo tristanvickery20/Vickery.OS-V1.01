@@ -1,0 +1,95 @@
+Good. Keep the 3 confirmed bug fixes.
+
+Now do not audit anymore. Fix the remaining estimator accuracy blockers in priority order and make the estimator actually usable for quoting.
+
+Priority order:
+1. CRIT-1
+2. CRIT-2
+3. CRIT-3
+4. HIGH-1
+5. CRIT-7
+
+Non-negotiable rules:
+- Google Sheets remains source of truth
+- Do not hardcode pricing values unless it is only a temporary bridge and you clearly label it
+- Do not redesign the UI unless required for the fix
+- Do not break unrelated CRM/calculator features
+- Make changes cleanly and traceably
+- After each fix, verify with live test cases and show exact before/after behavior
+
+Your tasks:
+
+1) Fix CRIT-1: make /quote answers actually affect price
+- Find the exact mismatch between enriched question module IDs and V2 driver IDs
+- Build a proper mapping layer so answers collected in /quote map into the calculator engine driver inputs
+- Remove any dead or duplicate mapping logic
+- Verify that each pricing-relevant answer now changes the quote when expected
+- Output a mapping report:
+  - frontend question/module id
+  - mapped engine driver id
+  - answer values
+  - pricing effect source row/tab
+
+2) Fix CRIT-2: make /instant-estimate pass real driver answers into the engine
+- Stop passing empty driver arrays or empty answer sets into the pricing engine
+- Ensure all relevant answers flow through the engine path
+- Verify at least these cases with live tests:
+  - ceiling height changes quote
+  - wall type changes quote
+  - access condition changes quote
+  - uncertainty buffer changes quote
+  - property condition changes quote
+- Add a debug trace showing which drivers were received and applied
+
+3) Fix CRIT-3: patch missing V2 Driver_Multipliers data safely
+- Inspect the V2 sheet and add missing rows only where truly absent
+- Specifically verify and add if missing:
+  - CEILING_HEIGHT 15–20 ft = 1.6
+  - wall finish multipliers for tile and wood
+  - limited attic access
+  - all HOME_OCC options
+- Do not invent random values; use the audit findings and existing pricing pattern consistency
+- After updating the sheet, verify those rows are actually loaded by the app
+- Show exact sheet rows added/updated
+
+4) Fix HIGH-1: verify why materials are $0
+- Inspect V2 Assemblies, AssemblyItems, Materials, and any material lookup path
+- Determine whether:
+  - sheet data is missing
+  - join logic is broken
+  - material totals are intentionally disabled
+- If join logic is broken, fix it
+- If sheet data is missing, do not fake material totals; clearly report the exact missing tabs/rows/keys needed
+- Verify at least 5 representative job types for material total behavior
+- Output whether each tested service is:
+  - labor only by design
+  - material-capable and working
+  - material-capable but blocked by missing data
+
+5) Fix CRIT-7: commercial must not receive residential instant quotes
+- Make commercial selection consistently block/disqualify/manual-review in every estimator path where residential pricing is assumed
+- Verify /quote, /quotepath, and /instant-estimate all behave consistently
+
+6) Add proof and safeguards
+- Add or update a quote trace/debug output for internal QC
+- For each fixed issue, provide:
+  - files changed
+  - sheet tabs changed
+  - exact logic change
+  - live test inputs
+  - live test outputs
+  - confirmation that the quote changed correctly
+
+Required deliverables:
+- estimator_fix_round_1_report.md
+- estimator_driver_mapping.json
+- material_path_report.md
+- updated estimator_trace_map.json
+- exact file list changed
+- exact sheet rows changed
+
+Acceptance standard:
+- no pricing-relevant question can remain disconnected from price
+- no instant-estimate path can ignore driver answers
+- no commercial customer can receive a residential instant quote
+- material path must be proven working or proven blocked by specific missing sheet data

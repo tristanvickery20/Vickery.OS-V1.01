@@ -107,11 +107,13 @@ function enrichConfigWithModules(config, est) {
       });
       if (m.options?.length) {
         config.optionsByQuestion[m.module_id] = m.options.map(o => ({
-          option_id:  o.value,
-          label:      o.label,
-          disqualify: !!o.disqualify,
-          uncertain:  !!o.uncertain,
-          multiplier: o.multiplier || 1.0,
+          option_id:    o.value,
+          label:        o.label,
+          disqualify:   !!o.disqualify,
+          uncertain:    !!o.uncertain,
+          effect_type:  o.multiplier != null ? "MULTIPLY_HOURS" : null,
+          effect_value: o.multiplier != null ? Number(o.multiplier) : 1.0,
+          multiplier:   o.multiplier || 1.0,
         }));
       }
     }

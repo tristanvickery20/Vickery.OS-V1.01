@@ -1,0 +1,51 @@
+{
+  "_comment": "Maps estimator module IDs to V2 driver IDs. Used to reconcile enriched-path (module options) vs non-enriched-path (V2 Driver_Multipliers) pricing drivers. Generated 2026-03-09.",
+  "moduleToDriver": {
+    "CEILING_HEIGHT": "CEILING_HT",
+    "ATTIC_ACCESS":   "ATTIC_ACCESS",
+    "WALL_TYPE":      "WALL_TYPE",
+    "HOME_AGE":       null,
+    "PROPERTY_TYPE":  null,
+    "PANEL_SPACE":    null,
+    "HOME_OCC":       "HOME_OCC",
+    "DIST_PANEL":     "DIST_PANEL"
+  },
+  "moduleOptionToDriverOption": {
+    "CEILING_HEIGHT": {
+      "lt9":   { "driver_option": "Under 9 ft",  "labor_mult": 1.0,  "material_mult": 1.0 },
+      "9_12":  { "driver_option": "9–12 ft",     "labor_mult": 1.0,  "material_mult": 1.0 },
+      "12_14": { "driver_option": "12–14 ft",    "labor_mult": 1.15, "material_mult": 1.0 },
+      "15_20": { "driver_option": "15–20 ft",    "labor_mult": 1.5,  "material_mult": 1.1 },
+      "gt20":  { "driver_option": "DISQUALIFY",  "disqualify": true }
+    },
+    "ATTIC_ACCESS": {
+      "yes":     { "driver_option": "Yes — full", "labor_mult": 1.0,  "material_mult": 1.0 },
+      "limited": { "driver_option": "Limited",    "labor_mult": 1.15, "material_mult": 1.05 },
+      "no":      { "driver_option": "No",         "labor_mult": 1.3,  "material_mult": 1.05 },
+      "not_sure":{ "driver_option": "Not sure",   "labor_mult": 1.1,  "material_mult": 1.0 }
+    },
+    "WALL_TYPE": {
+      "drywall": { "driver_option": "Drywall",        "labor_mult": 1.0,  "material_mult": 1.0 },
+      "tile":    { "driver_option": "Tile",            "labor_mult": 1.5,  "material_mult": 1.15 },
+      "wood":    { "driver_option": "Wood / paneling", "labor_mult": 1.15, "material_mult": 1.0 },
+      "plaster": { "driver_option": "Plaster",         "labor_mult": 1.4,  "material_mult": 1.05 },
+      "brick":   { "driver_option": "DISQUALIFY",      "disqualify": true }
+    },
+    "HOME_OCC": {
+      "yes": { "driver_option": "Yes", "labor_mult": 1.1, "material_mult": 1.0 },
+      "no":  { "driver_option": "No",  "labor_mult": 1.0, "material_mult": 1.0 }
+    },
+    "DIST_PANEL": {
+      "same_room":     { "driver_option": "Same room",     "labor_mult": 1.0,  "material_mult": 1.0 },
+      "adjacent":      { "driver_option": "Adjacent room", "labor_mult": 1.1,  "material_mult": 1.05 },
+      "across_house":  { "driver_option": "Across house",  "labor_mult": 1.25, "material_mult": 1.1 }
+    }
+  },
+  "pricingFormula": "(labor_hrs * qty * productOf(MULTIPLY_HOURS drivers) + drive_hrs) * crew_rate * (1 + overhead) * risk / (1 - 0.30) + materials*(1+waste)*(1+markup)*(1+overhead)*risk/(1-0.30)",
+  "crewRate": 91,
+  "overheadRate": 0.20,
+  "materialsMarkup": 0.20,
+  "materialWastePct": 0.08,
+  "marginHardcoded": 0.30,
+  "notes": "Module options drive MULTIPLY_HOURS effect in V2 engine via effect_type/effect_value fields (fixed CRIT-1 2026-03-09). Non-enriched path uses Driver_Multipliers tab labels directly."
+}
