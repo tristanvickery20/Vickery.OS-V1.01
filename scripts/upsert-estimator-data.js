@@ -38,8 +38,8 @@ const MODULES_LIBRARY = [
     options:[{value:"ok",label:"Yes, small drywall cuts/patching is okay"},{value:"no",label:"No",disqualify:true},{value:"not_sure",label:"Not sure",uncertain:true}] },
   { module_id:"PERMIT_ALLOWED", question:"Is pulling a permit acceptable for this job?", input_type:"single_select",
     options:[{value:"yes",label:"Yes"},{value:"no",label:"No",disqualify:true},{value:"not_sure",label:"Not sure",uncertain:true}] },
-  { module_id:"UNCERTAINTY_BUFFER", question:"If anything is unknown, we include a contingency to protect accuracy.", input_type:"single_select",
-    options:[{value:"auto",label:"Auto",multiplier:1.0}] },
+  { module_id:"UNCERTAINTY_BUFFER", question:"Overall, how straightforward does this job seem?", input_type:"single_select",
+    options:[{value:"simple",label:"Very straightforward",multiplier:1.0},{value:"moderate",label:"Some complexity expected",multiplier:1.1},{value:"complex",label:"Multiple unknowns / older home",multiplier:1.2}] },
 
   // ── Tailored — Lighting ────────────────────────────────────────────────────
   { module_id:"LIGHTING_EXISTING_LOCATION", question:"Is this replacing an existing light or a brand-new location?", input_type:"single_select",

@@ -1,0 +1,3179 @@
+{
+  "generated_at": "2026-03-09T13:24:47.557Z",
+  "system_summary": {
+    "pricing_engine_active": "V2 (ESTIMATOR_V2_SHEET_ID set)",
+    "quote_path": "POST /api/quote/calc -> lib/estimatorV2Config.js -> lib/quoteEngineV2.js",
+    "instant_estimate_path": "POST /api/estimator/quote -> lib/estimatorEngine.js (evaluateService + getBasePrice(calculateQuoteV2))",
+    "v2_sheet_tabs_used_by_quote_path": [
+      "Assemblies",
+      "AssemblyItems",
+      "Tasks_Labor",
+      "Materials",
+      "Scenario_Drivers",
+      "Driver_Multipliers",
+      "Rates_Rules",
+      "Config"
+    ],
+    "module_sheet_tabs_used_by_instant_path": [
+      "Estimator_Modules",
+      "Estimator_ServiceMatrix"
+    ],
+    "crm_sheet_tabs": [
+      "ServiceAreas",
+      "QuoteSnapshots"
+    ],
+    "pricing_formula_quote_path": "(labor_hours * qty * MULTIPLY_HOURS_drivers) + drive_hours) * crew_rate + materials*(1+waste)*(1+markup)) * (1+overhead) * risk / (1-0.30)",
+    "pricing_formula_instant_path": "getBasePrice(V2,no_drivers) * risk_multiplier * (1+contingency_pct)",
+    "hardcoded_values": {
+      "ZONE_FEES": {
+        "CORE": 0,
+        "EXT": 25,
+        "OUTER": 50
+      },
+      "V2_target_margin": "30% (hardcoded in quoteEngineV2.js line 106)",
+      "rounding": "nearest $5",
+      "unknown_zip_fee": "$25 EXT rate assumed",
+      "risk_defaults": {
+        "high": 1.25,
+        "medium": 1.1,
+        "low": 1
+      }
+    }
+  },
+  "v2_job_types_count": 56,
+  "v2_shared_questions_ALL_JOB_TYPES": [
+    "DIST_PANEL",
+    "CEILING_HT",
+    "ATTIC_ACCESS",
+    "WALL_TYPE"
+  ],
+  "v2_rates": {
+    "crew_loaded_hourly": 91,
+    "overhead_per_hour": 0,
+    "target_margin": 0.3,
+    "service_minimum": 95,
+    "commute_assumed_minutes": 15,
+    "default_disclaimer_fee": 25,
+    "pricing_version": "v2"
+  },
+  "v2_drivers_and_options": {
+    "DIST_PANEL": [
+      {
+        "option_id": "DIST_PANEL_same_room",
+        "label": "Same room",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1
+      },
+      {
+        "option_id": "DIST_PANEL_adjacent_room",
+        "label": "Adjacent room",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1.1
+      },
+      {
+        "option_id": "DIST_PANEL_across_house",
+        "label": "Across house",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1.25
+      }
+    ],
+    "CEILING_HT": [
+      {
+        "option_id": "CEILING_HT_12–14_ft",
+        "label": "12–14 ft",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1.15
+      }
+    ],
+    "ATTIC_ACCESS": [
+      {
+        "option_id": "ATTIC_ACCESS_no",
+        "label": "No",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1.3
+      }
+    ],
+    "WALL_TYPE": [
+      {
+        "option_id": "WALL_TYPE_plaster",
+        "label": "Plaster",
+        "effect_type": "MULTIPLY_HOURS",
+        "effect_value": 1.4
+      }
+    ]
+  },
+  "estimator_modules_count": 59,
+  "estimator_services": [
+    {
+      "service_id": "TROUBLESHOOT_FLICKER",
+      "service_name": "Troubleshooting – Flickering Lights",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "TROUBLESHOOTING_SYMPTOM",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "REWIRE_WHOLE_HOUSE",
+      "service_name": "Whole-House Rewiring",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "REWIRE_PARTIAL",
+      "service_name": "Partial Home Rewiring",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "REWIRE_COMMERCIAL",
+      "service_name": "Commercial Rewiring",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "WORK_AREA_PHOTOS",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "FIRE_ALARM",
+      "service_name": "Fire Alarm System",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "WORK_AREA_PHOTOS",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "TRANSFORMER_INSTALL",
+      "service_name": "Transformer Installation",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "WORK_AREA_PHOTOS",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "GENERATOR_STANDBY",
+      "service_name": "Standby Generator Installation",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "GENERATOR_TYPE",
+        "TRANSFER_SWITCH_LOCATION",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "GENERATOR_BACKUP",
+      "service_name": "Backup Generator Installation & Maintenance",
+      "tier": "site_visit_required",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "GENERATOR_TYPE",
+        "TRANSFER_SWITCH_LOCATION",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "CEILING_FAN_INSTALL",
+      "service_name": "Ceiling Fan Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "ATTIC_ACCESS",
+        "FAN_EXISTING_BOX",
+        "FAN_CONTROL_TYPE",
+        "FIXTURE_SUPPLIED_BY",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "LIGHT_FIXTURE_INSTALL",
+      "service_name": "Light Fixture Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "FIXTURE_WEIGHT",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "RECESSED_LIGHTING",
+      "service_name": "Recessed Lighting Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "RECESSED_LIGHT_CEILING_TYPE",
+        "RECESSED_LIGHT_INSULATION",
+        "RECESSED_LIGHT_COUNT",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "DIMMER_SWITCH",
+      "service_name": "Dimmer / Smart Switch Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "WALL_TYPE",
+        "DIMMER_LOAD_TYPE",
+        "DIMMER_LED_COMPAT",
+        "DIMMER_STYLE",
+        "DEVICE_BRAND",
+        "FIXTURE_SUPPLIED_BY",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "OUTLET_INSTALL",
+      "service_name": "Outlet / Receptacle Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "WALL_TYPE",
+        "OUTLET_LOCATION_TYPE",
+        "EXISTING_POWER_PRESENT",
+        "FIXTURE_SUPPLIED_BY",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "GFCI_OUTLET",
+      "service_name": "GFCI Outlet Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "WALL_TYPE",
+        "OUTLET_LOCATION_TYPE",
+        "EXISTING_POWER_PRESENT",
+        "FIXTURE_SUPPLIED_BY",
+        "GFCI_EXISTING",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "EV_CHARGER",
+      "service_name": "EV Charger Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "EV_CHARGER_TYPE",
+        "EV_HARDWIRE_OR_PLUG",
+        "EV_PANEL_CAPACITY",
+        "DEDICATED_CIRCUIT_DISTANCE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "HOT_TUB_CIRCUIT",
+      "service_name": "Hot Tub / Spa Electrical Circuit",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "HOT_TUB_POOL_EQUIPMENT",
+        "DEDICATED_CIRCUIT_DISTANCE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "PANEL_UPGRADE",
+      "service_name": "Electrical Panel Upgrade",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "PANEL_WORK_TYPE",
+        "PANEL_BRAND",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "SUBPANEL_INSTALL",
+      "service_name": "Sub-Panel Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "PANEL_WORK_TYPE",
+        "PANEL_BRAND",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "SURGE_PROTECTOR",
+      "service_name": "Whole-Home Surge Protector",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "PANEL_PHOTO",
+        "SURGE_TYPE",
+        "PANEL_BRAND",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "OUTDOOR_LIGHTING",
+      "service_name": "Outdoor / Landscape Lighting",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "OUTDOOR_EXPOSURE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "MOTION_SECURITY_LIGHT",
+      "service_name": "Motion / Security Light Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "OUTDOOR_EXPOSURE",
+        "MOTION_SENSOR_LOCATION_HEIGHT",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "SMOKE_CO_DETECTOR",
+      "service_name": "Smoke / CO Detector Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "EXISTING_POWER_PRESENT",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "COMM_LIGHTING_RETROFIT",
+      "service_name": "Commercial Lighting Retrofit",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "BALLAST_REPLACE",
+      "service_name": "Ballast / Bulb Replacement",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    },
+    {
+      "service_id": "EXIT_EMERGENCY_LIGHTS",
+      "service_name": "Exit / Emergency Light Installation",
+      "tier": "instant_with_safeguards",
+      "modules": [
+        "PROPERTY_TYPE",
+        "HOME_AGE",
+        "CEILING_HEIGHT",
+        "WALL_TYPE",
+        "ATTIC_ACCESS",
+        "LIGHTING_EXISTING_LOCATION",
+        "FIXTURE_SUPPLIED_BY",
+        "COMMERCIAL_WORKING_HOURS",
+        "COMMERCIAL_CEILING_TYPE",
+        "WORK_AREA_PHOTOS",
+        "UNCERTAINTY_BUFFER"
+      ]
+    }
+  ],
+  "estimator_modules": {
+    "PROPERTY_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of property is this?",
+      "options": [
+        {
+          "value": "single_family",
+          "label": "Single-family home",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "townhome_duplex",
+          "label": "Townhome / Duplex",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "apartment_condo",
+          "label": "Apartment / Condo",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "detached_building",
+          "label": "Detached garage / workshop",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "commercial",
+          "label": "Commercial building",
+          "disqualify": true,
+          "uncertain": false
+        }
+      ]
+    },
+    "HOME_AGE": {
+      "input_type": "single_select",
+      "question": "How old is the home or building?",
+      "options": [
+        {
+          "value": "2000_plus",
+          "label": "2000 or newer",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "1980_1999",
+          "label": "1980–1999",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "1950_1979",
+          "label": "1950–1979",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "pre_1950",
+          "label": "Before 1950",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": true
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "ATTIC_ACCESS": {
+      "input_type": "single_select",
+      "question": "Is there accessible attic space above the work area?",
+      "options": [
+        {
+          "value": "full",
+          "label": "Yes — full attic access",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "limited",
+          "label": "Yes — limited access",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "none",
+          "label": "No attic access",
+          "multiplier": 1.5,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "CRAWLSPACE_ACCESS": {
+      "input_type": "single_select",
+      "question": "Is there crawlspace access below the work area?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "CEILING_HEIGHT": {
+      "input_type": "single_select",
+      "question": "What is the ceiling height in the work area?",
+      "options": [
+        {
+          "value": "lt9",
+          "label": "Under 9 ft",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "9_12",
+          "label": "9–12 ft",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "12_14",
+          "label": "12–14 ft",
+          "multiplier": 1.3,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "15_20",
+          "label": "15–20 ft",
+          "multiplier": 1.6,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "gt20",
+          "label": "Over 20 ft",
+          "disqualify": true,
+          "uncertain": false
+        }
+      ]
+    },
+    "WALL_TYPE": {
+      "input_type": "single_select",
+      "question": "What is the wall construction type?",
+      "options": [
+        {
+          "value": "drywall",
+          "label": "Drywall",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "plaster",
+          "label": "Plaster",
+          "multiplier": 1.3,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "brick",
+          "label": "Brick / masonry",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "tile",
+          "label": "Tile",
+          "multiplier": 1.5,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "wood",
+          "label": "Wood / paneling",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "DISTANCE_FROM_PANEL": {
+      "input_type": "single_select",
+      "question": "How far is the work area from the electrical panel?",
+      "options": [
+        {
+          "value": "under10",
+          "label": "Under 10 ft",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "10to25",
+          "label": "10–25 ft",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "25to50",
+          "label": "25–50 ft",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "over50",
+          "label": "Over 50 ft",
+          "multiplier": 1.3,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "PANEL_SPACE": {
+      "input_type": "single_select",
+      "question": "Are there open breaker slots in your electrical panel?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes – open slots available",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No – panel is full",
+          "multiplier": 1.4,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "unknown",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "PANEL_PHOTO": {
+      "input_type": "photo",
+      "question": "Please upload a clear photo of your electrical panel (inside door open)",
+      "options": []
+    },
+    "EXISTING_BOX": {
+      "input_type": "single_select",
+      "question": "Is there an existing electrical box at the fixture location?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes – existing box",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No – new box needed",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "FIXTURE_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of fixture is being installed?",
+      "options": [
+        {
+          "value": "recessed",
+          "label": "Recessed / can light",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "ceiling_fan",
+          "label": "Ceiling fan",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "chandelier",
+          "label": "Chandelier / pendant",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "sconce",
+          "label": "Wall sconce",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "QUANTITY": {
+      "input_type": "number",
+      "question": "How many units / locations?",
+      "options": []
+    },
+    "ROOM_TYPE": {
+      "input_type": "single_select",
+      "question": "Which room or area is this in?",
+      "options": [
+        {
+          "value": "bedroom",
+          "label": "Bedroom",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "living",
+          "label": "Living / family room",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "kitchen",
+          "label": "Kitchen",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "bathroom",
+          "label": "Bathroom",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "garage",
+          "label": "Garage",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "basement",
+          "label": "Basement",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "outdoor",
+          "label": "Outdoor / exterior",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "OUTDOOR_INSTALL": {
+      "input_type": "single_select",
+      "question": "Is this an outdoor or exterior installation?",
+      "options": [
+        {
+          "value": "yes_covered",
+          "label": "Yes – covered / sheltered",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "yes_exposed",
+          "label": "Yes – exposed to weather",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No – indoor",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "NEW_DEDICATED_CIRCUIT": {
+      "input_type": "single_select",
+      "question": "Does this require running a new dedicated circuit?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "multiplier": 1.35,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "unsure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "WORK_AREA_PHOTOS": {
+      "input_type": "photo",
+      "question": "Upload 1–3 photos of the work area (helps us confirm the estimate)",
+      "options": []
+    },
+    "UNCERTAINTY_BUFFER": {
+      "input_type": "single_select",
+      "question": "If anything is unknown, we include a contingency to protect accuracy.",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "OCCUPIED": {
+      "input_type": "single_select",
+      "question": "Will the home be occupied during the work?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "ACCESS_DIFFICULTY": {
+      "input_type": "single_select",
+      "question": "How easy is access to the work area?",
+      "options": [
+        {
+          "value": "easy",
+          "label": "Easy access",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "some_obstacles",
+          "label": "Some obstacles",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "tight_hard",
+          "label": "Tight / hard access",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "PANEL_LOCATION": {
+      "input_type": "single_select",
+      "question": "Where is the electrical panel relative to the work area?",
+      "options": [
+        {
+          "value": "same_room",
+          "label": "Same room",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "nearby",
+          "label": "Nearby",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "far",
+          "label": "Far / across the house",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "detached",
+          "label": "Detached building",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "EXISTING_POWER_PRESENT": {
+      "input_type": "single_select",
+      "question": "Is there existing power or wiring at the work location?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DRYWALL_REPAIR_NEEDED": {
+      "input_type": "single_select",
+      "question": "Are small drywall cuts and patching acceptable?",
+      "options": [
+        {
+          "value": "ok",
+          "label": "Yes, small drywall cuts/patching is okay",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "PERMIT_ALLOWED": {
+      "input_type": "single_select",
+      "question": "Is pulling a permit acceptable for this job?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "LIGHTING_EXISTING_LOCATION": {
+      "input_type": "single_select",
+      "question": "Is this replacing an existing light or a brand-new location?",
+      "options": [
+        {
+          "value": "replace",
+          "label": "Replace existing light",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "new",
+          "label": "New location",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "RECESSED_LIGHT_CEILING_TYPE": {
+      "input_type": "single_select",
+      "question": "What is the ceiling material?",
+      "options": [
+        {
+          "value": "drywall",
+          "label": "Drywall",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "plaster",
+          "label": "Plaster",
+          "multiplier": 1.3,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "drop",
+          "label": "Drop ceiling",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "wood",
+          "label": "Wood",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        }
+      ]
+    },
+    "RECESSED_LIGHT_INSULATION": {
+      "input_type": "single_select",
+      "question": "Is there insulation above the ceiling?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "RECESSED_LIGHT_COUNT": {
+      "input_type": "number",
+      "question": "How many recessed lights do you need?",
+      "options": []
+    },
+    "UNDERCABINET_POWER": {
+      "input_type": "single_select",
+      "question": "Is power already available under the cabinet?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes, power is available",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No, power is not available",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "UNDERCABINET_TYPE": {
+      "input_type": "single_select",
+      "question": "Do you want plug-in or hardwired under-cabinet lighting?",
+      "options": [
+        {
+          "value": "plugin",
+          "label": "Plug-in",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "hardwired",
+          "label": "Hardwired",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "FIXTURE_SUPPLIED_BY": {
+      "input_type": "single_select",
+      "question": "Will you supply the fixture, or should we?",
+      "options": [
+        {
+          "value": "customer",
+          "label": "Customer provides",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "electrician",
+          "label": "Electrician supplies",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "FIXTURE_WEIGHT": {
+      "input_type": "single_select",
+      "question": "How heavy is the fixture?",
+      "options": [
+        {
+          "value": "standard",
+          "label": "Standard",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy / oversized (needs extra support)",
+          "multiplier": 1.35,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "FAN_EXISTING_BOX": {
+      "input_type": "single_select",
+      "question": "Is there an existing rated electrical box at the fan location?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "FAN_CONTROL_TYPE": {
+      "input_type": "single_select",
+      "question": "How will the fan be controlled?",
+      "options": [
+        {
+          "value": "pull",
+          "label": "Pull chain",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "wall",
+          "label": "Wall switch",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "remote",
+          "label": "Remote / receiver kit",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "OUTDOOR_EXPOSURE": {
+      "input_type": "single_select",
+      "question": "Is this an outdoor or weather-exposed installation?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes, exposed to rain/weather",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "some",
+          "label": "Some exposure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "MOTION_SENSOR_LOCATION_HEIGHT": {
+      "input_type": "single_select",
+      "question": "How high up will the sensor be mounted?",
+      "options": [
+        {
+          "value": "lt10",
+          "label": "Under 10 ft",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "10_18",
+          "label": "10–18 ft",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "gt18",
+          "label": "Over 18 ft",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DIMMER_LOAD_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of load will the dimmer control?",
+      "options": [
+        {
+          "value": "led",
+          "label": "LED lights",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "incandescent",
+          "label": "Incandescent / halogen",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "fan_motor",
+          "label": "Fan motor",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DIMMER_LED_COMPAT": {
+      "input_type": "single_select",
+      "question": "Are your light fixtures using dimmable LEDs?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes, dimmable LEDs",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No / not sure if dimmable",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DIMMER_STYLE": {
+      "input_type": "single_select",
+      "question": "What style dimmer switch do you prefer?",
+      "options": [
+        {
+          "value": "toggle_slider",
+          "label": "Toggle + slider",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "paddle",
+          "label": "Paddle",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "smart_dimmer",
+          "label": "Smart dimmer",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DEVICE_BRAND": {
+      "input_type": "single_select",
+      "question": "Do you have a preferred device brand?",
+      "options": [
+        {
+          "value": "lutron",
+          "label": "Lutron",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "leviton",
+          "label": "Leviton",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "eaton",
+          "label": "Eaton",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "any",
+          "label": "Any / no preference",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "SMART_PLATFORM": {
+      "input_type": "single_select",
+      "question": "Which smart home platform do you use?",
+      "options": [
+        {
+          "value": "none",
+          "label": "None",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "alexa",
+          "label": "Alexa",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "google",
+          "label": "Google Home",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "homekit",
+          "label": "Apple HomeKit",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "SMART_NEUTRAL_WIRE": {
+      "input_type": "single_select",
+      "question": "Is there a neutral wire in the switch box?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "OUTLET_LOCATION_TYPE": {
+      "input_type": "single_select",
+      "question": "Where will the outlet be installed?",
+      "options": [
+        {
+          "value": "general",
+          "label": "General room",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "kitchen",
+          "label": "Kitchen / countertop",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "bath",
+          "label": "Bathroom",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "garage",
+          "label": "Garage",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "outdoor",
+          "label": "Outdoor",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "GFCI_EXISTING": {
+      "input_type": "single_select",
+      "question": "Is this replacing an existing GFCI or adding a new one?",
+      "options": [
+        {
+          "value": "replace",
+          "label": "Replacing existing GFCI",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "add_new",
+          "label": "Adding new GFCI",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DEDICATED_CIRCUIT_APPLIANCE": {
+      "input_type": "single_select",
+      "question": "What appliance or equipment needs the dedicated circuit?",
+      "options": [
+        {
+          "value": "microwave",
+          "label": "Microwave",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "dishwasher",
+          "label": "Dishwasher",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "disposal",
+          "label": "Garbage disposal",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "refrigerator",
+          "label": "Refrigerator",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "dryer",
+          "label": "Dryer",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "range",
+          "label": "Range / oven",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "water_heater",
+          "label": "Water heater",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "hvac",
+          "label": "HVAC",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "other",
+          "label": "Other / not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DEDICATED_CIRCUIT_VOLTAGE": {
+      "input_type": "single_select",
+      "question": "What voltage does the appliance require?",
+      "options": [
+        {
+          "value": "120",
+          "label": "120V",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "240",
+          "label": "240V",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "DEDICATED_CIRCUIT_DISTANCE": {
+      "input_type": "single_select",
+      "question": "How far is the appliance from the electrical panel?",
+      "options": [
+        {
+          "value": "lt25",
+          "label": "Under 25 ft",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "25_50",
+          "label": "25–50 ft",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "50_100",
+          "label": "50–100 ft",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "gt100",
+          "label": "Over 100 ft",
+          "multiplier": 1.5,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "EV_CHARGER_TYPE": {
+      "input_type": "single_select",
+      "question": "What level of EV charger do you need?",
+      "options": [
+        {
+          "value": "lvl1",
+          "label": "Level 1 (120V — standard outlet)",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "lvl2",
+          "label": "Level 2 (240V — faster charging)",
+          "multiplier": 1.2,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "EV_HARDWIRE_OR_PLUG": {
+      "input_type": "single_select",
+      "question": "Should the charger be hardwired or use a plug-in outlet?",
+      "options": [
+        {
+          "value": "hardwired",
+          "label": "Hardwired",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "plug_in",
+          "label": "Plug-in (NEMA outlet)",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.05,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "EV_PANEL_CAPACITY": {
+      "input_type": "single_select",
+      "question": "Does your panel have available capacity for an EV charger?",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "no",
+          "label": "No — panel is full",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "HOT_TUB_POOL_EQUIPMENT": {
+      "input_type": "single_select",
+      "question": "What equipment needs electrical service?",
+      "options": [
+        {
+          "value": "hot_tub",
+          "label": "Hot tub",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "pool_pump",
+          "label": "Pool pump",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "heater",
+          "label": "Pool/spa heater",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "combo",
+          "label": "More than one",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "GENERATOR_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of generator do you have or need?",
+      "options": [
+        {
+          "value": "portable",
+          "label": "Portable w/ transfer switch",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "standby",
+          "label": "Standby whole-home",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "TRANSFER_SWITCH_LOCATION": {
+      "input_type": "single_select",
+      "question": "Where will the transfer switch be installed?",
+      "options": [
+        {
+          "value": "near_panel",
+          "label": "Near the panel",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "garage",
+          "label": "Garage",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "exterior",
+          "label": "Exterior wall",
+          "multiplier": 1.15,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "multiplier": 1.1,
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "SURGE_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of surge protection are you looking for?",
+      "options": [
+        {
+          "value": "whole_home",
+          "label": "Whole-home (at panel)",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "point_of_use",
+          "label": "Point-of-use",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "PANEL_WORK_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of panel work is needed?",
+      "options": [
+        {
+          "value": "add_breaker",
+          "label": "Add a breaker",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "replace_breaker",
+          "label": "Replace a breaker",
+          "multiplier": 1,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "subpanel",
+          "label": "Install a subpanel",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "upgrade",
+          "label": "Upgrade main panel / service entrance",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "PANEL_BRAND": {
+      "input_type": "single_select",
+      "question": "What brand is your electrical panel?",
+      "options": [
+        {
+          "value": "square_d",
+          "label": "Square D",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "siemens",
+          "label": "Siemens",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "eaton",
+          "label": "Eaton",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "ge",
+          "label": "GE",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "fpe",
+          "label": "Federal Pacific (FPE)",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "zinsco",
+          "label": "Zinsco",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "TROUBLESHOOTING_SYMPTOM": {
+      "input_type": "single_select",
+      "question": "What electrical issue are you experiencing?",
+      "options": [
+        {
+          "value": "flicker",
+          "label": "Flickering lights",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "dead",
+          "label": "Dead outlet / circuit",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "trips",
+          "label": "Breaker trips frequently",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "burning",
+          "label": "Burning smell / hot devices",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "partial",
+          "label": "Partial power in house",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "other",
+          "label": "Other / not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "COMMERCIAL_CEILING_TYPE": {
+      "input_type": "single_select",
+      "question": "What type of ceiling does the space have?",
+      "options": [
+        {
+          "value": "open",
+          "label": "Open ceiling",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "drop",
+          "label": "Drop ceiling",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "hard_lid",
+          "label": "Hard lid",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "COMMERCIAL_WORKING_HOURS": {
+      "input_type": "single_select",
+      "question": "When is work available to be performed?",
+      "options": [
+        {
+          "value": "business",
+          "label": "Business hours",
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "after_hours",
+          "label": "After-hours",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "weekend",
+          "label": "Weekend",
+          "multiplier": 1.25,
+          "disqualify": false,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": false,
+          "uncertain": true
+        }
+      ]
+    },
+    "FIRE_ALARM_SCOPE": {
+      "input_type": "single_select",
+      "question": "What fire alarm work is needed?",
+      "options": [
+        {
+          "value": "new",
+          "label": "New install",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "repair",
+          "label": "Repair / service",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "inspect",
+          "label": "Inspection / testing",
+          "disqualify": true,
+          "uncertain": false
+        },
+        {
+          "value": "not_sure",
+          "label": "Not sure",
+          "disqualify": true,
+          "uncertain": false
+        }
+      ]
+    }
+  },
+  "v2_job_types": [
+    {
+      "assembly_id": "A001",
+      "name": "Recessed (Can) Lighting",
+      "base_hours": 1.55,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A002",
+      "name": "Under-Cabinet Lighting",
+      "base_hours": 1.075,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A003",
+      "name": "Chandelier & Fixture Installation",
+      "base_hours": 1.03,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A004",
+      "name": "Ceiling Fan Installation",
+      "base_hours": 1.005,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A005",
+      "name": "Outdoor & Landscape Lighting",
+      "base_hours": 0.845,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A006",
+      "name": "Motion Sensor & Security Lighting",
+      "base_hours": 0.88,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A007",
+      "name": "LED Lighting Upgrades (Retrofits)",
+      "base_hours": 0.855,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A008",
+      "name": "Dimmer Switch Installation",
+      "base_hours": 0.685,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A009",
+      "name": "Light Fixture Repair",
+      "base_hours": 0.48,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A010",
+      "name": "Troubleshooting (Flickering lights",
+      "base_hours": 0.575,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A011",
+      "name": "New Outlet Installation",
+      "base_hours": 0.78,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A012",
+      "name": "GFCI Outlet Installation (for kitchens",
+      "base_hours": 0.73,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A013",
+      "name": "Switch & Outlet Repair",
+      "base_hours": 0.54,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A014",
+      "name": "Smart Switch & Smart Outlet Installation",
+      "base_hours": 0.73,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A015",
+      "name": "Whole-House Rewiring",
+      "base_hours": 6.86,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A016",
+      "name": "Partial Home Rewiring (e.g.",
+      "base_hours": 3.21,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A017",
+      "name": "Adding Dedicated Circuits (for appliances like microwaves",
+      "base_hours": 1.56,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A018",
+      "name": "Code Compliance & Correction",
+      "base_hours": 0.695,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A019",
+      "name": "Service Panel Upgrade (e.g.",
+      "base_hours": 3.76,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A020",
+      "name": "Subpanel Installation (for garages",
+      "base_hours": 2.475,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A021",
+      "name": "Fuse Box to Breaker Panel Conversion",
+      "base_hours": 2.695,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A022",
+      "name": "Breaker Tripping Issues",
+      "base_hours": 0.61,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A023",
+      "name": "Panel or Breaker Repair",
+      "base_hours": 0.61,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A024",
+      "name": "Surge Protection (Whole-house)",
+      "base_hours": 1.01,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A025",
+      "name": "Installation for New Appliances (e.g.",
+      "base_hours": 1.56,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A026",
+      "name": "Standby Generator Installation",
+      "base_hours": 5.305,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A027",
+      "name": "Portable Generator Hookup (Transfer Switch)",
+      "base_hours": 2.29,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A028",
+      "name": "Electric Vehicle (EV) Charger Installation",
+      "base_hours": 1.73,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A029",
+      "name": "Hot Tub & Pool Wiring",
+      "base_hours": 1.57,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A030",
+      "name": "Smoke & Carbon Monoxide Detector Installation",
+      "base_hours": 0.6,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A031",
+      "name": "Home Automation & Smart Home Integration",
+      "base_hours": 0.875,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Residential",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A032",
+      "name": "Office & Warehouse Lighting",
+      "base_hours": 2.26,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A033",
+      "name": "Parking Lot & Exterior Security Lighting",
+      "base_hours": 2.07,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A034",
+      "name": "Emergency & Exit Lighting",
+      "base_hours": 0.93,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A035",
+      "name": "Signage & Display Lighting",
+      "base_hours": 0.72,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A036",
+      "name": "Ballast & Bulb Replacement",
+      "base_hours": 0.94,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A037",
+      "name": "LED Lighting Retrofits (for energy savings)",
+      "base_hours": 0.99,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A038",
+      "name": "Lighting Control Systems & Timers",
+      "base_hours": 0.615,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A039",
+      "name": "New Circuit Installation",
+      "base_hours": 1.67,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A040",
+      "name": "Commercial Rewiring",
+      "base_hours": 2.78,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": true,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A041",
+      "name": "Data & Network Cabling (e.g.",
+      "base_hours": 0.8,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A042",
+      "name": "Low-Voltage Wiring (for security",
+      "base_hours": 0.8,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A043",
+      "name": "New Outlet & Switch Installation",
+      "base_hours": 1.06,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A044",
+      "name": "Service Upgrades",
+      "base_hours": 3.37,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A045",
+      "name": "Panel & Service Upgrades",
+      "base_hours": 3.37,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A046",
+      "name": "Transformer Installation",
+      "base_hours": 1.18,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A047",
+      "name": "Subpanel Installation",
+      "base_hours": 2.195,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A048",
+      "name": "Bus Duct & Conduit Installation",
+      "base_hours": 2.305,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A049",
+      "name": "Breaker Tripping Issues",
+      "base_hours": 0.625,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A050",
+      "name": "Panel or Breaker Repair",
+      "base_hours": 0.38,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A051",
+      "name": "Dedicated Circuits for Heavy Machinery",
+      "base_hours": 1.67,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A052",
+      "name": "Wiring for HVAC",
+      "base_hours": 1.45,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A053",
+      "name": "Backup Generator Installation & Maintenance",
+      "base_hours": 3.635,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A054",
+      "name": "Uninterruptible Power Supply (UPS) Installation",
+      "base_hours": 0.84,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A055",
+      "name": "Fire alarm systems",
+      "base_hours": 1.44,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    },
+    {
+      "assembly_id": "A056",
+      "name": "Surge protection",
+      "base_hours": 0.84,
+      "min_price": 95,
+      "material_allowance": 0,
+      "segment": "Commercial",
+      "instant_book_allowed": false,
+      "questions_in_driver_system": [
+        "DIST_PANEL",
+        "CEILING_HT",
+        "ATTIC_ACCESS",
+        "WALL_TYPE"
+      ],
+      "note": "ALL 56 job types share identical questions — Scenario_Drivers assigns allDrivers to every type"
+    }
+  ]
+}

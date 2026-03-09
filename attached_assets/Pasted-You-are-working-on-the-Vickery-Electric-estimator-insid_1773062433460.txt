@@ -1,0 +1,63 @@
+You are working on the Vickery Electric estimator inside my existing Replit project.
+
+Goal:
+Do a full audit of estimator accuracy before changing customer-facing behavior. Treat this as pricing-critical and margin-critical. I need maximum practical accuracy, not speed.
+
+Rules:
+- Do not start by redesigning UI
+- Do not hardcode new pricing
+- Do not guess at pricing logic
+- Google Sheets must remain the source of truth
+- Keep all existing working functionality unless it is proven wrong
+- If something is unclear, inspect the code and sheet structure and make the most grounded determination possible
+- Make safe, organized code changes if needed for clarity
+
+Your job in this phase:
+1. Read the full estimator flow end to end:
+   - frontend estimator pages
+   - API routes
+   - pricing logic
+   - Google Sheets fetch logic
+   - dynamic questions logic
+   - lead submission logic
+
+2. Build a complete trace map for every instant-quoted service:
+   - service/category
+   - which questions display
+   - which answer options exist
+   - which sheet rows/tables/columns control those questions
+   - exactly how each answer affects price
+   - where labor is calculated
+   - where materials are calculated
+   - where modifiers are applied
+   - where minimums/rounding/margin are applied
+   - where hardcoded values exist
+   - where logic is duplicated
+   - where sheet logic is bypassed
+
+3. Identify every estimator accuracy risk, including:
+   - missing question-to-pricing mappings
+   - answer options with zero pricing impact by accident
+   - duplicate/conflicting modifiers
+   - questions shown but not used
+   - pricing values used but not traceable to sheet
+   - hardcoded fallback pricing
+   - broken conditional question logic
+   - services missing critical labor/material drivers
+   - services that should not be instant-quoted in current form
+   - any place where a customer can get an unrealistically low quote
+
+4. Create an internal audit artifact in the project:
+   - a human-readable report file
+   - a machine-readable JSON file listing all services, questions, answer options, and pricing effects
+   - a clear “issues found” section ranked by risk severity
+
+Deliverables:
+- estimator_audit_report.md
+- estimator_trace_map.json
+- list of critical blockers
+- list of medium/low issues
+- exact files touched
+- summary of what is currently safe vs unsafe to quote instantly
+
+Do not skip services. Do not give me vague notes. I need a real, exhaustive audit.
