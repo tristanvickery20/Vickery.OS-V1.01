@@ -913,6 +913,12 @@ async function calcPrice() {
   }
 }
 
+// ── Calendar + block-picker state ─────────────────────────────────────────────
+let _calViewYear  = null;   // number — year displayed
+let _calViewMonth = null;   // number — 0-based month displayed
+let _calDayKey    = null;   // 'YYYY-MM-DD' — currently selected day
+let _calDayMap    = {};     // { 'YYYY-MM-DD': [blockObj, ...] }
+
 // ── Load blocks for review screen ──────────────────────────────────────────────
 async function loadBlocksForReview() {
   const section = document.getElementById("reviewSlotSection");
@@ -921,89 +927,175 @@ async function loadBlocksForReview() {
     const r = await fetch("/api/schedule/blocks?days=14");
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || "Could not load windows.");
-    S.slotsData = d;   // keep for timezone reference
-    renderBlockPicker(d.blocks || []);
+    S.slotsData = d;
+
+    // Build day map: { 'YYYY-MM-DD': [blockObj, ...] }
+    _calDayMap = {};
+    for (const b of (d.blocks || []).filter(b => b.available)) {
+      if (!_calDayMap[b.date]) _calDayMap[b.date] = [];
+      _calDayMap[b.date].push(b);
+    }
+
+    // Auto-select first available day (or keep existing selection if still valid)
+    const sortedDays = Object.keys(_calDayMap).sort();
+    if (!_calDayKey || !_calDayMap[_calDayKey]) {
+      _calDayKey = sortedDays[0] || null;
+    }
+
+    // Init calendar view to the first available month
+    if (_calDayKey) {
+      const [y, m] = _calDayKey.split("-").map(Number);
+      _calViewYear  = y;
+      _calViewMonth = m - 1;
+    } else {
+      const now = new Date();
+      _calViewYear  = now.getFullYear();
+      _calViewMonth = now.getMonth();
+    }
+
+    renderBlockCalendar();
   } catch (e) {
     section.innerHTML = `<div class="q-error-box" style="margin-top:12px;">Could not load windows: ${escHtml(e.message)}</div>`;
   }
 }
 
-// ── Block picker — render ──────────────────────────────────────────────────────
-// Groups blocks by date and renders a card list with Morning / Afternoon buttons.
-function renderBlockPicker(blocks) {
+// ── Calendar render ────────────────────────────────────────────────────────────
+function todayKey() {
+  const fmt  = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" });
+  return fmt.format(new Date());
+}
+
+function renderBlockCalendar() {
   const section = document.getElementById("reviewSlotSection");
   if (!section) return;
 
-  const available = blocks.filter(b => b.available);
-  if (!available.length) {
-    section.innerHTML = `<div class="q-error-box" style="margin-top:8px;">No available windows right now. Please call us at (409) 555-0100 to schedule.</div>`;
-    return;
+  const today = todayKey();
+  const year  = _calViewYear;
+  const month = _calViewMonth;
+
+  const monthNames = ["January","February","March","April","May","June",
+                      "July","August","September","October","November","December"];
+
+  const firstDow    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dows = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  let cells = dows.map(d => `<div class="q-cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < firstDow; i++) cells += `<div class="q-cal-day empty"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mo  = String(month + 1).padStart(2, "0");
+    const dy  = String(d).padStart(2, "0");
+    const key = `${year}-${mo}-${dy}`;
+    const isAvail = !!_calDayMap[key];
+    const isSel   = _calDayKey === key;
+    const isToday = key === today;
+    let cls = "q-cal-day";
+    if (isSel)        cls += " selected-date";
+    else if (isAvail) cls += " available";
+    else              cls += " unavailable";
+    if (isToday)      cls += " today";
+    cells += `<div class="${cls}" data-datekey="${key}">${d}</div>`;
   }
 
-  // Group by date
-  const byDate = {};
-  for (const b of available) {
-    if (!byDate[b.date]) byDate[b.date] = { day_label: b.day_label, date: b.date, blocks: [] };
-    byDate[b.date].blocks.push(b);
-  }
+  // Block buttons for selected day
+  const blockPanelHTML = _calDayKey ? renderBlockPanel(_calDayKey) : "";
 
   // Selected summary bar
-  const selSummary = S.selectedBlock
-    ? `<div class="q-selected-summary" style="margin-bottom:12px;">
+  const sumHTML = S.selectedBlock
+    ? `<div class="q-selected-summary">
         &#10003;&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
       </div>`
     : "";
 
-  const dayCards = Object.values(byDate).slice(0, 14).map(day => {
-    const dayFmt = new Intl.DateTimeFormat("en-US", {
-      weekday: "long", month: "long", day: "numeric",
-    }).format(new Date(day.date + "T12:00:00"));
-
-    const blockBtns = day.blocks.map(b => {
-      const isSel = S.selectedBlock?.date === b.date && S.selectedBlock?.block === b.block;
-      return `<button
-        class="q-block-btn${isSel ? " selected" : ""}"
-        data-date="${escHtml(b.date)}"
-        data-block="${escHtml(b.block)}"
-        data-start-iso="${escHtml(b.start_iso)}"
-        data-window-label="${escHtml(b.window_label)}"
-        data-display="${escHtml(b.display)}">
-        <span class="q-block-icon">${b.block === "Morning" ? "&#9728;" : "&#9734;"}</span>
-        <span class="q-block-name">${escHtml(b.block)}</span>
-        <span class="q-block-window">${escHtml(b.window_label)}</span>
-      </button>`;
-    }).join("");
-
-    return `<div class="q-block-day">
-      <div class="q-block-day-label">${escHtml(dayFmt)}</div>
-      <div class="q-block-row">${blockBtns}</div>
-    </div>`;
-  }).join("");
-
   section.innerHTML = `
-    ${selSummary}
-    <div class="q-block-picker">${dayCards}</div>`;
+    <div class="q-cal">
+      <div class="q-cal-header">
+        <button class="q-cal-nav" id="calPrev">&#8249;</button>
+        <div class="q-cal-title">${escHtml(monthNames[month])} ${year}</div>
+        <button class="q-cal-nav" id="calNext">&#8250;</button>
+      </div>
+      <div class="q-cal-body">
+        <div class="q-cal-grid">${cells}</div>
+        ${blockPanelHTML}
+      </div>
+    </div>
+    ${sumHTML}`;
 
-  bindBlockPickerEvents();
+  bindBlockCalendarEvents();
 }
 
-function bindBlockPickerEvents() {
+// ── Block panel (replaces time slots) ─────────────────────────────────────────
+function renderBlockPanel(dateKey) {
+  const blocks = _calDayMap[dateKey] || [];
+  if (!blocks.length) return "";
+
+  const dayLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "long", month: "long", day: "numeric",
+  }).format(new Date(dateKey + "T12:00:00"));
+
+  const btns = blocks.map(b => {
+    const isSel = S.selectedBlock?.date === b.date && S.selectedBlock?.block === b.block;
+    return `<button
+      class="q-block-btn${isSel ? " selected" : ""}"
+      data-date="${escHtml(b.date)}"
+      data-block="${escHtml(b.block)}"
+      data-start-iso="${escHtml(b.start_iso)}"
+      data-window-label="${escHtml(b.window_label)}"
+      data-display="${escHtml(b.display)}">
+      <span class="q-block-icon">${b.block === "Morning" ? "&#9728;" : "&#9734;"}</span>
+      <span class="q-block-name">${escHtml(b.block)}</span>
+      <span class="q-block-window">${escHtml(b.window_label)}</span>
+    </button>`;
+  }).join("");
+
+  return `
+    <div class="q-time-slots">
+      <div class="q-time-heading">${escHtml(dayLabel)}</div>
+      <div class="q-block-row">${btns}</div>
+    </div>`;
+}
+
+// ── Calendar event binding ─────────────────────────────────────────────────────
+function bindBlockCalendarEvents() {
+  document.getElementById("calPrev")?.addEventListener("click", () => {
+    _calViewMonth--;
+    if (_calViewMonth < 0) { _calViewMonth = 11; _calViewYear--; }
+    renderBlockCalendar();
+  });
+  document.getElementById("calNext")?.addEventListener("click", () => {
+    _calViewMonth++;
+    if (_calViewMonth > 11) { _calViewMonth = 0; _calViewYear++; }
+    renderBlockCalendar();
+  });
+
+  // Day click
+  document.querySelectorAll(".q-cal-day.available, .q-cal-day.selected-date").forEach(el => {
+    el.addEventListener("click", () => {
+      _calDayKey = el.dataset.datekey;
+      // Clear block selection if it was on a different day
+      if (S.selectedBlock && S.selectedBlock.date !== _calDayKey) {
+        S.selectedBlock = null;
+        S.selectedSlot  = null;
+        document.getElementById("goConfirmBtn")?.setAttribute("disabled", "");
+      }
+      renderBlockCalendar();
+    });
+  });
+
+  // Block button click
   document.querySelectorAll(".q-block-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const blk = {
+      S.selectedBlock = {
         date:         btn.dataset.date,
         block:        btn.dataset.block,
         start_iso:    btn.dataset.startIso,
         window_label: btn.dataset.windowLabel,
         display:      btn.dataset.display,
       };
-      S.selectedSlot  = blk.start_iso;
-      S.selectedBlock = blk;
+      S.selectedSlot = S.selectedBlock.start_iso;
       document.getElementById("goConfirmBtn")?.removeAttribute("disabled");
-      // Re-render to show updated selection
-      renderBlockPicker(
-        (S.slotsData?.blocks || []).filter(b => b.available)
-      );
+      renderBlockCalendar();
     });
   });
 }
