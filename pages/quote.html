@@ -636,6 +636,51 @@
       color: hsl(var(--primary));
     }
 
+    /* ── Block picker ────────────────────────────────────────────────── */
+    .q-block-picker { display: flex; flex-direction: column; gap: 14px; }
+    .q-block-day {
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .q-block-day-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .q-block-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .q-block-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 14px 22px;
+      background: white;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 130px;
+      font-family: var(--font-display);
+    }
+    .q-block-btn:hover {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary) / 0.05);
+    }
+    .q-block-btn.selected {
+      background: hsl(var(--primary));
+      border-color: hsl(var(--primary));
+      color: white;
+    }
+    .q-block-icon { font-size: 20px; line-height: 1; }
+    .q-block-name { font-size: 14px; font-weight: 700; }
+    .q-block-window { font-size: 12px; opacity: 0.75; }
+    .q-block-btn.selected .q-block-window { opacity: 0.9; }
+
     /* ── Confirm summary card ────────────────────────────────────────── */
     .q-confirm-summary {
       background: white;

@@ -7,7 +7,9 @@ const { handleQuoteConfig } = require("./api/quote-config");
 const { handleQuoteStart, handleQuoteCalc, handleQuoteLock } = require("./api/quote-engine");
 const { handlePhotoUpload } = require("./api/photo-upload");
 const { handleGetSlots }    = require("./api/schedule-slots");
+const { handleGetBlocks }   = require("./api/schedule-blocks");
 const { handleBook }        = require("./api/schedule-book");
+const { handleGetBookings } = require("./api/schedule-admin");
 const { handleSeedQuote }   = require("./api/seed-quote");
 const { handleCreateLead, handleGetLeads } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
@@ -198,6 +200,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/schedule/slots") && req.method === "GET") {
     return handleGetSlots(req, res);
+  }
+
+  if (req.url.startsWith("/api/schedule/blocks") && req.method === "GET") {
+    return handleGetBlocks(req, res);
   }
 
   if (req.url === "/api/schedule/book" && req.method === "POST") {

@@ -6,6 +6,69 @@
     <title>Schedule &bull; Vickery CRM</title>
     <link rel="stylesheet" href="/pages/css/brand.css" />
     <link rel="stylesheet" href="/pages/css/shell.css" />
+    <style>
+      .sched-date-card {
+        background: white;
+        border: 1.5px solid hsl(var(--border));
+        border-radius: 14px;
+        margin-bottom: 24px;
+        overflow: hidden;
+      }
+      .sched-date-heading {
+        font-family: var(--font-display, sans-serif);
+        font-size: 16px;
+        font-weight: 800;
+        padding: 14px 20px;
+        border-bottom: 1px solid hsl(var(--border));
+        background: hsl(var(--muted, 220 14% 96%));
+        letter-spacing: -0.01em;
+      }
+      .sched-block-section {
+        border-bottom: 1px solid hsl(var(--border));
+        padding: 0;
+      }
+      .sched-block-section:last-child { border-bottom: none; }
+      .sched-block-heading {
+        font-size: 13px;
+        font-weight: 700;
+        color: #444;
+        padding: 10px 20px 8px;
+        background: hsl(var(--muted, 220 14% 96%) / 0.4);
+        border-bottom: 1px solid hsl(var(--border));
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sched-block-window {
+        font-size: 12px;
+        font-weight: 500;
+        color: #888;
+        margin-left: 2px;
+      }
+      .sched-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .sched-table th {
+        text-align: left;
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #888;
+        letter-spacing: 0.04em;
+        border-bottom: 1px solid hsl(var(--border));
+      }
+      .sched-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid hsl(var(--border) / 0.5);
+        vertical-align: middle;
+      }
+      .sched-table tbody tr:last-child td { border-bottom: none; }
+      .sched-table tbody tr:hover { background: hsl(var(--muted, 220 14% 96%) / 0.5); }
+      #status { color: #888; font-size: 13px; margin: 8px 0 16px; }
+    </style>
   </head>
   <body>
     <div class="app-shell">
@@ -16,29 +79,13 @@
           <button id="refreshBtn" class="btn-outline" type="button">Refresh</button>
         </div>
         <div class="main-content">
-          <div class="date-filter">
-            <span>Show date:</span>
-            <input id="date" type="date" style="width: auto;" />
+          <div class="date-filter" style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+            <label style="font-size:13px;font-weight:600;">Filter by date:</label>
+            <input id="date" type="date" style="width:auto;" />
+            <button id="clearDate" class="btn-outline" type="button" style="font-size:12px;padding:4px 10px;">Show all</button>
           </div>
-
-          <p id="status" class="status-text"></p>
-
-          <div class="data-table-wrap">
-            <table id="table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Lead</th>
-                  <th>Tech</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                  <th>Address</th>
-                  <th>Preference</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <p id="status"></p>
+          <div id="schedContainer"></div>
         </div>
       </main>
     </div>
@@ -46,5 +93,11 @@
     <script src="/pages/js/api.js"></script>
     <script src="/pages/js/crm-schedule.js"></script>
     <script src="/pages/js/shell.js"></script>
+    <script>
+      document.getElementById("clearDate")?.addEventListener("click", () => {
+        document.getElementById("date").value = "";
+        document.getElementById("date").dispatchEvent(new Event("change"));
+      });
+    </script>
   </body>
 </html>

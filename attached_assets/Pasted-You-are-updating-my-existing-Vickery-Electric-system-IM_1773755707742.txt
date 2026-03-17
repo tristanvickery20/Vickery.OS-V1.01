@@ -1,0 +1,332 @@
+You are updating my existing Vickery Electric system.
+
+IMPORTANT CONTEXT:
+This is NOT a greenfield app.
+Do NOT build a parallel scheduling system.
+Do NOT create duplicate models/tables/fields if equivalent ones already exist.
+Do NOT break existing estimator logic, CRM flow, quote flow, or any other calculator.
+You must first inspect the current codebase and current data model, then fit scheduling into the existing architecture with the least-disruptive changes possible.
+
+My system already has some combination of:
+- lead/customer records
+- quote/estimate data
+- service selection
+- intake answers
+- job records or equivalent
+- CRM statuses
+- pricing output
+- scheduling-adjacent fields or similar concepts
+
+Your job is to ADAPT scheduling into what already exists, not invent a whole new unrelated subsystem.
+
+==================================================
+PRIMARY OBJECTIVE
+==================================================
+
+I need my existing instant estimator flow to support booking.
+
+Customer flow should become:
+
+1. Select service
+2. Answer estimator questions
+3. See instant price
+4. See available scheduling windows
+5. Book a window
+6. Booking lands inside my existing CRM/job pipeline in a clean structured way
+
+The system must support:
+- customer self-booking
+- broad time windows, not exact arrival times
+- no double booking
+- manual dispatch for now
+- future zone-based routing
+- future staff assignment
+
+==================================================
+MOST IMPORTANT RULE
+==================================================
+
+Before making changes, inspect the codebase and identify:
+
+1. What object currently becomes the “main record” after estimator submission
+   - lead
+   - quote
+   - opportunity
+   - job
+   - appointment
+   - booking
+   - work order
+   - whatever already exists
+
+2. What fields already exist that can be reused for:
+   - customer info
+   - address
+   - service type
+   - service niche/subtype
+   - estimator answers
+   - price
+   - duration or labor estimate
+   - status
+   - scheduled date/time
+   - assignment
+   - notes
+
+3. Where current CRM status transitions already live
+
+4. Where the estimator result is already saved
+
+Then implement scheduling by EXTENDING the current flow, not replacing it.
+
+==================================================
+WHAT I ACTUALLY WANT
+==================================================
+
+I do NOT want normal Calendly logic.
+
+I want contractor scheduling logic that works like this:
+
+- Customer books a block, not an exact technician arrival time
+- Booking windows are broad operational windows
+- Internal dispatch happens later
+- System must later support batching by geography/zone and duration
+
+For now, minimum viable customer-facing windows are:
+
+- Morning
+- Afternoon
+
+Default block definitions:
+- Morning = 8:00 AM–12:00 PM
+- Afternoon = 1:00 PM–5:00 PM
+
+Customer-facing language should be simple:
+- Tuesday Morning
+- Tuesday Afternoon
+- Wednesday Morning
+- Wednesday Afternoon
+
+Confirmation language should make clear it is a window, not a fixed exact time.
+
+Example:
+“You’re scheduled for Tuesday afternoon. Arrival window: 1 PM–5 PM.”
+
+==================================================
+HOW TO FIT THIS INTO MY EXISTING SYSTEM
+==================================================
+
+Use the existing record lifecycle wherever possible.
+
+Preferred logic:
+
+A. Estimator runs exactly like it already does
+B. Existing quote/result object is generated exactly like it already does
+C. Add scheduling selection after price display
+D. On booking:
+   - attach scheduling data to the existing primary record if appropriate
+   OR
+   - create the existing downstream record type already used by the CRM/job pipeline
+E. Make sure the booked record is visible in the existing admin/CRM workflow
+
+Do NOT create a brand-new “booking” entity unless the current architecture genuinely requires it.
+
+If existing system already has something like:
+- appointment_date
+- scheduled_for
+- visit_window
+- status
+- assigned_to
+- job_date
+- job_status
+- lead_status
+then reuse/adapt those instead of duplicating with new names.
+
+==================================================
+IMPLEMENTATION TASK
+==================================================
+
+Step 1: Audit current system
+
+Read the current codebase and identify:
+- existing estimator submission flow
+- where quote results are saved
+- where CRM/job records are stored
+- which existing fields/models already cover scheduling-related concepts
+- whether data comes from DB, Sheets, JSON, Supabase, etc.
+
+After that, implement the smallest clean set of changes.
+
+==================================================
+SCHEDULING LOGIC TO ADD
+==================================================
+
+Add availability logic that can plug into the current estimator flow.
+
+Need a function/endpoint/service that:
+- returns available blocks for the next several business days
+- only returns blocks that still have capacity
+- uses config-based capacity limits
+- can later be extended to account for zone and duration
+
+For now, capacity can be simple:
+- max X bookings per Morning block
+- max X bookings per Afternoon block
+
+Start with config-driven defaults such as:
+- morning_capacity = 3
+- afternoon_capacity = 3
+
+But if there is already a config system in place, put these there instead of inventing a new one.
+
+==================================================
+BOOKING BEHAVIOR
+==================================================
+
+When customer selects a block:
+
+1. Revalidate capacity server-side
+2. Save the chosen date + block to the correct existing record/object
+3. Update CRM/job status using existing status conventions where appropriate
+4. Keep estimator answers and price attached as they already are
+5. Make sure booking is visible internally
+
+Required scheduling data, but REUSE EXISTING FIELDS if equivalents already exist:
+- scheduled_date
+- scheduled_block (Morning / Afternoon, or AM / PM)
+- block_start_time
+- block_end_time
+- booking/appointment/job status
+- internal dispatch status if there is already an equivalent
+- zone placeholder if there is already an equivalent
+- assigned tech placeholder if there is already an equivalent
+
+If equivalent fields already exist, use them.
+Only add missing fields that are truly necessary.
+
+==================================================
+ADMIN / CRM REQUIREMENT
+==================================================
+
+I need an internal view that lets me quickly see the schedule grouped like:
+
+Date
+- Morning jobs
+- Afternoon jobs
+
+Each item should show whatever the system already stores, ideally:
+- customer name
+- address
+- service
+- quoted price
+- duration if available
+- status
+
+If there is already a CRM jobs list or admin dashboard, extend it there instead of building an entirely separate scheduling page unless absolutely necessary.
+
+==================================================
+VERY IMPORTANT ARCHITECTURE RULES
+==================================================
+
+1. No duplicate field creation
+Bad example:
+- existing field: scheduled_for
+- new unnecessary field: booking_date
+
+2. No duplicate object creation
+Bad example:
+- existing job record already represents scheduled work
+- you create separate booking table with same info for no reason
+
+3. No breaking current estimator flow
+The price engine, service logic, and intake logic must keep working
+
+4. No unnecessary renaming
+If current code uses certain names, keep them unless broken
+
+5. Keep future expansion in mind
+Structure code so later I can add:
+- zones
+- duration-aware capacity
+- technician assignment
+- route planning
+- ETA notifications
+
+But do NOT overbuild those now
+
+==================================================
+PHASE 1 MVP I WANT RIGHT NOW
+==================================================
+
+Build only what is needed for MVP:
+
+Customer side:
+- after estimate, show available Morning / Afternoon windows
+- let customer pick one
+- submit booking
+
+Backend:
+- calculate block availability
+- prevent overbooking
+- save block selection into existing CRM/job pipeline
+
+Admin side:
+- show scheduled work by day and block
+
+Operational reality:
+- I manually decide exact route/order later
+- customer only books the block window
+
+==================================================
+WHAT TO LOOK FOR IN MY CURRENT CODE
+==================================================
+
+Search for and inspect anything related to:
+- leads
+- jobs
+- appointments
+- quotes
+- estimator results
+- status fields
+- schedule/scheduled
+- calendar
+- dispatch
+- assigned tech
+- service area
+- availability
+- config
+- business hours
+
+Map your implementation to those.
+
+==================================================
+EXPECTED OUTPUT
+==================================================
+
+Do the work, then show me:
+
+1. What existing models/tables/objects you found
+2. Which existing fields you reused
+3. Which new fields, if any, were actually necessary
+4. What endpoints/functions/components you changed
+5. How booking now flows from estimator into CRM
+6. Any migration/config changes needed
+7. Short test checklist
+
+==================================================
+PREFERRED IMPLEMENTATION STRATEGY
+==================================================
+
+Think like a systems architect for a small electrical contractor.
+
+The right solution is probably:
+
+- keep current estimator result structure
+- add availability retrieval after estimate
+- save a selected service window into the current downstream record
+- expose scheduled work in existing admin tools
+- avoid exact-time customer booking
+
+Do not ask me broad planning questions.
+Inspect the existing system and make grounded decisions from the codebase.
+
+Your job is not to build a generic scheduler.
+Your job is to integrate a contractor-friendly booking layer into my current Vickery Electric estimator + CRM system with minimal duplication and minimal chaos.

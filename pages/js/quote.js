@@ -17,7 +17,8 @@ const S = {
   lock: null,               // server lock response
   photoUploaded: false,
   slotsData: null,
-  selectedSlot: null,
+  selectedSlot: null,   // ISO string — start of selected block (or exact slot for legacy)
+  selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
   booking: null,
 };
 
@@ -163,7 +164,7 @@ function renderStep() {
     case "sitevisit":  clone.innerHTML = renderSiteVisit();  break;
     case "review":
       clone.innerHTML = renderReview();
-      loadSlotsForReview();
+      loadBlocksForReview();
       break;
     case "confirm":    clone.innerHTML = renderConfirm();    break;
     case "photo":      clone.innerHTML = renderPhoto();      break;
@@ -469,14 +470,8 @@ function renderReview() {
     return svc.qty > 1 ? `${svc.qty}× ${jt?.name_public || svc.job_type_id}` : (jt?.name_public || svc.job_type_id);
   }).join(", ");
 
-  const slotLabel = S.selectedSlot
-    ? (() => {
-        const tz = S.slotsData?.timezone || "America/Chicago";
-        const d  = new Date(S.selectedSlot);
-        const date = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric" }).format(d);
-        const time = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(d);
-        return `${date} \u2022 ${time}`;
-      })()
+  const slotLabel = S.selectedBlock
+    ? `${escHtml(S.selectedBlock.display)} &bull; ${escHtml(S.selectedBlock.window_label)}`
     : null;
 
   return `
@@ -497,8 +492,11 @@ function renderReview() {
     </div>
 
     <div class="q-review-slots-section">
-      <div class="q-review-slots-heading">&#128197; Pick a Date &amp; Time</div>
-      <div id="reviewSlotSection">${loadingHTML("Finding available times\u2026")}</div>
+      <div class="q-review-slots-heading">&#128197; Choose a Service Window</div>
+      <p class="q-muted" style="font-size:13px;margin:-4px 0 12px;">
+        Pick a morning or afternoon block. Our crew will arrive within that window.
+      </p>
+      <div id="reviewSlotSection">${loadingHTML("Loading available windows\u2026")}</div>
     </div>
 
     <div class="q-nav-row" style="margin-top:20px;">
@@ -512,15 +510,9 @@ function renderReview() {
 
 // ── Step 6: Confirm — lead form ────────────────────────────────────────────────
 function renderConfirm() {
-  const price  = S.lock?.final_price ?? S.pricing?.final_price ?? null;
-  const tz     = S.slotsData?.timezone || "America/Chicago";
-  const slotDt = S.selectedSlot ? new Date(S.selectedSlot) : null;
-  const slotDate = slotDt
-    ? new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "long", day: "numeric" }).format(slotDt)
-    : "";
-  const slotTime = slotDt
-    ? new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(slotDt)
-    : "";
+  const price       = S.lock?.final_price ?? S.pricing?.final_price ?? null;
+  const blockDisplay = S.selectedBlock?.display      || "";
+  const blockWindow  = S.selectedBlock?.window_label || "";
 
   return `
     ${stepHeader(5, "Your Information")}
@@ -528,8 +520,8 @@ function renderConfirm() {
       <div class="q-confirm-row">
         <span class="q-confirm-icon">&#128197;</span>
         <div>
-          <div class="q-confirm-key">Appointment</div>
-          <div class="q-confirm-val">${escHtml(slotDate)}&nbsp;&bull;&nbsp;${escHtml(slotTime)}</div>
+          <div class="q-confirm-key">Appointment Window</div>
+          <div class="q-confirm-val">${escHtml(blockDisplay)}${blockWindow ? ` &bull; Arrival ${escHtml(blockWindow)}` : ""}</div>
         </div>
       </div>
       <div class="q-confirm-row">
@@ -608,16 +600,22 @@ function renderPhoto() {
 
 // ── Step 8: Booked ────────────────────────────────────────────────────────────
 function renderBooked() {
-  const bk   = S.booking;
-  const tz   = S.slotsData?.timezone || "America/Chicago";
-  const dt   = bk?.scheduled_datetime ? new Date(bk.scheduled_datetime) : null;
+  const bk          = S.booking;
+  const displayPrice = S.lock?.final_price ?? bk?.final_price;
+
+  // Block info from booking response (preferred) or from the selection state
+  const blockLabel  = bk?.schedule_block  || S.selectedBlock?.block  || "";
+  const windowLabel = bk?.window_label    || S.selectedBlock?.window_label || "";
+  const dayDisplay  = S.selectedBlock?.display || blockLabel;
+
+  // For the date, format from scheduled_datetime
+  const tz = "America/Chicago";
+  const dt = bk?.scheduled_datetime ? new Date(bk.scheduled_datetime) : null;
   const dateStr = dt
     ? new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(dt)
-    : "";
-  const timeStr = dt
-    ? new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(dt)
-    : "";
-  const displayPrice = S.lock?.final_price ?? bk?.final_price;
+    : dayDisplay;
+
+  const windowDisplay = windowLabel ? `Arrival window: ${windowLabel} (Central)` : "";
 
   return `
     <div class="q-booked">
@@ -630,8 +628,8 @@ function renderBooked() {
           <span class="q-booking-val">${escHtml(dateStr)}</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">&#128347; Time</span>
-          <span class="q-booking-val">${escHtml(timeStr)} (Central)</span>
+          <span class="q-booking-key">&#128336; Window</span>
+          <span class="q-booking-val">${escHtml(windowDisplay || blockLabel)}</span>
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">&#128205; Address</span>
@@ -907,199 +905,105 @@ async function calcPrice() {
 
     const totalPrice = results.reduce((sum, r) => sum + (r.final_price || 0), 0);
     S.pricing = { ok: true, final_price: totalPrice, services: results, evaluation_flag: results.some(r => r.evaluation_flag) };
-    S.selectedSlot = null;
-    _calDayKey     = null;
+    S.selectedSlot  = null;
+    S.selectedBlock = null;
     go("review");
   } catch (e) {
     document.getElementById("stepContent").innerHTML = errHTML("Could not calculate price: " + e.message);
   }
 }
 
-// ── Load slots for review screen ───────────────────────────────────────────────
-async function loadSlotsForReview() {
+// ── Load blocks for review screen ──────────────────────────────────────────────
+async function loadBlocksForReview() {
   const section = document.getElementById("reviewSlotSection");
   if (!section) return;
   try {
-    // Sum durations of all selected services
-    const minutes = S.selectedServices.reduce((total, svc) => {
-      const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
-      return total + (Number(jt?.default_duration_minutes) || 60);
-    }, 0) || 90;
-    const r       = await fetch(`/api/schedule/slots?minutes=${encodeURIComponent(minutes)}`);
-    const d       = await r.json();
-    if (!d.ok) throw new Error(d.error || "Could not load slots.");
-    S.slotsData = d;
-    _calDayMap  = buildDayMap(d.slots || [], d.timezone);
-
-    // Initialize calendar view to the first available month
-    const firstSlot = (d.slots || [])[0];
-    if (firstSlot) {
-      const firstDate = new Date(firstSlot);
-      const tz  = d.timezone || "America/Chicago";
-      const fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric" });
-      const parts = fmt.formatToParts(firstDate);
-      _calViewYear  = Number(parts.find(p => p.type === "year").value);
-      _calViewMonth = Number(parts.find(p => p.type === "month").value) - 1;
-    } else {
-      const now = new Date();
-      _calViewYear  = now.getFullYear();
-      _calViewMonth = now.getMonth();
-    }
-    // Auto-select the first available day if none chosen yet
-    if (!_calDayKey) {
-      _calDayKey = Object.keys(_calDayMap).sort()[0] || null;
-    }
-
-    renderCalendar();
+    const r = await fetch("/api/schedule/blocks?days=14");
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Could not load windows.");
+    S.slotsData = d;   // keep for timezone reference
+    renderBlockPicker(d.blocks || []);
   } catch (e) {
-    section.innerHTML = `<div class="q-error-box" style="margin-top:12px;">Could not load times: ${escHtml(e.message)}</div>`;
+    section.innerHTML = `<div class="q-error-box" style="margin-top:12px;">Could not load windows: ${escHtml(e.message)}</div>`;
   }
 }
 
-// ── Calendar state ─────────────────────────────────────────────────────────────
-let _calViewYear  = null;   // number — year being displayed
-let _calViewMonth = null;   // number — 0-based month being displayed
-let _calDayKey    = null;   // 'YYYY-MM-DD' — currently selected calendar day
-let _calDayMap    = {};     // { 'YYYY-MM-DD': [iso, ...] }
-
-// Build a map of date-key → slots using the timezone
-function buildDayMap(slots, tz) {
-  const map = {};
-  for (const iso of slots) {
-    const d    = new Date(iso);
-    const fmt  = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
-    const parts = fmt.formatToParts(d);
-    const y   = parts.find(p => p.type === "year").value;
-    const mo  = parts.find(p => p.type === "month").value;
-    const day = parts.find(p => p.type === "day").value;
-    const key = `${y}-${mo}-${day}`;
-    if (!map[key]) map[key] = [];
-    map[key].push(iso);
-  }
-  return map;
-}
-
-function todayKey(tz) {
-  const fmt  = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
-  const parts = fmt.formatToParts(new Date());
-  return `${parts.find(p => p.type === "year").value}-${parts.find(p => p.type === "month").value}-${parts.find(p => p.type === "day").value}`;
-}
-
-function renderCalendar() {
+// ── Block picker — render ──────────────────────────────────────────────────────
+// Groups blocks by date and renders a card list with Morning / Afternoon buttons.
+function renderBlockPicker(blocks) {
   const section = document.getElementById("reviewSlotSection");
   if (!section) return;
-  const tz    = S.slotsData?.timezone || "America/Chicago";
-  const today = todayKey(tz);
 
-  const year  = _calViewYear;
-  const month = _calViewMonth;  // 0-based
-
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const title = `${monthNames[month]} ${year}`;
-
-  // First day of month (0=Sun)
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const dows = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-  let cells = dows.map(d => `<div class="q-cal-dow">${d}</div>`).join("");
-
-  // Empty cells before 1st
-  for (let i = 0; i < firstDow; i++) cells += `<div class="q-cal-day empty"></div>`;
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const mo  = String(month + 1).padStart(2, "0");
-    const dy  = String(d).padStart(2, "0");
-    const key = `${year}-${mo}-${dy}`;
-    const isAvail   = !!_calDayMap[key];
-    const isSel     = _calDayKey === key;
-    const isToday   = key === today;
-    let cls = "q-cal-day";
-    if (isSel)        cls += " selected-date";
-    else if (isAvail) cls += " available";
-    else              cls += " unavailable";
-    if (isToday)      cls += " today";
-    cells += `<div class="${cls}" data-datekey="${key}">${d}</div>`;
+  const available = blocks.filter(b => b.available);
+  if (!available.length) {
+    section.innerHTML = `<div class="q-error-box" style="margin-top:8px;">No available windows right now. Please call us at (409) 555-0100 to schedule.</div>`;
+    return;
   }
 
-  const timeHTML = _calDayKey && _calDayMap[_calDayKey]
-    ? renderTimeSlots(_calDayKey, tz)
+  // Group by date
+  const byDate = {};
+  for (const b of available) {
+    if (!byDate[b.date]) byDate[b.date] = { day_label: b.day_label, date: b.date, blocks: [] };
+    byDate[b.date].blocks.push(b);
+  }
+
+  // Selected summary bar
+  const selSummary = S.selectedBlock
+    ? `<div class="q-selected-summary" style="margin-bottom:12px;">
+        &#10003;&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
+      </div>`
     : "";
 
-  // Summary line if slot already selected
-  const sumHTML = S.selectedSlot ? `
-    <div class="q-selected-summary">
-      &#10003;&nbsp; ${escHtml(formatSlotDate(S.selectedSlot, tz))} &bull; ${escHtml(formatSlotTime(S.selectedSlot, tz))}
-    </div>` : "";
+  const dayCards = Object.values(byDate).slice(0, 14).map(day => {
+    const dayFmt = new Intl.DateTimeFormat("en-US", {
+      weekday: "long", month: "long", day: "numeric",
+    }).format(new Date(day.date + "T12:00:00"));
+
+    const blockBtns = day.blocks.map(b => {
+      const isSel = S.selectedBlock?.date === b.date && S.selectedBlock?.block === b.block;
+      return `<button
+        class="q-block-btn${isSel ? " selected" : ""}"
+        data-date="${escHtml(b.date)}"
+        data-block="${escHtml(b.block)}"
+        data-start-iso="${escHtml(b.start_iso)}"
+        data-window-label="${escHtml(b.window_label)}"
+        data-display="${escHtml(b.display)}">
+        <span class="q-block-icon">${b.block === "Morning" ? "&#9728;" : "&#9734;"}</span>
+        <span class="q-block-name">${escHtml(b.block)}</span>
+        <span class="q-block-window">${escHtml(b.window_label)}</span>
+      </button>`;
+    }).join("");
+
+    return `<div class="q-block-day">
+      <div class="q-block-day-label">${escHtml(dayFmt)}</div>
+      <div class="q-block-row">${blockBtns}</div>
+    </div>`;
+  }).join("");
 
   section.innerHTML = `
-    <div class="q-cal">
-      <div class="q-cal-header">
-        <button class="q-cal-nav" id="calPrev">&#8249;</button>
-        <div class="q-cal-title">${escHtml(title)}</div>
-        <button class="q-cal-nav" id="calNext">&#8250;</button>
-      </div>
-      <div class="q-cal-body">
-        <div class="q-cal-grid">${cells}</div>
-        ${timeHTML}
-      </div>
-    </div>
-    ${sumHTML}`;
+    ${selSummary}
+    <div class="q-block-picker">${dayCards}</div>`;
 
-  bindCalendarEvents();
+  bindBlockPickerEvents();
 }
 
-function renderTimeSlots(dateKey, tz) {
-  const slots = _calDayMap[dateKey] || [];
-  const fmt   = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" });
-  const label = fmt.format(new Date(slots[0] || Date.now()));
-  return `
-    <div class="q-time-slots">
-      <div class="q-time-heading">${escHtml(label)}</div>
-      <div class="q-time-row">
-        ${slots.map(iso => `
-          <button class="q-slot${S.selectedSlot === iso ? " selected" : ""}" data-iso="${escHtml(iso)}">
-            ${escHtml(formatSlotTime(iso, tz))}
-          </button>`).join("")}
-      </div>
-    </div>`;
-}
-
-function bindCalendarEvents() {
-  // Prev / Next month
-  document.getElementById("calPrev")?.addEventListener("click", () => {
-    _calViewMonth--;
-    if (_calViewMonth < 0) { _calViewMonth = 11; _calViewYear--; }
-    renderCalendar();
-  });
-  document.getElementById("calNext")?.addEventListener("click", () => {
-    _calViewMonth++;
-    if (_calViewMonth > 11) { _calViewMonth = 0; _calViewYear++; }
-    renderCalendar();
-  });
-
-  // Day click — only available days
-  document.querySelectorAll(".q-cal-day.available, .q-cal-day.selected-date").forEach(el => {
-    el.addEventListener("click", () => {
-      _calDayKey = el.dataset.datekey;
-      // Clear slot selection if changing date
-      if (S.selectedSlot && !(_calDayMap[_calDayKey] || []).includes(S.selectedSlot)) {
-        S.selectedSlot = null;
-        document.getElementById("goConfirmBtn")?.setAttribute("disabled", "");
-      }
-      renderCalendar();
-    });
-  });
-
-  // Time slot click
-  document.querySelectorAll(".q-slot").forEach(btn => {
+function bindBlockPickerEvents() {
+  document.querySelectorAll(".q-block-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      S.selectedSlot = btn.dataset.iso;
-      document.querySelectorAll(".q-slot").forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
+      const blk = {
+        date:         btn.dataset.date,
+        block:        btn.dataset.block,
+        start_iso:    btn.dataset.startIso,
+        window_label: btn.dataset.windowLabel,
+        display:      btn.dataset.display,
+      };
+      S.selectedSlot  = blk.start_iso;
+      S.selectedBlock = blk;
       document.getElementById("goConfirmBtn")?.removeAttribute("disabled");
-      // Re-render to show summary line
-      renderCalendar();
+      // Re-render to show updated selection
+      renderBlockPicker(
+        (S.slotsData?.blocks || []).filter(b => b.available)
+      );
     });
   });
 }
@@ -1230,6 +1134,8 @@ async function submitBooking() {
       body: JSON.stringify({
         quote_id:           S.quoteId,
         scheduled_datetime: S.selectedSlot,
+        block:              S.selectedBlock?.block || null,
+        date:               S.selectedBlock?.date  || null,
         address:            lockData?.address || "",
         customer_name:      lockData?.customer_name || "",
         final_price:        lockData?.final_price,
