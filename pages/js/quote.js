@@ -1153,18 +1153,6 @@ async function submitBooking() {
   }
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
-function formatSlotDate(iso, tz) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz, weekday: "short", month: "short", day: "numeric",
-  }).format(new Date(iso));
-}
-function formatSlotTime(iso, tz) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true,
-  }).format(new Date(iso));
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s ?? "")

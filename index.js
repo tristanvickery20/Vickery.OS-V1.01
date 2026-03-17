@@ -210,6 +210,10 @@ const server = http.createServer(async (req, res) => {
     return handleBook(req, res);
   }
 
+  if (req.url.startsWith("/api/schedule/bookings") && req.method === "GET") {
+    return handleGetBookings(req, res);
+  }
+
   if (req.url.startsWith("/api/quote") && req.method === "GET") {
     return handleQuoteApi(req, res);
   }
