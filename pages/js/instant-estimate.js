@@ -275,12 +275,8 @@ function bindModuleEvents(m) {
                      : !S.answers[m.module_id];
   };
 
-  // UNCERTAINTY_BUFFER has exactly one option ("Auto") — auto-select and advance immediately
-  if (m.module_id === "UNCERTAINTY_BUFFER") {
-    S.answers[m.module_id] = "auto";
-    setTimeout(() => { S.idx++; renderModule(); }, 350);
-    return;
-  }
+  // Bug 4 fix: UNCERTAINTY_BUFFER renders as a normal single_select using live
+  // sheet options (simple / moderate / complex). No auto-skip.
 
   if (m.input_type !== "photo" && m.input_type !== "number") {
     document.querySelectorAll(".option-btn").forEach(btn => btn.addEventListener("click", () => {
@@ -371,23 +367,21 @@ async function renderResult(siteVisitForced) {
           <a class="btn btn-gold" href="/contact">Request Free Site Visit →</a></div>
       </div>${renderDebug()}`); return;
     }
-    if (tier === "needs_photos") {
-      show(`<div class="outcome-card outcome-site-visit">
-        <div class="outcome-icon">📸</div><h2>Photos Required</h2>
-        <p>${esc(d.message||"Please go back and upload the required photos to receive an instant estimate.")}</p>
-        ${summary}
-        <div class="actions" style="justify-content:center">${retryBtn}</div>
-      </div>${renderDebug()}`); return;
-    }
-    const hasPricing = d.total > 0;
-    const riskPct    = d.risk_multiplier ? Math.round((d.risk_multiplier-1)*100) : 0;
-    const contPct    = d.contingency_pct ? Math.round(d.contingency_pct*100) : 0;
+    // Bug 5 fix: needs_photos is no longer a blocking tier — photo_warning is a soft flag.
+    const hasPricing   = d.total > 0;
+    const contPct      = d.contingency_pct ? Math.round(d.contingency_pct*100) : 0;
+    const photoWarn    = d.photo_warning
+      ? `<div class="warn-banner" style="margin-bottom:12px;">📷 Adding photos would help us confirm this estimate — our tech may follow up to verify scope.</div>`
+      : "";
+    const reviewWarn   = d.review_flag
+      ? `<div class="warn-banner" style="margin-bottom:12px;">📋 ${esc(d.material_disclosure||"Material costs will be confirmed and added separately at actuals.")}</div>`
+      : "";
     show(`<div class="outcome-card outcome-instant">
       <div class="outcome-icon">✅</div><h2>Estimate Ready</h2>
       <p>${esc(d.message||"Your estimate has been generated!")}</p>
+      ${photoWarn}${reviewWarn}
       ${hasPricing ? `<div class="price-preview">
         <div class="price-line"><span>Base estimate</span><span>$${d.subtotal?.toLocaleString()||"—"}</span></div>
-        ${riskPct ? `<div class="price-line muted"><span>Risk adjustment</span><span>+${riskPct}%</span></div>` : ""}
         ${contPct ? `<div class="price-line muted"><span>Contingency buffer</span><span>+${contPct}%</span></div>` : ""}
         <div class="price-line total-line"><span>Estimated Total</span><span>$${d.total?.toLocaleString()||"—"}</span></div>
         <div style="font-size:.75rem;color:var(--muted);margin-top:8px">Final pricing confirmed at booking. Travel fee may apply.</div>

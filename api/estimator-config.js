@@ -137,24 +137,31 @@ async function handleEstimatorQuote(req, res) {
     }
 
     const eval_ = evaluateService(raw.modulesById, service, answersByModule, photoCount);
-    const { tier_result, reasons, risk_multiplier, contingency_pct } = eval_;
+    const { tier_result, reasons, risk_multiplier, contingency_pct, photo_warning } = eval_;
 
-    let basePrice = 0, priceSource = "placeholder", debugDrivers = [];
+    // Bug 2: pass service.modules_csv so getBasePrice filters to allowed modules only
+    let basePrice = 0, priceSource = "placeholder", debugDrivers = [], debugBreakdown = null, reviewFlag = false, materialDisclosure = null;
     if (tier_result !== "needs_site_visit") {
-      const bp = await getBasePrice(service_id, service_name || service.service_name, qty, answersByModule, raw.modulesById);
-      basePrice = bp.final_price; priceSource = bp.source;
-      debugDrivers = bp.debug_drivers || [];
+      const bp = await getBasePrice(
+        service_id, service_name || service.service_name, qty,
+        answersByModule, raw.modulesById, service.modules_csv
+      );
+      basePrice          = bp.final_price;
+      priceSource        = bp.source;
+      debugDrivers       = bp.debug_drivers || [];
+      debugBreakdown     = bp.debug_breakdown || null;
+      reviewFlag         = bp.review_flag    || false;
+      materialDisclosure = bp.material_disclosure || null;
     }
 
     const { subtotal, total } = computePrice(basePrice, risk_multiplier, contingency_pct);
-    const canPrice = !["needs_site_visit","needs_photos"].includes(tier_result);
-    const status   = tier_result === "needs_site_visit"   ? "needs_site_visit"
-                   : tier_result === "needs_photos"        ? "needs_photos"
-                   : priceSource === "placeholder"         ? "quoted_placeholder"
+    const canPrice = tier_result !== "needs_site_visit";
+    const status   = tier_result === "needs_site_visit" ? "needs_site_visit"
+                   : priceSource === "placeholder"      ? "quoted_placeholder"
                    : "quoted";
 
     const snapshot = { config_version: raw.updatedAt, service, qty, segment,
-      answersByModule, photoCount, risk_multiplier, contingency_pct,
+      answersByModule, photoCount, photo_warning, risk_multiplier, contingency_pct,
       basePrice, priceSource, subtotal: canPrice?subtotal:0, total: canPrice?total:0,
       tier_result, reasons };
 
@@ -166,16 +173,24 @@ async function handleEstimatorQuote(req, res) {
 
     const message = tier_result === "needs_site_visit"
       ? "Based on your answers, an on-site assessment is required before we can provide a firm quote."
-      : tier_result === "needs_photos"
-      ? "Photos are required for this service to proceed with an instant quote."
       : priceSource === "placeholder"
       ? `Thank you! We'll contact you to confirm pricing for your ${service.service_name}.`
       : "Your estimate is ready! Pricing reflects job complexity and site conditions.";
 
-    console.log(`[estimator/quote] lead=${lead_id} svc=${service_id} tier=${tier_result} total=${canPrice?total:0} drivers=[${debugDrivers.join(",")}]`);
-    json(res, 200, { ok:true, lead_id, tier_result, reasons, risk_multiplier, contingency_pct,
-      subtotal: canPrice?subtotal:0, total: canPrice?total:0, price_source: priceSource, status, message,
-      debug_drivers: debugDrivers });
+    console.log(`[estimator/quote] lead=${lead_id} svc=${service_id} tier=${tier_result} total=${canPrice?total:0} photo_warning=${photo_warning} drivers=[${debugDrivers.join(",")}]`);
+
+    const response = {
+      ok: true, lead_id, tier_result, reasons, risk_multiplier, contingency_pct,
+      photo_warning: photo_warning || false,
+      subtotal: canPrice?subtotal:0, total: canPrice?total:0,
+      price_source: priceSource, status, message,
+      debug_drivers: debugDrivers,
+    };
+    if (reviewFlag)         response.review_flag         = true;
+    if (materialDisclosure) response.material_disclosure = materialDisclosure;
+    if (debugBreakdown)     response.debug_breakdown     = debugBreakdown;
+
+    json(res, 200, response);
 
   } catch (err) {
     console.error("[estimator/quote]", err.message);

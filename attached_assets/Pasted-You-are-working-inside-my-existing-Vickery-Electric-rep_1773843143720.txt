@@ -1,0 +1,183 @@
+You are working inside my existing Vickery Electric repo.
+Do not do a broad refactor. Keep the architecture intact unless necessary.
+Goal: make estimator math deterministic, auditable, and safe.
+
+PRIORITY: Fix the instant-estimate path first.
+
+FILES TO CHANGE
+- lib/estimatorEngine.js
+- pages/js/instant-estimate.js
+- lib/serviceClassification.js
+- api/estimator-config.js only if needed for exposing data
+- add a new small QA helper if needed
+
+P0 BUGS TO FIX
+
+1) STOP DOUBLE-APPLYING MULTIPLIERS
+Current bug:
+- getBasePrice() converts module option multipliers into selectedDriverOptions and passes them into calculateQuoteV2()
+- evaluateService() also multiplies the same module option multipliers into risk_multiplier
+- computePrice() then multiplies base_price by risk_multiplier again
+This double counts height/access/wall/etc.
+
+Required fix:
+- Make module scope multipliers apply exactly once.
+- Preferred implementation:
+  - In evaluateService(), STOP multiplying general module multipliers into risk_multiplier.
+  - Keep evaluateService() responsible for:
+    - disqualify checks
+    - photo gate or review flag logic
+    - contingency_pct
+  - risk_multiplier should default to 1 unless there is a dedicated risk-only input.
+- Keep getBasePrice() responsible for passing allowed module multipliers into calculateQuoteV2().
+
+2) ONLY ALLOW MODULES FOR THE ACTIVE SERVICE
+Current bug:
+- getBasePrice() loops over every submitted answer key.
+- A stale or rogue answer not listed in service.modules_csv can affect price.
+
+Required fix:
+- Build an allowed module set from service.modules_csv.
+- In both evaluateService() and getBasePrice(), only process answers whose module_id is in that allowed set.
+- Ignore everything else.
+
+3) REPLACE FUZZY SERVICEâASSEMBLY MATCH WITH EXPLICIT MAP
+Current bug:
+- getBasePrice() fuzzy matches service_name to assembly niche_name.
+- This is brittle and not deterministic.
+
+Required fix:
+- Add an explicit SERVICE_ID_TO_ASSEMBLY_ID map.
+- Use it first and only.
+- If there is no mapping, return placeholder/manual review and log it.
+- Do NOT fuzzy match in production pricing.
+
+Minimum map to include:
+CEILING_FAN_INSTALL -> A004
+LIGHT_FIXTURE_INSTALL -> A003
+RECESSED_LIGHTING -> A001
+DIMMER_SWITCH -> A008
+OUTLET_INSTALL -> A011
+GFCI_OUTLET -> A012
+PANEL_UPGRADE -> A019
+SUBPANEL_INSTALL -> A020
+SURGE_PROTECTOR -> A024
+EV_CHARGER -> A028
+HOT_TUB_CIRCUIT -> A029
+OUTDOOR_LIGHTING -> A005
+MOTION_SECURITY_LIGHT -> A006
+SMOKE_CO_DETECTOR -> A030
+COMM_LIGHTING_RETROFIT -> A037
+BALLAST_REPLACE -> A036
+EXIT_EMERGENCY_LIGHTS -> A034
+
+4) FIX UNCERTAINTY_BUFFER UI/BACKEND MISMATCH
+Current bug:
+- pages/js/instant-estimate.js auto-sets UNCERTAINTY_BUFFER to "auto"
+- sheet/module options use simple / moderate / complex
+- backend logic expects simple/moderate/complex style values
+
+Required fix:
+- Remove the special-case auto-skip behavior.
+- Render UNCERTAINTY_BUFFER like a normal single_select module using live sheet options.
+- Preserve existing module order.
+- If you must keep auto behavior, then backend and sheet must also support "auto" explicitly. Preferred: use the real options from the sheet.
+
+5) FIX PHOTO RULE CONTRADICTION
+Current bug:
+- UI says photos are optional
+- backend returns needs_photos when WORK_AREA_PHOTOS or PANEL_PHOTO exists and photoCount is 0
+
+Required fix:
+Choose one consistent rule and implement it everywhere.
+Preferred for now:
+- Photos stay optional for customer UX.
+- Do NOT hard-stop with needs_photos only because zero photos were uploaded.
+- Instead:
+  - allow pricing
+  - add a review_flag or warning when photo modules exist but photoCount is 0
+If you keep hard-stop behavior instead, then change UI copy to clearly say photos are required.
+
+6) ADD ESTIMATOR BREAKDOWN / AUDIT OUTPUT
+Required fix:
+- Every estimator quote response should include a debug breakdown object when debug mode is enabled.
+- Include:
+  - service_id
+  - assembly_id
+  - allowed_modules
+  - processed_answers
+  - ignored_answers
+  - selected_driver_options
+  - stack_cap_trace
+  - base_price_before_contingency
+  - risk_multiplier
+  - contingency_pct
+  - subtotal
+  - total
+  - material_allowance
+  - labor_cost
+  - overhead_cost
+  - travel_fee
+  - classification
+
+Use a safe flag like process.env.ESTIMATOR_DEBUG === "true" or existing config if available.
+
+P1 DATA/PRICING SAFETY
+
+7) MOVE V2 TARGET MARGIN OUT OF HARDCODED 0.30
+Current bug:
+- lib/quoteEngineV2.js hardcodes targetMargin = 0.30
+Required fix:
+- Read target margin from sheet config/rates.
+- Fall back to 0.30 only if missing.
+
+8) ADD MATERIAL SANITY CHECKS
+Required fix:
+- Create a small script or helper that flags:
+  - assembly-referenced material IDs with base_cost <= 0
+  - obvious outliers compared with neighboring category values
+  - materials marked Needs Mapping
+- Print a concise report in console/log output.
+
+Known likely outliers to flag immediately:
+- MAT-136 = 48
+- MAT-162 = 38
+- MAT-169 = 8.5
+- MAT-175 = 95
+- MAT-192 = 185
+- MAT-202 = 55
+
+P2 REGRESSION PROTECTION
+
+9) ADD GOLDEN QA CASES
+Required fix:
+- Add a small deterministic QA script for these services:
+  - CEILING_FAN_INSTALL
+  - LIGHT_FIXTURE_INSTALL
+  - RECESSED_LIGHTING
+  - OUTLET_INSTALL
+  - GFCI_OUTLET
+  - SURGE_PROTECTOR
+- Each should have at least:
+  - easy case
+  - harder case
+  - disqualify case
+- Script should print:
+  - final price
+  - multiplier path
+  - whether quote was blocked/flagged
+- This must be runnable locally and must not require UI clicking.
+
+IMPORTANT IMPLEMENTATION NOTES
+- Do not remove classification enforcement.
+- Do not remove stack-cap logic.
+- Do not change route contracts unless necessary.
+- Keep all fixes minimal and targeted.
+- Prefer explicit maps and whitelists over fuzzy logic.
+- Be careful not to break the public /quote flow while fixing /instant-estimate.
+
+DELIVERABLES
+1) code changes
+2) short markdown changelog
+3) list of files changed
+4) exact QA results from the golden cases
