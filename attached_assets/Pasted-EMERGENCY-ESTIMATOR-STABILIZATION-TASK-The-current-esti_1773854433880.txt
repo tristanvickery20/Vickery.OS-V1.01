@@ -1,0 +1,94 @@
+EMERGENCY ESTIMATOR STABILIZATION TASK
+
+The current estimator is not trustworthy. Treat this as a production pricing bug.
+
+Problems confirmed from snapshot/output data:
+- Recessed lighting and ceiling fan pricing are showing runaway totals.
+- basePrice is already elevated in V2, then risk_multiplier appears to still be applied separately.
+- UNCERTAINTY_BUFFER config values are simple/moderate/complex, but saved answers include "auto".
+- Some requests are using invalid service IDs like RECESSED_LIGHTING_INSTALL and GFCI_OUTLET_INSTALL.
+- Material table still contains obvious placeholder/outlier rows that can distort quotes.
+
+Required actions:
+
+1) Disable hard customer-facing pricing temporarily
+- For all instant_with_safeguards services, do not show a firm final sell price to the customer until validation is complete.
+- Return either:
+  - estimated_range
+  - review_required
+  - or starting_price
+- Keep lead capture working.
+
+2) Patch multiplier stacking
+- Audit /api/estimator/quote, lib/estimatorEngine.js, lib/quoteEngine.js, lib/quoteEngineV2.js, and any computePrice/evaluateService/getBasePrice flow.
+- Ensure driver multipliers are applied only once.
+- If V2 already builds adjusted labor/material price, do not apply the same risk logic again outside it.
+- uncertainty buffer should be contingency only, not another hidden multiplier stack.
+
+3) Enforce valid service IDs
+- Add a normalization map and reject/repair bad incoming IDs:
+  - RECESSED_LIGHTING_INSTALL -> RECESSED_LIGHTING
+  - GFCI_OUTLET_INSTALL -> GFCI_OUTLET
+- Apply the same fix to any other mismatched IDs found in snapshots/UI.
+
+4) Enforce valid module answer enums
+- UNCERTAINTY_BUFFER must only allow:
+  - simple
+  - moderate
+  - complex
+- Remove/replace any UI default that sends "auto".
+- Validate server-side and coerce invalid values to a safe default with audit logging.
+
+5) Add quote audit trace
+Every quote response must include internal debug fields:
+- service_id
+- normalized_service_id
+- qty
+- base_price_raw
+- labor_subtotal
+- material_subtotal
+- markup_pct
+- risk_multiplier_applied
+- contingency_pct_applied
+- driver_multipliers_used
+- invalid_answers_fixed
+- final_total
+- review_flags
+This is internal/debug only, not customer-facing.
+
+6) Add sanity caps for launch protection
+Create per-service guardrails for common residential services:
+- ceiling fan
+- light fixture
+- recessed lighting
+- outlet
+- GFCI
+- dimmer
+If price falls outside the configured sanity band, force review_required instead of returning a hard quote.
+
+7) Material cleanup pass
+Flag all obvious placeholder/outlier material rows and exclude them from instant quote pricing until reviewed.
+At minimum flag rows matching suspicious pricing like:
+- MAT-136
+- MAT-175
+- MAT-192
+- MAT-202
+Return a report of all excluded/flagged material IDs.
+
+8) Produce before/after validation report
+Test and report these scenarios before and after the patch:
+- simple recessed light
+- 3 recessed lights, attic access, drywall, standard height
+- simple ceiling fan replacement
+- new ceiling fan with no existing box
+- simple GFCI replacement
+- standard outlet install
+For each scenario show:
+- old total
+- new total
+- audit trace
+- whether review_required triggered
+
+Do not do a cosmetic refactor.
+Do not redesign the app.
+Patch the estimator logic, validation, and launch guardrails only.
