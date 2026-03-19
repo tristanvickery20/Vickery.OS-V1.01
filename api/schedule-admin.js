@@ -24,7 +24,7 @@ async function handleGetBookings(req, res) {
     const sheets = await getSheetsClient();
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID(),
-      range: "Bookings!A:M",
+      range: "Bookings!A:P",
     });
     const bookings = rowsToObjects(r.data.values || []);
 

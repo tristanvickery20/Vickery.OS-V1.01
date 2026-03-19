@@ -600,7 +600,7 @@ function renderPhoto() {
 
 // ── Step 8: Booked ────────────────────────────────────────────────────────────
 function renderBooked() {
-  const bk          = S.booking;
+  const bk           = S.booking;
   const displayPrice = S.lock?.final_price ?? bk?.final_price;
 
   // Block info from booking response (preferred) or from the selection state
@@ -615,7 +615,36 @@ function renderBooked() {
     ? new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(dt)
     : dayDisplay;
 
-  const windowDisplay = windowLabel ? `Arrival window: ${windowLabel} (Central)` : "";
+  // Multi-block handling
+  const blocksReserved = bk?.blocks_reserved || [];
+  const isMultiBlock   = blocksReserved.length > 1;
+
+  let windowSection = "";
+  if (isMultiBlock) {
+    // Show each block in a small list
+    const blockLines = blocksReserved.map((seg, i) => {
+      const label = i === 0 ? "Primary block" : "Continued in";
+      return `<span style="display:block;font-size:13px;margin-top:3px;">
+        ${i === 0 ? "&#9728;" : "&#128279;"} ${escHtml(seg.block)} &bull; ${escHtml(seg.display || seg.window_label || "")}
+        <span style="color:#888;">(${seg.allocated_hrs} hrs)</span>
+      </span>`;
+    }).join("");
+    windowSection = `
+      <div class="q-booking-row" style="align-items:flex-start;">
+        <span class="q-booking-key">&#128336; Schedule</span>
+        <span class="q-booking-val">
+          <span style="display:block;font-size:13px;color:#555;margin-bottom:4px;">This job spans multiple blocks:</span>
+          ${blockLines}
+        </span>
+      </div>`;
+  } else {
+    const windowDisplay = windowLabel ? `Arrival window: ${windowLabel} (Central)` : "";
+    windowSection = `
+      <div class="q-booking-row">
+        <span class="q-booking-key">&#128336; Window</span>
+        <span class="q-booking-val">${escHtml(windowDisplay || blockLabel)}</span>
+      </div>`;
+  }
 
   return `
     <div class="q-booked">
@@ -627,10 +656,7 @@ function renderBooked() {
           <span class="q-booking-key">&#128197; Date</span>
           <span class="q-booking-val">${escHtml(dateStr)}</span>
         </div>
-        <div class="q-booking-row">
-          <span class="q-booking-key">&#128336; Window</span>
-          <span class="q-booking-val">${escHtml(windowDisplay || blockLabel)}</span>
-        </div>
+        ${windowSection}
         <div class="q-booking-row">
           <span class="q-booking-key">&#128205; Address</span>
           <span class="q-booking-val">${escHtml(bk?.address || "")}</span>
@@ -644,7 +670,10 @@ function renderBooked() {
           <span class="q-booking-val" style="font-family:monospace;font-size:12px;">${escHtml(bk?.booking_id || "")}</span>
         </div>
       </div>
-      <p class="q-muted" style="margin-top:24px;font-size:13px;">
+      ${isMultiBlock ? `<p class="q-muted" style="margin-top:16px;font-size:13px;max-width:360px;margin-left:auto;margin-right:auto;">
+        Your job is estimated to take more than one block. Our crew will continue into the next available window automatically.
+      </p>` : ""}
+      <p class="q-muted" style="margin-top:16px;font-size:13px;">
         Questions? Call us at <a href="tel:+14095550100" style="color:hsl(var(--accent));">(409) 555-0100</a>
       </p>
     </div>`;

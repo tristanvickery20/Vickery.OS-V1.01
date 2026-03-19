@@ -87,8 +87,12 @@ Server now handles qty fully for both V1 and V2:
 - **Module Enrichment**: pages/js/quote.js boot() fetches /api/estimator/config alongside /api/quote/config and uses fuzzy name-matching (word overlap + partial-word credit, ≥52% threshold) to replace static questionsByType with per-service module questions from the estimator sheet. 25/54 job types matched and enriched.
 - **Quote Engine** (Block 1-2): /api/quote/config, /api/quote/start, /api/quote/calc, /api/quote/lock — reads JobTypes/Questions/AnswerOptions/AddOns/Rates/ServiceAreas; writes QuoteSnapshots; photo_required flag support
 - **Photo Upload**: POST /api/quote/photo — accepts base64 JSON, saves to /uploads/, logs QuoteSnapshots event
-- **Calendly-style Scheduling** (Block 4): GET /api/schedule/slots — generates available booking slots respecting lead time, working hours, buffer, max bookings/day, existing conflicts. POST /api/schedule/book — validates slot, writes Bookings + QuoteSnapshots booked events
-- **SchedulerRules sheet**: Editable scheduling config (timezone, hours, buffer, horizon, max bookings). Auto-created with defaults on first startup.
+- **Crew-Hours Scheduler** (Block 4): GET /api/schedule/blocks — returns Morning/Afternoon blocks with crew-hours capacity (hours_capacity, hours_used, hours_remaining) plus legacy headcount fields. POST /api/schedule/book — hours-aware booking engine: reads job duration from locked QuoteSnapshot (total_hours), calls planMultiBlockBooking() to span consecutive blocks if job exceeds one block's capacity (Morning→Afternoon→next-Mon-Fri bridging). Writes one Bookings row per segment with block_allocated_minutes + booking_group_id + is_continuation. GET /api/schedule/bookings — CRM admin read (all columns A:P).
+- **lib/schedulerCapacity.js**: Core capacity engine — getBlockCapacityMins (crew_size×240, default 480 min/block), getBlockUsedMins (sums block_allocated_minutes with duration_minutes fallback), getNextWorkingBlock (Morning→same-day Afternoon; Afternoon→next Mon-Fri Morning, skips weekends), planMultiBlockBooking (chains segments until jobMins exhausted), getJobMinsFromSnapshot.
+- **SchedulerRules sheet**: timezone, lead_time_hours, morning/afternoon_capacity (headcount), crew_size (default 2). Auto-created with defaults on first startup.
+- **Bookings sheet** new columns: block_allocated_minutes, booking_group_id, is_continuation (all auto-added via ensureTabHeaders on startup).
+- **CRM Schedule view** (crm-schedule.html): shows per-block crew-hours load bar (color-coded green/amber/red) and ⛓ continuation badge on multi-block job rows.
+- **Quote /booked screen**: shows all blocks_reserved when job spans >1 block ("Your job spans: Morning (X hrs) + Afternoon (Y hrs)").
 
 ## Authentication
 - PIN-based login using CRM_PIN secret

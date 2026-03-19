@@ -68,6 +68,34 @@
       .sched-table tbody tr:last-child td { border-bottom: none; }
       .sched-table tbody tr:hover { background: hsl(var(--muted, 220 14% 96%) / 0.5); }
       #status { color: #888; font-size: 13px; margin: 8px 0 16px; }
+      /* Crew-hours load bar */
+      .sched-hours-bar {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 10px;
+        vertical-align: middle;
+      }
+      .sched-hours-track {
+        display: inline-block;
+        width: 80px;
+        height: 8px;
+        background: hsl(var(--border, 220 13% 91%));
+        border-radius: 99px;
+        overflow: hidden;
+        position: relative;
+      }
+      .sched-hours-fill {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.3s;
+      }
+      .sched-hours-label {
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>

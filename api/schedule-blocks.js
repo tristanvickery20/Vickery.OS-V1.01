@@ -2,9 +2,8 @@
 // GET /api/schedule/blocks
 //
 // Returns available Morning / Afternoon contractor windows for the next N
-// business days. This is the customer-facing availability endpoint used by
-// the quote flow. It does NOT use the granular slotEngine — it works at the
-// block level only.
+// business days. Crew-hours-aware: each block reports hours_capacity,
+// hours_used, and hours_remaining alongside the legacy headcount fields.
 //
 // Response:
 // {
@@ -15,13 +14,19 @@
 //       start_time: "08:00", end_time: "12:00",
 //       window_label: "8 AM – 12 PM",
 //       start_iso: "2026-03-18T08:00:00-05:00",
-//       capacity: 3, booked: 1, available: true },
+//       capacity: 3, booked: 1, available: true,
+//       hours_capacity: 8.0, hours_used: 1.5, hours_remaining: 6.5 },
 //     ...
 //   ]
 // }
 
 const { getSheetsClient } = require("../lib/sheets");
 const { ensureTabHeaders }  = require("../lib/sheetsSchema");
+const {
+  getBlockCapacityMins,
+  getBlockUsedMins,
+  MIN_BOOKING_MINS,
+} = require("../lib/schedulerCapacity");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
@@ -43,22 +48,18 @@ function rowsToObjects(rows) {
   return data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] || ""])));
 }
 
-// Parse YYYY-MM-DD date string into { year, month, day } without timezone shift
 function parseDateStr(str) {
   const [y, m, d] = str.split("-").map(Number);
   return { year: y, month: m, day: d };
 }
 
-// Get local YYYY-MM-DD for a Date in a given timezone
 function toLocalDateStr(date, tz) {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
-  return fmt.format(date); // returns YYYY-MM-DD
+  return fmt.format(date);
 }
 
-// Get day-of-week (0=Sun) for a local date string in a given timezone
 function getDowForDate(dateStr, tz) {
   const fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" });
-  // Use noon UTC of that date to avoid DST edge cases
   const { year, month, day } = parseDateStr(dateStr);
   const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   const parts = fmt.formatToParts(d);
@@ -66,11 +67,9 @@ function getDowForDate(dateStr, tz) {
   return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(dow);
 }
 
-// Convert "HH:MM" + YYYY-MM-DD to an ISO string in the local timezone
 function toLocalIso(dateStr, timeStr, tz) {
   const { year, month, day } = parseDateStr(dateStr);
   const [h, m] = timeStr.split(":").map(Number);
-  // Guess UTC from local time, then adjust
   const guess = new Date(Date.UTC(year, month - 1, day, h, m, 0));
   const fmtOffset = new Intl.DateTimeFormat("en-US", {
     timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
@@ -90,15 +89,14 @@ async function handleGetBlocks(req, res) {
     const sheets = await getSheetsClient();
     const id     = SPREADSHEET_ID();
 
-    // Ensure headers exist on both tabs
     await Promise.all([
       ensureTabHeaders("SchedulerRules"),
       ensureTabHeaders("Bookings"),
     ]);
 
     const [rulesRes, bookingsRes] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:N3" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:M" }),
+      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" }),
+      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:P" }),
     ]);
 
     // Parse rules
@@ -107,43 +105,45 @@ async function handleGetBlocks(req, res) {
     const rulesData    = rulesRows[1] || [];
     const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
 
-    const tz            = rules.timezone       || "America/Chicago";
-    const leadHours     = Number(rules.lead_time_hours || 24);
-    const satEnabled    = String(rules.saturday_start || "").length > 0;
-    const sunEnabled    = String(rules.sunday_enabled || "").toLowerCase() === "true";
-    const mornCap       = Number(rules.morning_capacity   || 3);
-    const aftnCap       = Number(rules.afternoon_capacity || 3);
+    const tz         = rules.timezone       || "America/Chicago";
+    const leadHours  = Number(rules.lead_time_hours || 24);
+    const satEnabled = String(rules.saturday_start || "").length > 0;
+    const sunEnabled = String(rules.sunday_enabled || "").toLowerCase() === "true";
+    const mornCap    = Number(rules.morning_capacity   || 3);
+    const aftnCap    = Number(rules.afternoon_capacity || 3);
+    const capMins    = getBlockCapacityMins(rules);
 
-    // Build booking counts: { "YYYY-MM-DD:Morning": N, "YYYY-MM-DD:Afternoon": N }
-    const bookings = rowsToObjects(bookingsRes.data.values || []);
-    const blockCounts = {};
+    // Build booking maps per block key
+    const bookings     = rowsToObjects(bookingsRes.data.values || []);
+    const blockCounts  = {};  // headcount: { "YYYY-MM-DD:Block": N }
+
     for (const bk of bookings) {
       if (!bk.scheduled_datetime || bk.status === "cancelled") continue;
+      let dateKey = "", blk = "";
+
       if (bk.schedule_block) {
-        // New-style booking — trust the block field directly
-        const dt      = new Date(bk.scheduled_datetime);
-        const dateKey = toLocalDateStr(dt, tz);
-        const key     = `${dateKey}:${bk.schedule_block}`;
-        blockCounts[key] = (blockCounts[key] || 0) + 1;
+        dateKey = (bk.scheduled_datetime || "").slice(0, 10);
+        blk     = bk.schedule_block;
       } else {
-        // Legacy booking (exact time) — infer block from start time
-        const dt   = new Date(bk.scheduled_datetime);
+        const dt = new Date(bk.scheduled_datetime);
         if (isNaN(dt.getTime())) continue;
-        const fmt  = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false });
-        const hr   = Number(fmt.format(dt));
-        const blk  = hr < 13 ? "Morning" : "Afternoon";
-        const dateKey = toLocalDateStr(dt, tz);
-        const key     = `${dateKey}:${blk}`;
-        blockCounts[key] = (blockCounts[key] || 0) + 1;
+        dateKey = toLocalDateStr(dt, tz);
+        const hr = Number(new Intl.DateTimeFormat("en-US", {
+          timeZone: tz, hour: "numeric", hour12: false,
+        }).format(dt));
+        blk = hr < 13 ? "Morning" : "Afternoon";
       }
+
+      const key = `${dateKey}:${blk}`;
+      blockCounts[key] = (blockCounts[key] || 0) + 1;
     }
 
-    // Generate blocks
-    const now         = new Date();
-    const earliest    = new Date(now.getTime() + leadHours * 3600000);
-    const blocks      = [];
-    let daysChecked   = 0;
-    let di            = 0;
+    // Generate blocks for the next `limit` working days
+    const now      = new Date();
+    const earliest = new Date(now.getTime() + leadHours * 3600000);
+    const blocks   = [];
+    let daysChecked = 0;
+    let di          = 0;
 
     while (daysChecked < limit && di < 90) {
       di++;
@@ -151,34 +151,44 @@ async function handleGetBlocks(req, res) {
       const dateStr       = toLocalDateStr(candidateDate, tz);
       const dow           = getDowForDate(dateStr, tz);
 
-      // Skip weekends unless enabled
       if (dow === 0 && !sunEnabled) continue;
       if (dow === 6 && !satEnabled) continue;
 
       let dayHadBlock = false;
       for (const def of BLOCK_DEFS) {
-        const cap  = def.block === "Morning" ? mornCap : aftnCap;
-        const startIso = toLocalIso(dateStr, def.start, tz);
-        const startDt  = new Date(startIso);
+        const headcountCap = def.block === "Morning" ? mornCap : aftnCap;
+        const startIso     = toLocalIso(dateStr, def.start, tz);
+        const startDt      = new Date(startIso);
 
-        // Must be after earliest booking time
         if (startDt < earliest) continue;
 
-        const key    = `${dateStr}:${def.block}`;
-        const booked = blockCounts[key] || 0;
+        const key      = `${dateStr}:${def.block}`;
+        const booked   = blockCounts[key] || 0;
+
+        // Crew-hours capacity
+        const usedMins      = getBlockUsedMins(bookings, dateStr, def.block, tz);
+        const remainingMins = capMins - usedMins;
+
+        // A block is available if it has both headcount room AND crew-hours room
+        const available = booked < headcountCap && remainingMins >= MIN_BOOKING_MINS;
 
         blocks.push({
-          date:         dateStr,
-          day_label:    DAY_NAMES[dow],
-          block:        def.block,
-          display:      `${DAY_NAMES[dow]} ${def.block}`,
-          start_time:   def.start,
-          end_time:     def.end,
-          window_label: def.window_label,
-          start_iso:    startIso,
-          capacity:     cap,
+          date:             dateStr,
+          day_label:        DAY_NAMES[dow],
+          block:            def.block,
+          display:          `${DAY_NAMES[dow]} ${def.block}`,
+          start_time:       def.start,
+          end_time:         def.end,
+          window_label:     def.window_label,
+          start_iso:        startIso,
+          // Legacy headcount fields
+          capacity:         headcountCap,
           booked,
-          available:    booked < cap,
+          // Crew-hours fields
+          hours_capacity:   Math.round(capMins / 60 * 10) / 10,
+          hours_used:       Math.round(usedMins / 60 * 10) / 10,
+          hours_remaining:  Math.round(remainingMins / 60 * 10) / 10,
+          available,
         });
         dayHadBlock = true;
       }
@@ -186,6 +196,7 @@ async function handleGetBlocks(req, res) {
       if (dayHadBlock) daysChecked++;
     }
 
+    const crewSize = Number(rules.crew_size || 2);
     json(res, 200, {
       ok:       true,
       timezone: tz,
@@ -194,6 +205,8 @@ async function handleGetBlocks(req, res) {
         morning_capacity:   mornCap,
         afternoon_capacity: aftnCap,
         lead_time_hours:    leadHours,
+        crew_size:          crewSize,
+        block_crew_hours:   capMins / 60,
       },
     });
   } catch (err) {
