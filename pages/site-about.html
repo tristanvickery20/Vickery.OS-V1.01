@@ -34,7 +34,17 @@
       font-weight: 700;
       color: hsl(var(--foreground));
       margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+    .value-card .vi {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      color: hsl(var(--primary));
+    }
+    .value-card .vi svg { display: block; }
     .value-card p {
       font-size: 14px;
       color: hsl(var(--muted-foreground));
@@ -118,19 +128,19 @@
 
       <div class="values-grid">
         <div class="value-card">
-          <div class="value-title">&#128203; Process-Driven</div>
+          <div class="value-title"><span class="vi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span> Process-Driven</div>
           <p>Every job is documented from first contact to final invoice. You get a clear record of what was done and why.</p>
         </div>
         <div class="value-card">
-          <div class="value-title">&#128176; Upfront Pricing</div>
+          <div class="value-title"><span class="vi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> Upfront Pricing</div>
           <p>Quote before we come, not after. Our instant quote tool gives you a real number in minutes, not days.</p>
         </div>
         <div class="value-card">
-          <div class="value-title">&#9989; Licensed &amp; Insured</div>
+          <div class="value-title"><span class="vi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span> Licensed &amp; Insured</div>
           <p>Fully licensed with the state of Texas and properly insured on every job. We do it right or we make it right.</p>
         </div>
         <div class="value-card">
-          <div class="value-title">&#128221; Professional Documentation</div>
+          <div class="value-title"><span class="vi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> Professional Documentation</div>
           <p>Every visit is logged. You receive a summary of work completed, materials used, and photos when applicable.</p>
         </div>
       </div>

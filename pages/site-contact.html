@@ -32,7 +32,8 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .contact-item-icon { font-size: 20px; flex: 0 0 24px; }
+    .contact-item-icon { display: flex; align-items: center; flex: 0 0 24px; color: hsl(var(--primary)); }
+    .contact-item-icon svg { display: block; }
     .contact-item-body { font-size: 15px; color: hsl(var(--foreground)); line-height: 1.5; }
     .contact-item-label {
       font-size: 12px;
@@ -69,7 +70,8 @@
       max-width: 900px;
       margin-bottom: 32px;
     }
-    .emergency-banner .emg-icon { font-size: 32px; }
+    .emergency-banner .emg-icon { display: flex; align-items: center; color: hsl(var(--primary)); }
+    .emergency-banner .emg-icon svg { display: block; }
     .emergency-banner .emg-text h3 {
       font-family: var(--font-display);
       font-size: 17px;
@@ -148,7 +150,7 @@
     <h1>Contact Us</h1>
 
     <div class="emergency-banner">
-      <div class="emg-icon">&#9889;</div>
+      <div class="emg-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
       <div class="emg-text">
         <h3>Electrical Emergency? Call Now.</h3>
         <p>For urgent electrical issues — sparking outlets, burning smell, or power loss — call us directly. Don't wait.</p>
@@ -158,10 +160,10 @@
     <div class="contact-grid">
 
       <div class="contact-card">
-        <h2>&#128222; Get in Touch</h2>
+        <h2>Get in Touch</h2>
 
         <div class="contact-item">
-          <div class="contact-item-icon">&#128222;</div>
+          <div class="contact-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.95-.94a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
           <div class="contact-item-body">
             <div class="contact-item-label">Phone</div>
             (409) 555-0100
@@ -169,7 +171,7 @@
         </div>
 
         <div class="contact-item">
-          <div class="contact-item-icon">&#9993;</div>
+          <div class="contact-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
           <div class="contact-item-body">
             <div class="contact-item-label">Email</div>
             info@vickeryelectric.com
@@ -177,7 +179,7 @@
         </div>
 
         <div class="contact-item">
-          <div class="contact-item-icon">&#128336;</div>
+          <div class="contact-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div class="contact-item-body">
             <div class="contact-item-label">Hours</div>
             Monday – Friday, 7am – 5pm<br>
@@ -187,7 +189,7 @@
       </div>
 
       <div class="contact-card">
-        <h2>&#128205; Service Area</h2>
+        <h2>Service Area</h2>
         <p class="muted" style="margin-bottom:16px;font-size:14px;">We serve Southeast Texas, including:</p>
         <ul class="area-list">
           <li>Beaumont</li>
