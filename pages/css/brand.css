@@ -1,24 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Base tokens (light defaults) */
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --primary: 220 100% 25%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
+  /* Vickery Electric brand palette
+     Primary  — deep royal blue  #1e45c0  hsl(227 73% 43%)
+     Accent   — bright gradient blue #2d6ae0  hsl(219 75% 53%)
+     Dark bg  — navy  #0f1e4a
+  */
+  --background: 216 33% 97%;
+  --foreground: 222 55% 10%;
+  --primary: 227 73% 38%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 40% 93%;
   --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 221 83% 53%;
-  --accent-foreground: 210 40% 98%;
+  --muted: 216 30% 94%;
+  --muted-foreground: 220 18% 46%;
+  --accent: 219 78% 54%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --border: 218 30% 88%;
+  --input: 218 30% 88%;
+  --ring: 219 78% 54%;
   --radius: 0.75rem;
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
+  /* Brand-specific extras */
+  --brand-blue-dark: 227 73% 28%;
+  --brand-blue-mid:  227 73% 38%;
+  --brand-blue-light: 219 78% 54%;
+  --brand-gray: 220 10% 44%;
 }
 
 /* iOS scaling fixes */
@@ -75,8 +84,9 @@ body {
 }
 
 .header-logo {
-  height: 44px;
+  height: 48px;
   width: auto;
+  max-width: 200px;
   object-fit: contain;
 }
 
@@ -437,7 +447,7 @@ td input[type="datetime-local"] {
 ================================================================== */
 
 .app-shell {
-  background: hsl(222 47% 8%);
+  background: #0c1535;
 }
 
 /* Kill the light gradient + force readable defaults */
@@ -447,8 +457,8 @@ td input[type="datetime-local"] {
 }
 
 body:has(.app-shell) {
-  background: hsl(222 47% 8%);
-  color: hsl(210 40% 92%);
+  background: #0c1535;
+  color: hsl(220 60% 93%);
 }
 
 /* Headings inside CRM */

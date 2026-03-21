@@ -4,14 +4,15 @@
    ================================================================ */
 
 :root{
-  --bg:#0b0f14;
-  --panel:#0f1621;
-  --panel2:#0c121b;
+  /* Vickery Electric — deep navy brand palette */
+  --bg:#0c1535;
+  --panel:#101e45;
+  --panel2:#0d1940;
   --text:#e6eefc;
-  --muted:rgba(230,238,252,0.70);
-  --line:rgba(255,255,255,0.10);
-  --line2:rgba(255,255,255,0.08);
-  --blue:#3b82f6;
+  --muted:rgba(220,232,255,0.70);
+  --line:rgba(100,150,255,0.14);
+  --line2:rgba(100,150,255,0.10);
+  --blue:#2d6ae0;
 }
 
 html, body { height: 100%; }
@@ -97,27 +98,36 @@ body{
 .sidebar a:hover{ color:white; }
 
 .sidebar .sidebar-header{
-  padding:14px 14px 8px;
+  padding:14px 14px 12px;
   border-bottom:1px solid var(--line2);
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:8px;
+  flex-direction:column;
+}
+/* Logo container: white pill so logo looks clean on dark sidebar */
+.sidebar .sidebar-logo-wrap{
+  background:white;
+  border-radius:10px;
+  padding:6px 12px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .sidebar .sidebar-logo{
-  width:34px;
-  height:34px;
-  border-radius:10px;
-  object-fit: contain;
+  width:130px;
+  height:auto;
+  max-height:38px;
+  object-fit:contain;
+  display:block;
 }
+/* "CRM" sub-label shown below logo */
 .sidebar .sidebar-brand{
-  font-weight:800;
-  line-height:1.1;
+  display:none; /* logo already shows "Vickery Electric" */
 }
 .sidebar .sidebar-brand small{
-  display:block;
-  font-weight:600;
-  opacity:0.7;
-  margin-top:2px;
+  display:none;
 }
 
 .sidebar .mobile-toggle{ display:none !important; } /* we use drawer menu instead */
