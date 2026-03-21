@@ -83,12 +83,72 @@ body {
   justify-content: space-between;
 }
 
-.header-logo {
-  height: 48px;
-  width: auto;
-  max-width: 200px;
-  object-fit: contain;
+/* ── Vickery Electric text logo (transparent, works on any bg) ─────────────── */
+.ve-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  user-select: none;
+  line-height: 1;
 }
+
+.ve-logo-bolt {
+  flex-shrink: 0;
+  color: hsl(var(--primary));
+}
+
+.ve-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1;
+}
+
+/* "VICKERY" — bold, blue gradient */
+.ve-logo-name {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  background: linear-gradient(135deg, hsl(227 73% 32%) 0%, hsl(220 78% 52%) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* "ELECTRIC" — gray, tight caps */
+.ve-logo-sub {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.20em;
+  color: hsl(var(--brand-gray, 220 10% 44%));
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Large variant (login page) */
+.ve-logo-lg .ve-logo-name { font-size: 28px; }
+.ve-logo-lg .ve-logo-sub  { font-size: 11px; letter-spacing: 0.22em; }
+
+/* Small variant (sidebar) */
+.ve-logo-sm .ve-logo-name { font-size: 15px; }
+.ve-logo-sm .ve-logo-sub  { font-size: 8px; letter-spacing: 0.18em; }
+
+/* Dark-background variant (sidebar, dark headers) */
+.ve-logo-dark .ve-logo-name {
+  background: linear-gradient(135deg, #6ea8fe 0%, #93c5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.ve-logo-dark .ve-logo-sub  { color: rgba(200,220,255,0.60); }
+.ve-logo-dark .ve-logo-bolt { color: #6ea8fe; }
+
+/* Legacy img class no longer needed — zeroed out */
+.header-logo { display: none; }
 
 .header-title {
   font-family: var(--font-display);

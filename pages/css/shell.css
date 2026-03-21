@@ -102,33 +102,10 @@ body{
   border-bottom:1px solid var(--line2);
   display:flex;
   align-items:center;
-  gap:8px;
-  flex-direction:column;
+  gap:10px;
 }
-/* Logo container: white pill so logo looks clean on dark sidebar */
-.sidebar .sidebar-logo-wrap{
-  background:white;
-  border-radius:10px;
-  padding:6px 12px;
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.sidebar .sidebar-logo{
-  width:130px;
-  height:auto;
-  max-height:38px;
-  object-fit:contain;
-  display:block;
-}
-/* "CRM" sub-label shown below logo */
-.sidebar .sidebar-brand{
-  display:none; /* logo already shows "Vickery Electric" */
-}
-.sidebar .sidebar-brand small{
-  display:none;
-}
+.sidebar .sidebar-brand{ display:none; }
+.sidebar .sidebar-brand small{ display:none; }
 
 .sidebar .mobile-toggle{ display:none !important; } /* we use drawer menu instead */
 
