@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Instant Estimate — Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
   <style>
     :root{--navy:#0c1a3a;--navy2:#112149;--accent:#2357d0;--gold:#f59e0b;--text:#e2e8f0;--muted:#94a3b8;--card:#172045;--border:#253a6a;--r:12px}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -27,7 +28,8 @@
     .seg-card{background:var(--card);border:2px solid var(--border);border-radius:var(--r);padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .15s,transform .1s}
     .seg-card:hover{border-color:var(--accent);transform:translateY(-2px)}
     .seg-card.picked{border-color:var(--accent);background:#1e3560}
-    .seg-card .icon{font-size:2rem;margin-bottom:8px}
+    .seg-card .icon{display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--accent);}
+    .seg-card .icon svg{display:block;}
     .seg-card .label{font-weight:700;font-size:.95rem}
     .seg-card .desc{font-size:.78rem;color:var(--muted);margin-top:4px}
     /* Service list */
@@ -78,7 +80,8 @@
     .outcome-card{background:var(--card);border-radius:var(--r);padding:28px 24px;border:2px solid var(--border)}
     .outcome-instant{border-color:#1d4ed8}
     .outcome-site-visit{border-color:#92400e}
-    .outcome-icon{font-size:2.5rem;margin-bottom:12px}
+    .outcome-icon{display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--accent);}
+    .outcome-icon svg{display:block;}
     .outcome-card h2{font-size:1.4rem;font-weight:800;margin-bottom:10px}
     .outcome-card p{color:var(--muted);font-size:.92rem;margin-bottom:20px;line-height:1.6}
     .price-preview{background:var(--navy2);border-radius:10px;padding:16px 20px;text-align:center;font-size:1rem;margin-top:16px;color:var(--muted)}

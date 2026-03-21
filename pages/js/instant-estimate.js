@@ -88,7 +88,7 @@ function renderSegment() {
     <div class="seg-grid">
       ${["residential","commercial"].map(seg => `
         <div class="seg-card${S.segment===seg?" picked":""}" data-seg="${seg}">
-          <div class="icon">${seg==="residential"?"🏠":"🏢"}</div>
+          <div class="icon">${seg==="residential"?'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>':'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>'}</div>
           <div class="label">${seg==="residential"?"Residential":"Commercial"}</div>
           <div class="desc">${seg==="residential"?"Home upgrades, repairs & installations":"Office, retail & industrial solutions"}</div>
         </div>`).join("")}
@@ -114,7 +114,7 @@ function renderService() {
   const svcs      = [...instant, ...siteVisit];
 
   if (!svcs.length) {
-    show(`<div class="warn-banner">⚠️ No services found for segment "${esc(S.segment)}" in Google Sheets (Estimator_ServiceMatrix).</div>
+    show(`<div class="warn-banner"><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> No services found for segment "${esc(S.segment)}" in Google Sheets (Estimator_ServiceMatrix).</div>
       <div class="actions"><button class="btn btn-ghost" id="bkSeg">← Back</button></div>${renderDebug()}`);
     $("bkSeg").addEventListener("click", renderSegment);
     return;
@@ -128,14 +128,14 @@ function renderService() {
   }
 
   const listHtml = [
-    instant.length   ? `<div class="svc-section-label">⚡ Instant Quote Available</div>${instant.map(svcCard).join("")}`   : "",
-    siteVisit.length ? `<div class="svc-section-label">📋 Requires Site Visit</div>${siteVisit.map(svcCard).join("")}` : "",
+    instant.length   ? `<div class="svc-section-label"><span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Instant Quote Available</div>${instant.map(svcCard).join("")}`   : "",
+    siteVisit.length ? `<div class="svc-section-label"><span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span> Requires Site Visit</div>${siteVisit.map(svcCard).join("")}` : "",
   ].join("");
 
   show(`
     <input class="search-box" id="svcSearch" placeholder="Search services…" autocomplete="off"/>
     <div class="service-list" id="svcList">${listHtml}</div>
-    ${S.service?.tier==="site_visit_required"?`<div class="site-visit-notice">⚠️ This service needs an on-site assessment — no instant questions, but we'll call to schedule a free visit.</div>`:""}
+    ${S.service?.tier==="site_visit_required"?`<div class="site-visit-notice"><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> This service needs an on-site assessment — no instant questions, but we'll call to schedule a free visit.</div>`:""}
     <div class="actions">
       <button class="btn btn-ghost" id="backSeg">← Back</button>
       <button class="btn btn-primary" id="nextSvc"${S.service?"":" disabled"}>Next →</button>
@@ -187,7 +187,7 @@ function startModules() {
 
   if (warnings.length && !S.moduleList.length) {
     // Show warnings and allow proceeding to result anyway
-    show(`<div class="warn-banner">${warnings.map(w=>`<div>⚠️ ${esc(w)}</div>`).join("")}</div>
+    show(`<div class="warn-banner">${warnings.map(w=>`<div><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> ${esc(w)}</div>`).join("")}</div>
       <div class="actions"><button class="btn btn-ghost" id="bkSvc2">← Back</button>
       <button class="btn btn-primary" id="skipToResult">Get Estimate →</button></div>${renderDebug()}`);
     $("bkSvc2").addEventListener("click", renderService);
@@ -198,7 +198,7 @@ function startModules() {
   if (warnings.length) {
     // Non-fatal warnings — show but continue
     $("stepContent").insertAdjacentHTML("afterbegin",
-      `<div class="warn-banner">${warnings.map(w=>`<div>⚠️ ${esc(w)}</div>`).join("")}</div>`);
+      `<div class="warn-banner">${warnings.map(w=>`<div><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> ${esc(w)}</div>`).join("")}</div>`);
   }
 
   renderModule();
@@ -241,8 +241,9 @@ function renderSelectModule(m) {
 }
 
 function renderNumberModule(m) {
-  const min = S.service.qty_min||1, max = S.service.qty_max||20;
-  const cur = S.answers[m.module_id]??S.qty;
+  const min = parseInt(S.service.qty_min, 10) || 1;
+  const max = parseInt(S.service.qty_max, 10) || 20;
+  const cur = S.answers[m.module_id] != null ? parseInt(S.answers[m.module_id], 10) : min;
   return `<div class="qty-stepper">
     <button class="qty-btn" id="qtyDec"${cur<=min?" disabled":""}>−</button>
     <span class="qty-val" id="qtyVal">${cur}</span>
@@ -254,7 +255,7 @@ function renderPhotoModule(m) {
   const stored = S.photos[m.module_id]||[];
   return `<div class="photo-zone">
     <label class="photo-label" for="photoInput">
-      📷 Tap to add photos
+      <span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Tap to add photos
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none"/>
     </label>
     <div class="thumb-row" id="thumbRow">
@@ -303,8 +304,9 @@ function bindModuleEvents(m) {
     }));
   }
   if (m.input_type === "number") {
-    const min = S.service.qty_min||1, max = S.service.qty_max||20;
-    let cur = S.answers[m.module_id]??S.qty;
+    const min = parseInt(S.service.qty_min, 10) || 1;
+    const max = parseInt(S.service.qty_max, 10) || 20;
+    let cur = S.answers[m.module_id] != null ? parseInt(S.answers[m.module_id], 10) : min;
     const refresh = () => {
       $("qtyVal").textContent = cur; $("qtyDec").disabled = cur<=min; $("qtyInc").disabled = cur>=max;
       S.answers[m.module_id] = cur; S.qty = cur; check();
@@ -359,7 +361,7 @@ async function renderResult(siteVisitForced) {
 
     if (tier === "needs_site_visit") {
       show(`<div class="outcome-card outcome-site-visit">
-        <div class="outcome-icon">📋</div><h2>Site Visit Required</h2>
+        <div class="outcome-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div><h2>Site Visit Required</h2>
         <p>${esc(d.message||"An on-site assessment is required before we can quote this job.")}</p>
         ${d.reasons?.length ? `<ul class="reason-list">${d.reasons.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>` : ""}
         ${summary}
@@ -371,13 +373,13 @@ async function renderResult(siteVisitForced) {
     const hasPricing   = d.total > 0;
     const contPct      = d.contingency_pct ? Math.round(d.contingency_pct*100) : 0;
     const photoWarn    = d.photo_warning
-      ? `<div class="warn-banner" style="margin-bottom:12px;">📷 Adding photos would help us confirm this estimate — our tech may follow up to verify scope.</div>`
+      ? `<div class="warn-banner" style="margin-bottom:12px;"><span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Adding photos would help us confirm this estimate — our tech may follow up to verify scope.</div>`
       : "";
     const reviewWarn   = d.review_flag
-      ? `<div class="warn-banner" style="margin-bottom:12px;">📋 ${esc(d.material_disclosure||"Material costs will be confirmed and added separately at actuals.")}</div>`
+      ? `<div class="warn-banner" style="margin-bottom:12px;"><span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> ${esc(d.material_disclosure||"Material costs will be confirmed and added separately at actuals.")}</div>`
       : "";
     show(`<div class="outcome-card outcome-instant">
-      <div class="outcome-icon">✅</div><h2>Estimate Ready</h2>
+      <div class="outcome-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><h2>Estimate Ready</h2>
       <p>${esc(d.message||"Your estimate has been generated!")}</p>
       ${photoWarn}${reviewWarn}
       ${hasPricing ? `<div class="price-preview">
@@ -404,12 +406,12 @@ async function init() {
     if (!d.ok) throw new Error(d.error||"Config load failed");
     S.config = normalize(d);
     if (!S.config.services.length) {
-      show(`<div class="warn-banner">⚠️ No services loaded from Google Sheets. Check Estimator_ServiceMatrix tab.</div>
+      show(`<div class="warn-banner"><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> No services loaded from Google Sheets. Check Estimator_ServiceMatrix tab.</div>
         ${renderDebug()}`);
       return;
     }
     if (!Object.keys(S.config.modules).length) {
-      show(`<div class="warn-banner">⚠️ No modules loaded from Google Sheets. Check Estimator_Modules tab.</div>
+      show(`<div class="warn-banner"><span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> No modules loaded from Google Sheets. Check Estimator_Modules tab.</div>
         ${renderDebug()}`);
       return;
     }
