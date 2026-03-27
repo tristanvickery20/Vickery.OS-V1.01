@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   /* Vickery Electric brand palette
@@ -83,71 +83,86 @@ body {
   justify-content: space-between;
 }
 
-/* ── Vickery Electric text logo (transparent, works on any bg) ─────────────── */
+/* ── Vickery Electric text logo — matches new brand identity ───────────────── */
+/*    VICKERY: Barlow Condensed 800, dark charcoal #242d3c                     */
+/*    ELECTRIC: Barlow Condensed 700, steel blue #3a7bc8, flanking dash rules  */
+
 .ve-logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   text-decoration: none;
   user-select: none;
   line-height: 1;
 }
 
-.ve-logo-bolt {
-  flex-shrink: 0;
-  color: hsl(var(--primary));
-}
+/* Bolt removed from new brand — hidden if still in markup */
+.ve-logo-bolt { display: none; }
 
 .ve-logo-text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   line-height: 1;
 }
 
-/* "VICKERY" — bold, blue gradient */
+/* "VICKERY" — heavy condensed dark charcoal */
 .ve-logo-name {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Barlow Condensed', 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.055em;
+  font-size: 22px;
+  letter-spacing: 0.01em;
   line-height: 1;
-  background: linear-gradient(135deg, hsl(227 73% 32%) 0%, hsl(220 78% 52%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #242d3c;
+  background: none;
+  -webkit-text-fill-color: #242d3c;
+  background-clip: unset;
+  text-transform: uppercase;
 }
 
-/* "ELECTRIC" — gray, tight caps */
+/* "ELECTRIC" — steel blue with flanking horizontal rules */
 .ve-logo-sub {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  font-size: 9px;
-  letter-spacing: 0.20em;
-  color: hsl(var(--brand-gray, 220 10% 44%));
+  font-family: 'Barlow Condensed', 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: #3a7bc8;
   text-transform: uppercase;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ve-logo-sub::before,
+.ve-logo-sub::after {
+  content: '';
+  flex: 0 0 12px;
+  height: 1.5px;
+  background: currentColor;
+  display: block;
+  opacity: 0.85;
 }
 
 /* Large variant (login page) */
-.ve-logo-lg .ve-logo-name { font-size: 28px; }
-.ve-logo-lg .ve-logo-sub  { font-size: 11px; letter-spacing: 0.22em; }
+.ve-logo-lg .ve-logo-name { font-size: 32px; }
+.ve-logo-lg .ve-logo-sub  { font-size: 12px; gap: 7px; }
+.ve-logo-lg .ve-logo-sub::before,
+.ve-logo-lg .ve-logo-sub::after { flex: 0 0 18px; }
 
 /* Small variant (sidebar) */
 .ve-logo-sm .ve-logo-name { font-size: 15px; }
-.ve-logo-sm .ve-logo-sub  { font-size: 8px; letter-spacing: 0.18em; }
+.ve-logo-sm .ve-logo-sub  { font-size: 7.5px; gap: 4px; }
+.ve-logo-sm .ve-logo-sub::before,
+.ve-logo-sm .ve-logo-sub::after { flex: 0 0 8px; }
 
-/* Dark-background variant (sidebar, dark headers) */
+/* Dark-background variant — VICKERY goes white, ELECTRIC same blue */
 .ve-logo-dark .ve-logo-name {
-  background: linear-gradient(135deg, #6ea8fe 0%, #93c5fd 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #f0f4ff;
+  -webkit-text-fill-color: #f0f4ff;
+  background: none;
 }
-.ve-logo-dark .ve-logo-sub  { color: rgba(200,220,255,0.60); }
-.ve-logo-dark .ve-logo-bolt { color: #6ea8fe; }
+.ve-logo-dark .ve-logo-sub { color: #5a9de0; }
 
-/* Legacy img class no longer needed — zeroed out */
+/* Legacy img class no longer needed */
 .header-logo { display: none; }
 
 .header-title {
