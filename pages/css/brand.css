@@ -162,6 +162,20 @@ body {
 }
 .ve-logo-dark .ve-logo-sub { color: #5a9de0; }
 
+/* Real logo image (JPEG) used on light-background headers */
+.logo-img {
+  height: 34px;
+  width: auto;
+  display: inline-block;
+  object-fit: contain;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.logo-img-lg {
+  height: 52px;
+  margin-bottom: 1rem;
+}
+
 /* Legacy img class no longer needed */
 .header-logo { display: none; }
 
