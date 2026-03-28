@@ -11,9 +11,13 @@
         min-height: 80vh;
       }
       .login-card {
-        background: white; border-radius: var(--radius); padding: 2.5rem;
-        box-shadow: 0 4px 24px hsla(220,60%,20%,0.10);
-        width: 100%; max-width: 380px; text-align: center;
+        background: white;
+        border-radius: var(--radius);
+        padding: 2.5rem 2.5rem 0;
+        box-shadow: 0 4px 32px hsla(220,60%,20%,0.14);
+        width: 100%; max-width: 380px;
+        text-align: center;
+        overflow: hidden;
       }
       .login-card h1 { font-family: var(--font-display); margin-bottom: 0.5rem; }
       .login-card p { color: hsl(var(--muted-foreground)); margin-bottom: 1.5rem; font-size: 0.9rem; }
@@ -24,16 +28,37 @@
       }
       .login-card input:focus { outline: none; border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsla(var(--ring),0.15); }
       .login-card button {
-        width: 100%; padding: 0.75rem; background: hsl(var(--primary));
-        color: hsl(var(--primary-foreground)); border: none; border-radius: var(--radius);
+        width: 100%; padding: 0.75rem; border: none; border-radius: var(--radius);
         font-size: 1rem; font-weight: 600; cursor: pointer;
       }
-      .login-card button:hover { opacity: 0.9; }
       .login-error {
-        color: hsl(var(--destructive)); font-size: 0.85rem; margin-top: 0.75rem;
-        min-height: 1.2em;
+        color: hsl(var(--destructive)); font-size: 0.85rem; margin-top: 0.5rem;
+        min-height: 1.2em; margin-bottom: 1.5rem;
       }
-      .login-logo{display:none}
+      .login-logo { display: none; }
+
+      /* ── Electric staff strip at the bottom ─────────────────────────────── */
+      .login-staff {
+        margin: 0 -2.5rem;
+        height: 96px;
+        background: #060c20;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-staff img {
+        height: 420px;
+        width: auto;
+        max-width: none;
+        flex-shrink: 0;
+        transform: rotate(90deg);
+        mix-blend-mode: screen;
+        opacity: 0.92;
+        pointer-events: none;
+        user-select: none;
+      }
     </style>
   </head>
   <body>
@@ -44,9 +69,13 @@
         <p>Enter your PIN to access the portal.</p>
         <form id="loginForm">
           <input id="pin" type="password" placeholder="PIN" autocomplete="off" autofocus />
-          <button type="submit">Login</button>
+          <button type="submit" class="nav-btn" style="width:100%;padding:0.75rem;border-radius:var(--radius);font-size:1rem;font-weight:600;">Login</button>
         </form>
         <div id="error" class="login-error"></div>
+
+        <div class="login-staff">
+          <img src="/pages/img/staff.png" alt="">
+        </div>
       </div>
     </div>
     <script>
