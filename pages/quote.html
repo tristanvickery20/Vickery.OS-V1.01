@@ -370,12 +370,13 @@
     .q-btn-next {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 13px 26px;
-      background: hsl(var(--primary));
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+      background: transparent;
       color: white;
       border: none;
-      border-radius: 50px;
+      border-radius: 0;
       font-family: var(--font-display);
       font-size: 15px;
       font-weight: 700;
@@ -384,10 +385,14 @@
       white-space: nowrap;
       letter-spacing: -0.01em;
     }
-    .q-btn-next:hover:not(:disabled) {
-      background: hsl(var(--accent));
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px hsl(var(--accent) / 0.3);
+    .q-btn-next img {
+      height: 48px;
+      width: auto;
+      display: block;
+    }
+    .q-btn-next:hover:not(:disabled) img {
+      filter: brightness(1.1);
+      transform: translateY(-2px);
     }
     .q-btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
 

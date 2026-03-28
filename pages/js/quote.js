@@ -242,7 +242,7 @@ function renderSegment() {
     <div class="q-nav-row">
       <div></div>
       <button class="q-btn-next" id="nextSegment" ${S.segment ? "" : "disabled"}>
-        Next Step &rarr;
+        <img src="/pages/img/sword-button.png" alt="Next">
       </button>
     </div>
     ${NOTE}`;
@@ -288,7 +288,7 @@ function renderCategories() {
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextCategories" ${S.selectedCategories.length ? "" : "disabled"}>
-        Next Step &rarr;
+        <img src="/pages/img/sword-button.png" alt="Next">
       </button>
     </div>
     ${NOTE}`;
@@ -352,7 +352,7 @@ function renderServices() {
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextService" ${S.selectedServices.length ? "" : "disabled"}>
-        Next Step &rarr;
+        <img src="/pages/img/sword-button.png" alt="Next">
       </button>
     </div>
     ${NOTE}`;
