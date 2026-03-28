@@ -126,19 +126,17 @@
     .site-footer a:hover { color: hsl(var(--primary)); }
     .staff-login-badge {
       display: inline-flex; align-items: center; justify-content: center;
-      position: relative; background: #060c20; border-radius: 6px;
-      height: 34px; min-width: 150px; overflow: hidden;
-      color: rgba(255,255,255,0.45); text-decoration: none;
-      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-      margin-top: 10px; vertical-align: middle;
+      position: relative; background: #060c20; border-radius: 5px;
+      width: 48px; height: 26px; overflow: hidden;
+      text-decoration: none; vertical-align: middle;
+      opacity: 0.55; transition: opacity 0.2s;
     }
-    .staff-login-badge:hover { color: rgba(255,255,255,0.75); }
+    .staff-login-badge:hover { opacity: 1; }
     .staff-login-badge img {
-      position: absolute; height: 180px; width: auto; max-width: none;
-      transform: rotate(90deg); mix-blend-mode: screen; opacity: 0.78;
+      position: absolute; height: 130px; width: auto; max-width: none;
+      transform: rotate(90deg); mix-blend-mode: screen; opacity: 0.9;
       pointer-events: none;
     }
-    .staff-login-badge span { position: relative; z-index: 1; }
   </style>
 </head>
 <body>
@@ -232,9 +230,8 @@
     &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
     <a href="/contact">Contact</a> &nbsp;&middot;&nbsp;
     <a href="/services">Services</a> &nbsp;&middot;&nbsp;
-    <a href="/crm" class="staff-login-badge">
-      <img src="/pages/img/staff.png" alt="">
-      <span>Staff Login</span>
+    <a href="/crm" class="staff-login-badge" title="Staff Login">
+      <img src="/pages/img/staff.png" alt="Staff Login">
     </a>
   </footer>
 
