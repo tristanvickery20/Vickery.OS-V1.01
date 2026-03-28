@@ -1,6 +1,9 @@
 // pages/js/quote.js — V3 Quote Flow v3 (reference design)
 // Type → Categories → Services + Qty → Details → Review (Price + Slots) → Confirm → [Photo] → Booked
 
+// ── Sword / dagger SVG selection indicator ─────────────────────────────────────
+const SWORD_SVG = `<svg width="11" height="19" viewBox="0 0 11 19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle" aria-hidden="true"><circle cx="5.5" cy="1.8" r="1.5"/><line x1="5.5" y1="3.3" x2="5.5" y2="7.5"/><line x1="0.5" y1="7.5" x2="10.5" y2="7.5"/><path d="M4.2 7.5 L5.5 18.5 L6.8 7.5"/></svg>`;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
   step: "segment",
@@ -278,7 +281,7 @@ function renderCategories() {
         const sel = S.selectedCategories.includes(cat);
         return `<div class="q-cat-item${sel ? " selected" : ""}" data-cat="${escHtml(cat)}">
           <span>${escHtml(cat)}</span>
-          <span class="q-cat-check">⚔️</span>
+          <span class="q-cat-check">${SWORD_SVG}</span>
         </div>`;
       }).join("")}
     </div>
@@ -326,7 +329,7 @@ function renderServices() {
         return `
           <div class="q-svc-card${sel ? " selected" : ""}" data-type="${tid}">
             <div class="q-svc-item">
-              <div class="q-svc-checkbox">${sel ? "⚔️" : ""}</div>
+              <div class="q-svc-checkbox">${sel ? SWORD_SVG : ""}</div>
               <div>
                 <div class="q-svc-name">${escHtml(t.name_public)}</div>
               </div>
@@ -761,7 +764,7 @@ function bindEvents() {
         // Select this service (add to list, keep others)
         S.selectedServices.push({ job_type_id: typeId, qty: 1 });
         card.classList.add("selected");
-        if (cbEl)   cbEl.innerHTML = "⚔️";
+        if (cbEl)   cbEl.innerHTML = SWORD_SVG;
         if (qtyRow) qtyRow.style.display = "";
         const valEl = document.getElementById("qtyVal_" + typeId);
         if (valEl)  valEl.textContent = 1;
@@ -1033,7 +1036,7 @@ function renderBlockCalendar() {
   // Selected summary bar
   const sumHTML = S.selectedBlock
     ? `<div class="q-selected-summary">
-        ⚔️&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
+        ${SWORD_SVG}&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
       </div>`
     : "";
 
