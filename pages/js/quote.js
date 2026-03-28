@@ -278,7 +278,7 @@ function renderCategories() {
         const sel = S.selectedCategories.includes(cat);
         return `<div class="q-cat-item${sel ? " selected" : ""}" data-cat="${escHtml(cat)}">
           <span>${escHtml(cat)}</span>
-          <span class="q-cat-check">&#10003;</span>
+          <span class="q-cat-check">⚔️</span>
         </div>`;
       }).join("")}
     </div>
@@ -326,7 +326,7 @@ function renderServices() {
         return `
           <div class="q-svc-card${sel ? " selected" : ""}" data-type="${tid}">
             <div class="q-svc-item">
-              <div class="q-svc-checkbox">${sel ? "&#10003;" : ""}</div>
+              <div class="q-svc-checkbox">${sel ? "⚔️" : ""}</div>
               <div>
                 <div class="q-svc-name">${escHtml(t.name_public)}</div>
               </div>
@@ -761,7 +761,7 @@ function bindEvents() {
         // Select this service (add to list, keep others)
         S.selectedServices.push({ job_type_id: typeId, qty: 1 });
         card.classList.add("selected");
-        if (cbEl)   cbEl.innerHTML = "&#10003;";
+        if (cbEl)   cbEl.innerHTML = "⚔️";
         if (qtyRow) qtyRow.style.display = "";
         const valEl = document.getElementById("qtyVal_" + typeId);
         if (valEl)  valEl.textContent = 1;
@@ -1033,7 +1033,7 @@ function renderBlockCalendar() {
   // Selected summary bar
   const sumHTML = S.selectedBlock
     ? `<div class="q-selected-summary">
-        &#10003;&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
+        ⚔️&nbsp; ${escHtml(S.selectedBlock.display)} &bull; Arrival ${escHtml(S.selectedBlock.window_label)}
       </div>`
     : "";
 
