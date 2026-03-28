@@ -220,7 +220,7 @@ function renderSegment() {
     ${stepHeader(1, "Project Type")}
     <div class="q-type-list">
       <div class="q-type-card${S.segment === "Residential" ? " selected" : ""}" data-seg="Residential">
-        <div class="q-type-icon-box">&#127968;</div>
+        <div class="q-type-icon-box"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="q-type-text">
           <div class="q-type-name">Residential</div>
           <div class="q-type-sub">Home electrical upgrades, repairs, and installations.</div>
@@ -228,7 +228,7 @@ function renderSegment() {
         <div class="q-type-radio"></div>
       </div>
       <div class="q-type-card${S.segment === "Commercial" ? " selected" : ""}" data-seg="Commercial">
-        <div class="q-type-icon-box">&#127970;</div>
+        <div class="q-type-icon-box"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg></div>
         <div class="q-type-text">
           <div class="q-type-name">Commercial</div>
           <div class="q-type-sub">Office, retail, and industrial electrical solutions.</div>
