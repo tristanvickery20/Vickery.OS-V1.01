@@ -244,6 +244,55 @@ body {
   background: hsl(var(--primary) / 0.9);
 }
 
+/* ── Sword CTA treatment — electric dagger watermark on all primary buttons ── */
+/* mix-blend-mode:screen removes the PNG's black bg, leaving the blue glow.   */
+.cta-btn,
+.nav-btn-link,
+.service-cta,
+.nav-btn,
+a.cta,
+.q-btn-next {
+  position: relative !important;
+  overflow: hidden !important;
+  background: linear-gradient(110deg, #0c1c45 0%, #1a3870 55%, #0c1c45 100%) !important;
+  color: #fff !important;
+  transition: box-shadow 0.2s, transform 0.15s !important;
+}
+
+.cta-btn::before,
+.nav-btn-link::before,
+.service-cta::before,
+.nav-btn::before,
+a.cta::before,
+.q-btn-next::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160px;
+  height: 160px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  background: url('/pages/img/sword.png') center / contain no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.cta-btn:hover,
+.nav-btn-link:hover,
+.service-cta:hover,
+.nav-btn:hover,
+a.cta:hover,
+.q-btn-next:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 24px rgba(20 60 160 / 0.45) !important;
+  background: linear-gradient(110deg, #0c1c45 0%, #2148a0 55%, #0c1c45 100%) !important;
+}
+
+.q-btn-next:disabled {
+  opacity: 0.4 !important;
+}
+
 /* ========== Base typography / layout ========== */
 .main-content {
   max-width: 1200px;
