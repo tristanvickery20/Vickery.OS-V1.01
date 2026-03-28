@@ -250,8 +250,7 @@ body {
 .nav-btn-link,
 .service-cta,
 .nav-btn,
-a.cta,
-.q-btn-next {
+a.cta {
   position: relative !important;
   overflow: hidden !important;
   background: linear-gradient(110deg, #0c1c45 0%, #1a3870 55%, #0c1c45 100%) !important;
@@ -263,8 +262,7 @@ a.cta,
 .nav-btn-link::before,
 .service-cta::before,
 .nav-btn::before,
-a.cta::before,
-.q-btn-next::before {
+a.cta::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -282,15 +280,10 @@ a.cta::before,
 .nav-btn-link:hover,
 .service-cta:hover,
 .nav-btn:hover,
-a.cta:hover,
-.q-btn-next:hover:not(:disabled) {
+a.cta:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 24px rgba(20 60 160 / 0.45) !important;
   background: linear-gradient(110deg, #0c1c45 0%, #2148a0 55%, #0c1c45 100%) !important;
-}
-
-.q-btn-next:disabled {
-  opacity: 0.4 !important;
 }
 
 /* ========== Base typography / layout ========== */
