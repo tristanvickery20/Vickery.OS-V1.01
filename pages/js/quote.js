@@ -1138,9 +1138,25 @@ async function reprice(zip) {
   const updateEl = document.getElementById("priceUpdate");
   if (!noteEl || !updateEl) return;
   noteEl.style.display = "block";
+  noteEl.className     = "q-zip-note";
   noteEl.textContent   = "Checking travel fee\u2026";
   updateEl.style.display = "none";
   try {
+    // First check zone eligibility
+    const zr = await fetch(`/api/zone/check?zip=${encodeURIComponent(zip)}`);
+    const zone = await zr.json();
+
+    if (zone.reject) {
+      noteEl.textContent = zone.reject_reason || "This ZIP is outside our service area.";
+      noteEl.className   = "q-zip-note q-zip-warn";
+      return;
+    }
+    if (zone.custom_quote_only) {
+      noteEl.textContent = zone.approval_note || "This location requires a custom quote — call us to discuss.";
+      noteEl.className   = "q-zip-note q-zip-warn";
+      return;
+    }
+
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, zip }),
@@ -1148,6 +1164,7 @@ async function reprice(zip) {
     const data = await r.json();
     if (data.final_price != null) {
       noteEl.style.display   = "none";
+      noteEl.className       = "q-zip-note";
       updateEl.style.display = "block";
       const delta = data.travel_fee > 0
         ? ` (includes $${data.travel_fee} travel fee)`
@@ -1157,6 +1174,7 @@ async function reprice(zip) {
     }
   } catch {
     noteEl.textContent = "Could not look up travel fee for this ZIP.";
+    noteEl.className   = "q-zip-note";
   }
 }
 

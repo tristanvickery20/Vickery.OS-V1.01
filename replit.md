@@ -68,6 +68,22 @@ Returns identical shape to `getQuoteConfig()`:
 - `jobTypes[]`, `questionsByType{}`, `optionsByQuestion{}`, `addonsByType{}`, `rates{}`, `serviceAreas{}`
 - Also returns `_v2` (internal data stripped from public `/api/quote/config` response)
 
+### Service Area Policy (lib/serviceArea.js)
+Single source of truth for all geographic zone rules. `estimatorV2Config.js` uses `buildServiceAreasMap()` which seeds from `serviceArea.js` first and then applies any per-ZIP overrides from the CRM sheet's `ServiceAreas` tab.
+
+| Tier | Zone | Cities | Travel Fee | Notes |
+|---|---|---|---|---|
+| 1 | CORE | Orange, West Orange, Bridge City, Vidor | $0 | Instant pricing |
+| 2 | EXT | Beaumont, Groves, Port Arthur, Nederland | $25 | Instant + approval note |
+| 3 | OUTER | Lumberton, Silsbee | $50 | Custom quote only, $1,000 min (or $750 batched) |
+| — | Reject | Anything beyond 50 min one-way | — | Not serviceable |
+
+Drive-time caps: service call 25 min target / 35 min hard cap; normal install 35 min; large install ($5k+) 50 min hard cap.
+
+**Zone check endpoint** (public, no auth): `GET /api/zone/check?zip=77630` returns `{ eligible, reject, reject_reason, zone, zone_label, travel_fee, custom_quote_only, instant_pricing, approval_note, drive_minutes, city }`. Accepts optional `estimated_total` and `batched=true` params to enforce Tier 3 minimum ticket logic.
+
+Both quote engines (`quoteEngine.js`, `quoteEngineV2.js`) now return `zone` and `custom_quote_only` in their pricing result. The quote wizard's ZIP reprice function calls `/api/zone/check` first and blocks instant pricing for OUTER zone or rejected ZIPs.
+
 ### Qty Bug Fix
 Server now handles qty fully for both V1 and V2:
 - Frontend passes `qty` to `/api/quote/calc` and `/api/quote/lock`

@@ -1,0 +1,31 @@
+Tier 1 — instant quote, no travel fee
+Orange, West Orange, Bridge City, and Vidor. West Orange is about 6 minutes from Orange, Bridge City about 14 minutes, and Vidor about 23 minutes, so this keeps your core estimator work inside roughly a 25-minute one-way target. Beaumont is about 25–29 minutes from Orange, which is close enough to market to, but a little too loose for your cleanest no-fee core at launch.  ￼
+
+Tier 2 — instant quote + travel fee / approval note
+Beaumont, Groves, Port Arthur, and Nederland. Those runs are roughly 20–33 minutes one way from Orange, which is still workable, but not clean enough for “same price as local” on a new service business. Groves is about 20–25 minutes, Port Arthur about 27–31 minutes, and Nederland about 33 minutes.  ￼
+
+Tier 3 — custom quote only
+Lumberton and anything else that is roughly 35–50 minutes from Orange. Lumberton is about 39 driving miles from Orange, which makes it fine for selective higher-ticket or batched work, but not something you want flowing through the standard estimator as if it were a normal local call.  ￼
+
+Drive time limits
+For a small service call or diagnostic, target 25 minutes one way and use 35 minutes as the hard cap if the schedule is light and the travel fee is accepted. For a normal install job, allow up to 35 minutes one way. For a clear-scope $5k install, allow up to 50 minutes one way if photos are solid and you are unlikely to burn a second trip. Route planning and drive-time control are a real profit lever in home service dispatch, and pricing guidance for electrical work supports adding a service-call charge to cover travel, setup, and initial assessment.  ￼
+
+Minimum ticket for Tier 3
+Set the default Tier 3 minimum at $1,000 quoted value. Allow it down to $750 only if it is grouped with another job in the same area, a repeat customer, or a strategically useful lead. Long-drive small tickets get eaten alive by windshield time, setup, and callback risk; service-call fee guidance in electrical pricing exists for exactly that reason.  ￼
+
+Rejection rule
+Reject by default if the job is more than 50 minutes one way, outside your workable Southeast Texas cluster, or below the Tier 3 minimum without batching. Also reject if the job is geographically okay but still likely to create chaos: weak photos, uncertain scope, old/problematic panel clues, or a strong chance of needing multiple unpaid trips. Efficient scheduling depends on complete job details, drive time, and matching the right work to the right route.  ￼
+
+Temporary note for Port Arthur / Nederland / Groves
+As of April 1, 2026, I would be a little more conservative on the southwest side because the Rainbow Bridge has been closed since March 2025 and TxDOT was only targeting an early April 2026 reopening, weather permitting. That makes keeping Port Arthur/Nederland/Groves in Tier 2 smarter until normal route certainty returns.  ￼
+
+My recommended final policy
+	•	Tier 1: Orange, West Orange, Bridge City, Vidor
+	•	Tier 2: Beaumont, Groves, Port Arthur, Nederland
+	•	Tier 3: Lumberton + other 35–50 minute jobs
+	•	Small call limit: 25 min target, 35 min hard cap
+	•	$5k install limit: 50 min hard cap
+	•	Tier 3 minimum: $1,000, or $750 if batched
+	•	Reject entirely: beyond 50 minutes, or any low-ticket / high-chaos job outside the core zone
+
+This is the best startup compromise between protecting route density and not starving lead flow. Next I’d turn this into exact estimator zone rules with the fee logic and approval wording.

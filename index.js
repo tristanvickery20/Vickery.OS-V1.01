@@ -45,6 +45,7 @@ const {
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
 const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
+const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -237,6 +238,59 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath === "/api/estimator/classification" && req.method === "GET") {
     return handleEstimatorClassification(req, res);
+  }
+
+  // ── Zone check — public, no auth required ─────────────────────────────────
+  // GET /api/zone/check?zip=77630 or ?zip=77657&estimated_total=500&batched=false
+  if (_epath === "/api/zone/check" && req.method === "GET") {
+    const u = new URL(req.url, `http://localhost`);
+    const zip            = u.searchParams.get("zip") || "";
+    const city           = u.searchParams.get("city") || "";
+    const estimated_total = u.searchParams.get("estimated_total") ? Number(u.searchParams.get("estimated_total")) : null;
+    const batched        = u.searchParams.get("batched") === "true";
+
+    const resolved = resolveZone(zip, city);
+    if (!resolved) {
+      const payload = {
+        eligible:         false,
+        reject:           true,
+        reject_reason:    "Location is outside our current service area. Please call for a custom quote.",
+        zone:             null,
+        zone_label:       null,
+        travel_fee:       null,
+        custom_quote_only: true,
+        instant_pricing:  false,
+        approval_note:    null,
+        drive_minutes:    null,
+        city:             city || zip || null,
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(payload));
+    }
+
+    const rejection = shouldReject({
+      zone: resolved.zone,
+      drive_minutes: resolved.drive_minutes,
+      estimated_total,
+      batched,
+    });
+
+    const rules = ZONE_RULES[resolved.zone] || {};
+    const payload = {
+      eligible:         !rejection.reject,
+      reject:           rejection.reject,
+      reject_reason:    rejection.reason || null,
+      zone:             resolved.zone,
+      zone_label:       rules.label || resolved.zone,
+      travel_fee:       rules.travel_fee ?? 0,
+      custom_quote_only: rules.custom_quote_only || false,
+      instant_pricing:  rules.instant_pricing || false,
+      approval_note:    rules.approval_note || null,
+      drive_minutes:    resolved.drive_minutes,
+      city:             resolved.city || city || null,
+    };
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify(payload));
   }
 
   // AUTH GUARD: protected pages + remaining /api/*
