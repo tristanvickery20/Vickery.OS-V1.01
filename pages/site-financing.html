@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Financing &mdash; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .fin-hero {
+      background: linear-gradient(135deg, hsl(222 73% 11%) 0%, hsl(220 65% 16%) 100%);
+      padding: 72px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .fin-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('/pages/img/sword.png') center/420px no-repeat;
+      mix-blend-mode: screen;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .fin-hero-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: hsl(219 78% 70%);
+      margin-bottom: 16px;
+    }
+    .fin-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(30px, 4.5vw, 52px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.08;
+      margin-bottom: 16px;
+    }
+    .fin-hero h1 em { font-style: normal; color: hsl(219 78% 68%); }
+    .fin-hero p {
+      font-size: 17px;
+      color: hsl(220 40% 72%);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.65;
+    }
+    .fin-banner {
+      max-width: 800px;
+      margin: -28px auto 0;
+      position: relative;
+      z-index: 10;
+      padding: 0 24px;
+    }
+    .fin-banner-inner {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px hsl(222 60% 15% / 0.2);
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .fin-banner-icon { color: hsl(142 55% 42%); flex-shrink: 0; }
+    .fin-banner-icon svg { display: block; }
+    .fin-banner-text { flex: 1; min-width: 200px; }
+    .fin-banner-text strong {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      display: block;
+      margin-bottom: 4px;
+    }
+    .fin-banner-text span {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.5;
+    }
+    .how-bnpl {
+      max-width: 1000px;
+      margin: 60px auto 0;
+      padding: 0 24px;
+    }
+    .how-bnpl h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+    }
+    .how-bnpl .section-sub {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 32px;
+      line-height: 1.55;
+    }
+    .bnpl-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+      counter-reset: bnpl-step;
+    }
+    @media (max-width: 700px) { .bnpl-steps { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 400px) { .bnpl-steps { grid-template-columns: 1fr; } }
+    .bnpl-step {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 20px 16px;
+      text-align: center;
+      position: relative;
+    }
+    .bnpl-step-num {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 16px;
+      color: white;
+      margin: 0 auto 12px;
+    }
+    .bnpl-step-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: hsl(var(--foreground)); margin-bottom: 6px; }
+    .bnpl-step-desc { font-size: 13px; color: hsl(var(--muted-foreground)); line-height: 1.5; }
+    .payments-section {
+      max-width: 1000px;
+      margin: 60px auto 0;
+      padding: 0 24px;
+    }
+    .payments-section h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+    }
+    .payments-section .section-sub {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 28px;
+    }
+    .payment-scenarios {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 680px) { .payment-scenarios { grid-template-columns: 1fr; } }
+    .scenario-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 18px;
+      padding: 22px 20px;
+      box-shadow: 0 1px 4px hsl(var(--primary) / 0.05);
+    }
+    .scenario-job {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 10px;
+    }
+    .scenario-total {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    .scenario-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .scenario-opt {
+      background: hsl(var(--secondary));
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scenario-opt-label { font-size: 13px; color: hsl(var(--muted-foreground)); }
+    .scenario-opt-val { font-family: var(--font-display); font-weight: 700; font-size: 14px; color: hsl(var(--primary)); }
+    .faq-section {
+      max-width: 800px;
+      margin: 60px auto 0;
+      padding: 0 24px;
+    }
+    .faq-section h2 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 20px;
+    }
+    .faq-item {
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 18px 0;
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+    }
+    .faq-a {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.65;
+    }
+    .fin-cta {
+      max-width: 800px;
+      margin: 60px auto 80px;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .fin-cta h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 10px;
+    }
+    .fin-cta p {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+    .staff-login-badge { display: inline-block; vertical-align: middle; text-decoration: none; }
+    .staff-login-badge img { height: 32px; width: auto; vertical-align: middle; display: inline-block; transform: rotate(90deg); }
+    .nav-btn-link {
+      display: inline-flex; align-items: center;
+      padding: 8px 16px; font-size: 14px; font-weight: 600;
+      border-radius: 8px; text-decoration: none;
+    }
+    .cta-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font-display); font-weight: 700; font-size: 18px;
+      padding: 16px 32px; border: none; border-radius: 16px; text-decoration: none;
+      transition: all .15s ease; box-shadow: 0 4px 16px hsl(var(--primary) / 0.28);
+    }
+    .disclaimer {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.55;
+      padding: 0 24px 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img">
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
+      <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
+      <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
+      <a class="nav-link" href="/financing" data-page="financing">Financing</a>
+      <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="fin-hero">
+    <div class="fin-hero-eyebrow">Flexible Payment Options</div>
+    <h1>Do the job now,<br>pay <em>over time.</em></h1>
+    <p>Don't let a tight month put your home at risk or push a needed upgrade off for years. We offer buy-now-pay-later options that fit a real budget.</p>
+  </section>
+
+  <div class="fin-banner">
+    <div class="fin-banner-inner">
+      <div class="fin-banner-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="fin-banner-text">
+        <strong>0% promotional rates available on qualifying jobs</strong>
+        <span>Ask about financing when you book — approval takes minutes and you can often get started the same week.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="how-bnpl">
+    <h2>How Financing Works</h2>
+    <p class="section-sub">We partner with buy-now-pay-later lenders that specialize in home services. The process is fast, soft-pull, and doesn't interrupt your job.</p>
+    <div class="bnpl-steps">
+      <div class="bnpl-step">
+        <div class="bnpl-step-num">1</div>
+        <div class="bnpl-step-title">Get Your Quote</div>
+        <p class="bnpl-step-desc">Use our instant estimator or call us. Know your number before applying.</p>
+      </div>
+      <div class="bnpl-step">
+        <div class="bnpl-step-num">2</div>
+        <div class="bnpl-step-title">Apply in Minutes</div>
+        <p class="bnpl-step-desc">Short application, soft credit check. Most approvals come back in under 60 seconds.</p>
+      </div>
+      <div class="bnpl-step">
+        <div class="bnpl-step-num">3</div>
+        <div class="bnpl-step-title">Choose Your Terms</div>
+        <p class="bnpl-step-desc">Select a payment plan that fits your budget — monthly installments over 3, 6, 12, or 18 months.</p>
+      </div>
+      <div class="bnpl-step">
+        <div class="bnpl-step-num">4</div>
+        <div class="bnpl-step-title">Job Gets Done</div>
+        <p class="bnpl-step-desc">We get paid directly. You pay your lender monthly. No delay, no waiting on approvals after booking.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="payments-section">
+    <h2>What Does That Look Like?</h2>
+    <p class="section-sub">Rough monthly payment scenarios — actual rates depend on credit profile and lender terms.</p>
+    <div class="payment-scenarios">
+
+      <div class="scenario-card">
+        <div class="scenario-job">Outlet / Switch / Fan</div>
+        <div class="scenario-total">$300 – $450</div>
+        <div class="scenario-options">
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">6 months</span>
+            <span class="scenario-opt-val">~$55 – $80 / mo</span>
+          </div>
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">12 months</span>
+            <span class="scenario-opt-val">~$28 – $42 / mo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="scenario-card">
+        <div class="scenario-job">EV Charger Install</div>
+        <div class="scenario-total">$850 – $1,200</div>
+        <div class="scenario-options">
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">6 months</span>
+            <span class="scenario-opt-val">~$145 – $205 / mo</span>
+          </div>
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">12 months</span>
+            <span class="scenario-opt-val">~$73 – $105 / mo</span>
+          </div>
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">18 months</span>
+            <span class="scenario-opt-val">~$50 – $70 / mo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="scenario-card">
+        <div class="scenario-job">Panel Upgrade / Large Job</div>
+        <div class="scenario-total">$3,000 – $6,000</div>
+        <div class="scenario-options">
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">12 months</span>
+            <span class="scenario-opt-val">~$260 – $520 / mo</span>
+          </div>
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">18 months</span>
+            <span class="scenario-opt-val">~$175 – $345 / mo</span>
+          </div>
+          <div class="scenario-opt">
+            <span class="scenario-opt-label">24 months</span>
+            <span class="scenario-opt-val">~$130 – $260 / mo</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="faq-section">
+    <h2>Common Questions</h2>
+
+    <div class="faq-item">
+      <div class="faq-q">Does applying affect my credit score?</div>
+      <p class="faq-a">Most lenders use a soft credit pull for the initial pre-qualification, which doesn't affect your score. A hard pull may occur when you confirm your loan. The lender will tell you before it happens.</p>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What credit score do I need?</div>
+      <p class="faq-a">Requirements vary by lender and plan. Generally, scores in the 580–620+ range can qualify for some programs. Lenders look at the full picture — income and payment history matter too.</p>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Do I have to finance the full amount?</div>
+      <p class="faq-a">No. You can finance a portion and pay the rest upfront. For example, pay the deposit in cash and finance the balance after the job is complete.</p>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Is there a minimum job size for financing?</div>
+      <p class="faq-a">Most lenders have a minimum of $500 – $1,000 to qualify. Smaller jobs are typically easier to pay upfront or split across two cards. Ask us and we'll tell you exactly what's available for your quote.</p>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">When do I apply?</div>
+      <p class="faq-a">After you get your quote and decide you want to move forward. We'll send you the financing link — fill it out, pick your plan, and we schedule the job. The whole thing usually takes less than 10 minutes.</p>
+    </div>
+
+  </div>
+
+  <div class="fin-cta">
+    <h2>Ready to get started?</h2>
+    <p>Get your instant quote first — that's always step one. Once you have a number, we'll walk you through the financing options that fit.</p>
+    <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+  </div>
+
+  <p class="disclaimer">Payment scenarios shown are estimates only. Actual monthly payment, APR, and loan terms depend on credit profile, selected lender, and approved loan amount. Financing is provided by third-party lenders — Vickery Electric is not a lender and does not guarantee approval.</p>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact" style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a> &nbsp;&middot;&nbsp;
+    <a href="/crm" class="staff-login-badge" title="Staff Login">
+      <img src="/pages/img/staff.png" alt="Staff Login">
+    </a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "financing") el.classList.add("active");
+    });
+  </script>
+</body>
+</html>

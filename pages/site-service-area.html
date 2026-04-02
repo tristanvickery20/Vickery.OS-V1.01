@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Service Area &mdash; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .sa-hero {
+      background: linear-gradient(135deg, hsl(222 73% 12%) 0%, hsl(220 73% 18%) 100%);
+      padding: 64px 24px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .sa-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('/pages/img/sword.png') center/400px no-repeat;
+      mix-blend-mode: screen;
+      opacity: 0.04;
+      pointer-events: none;
+    }
+    .sa-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .sa-hero p {
+      font-size: 17px;
+      color: hsl(220 40% 72%);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    .zip-check-bar {
+      max-width: 480px;
+      margin: -28px auto 0;
+      position: relative;
+      z-index: 10;
+      padding: 0 24px;
+    }
+    .zip-check-inner {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px hsl(222 60% 15% / 0.22);
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .zip-check-row {
+      display: flex;
+      gap: 10px;
+    }
+    .zip-check-input {
+      flex: 1;
+      font-size: 16px;
+      font-family: var(--font-body);
+      padding: 12px 16px;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .zip-check-input:focus { border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent) / 0.12); }
+    .zip-check-btn {
+      padding: 12px 22px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 15px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .zip-result {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: none;
+    }
+    .zip-result.core  { background: hsl(142 50% 95%); color: hsl(142 60% 30%); border: 1px solid hsl(142 40% 80%); }
+    .zip-result.ext   { background: hsl(219 78% 95%); color: hsl(219 78% 35%); border: 1px solid hsl(219 50% 80%); }
+    .zip-result.outer { background: hsl(38 90% 95%); color: hsl(38 70% 35%); border: 1px solid hsl(38 60% 78%); }
+    .zip-result.reject { background: hsl(0 70% 95%); color: hsl(0 60% 38%); border: 1px solid hsl(0 50% 80%); }
+    .map-wrap {
+      max-width: 1200px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+    }
+    .map-label {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 10px;
+    }
+    #sa-map {
+      height: 420px;
+      border-radius: 20px;
+      border: 1px solid hsl(var(--border));
+      box-shadow: 0 4px 24px hsl(var(--primary) / 0.09);
+      overflow: hidden;
+    }
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tier-grid {
+      max-width: 1200px;
+      margin: 52px auto 0;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 780px) { .tier-grid { grid-template-columns: 1fr; } }
+    .tier-card {
+      background: white;
+      border: 2px solid hsl(var(--border));
+      border-radius: 20px;
+      padding: 28px 24px;
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .tier-card:hover { box-shadow: 0 8px 28px hsl(var(--primary) / 0.10); }
+    .tier-card.core  { border-top: 4px solid hsl(142 55% 45%); }
+    .tier-card.ext   { border-top: 4px solid hsl(219 78% 54%); }
+    .tier-card.outer { border-top: 4px solid hsl(38 85% 50%); }
+    .tier-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      padding: 3px 10px;
+      border-radius: 99px;
+      margin-bottom: 12px;
+    }
+    .core .tier-badge  { background: hsl(142 50% 93%); color: hsl(142 60% 30%); }
+    .ext .tier-badge   { background: hsl(219 78% 93%); color: hsl(219 78% 32%); }
+    .outer .tier-badge { background: hsl(38 85% 93%); color: hsl(38 70% 32%); }
+    .tier-card h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .tier-tagline {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    .tier-fee {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .core .tier-fee  { color: hsl(142 60% 35%); }
+    .ext .tier-fee   { color: hsl(219 78% 45%); }
+    .outer .tier-fee { color: hsl(38 70% 40%); }
+    .tier-cities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .city-pill {
+      background: hsl(var(--secondary));
+      border: 1px solid hsl(var(--border));
+      border-radius: 99px;
+      padding: 4px 11px;
+      font-size: 13px;
+      font-weight: 500;
+      color: hsl(var(--foreground));
+    }
+    .tier-note {
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.5;
+      padding-top: 14px;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .drive-section {
+      max-width: 1200px;
+      margin: 52px auto 0;
+      padding: 0 24px;
+    }
+    .drive-section h2 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 20px;
+    }
+    .drive-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 620px) { .drive-grid { grid-template-columns: 1fr; } }
+    .drive-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .drive-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    .drive-card-cap {
+      font-size: 22px;
+      font-weight: 800;
+      color: hsl(var(--primary));
+      font-family: var(--font-display);
+    }
+    .drive-card-note {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.45;
+    }
+    .rainbow-note {
+      max-width: 1200px;
+      margin: 24px auto 0;
+      padding: 0 24px;
+    }
+    .rainbow-banner {
+      background: hsl(38 80% 96%);
+      border: 1px solid hsl(38 60% 80%);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .rainbow-banner svg { flex-shrink: 0; color: hsl(38 70% 42%); margin-top: 1px; }
+    .rainbow-banner p { font-size: 14px; color: hsl(38 50% 30%); line-height: 1.55; margin: 0; }
+    .rainbow-banner p strong { font-weight: 700; }
+    .sa-cta {
+      max-width: 1200px;
+      margin: 56px auto 80px;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .sa-cta h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 10px;
+    }
+    .sa-cta p {
+      font-size: 16px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 24px;
+    }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+    .staff-login-badge { display: inline-block; vertical-align: middle; text-decoration: none; }
+    .staff-login-badge img { height: 32px; width: auto; vertical-align: middle; display: inline-block; transform: rotate(90deg); }
+    .nav-btn-link {
+      display: inline-flex; align-items: center;
+      padding: 8px 16px;
+      font-size: 14px; font-weight: 600;
+      border-radius: 8px; text-decoration: none;
+    }
+    .cta-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font-display); font-weight: 700; font-size: 18px;
+      padding: 16px 32px; border: none; border-radius: 16px; text-decoration: none;
+      transition: all .15s ease;
+      box-shadow: 0 4px 16px hsl(var(--primary) / 0.28);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img">
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
+      <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
+      <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
+      <a class="nav-link" href="/financing" data-page="financing">Financing</a>
+      <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="sa-hero">
+    <h1>We Serve Southeast Texas</h1>
+    <p>Based in Orange, TX — with instant online pricing for your area and clear travel policies so you always know what to expect.</p>
+  </section>
+
+  <div class="zip-check-bar">
+    <div class="zip-check-inner">
+      <div class="zip-check-row">
+        <input class="zip-check-input" id="zipInput" type="text" inputmode="numeric" maxlength="5" placeholder="Enter your ZIP code" />
+        <button class="zip-check-btn cta-btn" onclick="checkZip()" style="font-size:15px;padding:12px 20px;">Check ZIP</button>
+      </div>
+      <div class="zip-result" id="zipResult"></div>
+    </div>
+  </div>
+
+  <div class="map-wrap">
+    <div class="map-label">Coverage Map — Southeast Texas</div>
+    <div id="sa-map"></div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:hsl(142 55% 45%);opacity:.85;"></div> Tier 1 — Core (no travel fee)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:hsl(219 78% 54%);opacity:.85;"></div> Tier 2 — Extended ($25 travel)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:hsl(38 85% 50%);opacity:.85;"></div> Tier 3 — Outer (custom quote)</div>
+    </div>
+  </div>
+
+  <div class="tier-grid">
+
+    <div class="tier-card core">
+      <span class="tier-badge">Tier 1 — Core</span>
+      <h3>Instant Quote, No Fee</h3>
+      <p class="tier-tagline">Our home turf. Get a firm price online in minutes — no callbacks, no surprises.</p>
+      <div class="tier-fee">$0 travel</div>
+      <div class="tier-cities">
+        <span class="city-pill">Orange</span>
+        <span class="city-pill">West Orange</span>
+        <span class="city-pill">Bridge City</span>
+        <span class="city-pill">Vidor</span>
+      </div>
+      <p class="tier-note">All Tier 1 jobs qualify for full instant online pricing. Drive time is under 25 minutes one-way.</p>
+    </div>
+
+    <div class="tier-card ext">
+      <span class="tier-badge">Tier 2 — Extended</span>
+      <h3>Instant Quote + Travel</h3>
+      <p class="tier-tagline">Still instant pricing — just with a flat travel fee added to your quote automatically.</p>
+      <div class="tier-fee">+$25 travel</div>
+      <div class="tier-cities">
+        <span class="city-pill">Beaumont</span>
+        <span class="city-pill">Groves</span>
+        <span class="city-pill">Port Arthur</span>
+        <span class="city-pill">Nederland</span>
+      </div>
+      <p class="tier-note">Instant pricing stays active. The $25 travel fee is included in your quote — no hidden add-ons at the door.</p>
+    </div>
+
+    <div class="tier-card outer">
+      <span class="tier-badge">Tier 3 — Outer Zone</span>
+      <h3>Custom Quote Only</h3>
+      <p class="tier-tagline">Selective higher-ticket work. We'll review your job details and respond with a custom number.</p>
+      <div class="tier-fee">$1,000 min.</div>
+      <div class="tier-cities">
+        <span class="city-pill">Lumberton</span>
+        <span class="city-pill">Silsbee</span>
+        <span class="city-pill">+ 35–50 min radius</span>
+      </div>
+      <p class="tier-note">Minimum $1,000 quoted value. $750 minimum for grouped, repeat, or strategically batched work.</p>
+    </div>
+
+  </div>
+
+  <div class="drive-section">
+    <h2>Drive-Time Policy</h2>
+    <div class="drive-grid">
+      <div class="drive-card">
+        <div class="drive-card-title">Service Call / Diagnostic</div>
+        <div class="drive-card-cap">35 min max</div>
+        <div class="drive-card-note">Target is 25 min one-way. We'll stretch to 35 only if the schedule is light and the travel fee is accepted.</div>
+      </div>
+      <div class="drive-card">
+        <div class="drive-card-title">Standard Install</div>
+        <div class="drive-card-cap">35 min max</div>
+        <div class="drive-card-note">Normal install jobs stay within the 35-minute one-way hard cap for efficient route management.</div>
+      </div>
+      <div class="drive-card">
+        <div class="drive-card-title">High-Ticket Install ($5k+)</div>
+        <div class="drive-card-cap">50 min max</div>
+        <div class="drive-card-note">Clear-scope $5k+ jobs with solid photos may justify up to 50 minutes one-way if a second trip is unlikely.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rainbow-note">
+    <div class="rainbow-banner">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p><strong>Route Note — Rainbow Bridge (as of April 2026):</strong> The Rainbow Bridge has been closed since March 2025 with an early April 2026 reopening targeted. Port Arthur, Nederland, and Groves runs may take 10–15 minutes longer than normal until routes normalize. We're monitoring this and scheduling accordingly.</p>
+    </div>
+  </div>
+
+  <div class="sa-cta">
+    <h2>Not sure if we cover your area?</h2>
+    <p>Enter your ZIP above or call us — we'll tell you right away. The fastest path to getting on our schedule is an instant online quote.</p>
+    <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+  </div>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact" style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a> &nbsp;&middot;&nbsp;
+    <a href="/crm" class="staff-login-badge" title="Staff Login">
+      <img src="/pages/img/staff.png" alt="Staff Login">
+    </a>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "service-area") el.classList.add("active");
+    });
+
+    // ── ZIP check ──────────────────────────────────────────────────────────────
+    async function checkZip() {
+      const zip = document.getElementById("zipInput").value.replace(/\D/g,"").slice(0,5);
+      const el  = document.getElementById("zipResult");
+      if (zip.length !== 5) { el.style.display="none"; return; }
+      try {
+        const r    = await fetch("/api/zone/check?zip=" + encodeURIComponent(zip));
+        const data = await r.json();
+        el.style.display = "block";
+        el.className = "zip-result";
+        if (!data.eligible && data.reject) {
+          el.classList.add("reject");
+          el.textContent = "ZIP " + zip + " — " + (data.reject_reason || "Outside our service area. Please call for a custom quote.");
+        } else if (data.zone === "CORE") {
+          el.classList.add("core");
+          el.textContent = "ZIP " + zip + " (" + (data.city||"") + ") — Tier 1 Core Zone. Instant pricing with no travel fee.";
+        } else if (data.zone === "EXT") {
+          el.classList.add("ext");
+          el.textContent = "ZIP " + zip + " (" + (data.city||"") + ") — Tier 2 Extended. Instant pricing + $25 travel fee.";
+        } else if (data.zone === "OUTER") {
+          el.classList.add("outer");
+          el.textContent = "ZIP " + zip + " (" + (data.city||"") + ") — Tier 3 Outer Zone. Custom quote required. $1,000 minimum.";
+        } else {
+          el.classList.add("reject");
+          el.textContent = "ZIP " + zip + " is outside our current service area. Please call for options.";
+        }
+      } catch(e) {
+        el.style.display = "block";
+        el.className = "zip-result reject";
+        el.textContent = "Could not look up ZIP. Please try again.";
+      }
+    }
+    document.getElementById("zipInput").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") checkZip();
+    });
+
+    // ── Leaflet map ────────────────────────────────────────────────────────────
+    const map = L.map("sa-map", { zoomControl: true, scrollWheelZoom: false }).setView([30.09, -93.93], 10);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 18
+    }).addTo(map);
+
+    // Zone circles
+    L.circle([30.09, -93.74], { radius: 28000, color: "#2e9e5a", fillColor: "#2e9e5a", fillOpacity: 0.10, weight: 2 }).addTo(map);
+    L.circle([30.09, -93.74], { radius: 50000, color: "#3b7ce8", fillColor: "#3b7ce8", fillOpacity: 0.07, weight: 1.5, dashArray: "6 4" }).addTo(map);
+    L.circle([30.09, -93.74], { radius: 72000, color: "#e09030", fillColor: "#e09030", fillOpacity: 0.05, weight: 1.5, dashArray: "4 6" }).addTo(map);
+
+    function makeIcon(color) {
+      return L.divIcon({
+        className: "",
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>',
+        iconSize: [12,12], iconAnchor: [6,6]
+      });
+    }
+
+    var coreColor  = "#2e9e5a";
+    var extColor   = "#3b7ce8";
+    var outerColor = "#e09030";
+
+    var cities = [
+      { name:"Orange",       lat:30.093, lon:-93.736, z:"core"  },
+      { name:"West Orange",  lat:30.086, lon:-93.782, z:"core"  },
+      { name:"Bridge City",  lat:30.027, lon:-93.850, z:"core"  },
+      { name:"Vidor",        lat:30.130, lon:-93.995, z:"core"  },
+      { name:"Beaumont",     lat:30.080, lon:-94.126, z:"ext"   },
+      { name:"Groves",       lat:29.948, lon:-93.912, z:"ext"   },
+      { name:"Port Arthur",  lat:29.885, lon:-93.940, z:"ext"   },
+      { name:"Nederland",    lat:29.974, lon:-94.004, z:"ext"   },
+      { name:"Lumberton",    lat:30.267, lon:-94.202, z:"outer" },
+      { name:"Silsbee",      lat:30.352, lon:-94.178, z:"outer" },
+    ];
+
+    cities.forEach(function(c) {
+      var color = c.z==="core" ? coreColor : c.z==="ext" ? extColor : outerColor;
+      L.marker([c.lat, c.lon], { icon: makeIcon(color) })
+        .bindTooltip(c.name, { permanent: false, direction: "top", offset: [0,-6] })
+        .addTo(map);
+    });
+  </script>
+</body>
+</html>

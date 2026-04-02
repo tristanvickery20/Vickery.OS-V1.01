@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Why Vickery Electric &mdash; Southeast Texas Electrician</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .why-hero {
+      background: linear-gradient(135deg, hsl(222 73% 11%) 0%, hsl(220 65% 16%) 100%);
+      padding: 80px 24px 72px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .why-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('/pages/img/sword.png') center/420px no-repeat;
+      mix-blend-mode: screen;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .why-hero-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: hsl(219 78% 70%);
+      margin-bottom: 18px;
+    }
+    .why-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 5vw, 58px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.08;
+      margin-bottom: 18px;
+    }
+    .why-hero h1 em { font-style: normal; color: hsl(219 78% 68%); }
+    .why-hero p {
+      font-size: 18px;
+      color: hsl(220 40% 72%);
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.65;
+    }
+    .manifesto {
+      max-width: 800px;
+      margin: 64px auto 0;
+      padding: 0 24px;
+    }
+    .manifesto-intro {
+      font-size: 19px;
+      color: hsl(var(--foreground));
+      line-height: 1.7;
+      margin-bottom: 48px;
+      font-weight: 500;
+    }
+    .manifesto-intro strong { color: hsl(var(--primary)); font-weight: 700; }
+    .pillar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+    .pillar {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .pillar-num {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+    .pillar-body h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+      margin-top: 10px;
+    }
+    .pillar-body p {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.65;
+      margin: 0;
+    }
+    .compare-section {
+      max-width: 1000px;
+      margin: 72px auto 0;
+      padding: 0 24px;
+    }
+    .compare-section h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .compare-section .section-sub {
+      font-size: 15px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 28px;
+    }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr; } }
+    .compare-col {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .compare-col.them { opacity: .88; }
+    .compare-col-head {
+      padding: 16px 20px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .compare-col.us   .compare-col-head { background: hsl(var(--primary)); color: white; }
+    .compare-col.them .compare-col-head { background: hsl(var(--secondary)); color: hsl(var(--muted-foreground)); }
+    .compare-row {
+      padding: 13px 20px;
+      font-size: 14px;
+      color: hsl(var(--foreground));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.45;
+    }
+    .compare-row:last-child { border-bottom: none; }
+    .compare-icon { flex-shrink: 0; margin-top: 1px; }
+    .trust-strip {
+      max-width: 1000px;
+      margin: 72px auto 0;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 720px) { .trust-strip { grid-template-columns: repeat(2, 1fr); } }
+    .trust-badge {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 22px 18px;
+      text-align: center;
+      box-shadow: 0 1px 3px hsl(var(--primary) / 0.04);
+    }
+    .trust-badge-icon { color: hsl(var(--primary)); margin-bottom: 10px; display: flex; justify-content: center; }
+    .trust-badge-icon svg { display: block; }
+    .trust-badge-label {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      line-height: 1.3;
+    }
+    .why-cta {
+      max-width: 800px;
+      margin: 72px auto 80px;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .why-cta h2 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      margin-bottom: 12px;
+    }
+    .why-cta p {
+      font-size: 16px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+    .staff-login-badge { display: inline-block; vertical-align: middle; text-decoration: none; }
+    .staff-login-badge img { height: 32px; width: auto; vertical-align: middle; display: inline-block; transform: rotate(90deg); }
+    .nav-btn-link {
+      display: inline-flex; align-items: center;
+      padding: 8px 16px; font-size: 14px; font-weight: 600;
+      border-radius: 8px; text-decoration: none;
+    }
+    .cta-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font-display); font-weight: 700; font-size: 18px;
+      padding: 16px 32px; border: none; border-radius: 16px; text-decoration: none;
+      transition: all .15s ease; box-shadow: 0 4px 16px hsl(var(--primary) / 0.28);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img">
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
+      <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
+      <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
+      <a class="nav-link" href="/financing" data-page="financing">Financing</a>
+      <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="why-hero">
+    <div class="why-hero-eyebrow">Vickery Electric &mdash; Southeast Texas</div>
+    <h1>We do things <em>differently.</em></h1>
+    <p>Transparent pricing. Southeast Texas roots. Work that holds up. Here's what we stand behind and why it matters.</p>
+  </section>
+
+  <div class="manifesto">
+    <p class="manifesto-intro">
+      Most electricians make you play phone tag for a ballpark, then show up and hit you with a number that changed. We built a better model — <strong>price first, then show up.</strong> That's it. That's the whole thing.
+    </p>
+
+    <div class="pillar-list">
+
+      <div class="pillar">
+        <div class="pillar-num">1</div>
+        <div class="pillar-body">
+          <h3>Upfront Pricing — No Estimate Theater</h3>
+          <p>You get a firm number before we ever knock on your door. Our online estimator calculates labor, materials, overhead, and travel together — so the price you see is the price we work from. If something genuinely changes scope during the job, we talk before we proceed. Full stop.</p>
+        </div>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-num">2</div>
+        <div class="pillar-body">
+          <h3>Licensed, Insured, and Accountable</h3>
+          <p>We are fully licensed electricians operating under the Texas rules that protect your home and your investment. We carry proper liability insurance. If something doesn't hold up, you call us — not an 800 number, not a franchise center. Us, directly.</p>
+        </div>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-num">3</div>
+        <div class="pillar-body">
+          <h3>Southeast Texas Roots</h3>
+          <p>We're based in Orange, TX. This is our market, our neighbors, and our reputation. We're not parachuting in from Houston for a quick ticket. We're building a service business that earns repeat calls and referrals — which means we have every reason to do the job right the first time.</p>
+        </div>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-num">4</div>
+        <div class="pillar-body">
+          <h3>Photo-Based Quotes, Not Wild Guesses</h3>
+          <p>For panel work and anything with real scope ambiguity, we ask for photos before we commit to a number. This protects both sides — you don't get a surprise, and we don't get burned on a job that needed three extra hours nobody budgeted for. Honest assessment from the start.</p>
+        </div>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-num">5</div>
+        <div class="pillar-body">
+          <h3>We Say No When We Should</h3>
+          <p>If a job is too far, too uncertain, or below the threshold where we can do it right and still cover our costs, we'll tell you that up front rather than take the work and cut corners. A good contractor knows which jobs to take. We'd rather refer you to someone better suited than do work we can't stand behind.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="compare-section">
+    <h2>Vickery vs. the Usual Experience</h2>
+    <p class="section-sub">Honest comparison — what working with us looks like versus what most homeowners have dealt with.</p>
+    <div class="compare-grid">
+
+      <div class="compare-col us">
+        <div class="compare-col-head">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Vickery Electric
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 38%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          Price before we arrive — online, in minutes
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 38%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          Travel fee disclosed upfront, baked into quote
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 38%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          Scope change? We talk first, not after
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 38%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          Licensed, insured, accountable by name
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 38%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          Financing available — pay over time
+        </div>
+      </div>
+
+      <div class="compare-col them">
+        <div class="compare-col-head">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Typical Contractor
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0 60% 50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          "We'll give you a number when we get there"
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0 60% 50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          Travel fee appears on invoice, not the quote
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0 60% 50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          Scope creep added at end without warning
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0 60% 50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          License unverified, insurance unclear
+        </div>
+        <div class="compare-row">
+          <span class="compare-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0 60% 50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          Cash or check, full amount, due today
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="trust-strip">
+    <div class="trust-badge">
+      <div class="trust-badge-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+      <div class="trust-badge-label">Licensed &amp; Insured</div>
+    </div>
+    <div class="trust-badge">
+      <div class="trust-badge-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      <div class="trust-badge-label">Price Before We Arrive</div>
+    </div>
+    <div class="trust-badge">
+      <div class="trust-badge-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div class="trust-badge-label">Southeast TX Roots</div>
+    </div>
+    <div class="trust-badge">
+      <div class="trust-badge-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+      <div class="trust-badge-label">No Hidden Fees</div>
+    </div>
+  </div>
+
+  <div class="why-cta">
+    <h2>Ready to try it yourself?</h2>
+    <p>Get a real price in about two minutes — no phone call, no waiting. Just answer a few questions about your job and we'll give you a number you can actually plan around.</p>
+    <a class="cta-btn" href="/quote">Get a Free Instant Quote &rarr;</a>
+  </div>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact" style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a> &nbsp;&middot;&nbsp;
+    <a href="/crm" class="staff-login-badge" title="Staff Login">
+      <img src="/pages/img/staff.png" alt="Staff Login">
+    </a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "why-vickery") el.classList.add("active");
+    });
+  </script>
+</body>
+</html>

@@ -24,6 +24,7 @@ const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
 const { handleActualsRollup } = require("./api/actuals-rollup");
+const { handleReferralSubmit } = require("./api/referral");
 const {
   handleGetClients,
   handleGetClientById,
@@ -126,6 +127,26 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/contact") {
     return serveFile(res, path.join(__dirname, "pages/site-contact.html"), "text/html");
+  }
+
+  if (req.url === "/service-area") {
+    return serveFile(res, path.join(__dirname, "pages/site-service-area.html"), "text/html");
+  }
+
+  if (req.url === "/why-vickery") {
+    return serveFile(res, path.join(__dirname, "pages/site-why.html"), "text/html");
+  }
+
+  if (req.url === "/reviews") {
+    return serveFile(res, path.join(__dirname, "pages/site-reviews.html"), "text/html");
+  }
+
+  if (req.url === "/referral") {
+    return serveFile(res, path.join(__dirname, "pages/site-referral.html"), "text/html");
+  }
+
+  if (req.url === "/financing") {
+    return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
   }
 
   if (req.url === "/crm") {
@@ -291,6 +312,11 @@ const server = http.createServer(async (req, res) => {
     };
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify(payload));
+  }
+
+  // ── Referral submission — public, no auth ─────────────────────────────────
+  if (_epath === "/api/referral/submit" && req.method === "POST") {
+    return handleReferralSubmit(req, res);
   }
 
   // AUTH GUARD: protected pages + remaining /api/*

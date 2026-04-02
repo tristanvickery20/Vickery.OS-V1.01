@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Refer a Friend &mdash; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .ref-hero {
+      background: linear-gradient(135deg, hsl(222 73% 11%) 0%, hsl(220 65% 16%) 100%);
+      padding: 64px 24px 56px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .ref-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('/pages/img/sword.png') center/400px no-repeat;
+      mix-blend-mode: screen;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .ref-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 46px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    .ref-hero p {
+      font-size: 17px;
+      color: hsl(220 40% 72%);
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    .how-it-works {
+      max-width: 900px;
+      margin: 56px auto 0;
+      padding: 0 24px;
+    }
+    .how-it-works h2 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 24px;
+    }
+    .steps-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+    @media (max-width: 620px) { .steps-row { grid-template-columns: 1fr; } }
+    .step-card {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 18px;
+      padding: 24px 20px;
+      text-align: center;
+      box-shadow: 0 1px 4px hsl(var(--primary) / 0.05);
+    }
+    .step-num {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+      margin: 0 auto 14px;
+    }
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.55;
+    }
+    .ref-form-section {
+      max-width: 680px;
+      margin: 0 auto 80px;
+      padding: 0 24px;
+    }
+    .ref-form-section h2 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 20px;
+    }
+    .ref-form {
+      background: white;
+      border: 1px solid hsl(var(--border));
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 2px 12px hsl(var(--primary) / 0.06);
+    }
+    .ref-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 16px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .ref-section-label:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+    .ref-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 500px) { .ref-grid-2 { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .form-label .opt { font-weight: 400; color: hsl(var(--muted-foreground)); }
+    .ref-input {
+      width: 100%;
+      font-size: 15px;
+      font-family: var(--font-body);
+      padding: 11px 14px;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      outline: none;
+      color: hsl(var(--foreground));
+      background: white;
+      transition: border-color .15s;
+      box-sizing: border-box;
+    }
+    .ref-input:focus { border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent)/0.12); }
+    .ref-textarea {
+      width: 100%;
+      font-size: 15px;
+      font-family: var(--font-body);
+      padding: 11px 14px;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 12px;
+      outline: none;
+      color: hsl(var(--foreground));
+      background: white;
+      transition: border-color .15s;
+      box-sizing: border-box;
+      min-height: 90px;
+      resize: vertical;
+    }
+    .ref-textarea:focus { border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent)/0.12); }
+    .ref-submit-row {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .ref-submit-btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      padding: 14px 32px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .ref-error { font-size: 13px; color: hsl(0 65% 45%); font-weight: 600; display: none; }
+    .ref-success {
+      background: hsl(142 50% 95%);
+      border: 1px solid hsl(142 40% 78%);
+      border-radius: 16px;
+      padding: 24px 28px;
+      text-align: center;
+      display: none;
+    }
+    .ref-success h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: hsl(142 55% 30%);
+      margin-bottom: 8px;
+    }
+    .ref-success p {
+      font-size: 15px;
+      color: hsl(142 40% 35%);
+      margin: 0;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+    .site-footer {
+      border-top: 1px solid hsl(var(--border));
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+    }
+    .site-footer a { color: hsl(var(--muted-foreground)); text-decoration: none; }
+    .site-footer a:hover { color: hsl(var(--primary)); }
+    .staff-login-badge { display: inline-block; vertical-align: middle; text-decoration: none; }
+    .staff-login-badge img { height: 32px; width: auto; vertical-align: middle; display: inline-block; transform: rotate(90deg); }
+    .nav-btn-link {
+      display: inline-flex; align-items: center;
+      padding: 8px 16px; font-size: 14px; font-weight: 600;
+      border-radius: 8px; text-decoration: none;
+    }
+    .cta-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font-display); font-weight: 700; font-size: 18px;
+      padding: 16px 32px; border: none; border-radius: 16px; text-decoration: none;
+      transition: all .15s ease; box-shadow: 0 4px 16px hsl(var(--primary) / 0.28);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img">
+      </div>
+      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a class="nav-link" href="/" data-page="home">Home</a>
+      <a class="nav-link" href="/services" data-page="services">Services</a>
+      <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
+      <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
+      <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
+      <a class="nav-link" href="/financing" data-page="financing">Financing</a>
+      <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
+      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="ref-hero">
+    <h1>Refer a Friend, Help a Neighbor</h1>
+    <p>Know someone who needs electrical work in Southeast Texas? Send them our way. We'll take good care of them — and we'll remember you sent them.</p>
+  </section>
+
+  <div class="how-it-works">
+    <h2>How It Works</h2>
+    <div class="steps-row">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Fill Out the Form</div>
+        <p class="step-desc">Tell us who you're referring and give us a little context on what they need. Takes under 2 minutes.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">We Reach Out</div>
+        <p class="step-desc">We'll contact your referral directly, give them a quote, and get them on the schedule. You don't have to manage anything.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Job Gets Done</div>
+        <p class="step-desc">Your referral gets the same upfront pricing and quality work. We track referral sources in our system so we know who to thank.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-form-section">
+    <h2>Submit a Referral</h2>
+
+    <div class="ref-success" id="refSuccess">
+      <h3>Referral Submitted</h3>
+      <p>Thanks for sending them our way. We'll reach out to your referral shortly and take good care of them.</p>
+    </div>
+
+    <div class="ref-form" id="refFormWrap">
+      <form id="refForm" onsubmit="submitReferral(event)">
+
+        <div class="ref-section-label">Your Information</div>
+        <div class="ref-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="ref_your_name">Your Name <span style="color:hsl(0 60% 50%)">*</span></label>
+            <input class="ref-input" id="ref_your_name" type="text" placeholder="Jane Smith" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ref_your_phone">Your Phone <span style="color:hsl(0 60% 50%)">*</span></label>
+            <input class="ref-input" id="ref_your_phone" type="tel" placeholder="(409) 555-0100" required />
+          </div>
+        </div>
+
+        <div class="ref-section-label">Who Are You Referring?</div>
+        <div class="ref-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="ref_name">Their Name <span style="color:hsl(0 60% 50%)">*</span></label>
+            <input class="ref-input" id="ref_name" type="text" placeholder="John Doe" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ref_phone">Their Phone <span style="color:hsl(0 60% 50%)">*</span></label>
+            <input class="ref-input" id="ref_phone" type="tel" placeholder="(409) 555-0200" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ref_city">Their City <span class="opt">(optional)</span></label>
+          <input class="ref-input" id="ref_city" type="text" placeholder="Orange, TX" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ref_job">What Do They Need? <span class="opt">(optional)</span></label>
+          <textarea class="ref-textarea" id="ref_job" placeholder="e.g. Ceiling fan install, troubleshooting tripped breaker, EV charger..."></textarea>
+        </div>
+
+        <div class="ref-submit-row">
+          <button type="submit" class="ref-submit-btn cta-btn" id="refSubmitBtn">Submit Referral &rarr;</button>
+          <span class="ref-error" id="refError"></span>
+        </div>
+        <p class="privacy-note">We only contact your referral about their electrical needs. We never share information or spam — that's not how we operate.</p>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    &copy; 2025 Vickery Electric &nbsp;&middot;&nbsp;
+    <a href="/contact" style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a> &nbsp;&middot;&nbsp;
+    <a href="/crm" class="staff-login-badge" title="Staff Login">
+      <img src="/pages/img/staff.png" alt="Staff Login">
+    </a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
+      if (el.getAttribute("data-page") === "referral") el.classList.add("active");
+    });
+
+    async function submitReferral(e) {
+      e.preventDefault();
+      const btn    = document.getElementById("refSubmitBtn");
+      const errEl  = document.getElementById("refError");
+      errEl.style.display = "none";
+      btn.disabled = true;
+      btn.textContent = "Submitting\u2026";
+
+      const body = {
+        your_name:  document.getElementById("ref_your_name").value.trim(),
+        your_phone: document.getElementById("ref_your_phone").value.trim(),
+        ref_name:   document.getElementById("ref_name").value.trim(),
+        ref_phone:  document.getElementById("ref_phone").value.trim(),
+        ref_city:   document.getElementById("ref_city").value.trim(),
+        ref_job:    document.getElementById("ref_job").value.trim(),
+      };
+
+      try {
+        const r    = await fetch("/api/referral/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const data = await r.json();
+        if (data.ok) {
+          document.getElementById("refFormWrap").style.display = "none";
+          document.getElementById("refSuccess").style.display = "block";
+        } else {
+          throw new Error(data.error || "Submission failed");
+        }
+      } catch (err) {
+        errEl.textContent = err.message || "Something went wrong. Please try again.";
+        errEl.style.display = "inline";
+        btn.disabled = false;
+        btn.textContent = "Submit Referral \u2192";
+      }
+    }
+  </script>
+</body>
+</html>

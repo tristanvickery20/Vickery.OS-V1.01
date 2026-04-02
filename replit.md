@@ -90,6 +90,25 @@ Server now handles qty fully for both V1 and V2:
 - Server returns `final_price` inclusive of qty; frontend uses it directly
 - No client-side price multiplication
 
+## Public Site Pages
+
+All public pages share the same 8-link nav (Home / Services / Service Area / Why Vickery / Reviews / Financing / Refer a Friend / Contact) and the sticky header with "Free Instant Quote" CTA. Routes in `index.js` map directly to HTML files in `pages/`.
+
+| Route | File | Description |
+|---|---|---|
+| `/` | `site-home.html` | Home page — hero + 3 benefit cards |
+| `/services` | `site-services.html` | Service list |
+| `/about` | `site-about.html` | About page |
+| `/contact` | `site-contact.html` | Contact info + emergency banner |
+| `/service-area` | `site-service-area.html` | Leaflet map + ZIP checker + tier cards + drive-time policy |
+| `/why-vickery` | `site-why.html` | 5-pillar manifesto + comparison table + trust badges |
+| `/reviews` | `site-reviews.html` | Branded review cards + Google leave-review CTA |
+| `/referral` | `site-referral.html` | Referral form → `POST /api/referral/submit` → Leads sheet |
+| `/financing` | `site-financing.html` | BNPL how-it-works + payment scenarios + FAQ |
+
+### Referral API (`api/referral.js`)
+`POST /api/referral/submit` — public, no auth. Accepts `{ your_name, your_phone, ref_name, ref_phone, ref_city, ref_job }`. Appends a row to `Leads!A:I` in the CRM sheet with `source=Referral` and `status=New`.
+
 ## Key Features
 - **Quote Snapshots**: POST /api/quotes/create runs pricing, builds auditable JSON snapshot, upserts lead, appends to Quotes tab
 - **Deposit Gate**: Prevents scheduling large jobs (deposit_required=true) without deposit received or explicit override
