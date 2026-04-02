@@ -2,11 +2,10 @@
   'use strict';
 
   // ── Electric burst on click ───────────────────────────────────────────────
-  // Injects a <span class="elec-burst"> child into the button on click.
-  // Using a child element means the button's own CSS transition never smooths
-  // out the flicker — the burst animates freely with linear timing.
+  // Injects a child <span> so the burst animation runs on a transition-free
+  // element — the parent button's own CSS transition never smooths the flicker.
   function wireElectric() {
-    var sel = '.cta-btn, .nav-btn-link, .service-cta, .nav-btn, a.cta';
+    var sel = '.cta-btn, .nav-cta-link, .service-cta, .nav-btn, a.cta';
     document.querySelectorAll(sel).forEach(function (el) {
       el.addEventListener('click', function () {
         var burst = document.createElement('span');
@@ -19,35 +18,40 @@
     });
   }
 
-  // ── Hamburger menu (injected into .header-inner) ──────────────────────────
-  function wireHamburger() {
-    var headerInner = document.querySelector('.header-inner');
-    var appNav      = document.querySelector('.app-nav');
-    if (!headerInner || !appNav) return;
+  // ── Dropdown nav ──────────────────────────────────────────────────────────
+  function wireDropdown() {
+    var btn      = document.getElementById('navMenuBtn');
+    var dropdown = document.getElementById('navDropdown');
+    if (!btn || !dropdown) return;
 
-    var btn = document.createElement('button');
-    btn.className = 'nav-hamburger';
-    btn.setAttribute('aria-label', 'Open navigation menu');
-    btn.setAttribute('aria-expanded', 'false');
-    btn.innerHTML = '<span></span><span></span><span></span>';
+    function open() {
+      dropdown.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
 
-    var navBtnLink = headerInner.querySelector('.nav-btn-link');
-    headerInner.insertBefore(btn, navBtnLink || null);
+    function close() {
+      dropdown.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
 
-    btn.addEventListener('click', function () {
-      var open = appNav.classList.toggle('nav-open');
-      btn.classList.toggle('is-open', open);
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      btn.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      dropdown.classList.contains('is-open') ? close() : open();
     });
 
-    appNav.querySelectorAll('.nav-link').forEach(function (link) {
-      link.addEventListener('click', function () {
-        appNav.classList.remove('nav-open');
-        btn.classList.remove('is-open');
-        btn.setAttribute('aria-expanded', 'false');
-        btn.setAttribute('aria-label', 'Open navigation menu');
-      });
+    // Close when clicking outside
+    document.addEventListener('click', function (e) {
+      if (!dropdown.contains(e.target) && e.target !== btn) close();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+
+    // Close when a nav link is clicked (page navigates)
+    dropdown.querySelectorAll('.nav-link').forEach(function (link) {
+      link.addEventListener('click', close);
     });
   }
 
@@ -81,11 +85,27 @@
     });
   }
 
+  // ── Footer license badge ───────────────────────────────────────────────────
+  // Appends "Licensed & Insured · TECL #XXXXXX" under the footer copy.
+  // Update the TECL number here when ready.
+  var TECL = '';   // ← set to your actual TECL number, e.g. '12345'
+
+  function wireFooterLicense() {
+    document.querySelectorAll('.site-footer').forEach(function (footer) {
+      if (footer.querySelector('.footer-license')) return;  // already injected
+      var badge = document.createElement('span');
+      badge.className = 'footer-license';
+      badge.textContent = 'Licensed & Insured' + (TECL ? ' · TECL #' + TECL : '');
+      footer.appendChild(badge);
+    });
+  }
+
   function init() {
     wireElectric();
-    wireHamburger();
+    wireDropdown();
     wireScrollHint();
     wireNav();
+    wireFooterLicense();
   }
 
   if (document.readyState === 'loading') {

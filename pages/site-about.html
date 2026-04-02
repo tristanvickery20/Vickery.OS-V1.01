@@ -99,28 +99,31 @@
   </style>
 </head>
 <body>
-
   <header class="app-header">
     <div class="header-inner">
-      <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/" class="nav-logo-link">
         <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img">
+      </a>
+      <div class="nav-menu-wrap">
+        <button class="nav-menu-btn" id="navMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="navDropdown">
+          <span>Menu</span>
+          <svg class="nav-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="2 4 6 8 10 4"/></svg>
+        </button>
+        <nav class="nav-dropdown" id="navDropdown" aria-label="Site navigation">
+          <a class="nav-link" href="/" data-page="home">Home</a>
+          <a class="nav-link" href="/services" data-page="services">Services</a>
+          <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
+          <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
+          <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
+          <a class="nav-link" href="/financing" data-page="financing">Financing</a>
+          <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
+          <a class="nav-link" href="/contact" data-page="contact">Contact</a>
+          <div class="nav-dropdown-divider"></div>
+          <a class="nav-cta-link cta-btn" href="/quote">Get a Free Instant Quote <img class="sword-icon" src="/pages/img/sword-logo.png" aria-hidden="true" alt=""></a>
+        </nav>
       </div>
-      <a class="nav-btn-link" href="/quote">Free Instant Quote</a>
     </div>
   </header>
-
-  <nav class="app-nav">
-    <div class="nav-inner">
-      <a class="nav-link" href="/" data-page="home">Home</a>
-      <a class="nav-link" href="/services" data-page="services">Services</a>
-      <a class="nav-link" href="/service-area" data-page="service-area">Service Area</a>
-      <a class="nav-link" href="/why-vickery" data-page="why-vickery">Why Vickery</a>
-      <a class="nav-link" href="/reviews" data-page="reviews">Reviews</a>
-      <a class="nav-link" href="/financing" data-page="financing">Financing</a>
-      <a class="nav-link" href="/referral" data-page="referral">Refer a Friend</a>
-      <a class="nav-link" href="/contact" data-page="contact">Contact</a>
-    </div>
-  </nav>
 
   <main class="main-content">
     <div class="about-content">

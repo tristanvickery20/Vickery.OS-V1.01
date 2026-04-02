@@ -187,37 +187,85 @@ body {
   letter-spacing: -0.01em;
 }
 
-.app-nav {
-  background: white;
-  border-bottom: 1px solid hsl(var(--border));
-  padding: 0 24px;
-}
-
-.nav-inner {
-  max-width: 1200px;
-  margin: 0 auto;
+/* ── Logo link ────────────────────────────────────────────────────────── */
+.nav-logo-link {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
-  overflow-x: auto;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+/* ── Dropdown nav ─────────────────────────────────────────────────────── */
+.nav-menu-wrap {
+  position: relative;
+}
+
+.nav-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: hsl(var(--foreground));
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.nav-menu-btn:hover {
+  background: hsl(var(--brand-blue-dark));
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.28);
+}
+
+.nav-chevron {
+  transition: transform 0.22s ease;
+  flex-shrink: 0;
+}
+
+.nav-menu-btn[aria-expanded="true"] .nav-chevron {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  background: #fff;
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.05);
+  min-width: 230px;
+  padding: 8px;
+  display: none;
+  z-index: 200;
+}
+
+.nav-dropdown.is-open {
+  display: block;
 }
 
 .nav-link {
+  display: block;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
   text-decoration: none;
-  padding: 8px 16px;
+  padding: 11px 14px;
   border-radius: 8px;
-  transition: all 0.15s ease;
+  transition: background 0.12s, color 0.12s;
   white-space: nowrap;
 }
 
 .nav-link:hover {
   color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.05);
+  background: hsl(var(--primary) / 0.06);
 }
 
 .nav-link.active {
@@ -226,6 +274,27 @@ body {
   font-weight: 600;
 }
 
+.nav-dropdown-divider {
+  height: 1px;
+  background: hsl(var(--border));
+  margin: 6px 0;
+}
+
+.nav-cta-link {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: 10px !important;
+  font-size: 14px;
+  padding: 12px 16px !important;
+  margin-top: 2px;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+/* ── Nav btn (CRM sidebar, kept for internal pages) ─────────────────── */
 .nav-btn {
   font-family: var(--font-body);
   font-size: 14px;
@@ -312,64 +381,76 @@ img.sword-icon {
   100% { box-shadow: none; }
 }
 
-/* ── Hamburger toggle (injected by site.js on mobile) ───────────────────── */
-.nav-hamburger {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
+/* ── Brand accent word ──────────────────────────────────────────────────── */
+/* Wrap a key word in <span class="accent-word"> to tint it brand blue.      */
+.accent-word {
+  color: hsl(var(--primary));
+}
+
+/* ── Section spark-gap divider ──────────────────────────────────────────── */
+.section-divider {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  width: 40px;
-  height: 40px;
-  border: 1.5px solid hsl(var(--border));
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
+  gap: 14px;
+  margin: 40px 0;
+  padding: 0 4px;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--div-dir, right),
+    transparent, hsl(var(--border)), transparent);
+}
+
+.section-divider::before { --div-dir: right; }
+.section-divider::after  { --div-dir: left; }
+
+.section-divider-icon {
+  width: 20px;
+  height: 30px;
+  object-fit: contain;
+  opacity: 0.18;
   flex-shrink: 0;
 }
 
-.nav-hamburger span {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: hsl(var(--foreground));
-  border-radius: 2px;
-  transition: transform 0.22s ease, opacity 0.18s ease;
+/* ── Benefit / service cards — blue left accent on hover ─────────────── */
+.benefit-card {
+  border-left: 3px solid transparent;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
-.nav-hamburger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-.nav-hamburger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.nav-hamburger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.benefit-card:hover {
+  border-left-color: hsl(var(--primary));
+}
 
-/* ── Mobile nav ─────────────────────────────────────────────────────────── */
-@media (max-width: 700px) {
-  .nav-hamburger { display: flex; }
+/* ── Footer — license badge + sword watermark ────────────────────────── */
+.site-footer {
+  position: relative;
+  overflow: hidden;
+}
 
-  .app-nav:not(.nav-open) {
-    display: none;
-  }
+.site-footer::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 66px;
+  background: url('/pages/img/sword-logo.png') center / contain no-repeat;
+  opacity: 0.055;
+  pointer-events: none;
+}
 
-  .app-nav.nav-open .nav-inner {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    overflow-x: unset;
-  }
-
-  .app-nav.nav-open .nav-link {
-    padding: 15px 24px !important;
-    font-size: 16px !important;
-    border-radius: 0 !important;
-    border-bottom: 1px solid hsl(var(--border) / 0.6);
-    white-space: normal;
-  }
-
-  .app-nav.nav-open .nav-link.active {
-    border-left: 4px solid hsl(var(--primary));
-    padding-left: 20px !important;
-  }
+.footer-license {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground) / 0.7);
+  letter-spacing: 0.04em;
 }
 
 /* ========== Base typography / layout ========== */
