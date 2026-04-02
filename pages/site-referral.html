@@ -332,7 +332,7 @@
         </div>
 
         <div class="ref-submit-row">
-          <button type="submit" class="ref-submit-btn cta-btn" id="refSubmitBtn">Submit Referral &rarr;</button>
+          <button type="submit" class="ref-submit-btn cta-btn" id="refSubmitBtn">Submit Referral <svg class="sword-icon" aria-hidden="true" width="26" height="10" viewBox="0 0 26 10" fill="currentColor"><ellipse cx="2" cy="5" rx="2" ry="2.5"/><rect x="3.5" y="4.1" width="4.8" height="1.8" rx="0.9"/><rect x="7.8" y="0.2" width="1.8" height="9.6" rx="0.9"/><path d="M9.6 3.5 L23.5 4.75 L26 5 L23.5 5.25 L9.6 6.5Z"/></svg></button>
           <span class="ref-error" id="refError"></span>
         </div>
         <p class="privacy-note">We only contact your referral about their electrical needs. We never share information or spam — that's not how we operate.</p>
@@ -348,15 +348,13 @@
     </a>
   </footer>
 
+  <script src="/pages/js/site.js"></script>
   <script>
-    document.querySelectorAll(".nav-link[data-page]").forEach(function(el) {
-      if (el.getAttribute("data-page") === "referral") el.classList.add("active");
-    });
-
     async function submitReferral(e) {
       e.preventDefault();
-      const btn    = document.getElementById("refSubmitBtn");
-      const errEl  = document.getElementById("refError");
+      const btn     = document.getElementById("refSubmitBtn");
+      const errEl   = document.getElementById("refError");
+      const origHTML = btn.innerHTML;
       errEl.style.display = "none";
       btn.disabled = true;
       btn.textContent = "Submitting\u2026";
@@ -383,7 +381,7 @@
         errEl.textContent = err.message || "Something went wrong. Please try again.";
         errEl.style.display = "inline";
         btn.disabled = false;
-        btn.textContent = "Submit Referral \u2192";
+        btn.innerHTML = origHTML;
       }
     }
   </script>
