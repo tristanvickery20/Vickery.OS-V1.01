@@ -857,3 +857,216 @@ body:has(.app-shell) {
   .main-content { padding: 20px 16px; }
   h1 { font-size: 26px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE — matte steel palette
+   Applied via: html.dark  (JS-controlled, respects prefers-color-scheme)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Dark CSS variable overrides */
+html.dark {
+  /* Matte steel-gray palette — darker silver, no gloss */
+  --background:          220 10% 12%;   /* #1a1e24  dark slate   */
+  --foreground:          210 18% 87%;   /* #d3dae4  cool silver  */
+  --primary:             219 74% 60%;   /* #3d82f5  brighter blue for contrast */
+  --primary-foreground:  0   0%  100%;
+  --secondary:           220 10% 17%;   /* #242933  panel bg     */
+  --secondary-foreground:210 18% 87%;
+  --muted:               220 10% 15%;   /* #212630  subtle bg    */
+  --muted-foreground:    220 12% 54%;   /* #7e8da0  dimmed text  */
+  --accent:              219 74% 60%;
+  --accent-foreground:   0   0%  100%;
+  --destructive:         0   80% 65%;
+  --border:              220 10% 22%;   /* #303844  separator    */
+  --input:               220 10% 22%;
+  --ring:                219 74% 60%;
+  --brand-blue-dark:     227 73% 45%;
+  --brand-blue-mid:      227 73% 50%;
+  --brand-blue-light:    219 74% 62%;
+}
+
+/* ── Body — flat matte dark, no gradient in dark mode ────────────────────── */
+html.dark body {
+  background: hsl(220 10% 11%);
+  color: hsl(var(--foreground));
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+html.dark .app-header {
+  background: rgba(18, 22, 28, 0.92);
+  border-bottom-color: hsl(var(--border));
+}
+
+/* ── Text logo ────────────────────────────────────────────────────────────── */
+html.dark .ve-logo-name {
+  color: hsl(210 18% 87%);
+  -webkit-text-fill-color: hsl(210 18% 87%);
+}
+html.dark .ve-logo-sub  { color: hsl(var(--brand-blue-light)); }
+
+/* ── Nav Menu pill button ────────────────────────────────────────────────── */
+html.dark .nav-menu-btn {
+  background: hsl(220 10% 20%);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+html.dark .nav-menu-btn:hover {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: #fff;
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.35);
+}
+
+/* ── Dropdown panel ──────────────────────────────────────────────────────── */
+html.dark .nav-dropdown {
+  background: hsl(220 10% 15%);
+  border-color: hsl(var(--border));
+  box-shadow: 0 8px 40px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+}
+html.dark .nav-dropdown-divider {
+  background: hsl(var(--border));
+}
+html.dark .nav-link {
+  color: hsl(var(--foreground));
+}
+html.dark .nav-link:hover {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+}
+html.dark .nav-link.active {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.15);
+}
+
+/* ── Theme toggle button ─────────────────────────────────────────────────── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid hsl(var(--border));
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  transition: border-color .18s, color .18s, background .18s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.theme-toggle:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.07);
+}
+html.dark .theme-toggle {
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+html.dark .theme-toggle:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+}
+
+/* ── Cards with hardcoded white background ───────────────────────────────── */
+html.dark .benefit-card,
+html.dark .card,
+html.dark .q-card,
+html.dark .info-card,
+html.dark .service-card,
+html.dark .review-card,
+html.dark .why-card,
+html.dark .zone-card,
+html.dark .fin-card,
+html.dark .faq-item,
+html.dark .step-card {
+  background: hsl(220 10% 16%) !important;
+  border-color: hsl(var(--border));
+}
+
+/* ── Section / page backgrounds ─────────────────────────────────────────── */
+html.dark .site-hero {
+  background: transparent;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+html.dark .site-footer {
+  border-top-color: hsl(var(--border));
+  background: hsl(220 10% 10%);
+  color: hsl(var(--muted-foreground));
+}
+html.dark .site-footer a { color: hsl(var(--muted-foreground)); }
+html.dark .site-footer a:hover { color: hsl(var(--primary)); }
+
+/* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */
+html.dark .section-divider-icon { opacity: 0.30; }
+html.dark .site-footer::after   { opacity: 0.10; }
+
+/* ── Quote page cards ────────────────────────────────────────────────────── */
+html.dark .q-wrap { background: transparent; }
+html.dark .q-step-card,
+html.dark .q-summary-card,
+html.dark .q-price-card,
+html.dark .q-booking-card {
+  background: hsl(220 10% 16%);
+  border-color: hsl(var(--border));
+}
+html.dark .q-error-box {
+  background: hsl(0 60% 12%);
+  border-color: hsl(0 60% 30%);
+}
+
+/* ── CRM internal app shell — also respect dark ──────────────────────────── */
+html.dark .app-shell,
+html.dark .app-sidebar {
+  background: hsl(220 10% 10%);
+}
+html.dark .app-main { background: hsl(220 10% 12%); }
+html.dark .sidebar-header,
+html.dark .card-header { border-bottom-color: hsl(var(--border)); }
+
+/* ── Inputs in dark mode ─────────────────────────────────────────────────── */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: hsl(220 10% 15%);
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+html.dark table { color: hsl(var(--foreground)); }
+html.dark th    { background: hsl(220 10% 16%); color: hsl(var(--muted-foreground)); }
+html.dark tr:nth-child(even) { background: hsl(220 10% 14%); }
+html.dark tr:hover           { background: hsl(220 10% 17%); }
+
+/* ── Stat tiles / badges ─────────────────────────────────────────────────── */
+html.dark .stat-tile { background: hsl(220 10% 16%); border-color: hsl(var(--border)); }
+
+/* System-preference auto-dark (no manual override set) ───────────────────── */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme-manual]) {
+    --background:          220 10% 12%;
+    --foreground:          210 18% 87%;
+    --primary:             219 74% 60%;
+    --primary-foreground:  0   0%  100%;
+    --secondary:           220 10% 17%;
+    --secondary-foreground:210 18% 87%;
+    --muted:               220 10% 15%;
+    --muted-foreground:    220 12% 54%;
+    --accent:              219 74% 60%;
+    --accent-foreground:   0   0%  100%;
+    --destructive:         0   80% 65%;
+    --border:              220 10% 22%;
+    --input:               220 10% 22%;
+    --ring:                219 74% 60%;
+    --brand-blue-dark:     227 73% 45%;
+    --brand-blue-mid:      227 73% 50%;
+    --brand-blue-light:    219 74% 62%;
+  }
+}

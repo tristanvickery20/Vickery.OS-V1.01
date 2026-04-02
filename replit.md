@@ -16,6 +16,15 @@ Matches the Vickery Electric estimate calculator site:
 - **Style**: Clean, modern, premium - rounded corners, soft shadows, blue-tinted palette
 - **CSS Variables**: All colors use HSL custom properties in `/pages/css/brand.css`
 
+## Dark Mode
+- **Auto**: Reads `prefers-color-scheme: dark` (system setting) automatically
+- **Manual toggle**: Moon/sun icon button injected into every public page header by `site.js`
+- **Anti-flash**: Inline `<script>` injected before CSS link in every page `<head>` to apply `html.dark` class before first paint
+- **Persistence**: `localStorage('theme')` = `'dark'` | `'light'` | (unset = follow system)
+- **Logo swap**: JS swaps `.logo-img` src between `/pages/img/logo.jpg` (light) and `/pages/img/logo-dark.png` (dark)
+- **Dark palette**: matte steel-gray `hsl(220 10% 11%)` background, no gradient. Primary blue brightened to `hsl(219 74% 60%)` for contrast.
+- **Dark image assets**: `pages/img/logo-dark.png`, `pages/img/sword-dark.png`, `pages/img/sword-dark-alt.png`
+
 ## Project Structure
 ```
 index.js              # HTTP server (port 5000), routing, auth guard
