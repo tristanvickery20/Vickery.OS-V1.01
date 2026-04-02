@@ -266,33 +266,110 @@ a.cta:hover {
   box-shadow: 0 6px 22px hsl(var(--primary) / 0.38) !important;
 }
 
-/* ── Sword icon used in place of → arrows ──────────────────────────────── */
-.sword-icon {
+/* ── Sword icon (PNG image replacing → arrows) ──────────────────────────── */
+img.sword-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  transform: rotate(-90deg);
+  mix-blend-mode: screen;
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
-  margin-left: 2px;
+  margin-left: 4px;
+  pointer-events: none;
 }
 
-/* ── Electric flicker on click ─────────────────────────────────────────── */
-@keyframes electricZap {
-  0%   { box-shadow: 0 0 0 0 rgba(120,210,255,0); }
-  7%   { box-shadow: 0 0 14px 7px rgba(130,220,255,0.95), 0 0 28px 14px rgba(80,170,255,0.55); }
-  16%  { box-shadow: 0 0 4px 1px rgba(110,200,255,0.18); }
-  28%  { box-shadow: 0 0 22px 10px rgba(160,235,255,1.0), 0 0 44px 20px rgba(80,170,255,0.65); }
-  40%  { box-shadow: 0 0 5px 2px rgba(110,195,255,0.20); }
-  52%  { box-shadow: 0 0 18px 8px rgba(140,225,255,0.75), 0 0 34px 16px rgba(80,165,255,0.38); }
-  65%  { box-shadow: 0 0 3px 1px rgba(100,190,255,0.08); }
-  78%  { box-shadow: 0 0 10px 4px rgba(120,215,255,0.32), 0 0 20px 8px rgba(80,160,255,0.16); }
-  100% { box-shadow: 0 0 0 0 rgba(120,210,255,0); }
+/* ── Electric flicker — injected child span, no transition interference ──── */
+/* The burst span is appended via JS on click; it has its own animation and   */
+/* no transition, so the flicker is sharp and instantaneous.                   */
+.elec-burst {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  animation: electricBurst 0.72s linear forwards;
 }
 
-.cta-btn.elec-zap,
-.nav-btn-link.elec-zap,
-.service-cta.elec-zap,
-.nav-btn.elec-zap,
-a.cta.elec-zap {
-  animation: electricZap 0.72s ease-out forwards !important;
+@keyframes electricBurst {
+  0%   { box-shadow: none; }
+  6%   { box-shadow: 0 0 0 3px rgba(160,235,255,0.5),
+                     0 0 18px 9px rgba(120,225,255,0.95),
+                     0 0 36px 18px rgba(80,180,255,0.55); }
+  13%  { box-shadow: none; }
+  25%  { box-shadow: 0 0 0 3px rgba(190,245,255,0.65),
+                     0 0 24px 11px rgba(155,235,255,1.0),
+                     0 0 50px 24px rgba(80,185,255,0.65); }
+  35%  { box-shadow: none; }
+  47%  { box-shadow: 0 0 0 2px rgba(160,235,255,0.4),
+                     0 0 20px 9px rgba(145,228,255,0.8),
+                     0 0 40px 19px rgba(80,178,255,0.4); }
+  60%  { box-shadow: none; }
+  74%  { box-shadow: 0 0 14px 6px rgba(130,222,255,0.45),
+                     0 0 28px 12px rgba(80,172,255,0.22); }
+  90%  { box-shadow: none; }
+  100% { box-shadow: none; }
+}
+
+/* ── Hamburger toggle (injected by site.js on mobile) ───────────────────── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid hsl(var(--border));
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.nav-hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: hsl(var(--foreground));
+  border-radius: 2px;
+  transition: transform 0.22s ease, opacity 0.18s ease;
+}
+
+.nav-hamburger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-hamburger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Mobile nav ─────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .nav-hamburger { display: flex; }
+
+  .app-nav:not(.nav-open) {
+    display: none;
+  }
+
+  .app-nav.nav-open .nav-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow-x: unset;
+  }
+
+  .app-nav.nav-open .nav-link {
+    padding: 15px 24px !important;
+    font-size: 16px !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    white-space: normal;
+  }
+
+  .app-nav.nav-open .nav-link.active {
+    border-left: 4px solid hsl(var(--primary));
+    padding-left: 20px !important;
+  }
 }
 
 /* ========== Base typography / layout ========== */

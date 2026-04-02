@@ -1,17 +1,52 @@
 (function () {
   'use strict';
 
-  // ── Electric click animation ───────────────────────────────────────────────
-  // Adds .elec-zap to the clicked element, which triggers the @keyframes
-  // electricZap animation defined in brand.css, then cleans up after.
+  // ── Electric burst on click ───────────────────────────────────────────────
+  // Injects a <span class="elec-burst"> child into the button on click.
+  // Using a child element means the button's own CSS transition never smooths
+  // out the flicker — the burst animates freely with linear timing.
   function wireElectric() {
     var sel = '.cta-btn, .nav-btn-link, .service-cta, .nav-btn, a.cta';
     document.querySelectorAll(sel).forEach(function (el) {
       el.addEventListener('click', function () {
-        el.classList.remove('elec-zap');
-        void el.offsetWidth;          // force style recalc so animation restarts
-        el.classList.add('elec-zap');
-        setTimeout(function () { el.classList.remove('elec-zap'); }, 800);
+        var burst = document.createElement('span');
+        burst.className = 'elec-burst';
+        el.appendChild(burst);
+        setTimeout(function () {
+          if (burst.parentNode) burst.parentNode.removeChild(burst);
+        }, 780);
+      });
+    });
+  }
+
+  // ── Hamburger menu (injected into .header-inner) ──────────────────────────
+  function wireHamburger() {
+    var headerInner = document.querySelector('.header-inner');
+    var appNav      = document.querySelector('.app-nav');
+    if (!headerInner || !appNav) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'nav-hamburger';
+    btn.setAttribute('aria-label', 'Open navigation menu');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = '<span></span><span></span><span></span>';
+
+    var navBtnLink = headerInner.querySelector('.nav-btn-link');
+    headerInner.insertBefore(btn, navBtnLink || null);
+
+    btn.addEventListener('click', function () {
+      var open = appNav.classList.toggle('nav-open');
+      btn.classList.toggle('is-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+    });
+
+    appNav.querySelectorAll('.nav-link').forEach(function (link) {
+      link.addEventListener('click', function () {
+        appNav.classList.remove('nav-open');
+        btn.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Open navigation menu');
       });
     });
   }
@@ -46,15 +81,16 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      wireElectric();
-      wireScrollHint();
-      wireNav();
-    });
-  } else {
+  function init() {
     wireElectric();
+    wireHamburger();
     wireScrollHint();
     wireNav();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
