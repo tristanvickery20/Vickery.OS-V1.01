@@ -543,8 +543,11 @@ img.sword-icon {
   height: 120px;
   width: auto;
   display: block;
+  opacity: 0.55;
+  filter: saturate(0.4) brightness(1.1);
 }
 html.dark .footer-crm-staff {
+  filter: none;
   mix-blend-mode: screen;
   opacity: 0.65;
 }
