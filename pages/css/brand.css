@@ -64,13 +64,20 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid hsl(var(--border));
   height: 64px;
   display: flex;
   align-items: center;
+  transition: background 0.4s ease, border-color 0.4s ease;
+}
+
+/* Scrolled state — header becomes more transparent so page content bleeds through */
+.app-header.is-scrolled {
+  background: rgba(255, 255, 255, 0.50);
+  border-bottom-color: hsl(var(--border) / 0.5);
 }
 
 .header-inner {
@@ -164,7 +171,7 @@ body {
 
 /* Real logo image (JPEG) used on light-background headers */
 .logo-img {
-  height: 34px;
+  height: 44px;
   width: auto;
   display: inline-block;
   object-fit: contain;
@@ -292,6 +299,7 @@ body {
   margin-top: 2px;
   box-sizing: border-box;
   text-decoration: none;
+  position: relative;
 }
 
 /* ── Nav btn (CRM sidebar, kept for internal pages) ─────────────────── */
@@ -392,7 +400,7 @@ img.sword-icon {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 40px 0;
+  margin: 24px 0;
   padding: 0 4px;
 }
 
@@ -451,6 +459,69 @@ img.sword-icon {
   font-size: 11px;
   color: hsl(var(--muted-foreground) / 0.7);
   letter-spacing: 0.04em;
+}
+
+.footer-hours {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.02em;
+}
+
+/* ── Theme toggle row inside nav dropdown ───────────────────────────────── */
+.nav-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.nav-theme-row:hover { background: hsl(var(--primary) / 0.06); }
+html.dark .nav-theme-row:hover { background: hsl(var(--primary) / 0.12); }
+
+.nav-theme-label {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  user-select: none;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 20px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  background: hsl(var(--border));
+  transition: background 0.22s ease;
+  flex-shrink: 0;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.22s ease, background 0.22s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+html.dark .theme-toggle {
+  background: hsl(var(--primary));
+}
+html.dark .theme-toggle::after {
+  transform: translateX(14px);
+  background: #fff;
 }
 
 /* ========== Base typography / layout ========== */
@@ -896,6 +967,10 @@ html.dark .app-header {
   background: rgba(18, 22, 28, 0.92);
   border-bottom-color: hsl(var(--border));
 }
+html.dark .app-header.is-scrolled {
+  background: rgba(18, 22, 28, 0.55);
+  border-bottom-color: hsl(var(--border) / 0.4);
+}
 
 /* ── Text logo ────────────────────────────────────────────────────────────── */
 html.dark .ve-logo-name {
@@ -1001,7 +1076,15 @@ html.dark .site-footer a:hover { color: hsl(var(--primary)); }
 
 /* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */
 html.dark .section-divider-icon { opacity: 0.30; }
-html.dark .site-footer::after   { opacity: 0.10; }
+
+/* Footer watermark — dark mode uses the dark staff image */
+html.dark .site-footer::after {
+  background-image: url('/pages/img/sword-dark-alt.png');
+  mix-blend-mode: screen;
+  opacity: 0.30;
+  width: 54px;
+  height: 82px;
+}
 
 /* ── Quote page cards ────────────────────────────────────────────────────── */
 html.dark .q-wrap { background: transparent; }

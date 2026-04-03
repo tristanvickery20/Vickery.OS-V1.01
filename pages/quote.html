@@ -831,6 +831,75 @@
       from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* ── Dark mode overrides (html.dark) ─────────────────────────────── */
+    html.dark body { background: hsl(220 10% 11%); color: hsl(210 18% 87%); }
+
+    /* Progress bar */
+    html.dark .q-progress { background: hsl(220 10% 16%); }
+
+    /* All white cards / option panels */
+    html.dark .q-type-card,
+    html.dark .q-cat-item,
+    html.dark .q-option-card,
+    html.dark .q-detail-card,
+    html.dark .q-summary-row,
+    html.dark .q-booking-row,
+    html.dark .q-slot-btn,
+    html.dark .q-upload-zone,
+    html.dark .q-note-box,
+    html.dark .q-price-box,
+    html.dark .q-result-card,
+    html.dark .q-confirm-card,
+    html.dark .q-info-row,
+    html.dark .q-total-row,
+    html.dark .q-addons-card,
+    html.dark .q-input-row { background: hsl(220 10% 16%) !important; }
+
+    /* Radio circles */
+    html.dark .q-type-radio { background: hsl(220 10% 20%) !important; }
+    html.dark .q-type-card.selected .q-type-radio { background: hsl(220 10% 20%) !important; }
+
+    /* Selected state border keeps using primary */
+    html.dark .q-type-card,
+    html.dark .q-cat-item { border-color: hsl(220 10% 24%); }
+    html.dark .q-type-card:hover,
+    html.dark .q-cat-item:hover { border-color: hsl(var(--accent)); }
+    html.dark .q-type-card.selected,
+    html.dark .q-cat-item.selected {
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+    }
+
+    /* Time slot buttons */
+    html.dark .q-slot-btn { border-color: hsl(220 10% 24%) !important; }
+    html.dark .q-slot-btn.selected { border-color: hsl(var(--primary)) !important; }
+
+    /* Inputs in quote form */
+    html.dark input[type="text"],
+    html.dark input[type="email"],
+    html.dark input[type="tel"],
+    html.dark input[type="number"],
+    html.dark select,
+    html.dark textarea {
+      background: hsl(220 10% 15%) !important;
+      border-color: hsl(220 10% 24%) !important;
+      color: hsl(210 18% 87%) !important;
+    }
+
+    /* Price summary / totals */
+    html.dark .q-total-label,
+    html.dark .q-booking-label { color: hsl(var(--muted-foreground)); }
+
+    /* Error box in dark */
+    html.dark .q-error-box {
+      background: hsl(0 40% 12%) !important;
+      border-color: hsl(0 50% 28%) !important;
+      color: hsl(0 80% 75%) !important;
+    }
+
+    /* Loading state */
+    html.dark .q-loading { color: hsl(var(--muted-foreground)); }
   </style>
 </head>
 <body>
@@ -850,6 +919,7 @@
     </div>
   </main>
 
+  <script src="/pages/js/site.js"></script>
   <script src="/pages/js/quote.js"></script>
 </body>
 </html>
