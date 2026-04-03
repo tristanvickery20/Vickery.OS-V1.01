@@ -1,102 +1,134 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login &bull; Vickery CRM</title>
-    <link rel="stylesheet" href="/pages/css/brand.css" />
-    <style>
-      .login-wrap {
-        display: flex; align-items: center; justify-content: center;
-        min-height: 80vh;
-      }
-      .login-card {
-        background: white;
-        border-radius: var(--radius);
-        padding: 2.5rem 2.5rem 0;
-        box-shadow: 0 4px 32px hsla(220,60%,20%,0.14);
-        width: 100%; max-width: 380px;
-        text-align: center;
-        overflow: hidden;
-      }
-      .login-card h1 { font-family: var(--font-display); margin-bottom: 0.5rem; }
-      .login-card p { color: hsl(var(--muted-foreground)); margin-bottom: 1.5rem; font-size: 0.9rem; }
-      .login-card input {
-        width: 100%; padding: 0.75rem 1rem; border: 1px solid hsl(var(--border));
-        border-radius: var(--radius); font-size: 1.1rem; text-align: center;
-        letter-spacing: 0.2em; margin-bottom: 1rem;
-      }
-      .login-card input:focus { outline: none; border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsla(var(--ring),0.15); }
-      .login-card button {
-        width: 100%; padding: 0.75rem; border: none; border-radius: var(--radius);
-        font-size: 1rem; font-weight: 600; cursor: pointer;
-      }
-      .login-error {
-        color: hsl(var(--destructive)); font-size: 0.85rem; margin-top: 0.5rem;
-        min-height: 1.2em; margin-bottom: 1.5rem;
-      }
-      .login-logo { display: none; }
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRM &bull; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
 
-      /* ── Electric staff strip at the bottom ─────────────────────────────── */
-      .login-staff {
-        margin: 0 -2.5rem;
-        height: 96px;
-        background: #060c20;
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .login-staff img {
-        height: 420px;
-        width: auto;
-        max-width: none;
-        flex-shrink: 0;
-        transform: rotate(90deg);
-        mix-blend-mode: screen;
-        opacity: 0.92;
-        pointer-events: none;
-        user-select: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="login-wrap">
-      <div class="login-card">
-        <img src="/pages/img/logo.jpg" alt="Vickery Electric" class="logo-img logo-img-lg">
-        <h1>CRM Login</h1>
-        <p>Enter your PIN to access the portal.</p>
-        <form id="loginForm">
-          <input id="pin" type="password" placeholder="PIN" autocomplete="off" autofocus />
-          <button type="submit" class="nav-btn" style="width:100%;padding:0.75rem;border-radius:var(--radius);font-size:1rem;font-weight:600;">Login</button>
-        </form>
-        <div id="error" class="login-error"></div>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: hsl(220 10% 7%);
+    }
 
-        <div class="login-staff">
-          <img src="/pages/img/staff.png" alt="">
-        </div>
-      </div>
-    </div>
-    <script>
-      document.getElementById("loginForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const pin = document.getElementById("pin").value;
-        const errEl = document.getElementById("error");
-        errEl.textContent = "";
-        try {
-          const resp = await fetch("/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pin }),
-          });
-          const data = await resp.json();
-          if (data.ok) { window.location.href = data.redirect || "/clients"; return; }
-          errEl.textContent = data.error || "Invalid PIN.";
-        } catch (err) {
-          errEl.textContent = "Connection error.";
-        }
-      });
-    </script>
-  </body>
+    .crm-login {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px 64px;
+    }
+
+    .crm-logo {
+      width: 220px;
+      height: auto;
+      display: block;
+      margin-bottom: 44px;
+      opacity: 0.92;
+    }
+
+    .crm-form {
+      width: 100%;
+      max-width: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .crm-pin {
+      padding: 14px 18px;
+      border: 1.5px solid hsl(215 25% 20%);
+      border-radius: 12px;
+      font-size: 24px;
+      font-family: var(--font-display);
+      text-align: center;
+      letter-spacing: 0.32em;
+      background: hsl(220 10% 12%);
+      color: hsl(210 20% 90%);
+      margin-bottom: 14px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .crm-pin:focus {
+      outline: none;
+      border-color: hsl(219 74% 58%);
+      box-shadow: 0 0 0 3px hsl(219 74% 58% / 0.14);
+    }
+    .crm-pin::placeholder {
+      color: hsl(215 15% 34%);
+      letter-spacing: 0.06em;
+      font-size: 16px;
+    }
+
+    .crm-btn {
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: hsl(219 74% 52%);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .crm-btn:hover {
+      background: hsl(219 74% 60%);
+      box-shadow: 0 4px 18px hsl(219 74% 52% / 0.35);
+    }
+    .crm-btn:active { transform: scale(0.98); }
+
+    .crm-error {
+      min-height: 22px;
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: hsl(0 75% 66%);
+      text-align: center;
+      font-family: var(--font-body);
+    }
+  </style>
+</head>
+<body>
+  <div class="crm-login">
+    <img src="/pages/img/ve-staff-logo.png" alt="Vickery Electric" class="crm-logo">
+    <form class="crm-form" id="loginForm" autocomplete="off">
+      <input
+        id="pin"
+        class="crm-pin"
+        type="password"
+        placeholder="Enter PIN"
+        autocomplete="new-password"
+        autofocus
+      >
+      <button type="submit" class="crm-btn">Enter</button>
+      <div id="error" class="crm-error"></div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var pin    = document.getElementById('pin').value;
+      var errEl  = document.getElementById('error');
+      errEl.textContent = '';
+      try {
+        var resp = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: pin })
+        });
+        var data = await resp.json();
+        if (data.ok) { window.location.href = data.redirect || '/clients'; return; }
+        errEl.textContent = data.error || 'Invalid PIN.';
+      } catch (err) {
+        errEl.textContent = 'Connection error.';
+      }
+    });
+  </script>
+</body>
 </html>

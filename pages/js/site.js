@@ -213,26 +213,24 @@
             '<span class="footer-hours-closed">Closed</span>' +
           '</div>' +
         '</div>' +
+        '<div class="footer-crm-col">' +
+          '<a href="/login" class="footer-crm-link" title="Staff portal">' +
+            '<img src="/pages/img/sword-dark-alt.png" class="footer-crm-staff" alt="Staff login">' +
+          '</a>' +
+        '</div>' +
       '</div>' +
       '<div class="footer-bottom-bar">' +
         '<span>\u00a9 ' + year + ' Vickery Electric. All rights reserved.</span>' +
         '<span>Licensed &amp; Insured' + teclTxt + '</span>' +
-      '</div>' +
-      '<a href="/login" class="footer-crm-link" title="Staff portal">' +
-        '<img src="/pages/img/sword-dark-alt.png" class="footer-crm-staff" alt="Staff login">' +
-      '</a>';
+      '</div>';
 
     document.querySelectorAll('.site-footer').forEach(function (footer) {
       if (footer.dataset.veBuilt) return;
       footer.dataset.veBuilt = '1';
-      // Override local per-page styles so the dark panel always renders correctly
-      footer.style.padding      = '0';
-      footer.style.borderTop    = 'none';
-      footer.style.textAlign    = 'left';
-      footer.style.background   = 'hsl(222, 55%, 8%)';
-      footer.style.color        = 'hsl(210, 22%, 80%)';
-      footer.style.overflow     = 'hidden';
-      footer.style.position     = 'relative';
+      // Only override layout properties; let page background and color inherit
+      footer.style.padding    = '0';
+      footer.style.textAlign  = 'left';
+      footer.style.position   = 'relative';
       footer.innerHTML = bodyHTML;
     });
   }
