@@ -5,8 +5,10 @@
   var PHONE         = '(409) 555-0100';
   var EMAIL         = 'info@vickeryelectric.com';
   var TECL          = '';          // set to TECL license number when ready
-  var LOGO_LIGHT    = '/pages/img/logo.jpg';
+  var LOGO_LIGHT    = '/pages/img/logo-light.png';
   var LOGO_DARK     = '/pages/img/logo-dark.png';
+  var SWORD_LIGHT   = '/pages/img/sword-light.png';
+  var SWORD_DARK    = '/pages/img/sword-dark-mode.png';
 
   // ── SVG icon snippets ─────────────────────────────────────────────────────
   var ICON_MOON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
@@ -25,6 +27,9 @@
     document.documentElement.classList.toggle('dark', dark);
     document.querySelectorAll('.logo-img').forEach(function (img) {
       img.src = dark ? LOGO_DARK : LOGO_LIGHT;
+    });
+    document.querySelectorAll('.sword-icon, .footer-crm-staff, .section-divider-icon').forEach(function (img) {
+      img.src = dark ? SWORD_DARK : SWORD_LIGHT;
     });
     document.querySelectorAll('.theme-toggle').forEach(function (btn) {
       btn.innerHTML = dark
@@ -215,7 +220,7 @@
         '</div>' +
         '<div class="footer-crm-col">' +
           '<a href="/login" class="footer-crm-link" title="Staff portal">' +
-            '<img src="/pages/img/sword-dark-alt.png" class="footer-crm-staff" alt="Staff login">' +
+            '<img src="/pages/img/sword-light.png" class="footer-crm-staff" alt="Staff login">' +
           '</a>' +
         '</div>' +
       '</div>' +
@@ -232,6 +237,11 @@
       footer.style.textAlign  = 'left';
       footer.style.position   = 'relative';
       footer.innerHTML = bodyHTML;
+      // applyDark runs before wireFooter — correct sword/logo after injection
+      var dark = isDark();
+      footer.querySelectorAll('.footer-crm-staff').forEach(function (img) {
+        img.src = dark ? SWORD_DARK : SWORD_LIGHT;
+      });
     });
   }
 

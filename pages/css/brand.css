@@ -349,12 +349,15 @@ img.sword-icon {
   height: 26px;
   object-fit: contain;
   transform: rotate(-90deg);
-  mix-blend-mode: screen;
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
   margin-left: 4px;
   pointer-events: none;
+}
+/* Dark-mode automatic swap — covers dynamically injected icons */
+html.dark img.sword-icon {
+  content: url('/pages/img/sword-dark-mode.png');
 }
 
 /* ── Electric flicker — injected child span, no transition interference ──── */
@@ -543,13 +546,10 @@ img.sword-icon {
   height: 120px;
   width: auto;
   display: block;
-  opacity: 0.55;
-  filter: saturate(0.4) brightness(1.1);
+  opacity: 0.70;
 }
 html.dark .footer-crm-staff {
-  filter: none;
-  mix-blend-mode: screen;
-  opacity: 0.65;
+  opacity: 0.80;
 }
 
 /* ── Theme toggle — pill button in nav dropdown ─────────────────────────── */

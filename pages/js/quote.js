@@ -242,7 +242,7 @@ function renderSegment() {
     <div class="q-nav-row">
       <div></div>
       <button class="q-btn-next" id="nextSegment" ${S.segment ? "" : "disabled"}>
-        <img src="/pages/img/sword-button.png" alt="Next">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
       </button>
     </div>
     ${NOTE}`;
@@ -288,7 +288,7 @@ function renderCategories() {
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextCategories" ${S.selectedCategories.length ? "" : "disabled"}>
-        <img src="/pages/img/sword-button.png" alt="Next">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
       </button>
     </div>
     ${NOTE}`;
@@ -352,7 +352,7 @@ function renderServices() {
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextService" ${S.selectedServices.length ? "" : "disabled"}>
-        <img src="/pages/img/sword-button.png" alt="Next">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
       </button>
     </div>
     ${NOTE}`;
@@ -392,6 +392,7 @@ function renderQuestions() {
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="seePriceBtn">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         See My Price &rarr;
       </button>
     </div>
@@ -505,6 +506,7 @@ function renderReview() {
     <div class="q-nav-row" style="margin-top:20px;">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="goConfirmBtn" ${S.selectedSlot ? "" : "disabled"}>
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         Confirm Booking &rarr;
       </button>
     </div>
@@ -567,6 +569,7 @@ function renderConfirm() {
       <div class="q-nav-row" style="margin-top:8px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
         <button class="q-btn-next" id="submitLockBtn">
+          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
           Confirm &amp; Book &rarr;
         </button>
       </div>
@@ -592,11 +595,13 @@ function renderPhoto() {
       </label>
       <div id="photoPreview" class="q-photo-preview" style="display:none;"></div>
       <button class="q-btn-next" id="uploadPhotoBtn" style="display:none;margin-top:12px;width:100%;">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         Upload Photo
       </button>
       <div id="photoStatus" class="q-photo-status"></div>
     </div>
     <button class="q-btn-next" id="finalizeBtn" style="display:none;margin-top:20px;width:100%;">
+      <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
       Finalize Booking &rarr;
     </button>`;
 }
