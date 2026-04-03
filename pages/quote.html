@@ -900,6 +900,154 @@
 
     /* Loading state */
     html.dark .q-loading { color: hsl(var(--muted-foreground)); }
+
+    /* Missing white backgrounds — service cards, qty, options, addons, slots, etc. */
+    html.dark .q-svc-card,
+    html.dark .q-svc-item,
+    html.dark .q-qty-wrap,
+    html.dark .q-qty-btn,
+    html.dark .q-card-section,
+    html.dark .q-option,
+    html.dark .q-text-input,
+    html.dark .q-input,
+    html.dark .q-addon,
+    html.dark .q-slot,
+    html.dark .q-block-day,
+    html.dark .q-block-btn,
+    html.dark .q-confirm-summary,
+    html.dark .q-photo-gate { background: hsl(220 10% 16%) !important; }
+    html.dark .q-svc-card { border-color: hsl(220 10% 24%); }
+    html.dark .q-option { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); }
+    html.dark .q-option.selected { background: hsl(var(--primary) / 0.12) !important; color: hsl(var(--primary)); }
+    html.dark .q-addon { border-color: hsl(220 10% 24%); }
+    html.dark .q-addon.selected { background: hsl(var(--primary) / 0.12) !important; }
+    html.dark .q-slot { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); }
+    html.dark .q-slot.selected { background: hsl(var(--primary)) !important; color: #fff; }
+    html.dark .q-block-btn { border-color: hsl(220 10% 24%); }
+    html.dark .q-block-btn.selected { background: hsl(var(--primary)) !important; }
+    html.dark .q-qty-btn { border-color: hsl(var(--primary)); color: hsl(var(--primary)); }
+    html.dark .q-text-input,
+    html.dark .q-input {
+      border-color: hsl(220 10% 24%) !important;
+      color: hsl(210 18% 87%) !important;
+    }
+    html.dark .q-price-update {
+      background: hsl(142 40% 10%) !important;
+      border-color: hsl(142 40% 22%) !important;
+      color: hsl(142 50% 70%) !important;
+    }
+    html.dark .q-err {
+      background: hsl(0 40% 12%) !important;
+      border-color: hsl(0 50% 28%) !important;
+      color: hsl(0 80% 75%) !important;
+    }
+
+    /* ── Pill / card spark-appear animation ──────────────────────────── */
+    /*
+       Technique: parent uses visibility:hidden (not opacity:0) so the
+       ::before pseudo-element can be shown independently (visibility
+       is inherited but can be overridden on children; opacity cannot).
+    */
+    @keyframes sparkGlow {
+      0%   { box-shadow: 0 0 0 2px hsl(219 74% 60% / 0.85),
+                         0 0 22px 8px hsl(219 74% 60% / 0.45); opacity: 1; }
+      35%  { box-shadow: 0 0 0 1px hsl(219 74% 60% / 0.35),
+                         0 0 10px 3px hsl(219 74% 60% / 0.18); opacity: 0.55; }
+      75%  { box-shadow: none; opacity: 0.1; }
+      100% { box-shadow: none; opacity: 0; }
+    }
+    @keyframes cardAppear {
+      from { visibility: visible; opacity: 0; transform: translateY(5px); }
+      to   { visibility: visible; opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardRevealVis {
+      from { visibility: hidden; }
+      1%   { visibility: visible; }
+      to   { visibility: visible; }
+    }
+
+    /* Apply to every interactive card/pill that appears inside stepContent */
+    #stepContent .q-type-card,
+    #stepContent .q-cat-item,
+    #stepContent .q-svc-card,
+    #stepContent .q-option,
+    #stepContent .q-addon,
+    #stepContent .q-block-btn {
+      position: relative;  /* required for ::before positioning */
+      visibility: hidden;
+      opacity: 0;
+      animation:
+        cardRevealVis 0.55s ease forwards,
+        cardAppear    0.32s ease forwards;
+      animation-delay: var(--sp-d, 0.05s), var(--sp-f, 0.22s);
+    }
+
+    /* Spark glow via ::before (visible even when parent is visibility:hidden) */
+    #stepContent .q-type-card::before,
+    #stepContent .q-cat-item::before,
+    #stepContent .q-svc-card::before,
+    #stepContent .q-option::before,
+    #stepContent .q-addon::before,
+    #stepContent .q-block-btn::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 16px;
+      pointer-events: none;
+      z-index: 3;
+      visibility: visible;
+      animation: sparkGlow 0.52s ease forwards;
+      animation-delay: var(--sp-d, 0.05s);
+    }
+
+    /* Stagger each nth-child (up to 8 items) */
+    #stepContent .q-type-list  > *:nth-child(1),
+    #stepContent .q-cat-list   > *:nth-child(1),
+    #stepContent .q-svc-list   > *:nth-child(1),
+    #stepContent .q-addons     > *:nth-child(1),
+    #stepContent .q-options    > *:nth-child(1) { --sp-d: 0.04s; --sp-f: 0.20s; }
+
+    #stepContent .q-type-list  > *:nth-child(2),
+    #stepContent .q-cat-list   > *:nth-child(2),
+    #stepContent .q-svc-list   > *:nth-child(2),
+    #stepContent .q-addons     > *:nth-child(2),
+    #stepContent .q-options    > *:nth-child(2) { --sp-d: 0.13s; --sp-f: 0.29s; }
+
+    #stepContent .q-type-list  > *:nth-child(3),
+    #stepContent .q-cat-list   > *:nth-child(3),
+    #stepContent .q-svc-list   > *:nth-child(3),
+    #stepContent .q-addons     > *:nth-child(3),
+    #stepContent .q-options    > *:nth-child(3) { --sp-d: 0.22s; --sp-f: 0.38s; }
+
+    #stepContent .q-type-list  > *:nth-child(4),
+    #stepContent .q-cat-list   > *:nth-child(4),
+    #stepContent .q-svc-list   > *:nth-child(4),
+    #stepContent .q-addons     > *:nth-child(4),
+    #stepContent .q-options    > *:nth-child(4) { --sp-d: 0.31s; --sp-f: 0.47s; }
+
+    #stepContent .q-type-list  > *:nth-child(5),
+    #stepContent .q-cat-list   > *:nth-child(5),
+    #stepContent .q-svc-list   > *:nth-child(5),
+    #stepContent .q-addons     > *:nth-child(5),
+    #stepContent .q-options    > *:nth-child(5) { --sp-d: 0.40s; --sp-f: 0.56s; }
+
+    #stepContent .q-type-list  > *:nth-child(6),
+    #stepContent .q-cat-list   > *:nth-child(6),
+    #stepContent .q-svc-list   > *:nth-child(6),
+    #stepContent .q-addons     > *:nth-child(6),
+    #stepContent .q-options    > *:nth-child(6) { --sp-d: 0.49s; --sp-f: 0.65s; }
+
+    #stepContent .q-type-list  > *:nth-child(7),
+    #stepContent .q-cat-list   > *:nth-child(7),
+    #stepContent .q-svc-list   > *:nth-child(7),
+    #stepContent .q-addons     > *:nth-child(7),
+    #stepContent .q-options    > *:nth-child(7) { --sp-d: 0.58s; --sp-f: 0.74s; }
+
+    #stepContent .q-type-list  > *:nth-child(8),
+    #stepContent .q-cat-list   > *:nth-child(8),
+    #stepContent .q-svc-list   > *:nth-child(8),
+    #stepContent .q-addons     > *:nth-child(8),
+    #stepContent .q-options    > *:nth-child(8) { --sp-d: 0.67s; --sp-f: 0.83s; }
   </style>
 </head>
 <body>

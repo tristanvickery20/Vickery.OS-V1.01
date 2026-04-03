@@ -148,6 +148,14 @@ All public pages share the same 8-link nav (Home / Services / Service Area / Why
 ## Architecture Note
 - **Pipeline view**: `/clients` is the single pipeline entry point, powered directly by the Leads tab. `handleGetClients` reads from `readTab("Leads")` and returns lead rows shaped as pipeline items. Each row links to `/crm/lead?id=<lead.id>`. The Clients/Properties tabs are still intact for `handleGetClientById` and sub-resource endpoints.
 
+## Public Site UI (brand.css + site.js)
+- **Dark mode logo**: 2× size (88px height) in dark mode, header auto-height
+- **Theme toggle**: Pill button in nav dropdown (moon/sun SVG + "Dark mode" / "Light mode" text) — not a sliding switch
+- **Footer**: Always-dark brand navy panel (`hsl(222,55%,8%)`). Two-column layout: Contact Info (phone + email with blue SVG icon rings) + Office Hours (Mon–Fri 7–5, Sat/Sun closed). Bottom bar: copyright + license. Staff image (`sword-dark-alt.png`) as CRM link (absolute right, mix-blend-mode: screen). Fully rebuilt by `wireFooter()` in site.js via innerHTML replace + inline style overrides.
+- **Config constants in site.js**: `PHONE`, `EMAIL`, `TECL` (set when license number available), `LOGO_LIGHT`, `LOGO_DARK`
+- **Quote page spark animation**: Cards/pills in `#stepContent` use `visibility:hidden` (not `opacity:0`) so `::before` pseudo-element can show an independent blue glow spark before each card fades in; staggered `--sp-d` CSS variable delays via nth-child (up to 8 items)
+- **Quote page dark mode**: Comprehensive overrides for all `background: white` elements — svc cards, qty controls, option pills, addon cards, slots, block-day panels, confirm summary, photo gate, input fields, price-update boxes, error boxes
+
 ## Recent Changes
 - 2026-03-09: Estimator Accuracy Fix Round 1 — CRIT-1: enriched /quote module answers now wire into V2 pricing engine (effect_type/effect_value); CRIT-2: instant-estimate now passes answersByModule to getBasePrice() and resolves module multipliers into selectedDriverOptions; CRIT-3: Driver_Multipliers sheet patched with 11 missing rows (CEILING_HT Under/Mid/High, ATTIC_ACCESS Yes/Limited/Not sure, WALL_TYPE Drywall/Tile/Wood, HOME_OCC Yes/No); CRIT-7: server-side disqualify guard in handleQuoteCalc + handleQuoteLock catches commercial/brick/etc. via resolveModuleAnswers(); HIGH-1: material_path_report.md documents 40 zero-cost placeholder rows needing pricing data. New deliverables: scripts/patch-driver-multipliers.js (idempotent), estimator_fix_round_1_report.md, estimator_driver_mapping.json, material_path_report.md.
 - 2026-03-02: Redesigned /quote UI — multi-select categories (checkmark badge), qty +/- per service, price+slots on same review screen (before lead info), lead form moved to confirm step, ZIP triggers live reprice with qty-adjusted total; GET /api/schedule/slots now accepts ?minutes=N for pre-lock slot browsing; profit calculator and CRM untouched
