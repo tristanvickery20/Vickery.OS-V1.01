@@ -82,6 +82,77 @@ async function appendSnapshot(sheets, fields) {
   });
 }
 
+// ── Lead upsert on lock ───────────────────────────────────────────────────────
+// Creates or updates the Lead row so schedule-book can find it by last_quote_id.
+// Non-fatal: any Sheets error is logged but does not break the quote response.
+async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing }) {
+  try {
+    const sheetId  = SPREADSHEET_ID();
+    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Leads!A1:Z2000" });
+    const rows     = leadsRes.data.values || [];
+    const headers  = rows[0] || [];
+    const idxOf    = h => headers.indexOf(h);
+    const phoneIdx = idxOf("phone");
+
+    // Try to find existing lead by phone (digits-only match)
+    let foundRowIdx = -1;
+    const cleanPhone = String(phone || "").replace(/\D/g, "");
+    if (cleanPhone) {
+      for (let i = 1; i < rows.length; i++) {
+        const rPhone = String(rows[i][phoneIdx] || "").replace(/\D/g, "");
+        if (rPhone === cleanPhone) { foundRowIdx = i; break; }
+      }
+    }
+
+    if (foundRowIdx !== -1) {
+      // Update existing lead — set last_quote_id and refresh pricing
+      const row = [...(rows[foundRowIdx] || [])];
+      while (row.length < headers.length) row.push("");
+      const set = (h, v) => { const i = idxOf(h); if (i >= 0) row[i] = v; };
+      set("last_quote_id",   quote_id);
+      set("quoted_price",    String(pricing.final_price || ""));
+      set("estimated_value", String(pricing.final_price || ""));
+      set("pricing_version", pricing.pricing_version || "v2");
+      if (!row[idxOf("name")]    && customer_name) set("name",    customer_name);
+      if (!row[idxOf("address")] && address)       set("address", address);
+      const sIdx = idxOf("status");
+      if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range:         `Leads!A${foundRowIdx + 1}`,
+        valueInputOption: "RAW",
+        requestBody:   { majorDimension: "ROWS", values: [row] },
+      });
+      console.log(`[quote/lock] Updated Lead row ${foundRowIdx + 1} last_quote_id=${quote_id}`);
+    } else {
+      // Create new lead
+      const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+      const now    = nowIso();
+      const newRow = new Array(Math.max(headers.length, 27)).fill("");
+      const set = (h, v) => { const i = idxOf(h); if (i >= 0) newRow[i] = v; };
+      set("id",              leadId);
+      set("created_at",      now);
+      set("name",            customer_name || "");
+      set("phone",           phone         || "");
+      set("address",         address       || "");
+      set("job_type",        job_type_id   || "");
+      set("estimated_value", String(pricing.final_price || ""));
+      set("status",          "Estimate Sent");
+      set("quoted_price",    String(pricing.final_price || ""));
+      set("pricing_version", pricing.pricing_version || "v2");
+      set("last_quote_id",   quote_id);
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId, range: "Leads!A:A",
+        valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+        requestBody: { majorDimension: "ROWS", values: [newRow] },
+      });
+      console.log(`[quote/lock] Created Lead ${leadId} last_quote_id=${quote_id}`);
+    }
+  } catch (err) {
+    console.error("[quote/lock/upsertLead]", err.message);
+  }
+}
+
 // ── Option resolvers ──────────────────────────────────────────────────────────
 
 // V1 — resolve AnswerOption objects from config
@@ -454,6 +525,9 @@ async function handleQuoteLock(req, res) {
       email:                 email         || "",
       address:               address       || "",
     });
+
+    // Upsert the Lead row so the booking can find it by last_quote_id
+    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing });
 
     json(res, 200, lockResponse);
   } catch (err) {
