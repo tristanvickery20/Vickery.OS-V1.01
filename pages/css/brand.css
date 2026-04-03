@@ -171,7 +171,7 @@ body {
 
 /* Real logo image (JPEG) used on light-background headers */
 .logo-img {
-  height: 52px;
+  height: 36px;
   width: auto;
   display: inline-block;
   object-fit: contain;
@@ -1107,7 +1107,7 @@ html.dark .site-hero {
 
 /* ── Dark mode logo ──────────────────────────────────────────────────────── */
 html.dark .logo-img {
-  height: 52px;
+  height: 36px;
 }
 html.dark .app-header {
   height: auto;

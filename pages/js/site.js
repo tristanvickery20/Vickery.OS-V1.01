@@ -5,10 +5,12 @@
   var PHONE         = '(409) 555-0100';
   var EMAIL         = 'info@vickeryelectric.com';
   var TECL          = '';          // set to TECL license number when ready
-  var LOGO_LIGHT    = '/pages/img/logo-light.png';
-  var LOGO_DARK     = '/pages/img/logo-dark.png';
-  var SWORD_LIGHT   = '/pages/img/sword-light.png';
-  var SWORD_DARK    = '/pages/img/sword-dark-mode.png';
+  var LOGO_LIGHT    = '/pages/img/header-logo-light.png';   // nav header — text only, blue
+  var LOGO_DARK     = '/pages/img/header-logo-dark.png';    // nav header — text only, dark
+  var SWORD_LIGHT   = '/pages/img/sword-light.png';         // sword arrows & dividers — blue
+  var SWORD_DARK    = '/pages/img/sword-dark-mode.png';     // sword arrows & dividers — dark
+  var STAFF_LIGHT   = '/pages/img/staff-light.png';         // footer staff — blue
+  var STAFF_DARK    = '/pages/img/staff-dark.png';          // footer staff — dark
 
   // ── SVG icon snippets ─────────────────────────────────────────────────────
   var ICON_MOON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
@@ -28,8 +30,14 @@
     document.querySelectorAll('.logo-img').forEach(function (img) {
       img.src = dark ? LOGO_DARK : LOGO_LIGHT;
     });
-    document.querySelectorAll('.sword-icon, .footer-crm-staff, .section-divider-icon').forEach(function (img) {
+    document.querySelectorAll('.sword-icon, .section-divider-icon').forEach(function (img) {
       img.src = dark ? SWORD_DARK : SWORD_LIGHT;
+    });
+    document.querySelectorAll('.footer-crm-staff').forEach(function (img) {
+      img.src = dark ? STAFF_DARK : STAFF_LIGHT;
+    });
+    document.querySelectorAll('.booked-ve-logo').forEach(function (img) {
+      img.src = dark ? '/pages/img/logo-dark.png' : '/pages/img/logo-light.png';
     });
     document.querySelectorAll('.theme-toggle').forEach(function (btn) {
       btn.innerHTML = dark
@@ -220,7 +228,7 @@
         '</div>' +
         '<div class="footer-crm-col">' +
           '<a href="/login" class="footer-crm-link" title="Staff portal">' +
-            '<img src="/pages/img/sword-light.png" class="footer-crm-staff" alt="Staff login">' +
+            '<img src="/pages/img/staff-light.png" class="footer-crm-staff" alt="Staff login">' +
           '</a>' +
         '</div>' +
       '</div>' +
@@ -240,7 +248,7 @@
       // applyDark runs before wireFooter — correct sword/logo after injection
       var dark = isDark();
       footer.querySelectorAll('.footer-crm-staff').forEach(function (img) {
-        img.src = dark ? SWORD_DARK : SWORD_LIGHT;
+        img.src = dark ? STAFF_DARK : STAFF_LIGHT;
       });
     });
   }

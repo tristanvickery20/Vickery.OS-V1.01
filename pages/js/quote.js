@@ -665,7 +665,7 @@ function renderBooked() {
   return `
     <div class="q-booked">
       <div class="q-booked-icon">
-        <img src="${veLogoSrc}" class="logo-img booked-ve-logo" alt="Vickery Electric">
+        <img src="${veLogoSrc}" class="booked-ve-logo" alt="Vickery Electric">
       </div>
       <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;">You're Booked!</h2>
       <p class="q-muted" style="margin-bottom:24px;">Here's your confirmation. We'll see you soon.</p>
