@@ -523,14 +523,14 @@ function renderConfirm() {
     ${stepHeader(5, "Your Information")}
     <div class="q-confirm-summary">
       <div class="q-confirm-row">
-        <span class="q-confirm-icon">&#128197;</span>
+        <span class="q-confirm-icon">${_SVG_CLOCK}</span>
         <div>
           <div class="q-confirm-key">Appointment Window</div>
           <div class="q-confirm-val">${escHtml(blockDisplay)}${blockWindow ? ` &bull; Arrival ${escHtml(blockWindow)}` : ""}</div>
         </div>
       </div>
       <div class="q-confirm-row">
-        <span class="q-confirm-icon">&#128181;</span>
+        <span class="q-confirm-icon">${_SVG_BOLT}</span>
         <div>
           <div class="q-confirm-key">Estimated Price</div>
           <div class="q-confirm-val">
@@ -607,7 +607,15 @@ function renderPhoto() {
 }
 
 // ── Step 8: Booked ────────────────────────────────────────────────────────────
+const _SVG_DATE  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));vertical-align:-2px;margin-right:5px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const _SVG_CLOCK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));vertical-align:-2px;margin-right:5px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>`;
+const _SVG_PIN   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));vertical-align:-2px;margin-right:5px;flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+const _SVG_BOLT  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color:hsl(var(--primary));vertical-align:-2px;margin-right:5px;flex-shrink:0;"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>`;
+const _SVG_TAG   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));vertical-align:-2px;margin-right:5px;flex-shrink:0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+
 function renderBooked() {
+  const dark         = document.documentElement.classList.contains('dark');
+  const veLogoSrc    = dark ? '/pages/img/logo-dark.png' : '/pages/img/logo-light.png';
   const bk           = S.booking;
   const displayPrice = S.lock?.final_price ?? bk?.final_price;
 
@@ -639,7 +647,7 @@ function renderBooked() {
     }).join("");
     windowSection = `
       <div class="q-booking-row" style="align-items:flex-start;">
-        <span class="q-booking-key">&#128336; Schedule</span>
+        <span class="q-booking-key">${_SVG_CLOCK} Schedule</span>
         <span class="q-booking-val">
           <span style="display:block;font-size:13px;color:#555;margin-bottom:4px;">This job spans multiple blocks:</span>
           ${blockLines}
@@ -649,32 +657,34 @@ function renderBooked() {
     const windowDisplay = windowLabel ? `Arrival window: ${windowLabel} (Central)` : "";
     windowSection = `
       <div class="q-booking-row">
-        <span class="q-booking-key">&#128336; Window</span>
+        <span class="q-booking-key">${_SVG_CLOCK} Window</span>
         <span class="q-booking-val">${escHtml(windowDisplay || blockLabel)}</span>
       </div>`;
   }
 
   return `
     <div class="q-booked">
-      <div class="q-booked-icon">&#127881;</div>
+      <div class="q-booked-icon">
+        <img src="${veLogoSrc}" class="logo-img booked-ve-logo" alt="Vickery Electric">
+      </div>
       <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;">You're Booked!</h2>
       <p class="q-muted" style="margin-bottom:24px;">Here's your confirmation. We'll see you soon.</p>
       <div class="q-booking-card">
         <div class="q-booking-row">
-          <span class="q-booking-key">&#128197; Date</span>
+          <span class="q-booking-key">${_SVG_DATE} Date</span>
           <span class="q-booking-val">${escHtml(dateStr)}</span>
         </div>
         ${windowSection}
         <div class="q-booking-row">
-          <span class="q-booking-key">&#128205; Address</span>
+          <span class="q-booking-key">${_SVG_PIN} Address</span>
           <span class="q-booking-val">${escHtml(bk?.address || "")}</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">&#128181; Price</span>
+          <span class="q-booking-key">${_SVG_BOLT} Price</span>
           <span class="q-booking-val">$${Number(displayPrice || 0).toLocaleString()} locked</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">&#129534; ID</span>
+          <span class="q-booking-key">${_SVG_TAG} ID</span>
           <span class="q-booking-val" style="font-family:monospace;font-size:12px;">${escHtml(bk?.booking_id || "")}</span>
         </div>
       </div>

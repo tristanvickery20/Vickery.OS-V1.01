@@ -171,7 +171,7 @@ body {
 
 /* Real logo image (JPEG) used on light-background headers */
 .logo-img {
-  height: 44px;
+  height: 52px;
   width: auto;
   display: inline-block;
   object-fit: contain;
@@ -1082,36 +1082,7 @@ html.dark .nav-link.active {
   background: hsl(var(--primary) / 0.15);
 }
 
-/* ── Theme toggle button ─────────────────────────────────────────────────── */
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1.5px solid hsl(var(--border));
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  color: hsl(var(--muted-foreground));
-  transition: border-color .18s, color .18s, background .18s;
-  flex-shrink: 0;
-  padding: 0;
-}
-.theme-toggle:hover {
-  border-color: hsl(var(--primary));
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.07);
-}
-html.dark .theme-toggle {
-  border-color: hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-}
-html.dark .theme-toggle:hover {
-  border-color: hsl(var(--primary));
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.12);
-}
+/* ── Theme toggle button — defined above near .nav-theme-row ─────────────── */
 
 /* ── Cards with hardcoded white background ───────────────────────────────── */
 html.dark .benefit-card,
@@ -1134,9 +1105,9 @@ html.dark .site-hero {
   background: transparent;
 }
 
-/* ── Dark mode logo — 2× size ────────────────────────────────────────────── */
+/* ── Dark mode logo ──────────────────────────────────────────────────────── */
 html.dark .logo-img {
-  height: 88px;
+  height: 52px;
 }
 html.dark .app-header {
   height: auto;
