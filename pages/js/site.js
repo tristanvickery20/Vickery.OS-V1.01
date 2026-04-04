@@ -27,7 +27,9 @@
 
   function applyDark(dark) {
     document.documentElement.classList.toggle('dark', dark);
-    // logo stays as light image; CSS filter:invert(1) handles dark mode appearance
+    document.querySelectorAll('.logo-img').forEach(function (img) {
+      img.src = dark ? LOGO_DARK : LOGO_LIGHT;
+    });
     document.querySelectorAll('.sword-icon, .section-divider-icon').forEach(function (img) {
       img.src = dark ? SWORD_DARK : SWORD_LIGHT;
     });

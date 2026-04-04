@@ -1105,9 +1105,16 @@ html.dark .site-hero {
   background: transparent;
 }
 
-/* ── Dark mode logo — invert the light logo so it reads white on dark bg ─── */
+/* ── Dark mode logo — match visual width of the light logo ──────────────── */
+/* Light logo renders at ~132px wide (722×197 at 36px height).               */
+/* Dark logo is 612×408; at 130px wide it renders ~87px tall, so we expand   */
+/* the dark header to 92px to give it breathing room.                        */
 html.dark .logo-img {
-  filter: invert(1);
+  width: 130px;
+  height: auto;
+}
+html.dark .app-header {
+  height: 92px;
 }
 
 /* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */
