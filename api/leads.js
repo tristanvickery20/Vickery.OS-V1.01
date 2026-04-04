@@ -381,4 +381,111 @@ async function handleCreateLead(req, res) {
   }
 }
 
-module.exports = { handleCreateLead, handleGetLeads };
+// ── Lead snapshot breakdown ──────────────────────────────────────────────────
+// GET /api/lead-snapshot?quote_id=XXX
+// Returns the customer's quote answers resolved to human-readable labels,
+// plus pricing summary, for display on the CRM lead detail page.
+async function handleGetLeadSnapshot(req, res) {
+  try {
+    const qs       = new URL(req.url, "http://x").searchParams;
+    const quoteId  = (qs.get("quote_id") || "").trim();
+    if (!quoteId) return json400(res, "quote_id required");
+
+    const sheets        = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const [snapData, estCfg] = await Promise.all([
+      fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A:U"),
+      require("../lib/estimatorModulesConfig").getEstimatorConfig().catch(() => ({ modulesById: {}, services: [] })),
+    ]);
+
+    const { modulesById, services } = estCfg;
+
+    // Find best snapshot row — prefer "locked" event, otherwise any row for that quote_id
+    const allRows = (snapData.rows || []).map(r => {
+      const obj = {};
+      (snapData.headers || []).forEach((h, i) => { obj[String(h).trim()] = String(r[i] ?? ""); });
+      return obj;
+    }).filter(r => r.quote_id === quoteId);
+
+    const snap = allRows.find(r => r.event_type === "locked") || allRows[allRows.length - 1];
+    if (!snap) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Snapshot not found" }));
+    }
+
+    // Resolve job type label
+    const svc = (services || []).find(s => s.service_id === snap.job_type_id);
+    const jobTypeLabel = svc ? svc.service_name : snap.job_type_id || "Unknown Service";
+
+    // Parse selected_options_json — shape: { answers: { MODULE_ID: "value" }, qty, classification }
+    let answers = {};
+    let qty = 1;
+    let classification = "";
+    let selectedAddons = [];
+    try {
+      const raw = JSON.parse(snap.selected_options_json || "{}");
+      if (Array.isArray(raw)) {
+        // Old format — nothing useful to show
+      } else {
+        answers        = raw.answers        || {};
+        qty            = raw.qty            || 1;
+        classification = raw.classification || "";
+      }
+    } catch { /* ignore */ }
+
+    try { selectedAddons = JSON.parse(snap.selected_addons_json || "[]"); } catch { selectedAddons = []; }
+
+    // Modules to suppress (photo uploads / internal only)
+    const SKIP_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
+
+    // Resolve each answer to a human-readable Q&A pair
+    const qaLines = [];
+    for (const [moduleId, value] of Object.entries(answers)) {
+      if (!value || value === "_unsure" || value === "" || SKIP_MODULES.has(moduleId)) continue;
+      const mod = modulesById[moduleId];
+      const question = mod ? mod.question : moduleId.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      let answer = String(value);
+      if (mod && mod.options && mod.options.length) {
+        const opt = mod.options.find(o => o.value === value || o.option_id === value);
+        if (opt) answer = opt.label || String(value);
+      }
+      qaLines.push({ question, answer });
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      ok: true,
+      quote_id:       snap.quote_id,
+      job_type_id:    snap.job_type_id,
+      job_type_label: jobTypeLabel,
+      qty:            Number(qty) || 1,
+      classification,
+      customer_name:  snap.customer_name,
+      phone:          snap.phone,
+      email:          snap.email,
+      address:        snap.address,
+      notes:          snap.notes,
+      pricing: {
+        final_price:        parseNum(snap.final_price),
+        total_hours:        parseNum(snap.total_hours),
+        labor_cost:         parseNum(snap.labor_cost),
+        material_allowance: parseNum(snap.material_allowance),
+        travel_fee:         parseNum(snap.travel_fee),
+        overhead_cost:      parseNum(snap.overhead_cost),
+      },
+      answers: qaLines,
+      addons: selectedAddons,
+    }));
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: err.message }));
+  }
+}
+
+function json400(res, msg) {
+  res.writeHead(400, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: false, error: msg }));
+}
+
+module.exports = { handleCreateLead, handleGetLeads, handleGetLeadSnapshot };

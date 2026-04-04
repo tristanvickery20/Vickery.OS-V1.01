@@ -85,12 +85,7 @@
 
     const balance = Math.max(0, Number(lead.quoted_price || 0) - Number(lead.paid_amount || 0));
 
-    const hasSnapshot = !!lead.quote_snapshot_json;
-    let snapHtml = '';
-    if (hasSnapshot) {
-      try { snapHtml = JSON.stringify(JSON.parse(lead.quote_snapshot_json), null, 2); }
-      catch { snapHtml = lead.quote_snapshot_json; }
-    }
+    const hasQuoteId = !!lead.last_quote_id;
 
     root.innerHTML = `
       <div class="ld-hero">
@@ -166,11 +161,11 @@
             <div class="ld-msg" id="ldNoteMsg"></div>
           </div>
 
-          ${hasSnapshot ? `
-          <!-- Quote Snapshot -->
-          <div class="ld-card">
-            <div class="ld-card-title">Quote Snapshot</div>
-            <pre class="ld-snapshot-pre">${esc(snapHtml)}</pre>
+          ${hasQuoteId ? `
+          <!-- Quote Breakdown -->
+          <div class="ld-card" id="ldSnapshotCard">
+            <div class="ld-card-title">Quote Breakdown</div>
+            <div id="ldSnapshotContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading answers…</div>
           </div>` : ''}
 
         </div>
@@ -219,6 +214,74 @@
     `;
 
     attachEvents(lead);
+    if (hasQuoteId) loadSnapshot(lead.last_quote_id);
+  }
+
+  async function loadSnapshot(quoteId) {
+    const el = document.getElementById('ldSnapshotContent');
+    if (!el) return;
+    try {
+      const data = await window.Api.fetchJson('/api/lead-snapshot?quote_id=' + encodeURIComponent(quoteId));
+      if (!data.ok) {
+        el.innerHTML = `<span style="opacity:.6;">No snapshot found for this quote.</span>`;
+        return;
+      }
+
+      const p = data.pricing || {};
+      const qaLines = data.answers || [];
+
+      let html = '';
+
+      // Service + quantity header
+      html += `<div style="margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:700;color:hsl(var(--foreground));">${esc(data.job_type_label)}</div>
+        ${data.qty > 1 ? `<div style="font-size:12px;margin-top:2px;color:hsl(var(--muted-foreground));">Quantity: ${data.qty}</div>` : ''}
+        ${data.classification && data.classification !== 'standard' ? `<div style="font-size:12px;margin-top:2px;color:hsl(var(--muted-foreground));">Scope: ${esc(data.classification)}</div>` : ''}
+      </div>`;
+
+      // Q&A table
+      if (qaLines.length) {
+        html += `<div class="ld-qa-list">`;
+        for (const qa of qaLines) {
+          html += `
+            <div class="ld-qa-row">
+              <div class="ld-qa-q">${esc(qa.question)}</div>
+              <div class="ld-qa-a">${esc(qa.answer)}</div>
+            </div>`;
+        }
+        html += `</div>`;
+      } else {
+        html += `<div style="opacity:.6;font-size:13px;margin-bottom:10px;">No question answers recorded.</div>`;
+      }
+
+      // Customer notes from quote form
+      if (data.notes) {
+        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border));">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground));margin-bottom:4px;">Customer Notes</div>
+          <div style="font-size:13px;color:hsl(var(--foreground));">${esc(data.notes)}</div>
+        </div>`;
+      }
+
+      // Pricing summary (collapsible detail)
+      if (p.final_price > 0) {
+        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border));">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground));margin-bottom:8px;">Pricing Detail</div>
+          <div class="ld-snap-price-grid">
+            ${p.total_hours   > 0 ? `<span class="ld-sp-label">Est. Hours</span><span class="ld-sp-val">${Number(p.total_hours).toFixed(1)} h</span>` : ''}
+            ${p.labor_cost    > 0 ? `<span class="ld-sp-label">Labor</span><span class="ld-sp-val">${fmt$(p.labor_cost)}</span>` : ''}
+            ${p.material_allowance > 0 ? `<span class="ld-sp-label">Materials</span><span class="ld-sp-val">${fmt$(p.material_allowance)}</span>` : ''}
+            ${p.travel_fee    > 0 ? `<span class="ld-sp-label">Travel</span><span class="ld-sp-val">${fmt$(p.travel_fee)}</span>` : ''}
+            ${p.overhead_cost > 0 ? `<span class="ld-sp-label">Overhead</span><span class="ld-sp-val">${fmt$(p.overhead_cost)}</span>` : ''}
+            <span class="ld-sp-label" style="font-weight:700;">Total Quote</span>
+            <span class="ld-sp-val" style="font-weight:700;color:hsl(var(--primary));">${fmt$(p.final_price)}</span>
+          </div>
+        </div>`;
+      }
+
+      el.innerHTML = html;
+    } catch (err) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Could not load breakdown: ${esc(err.message)}</span>`;
+    }
   }
 
   function showMsg(id, text, type) {

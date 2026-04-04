@@ -119,11 +119,22 @@
 
       .ld-loading { padding: 48px; text-align: center; color: hsl(var(--muted-foreground)); font-size: 14px; }
 
-      .ld-snapshot-pre {
-        background: hsl(var(--muted)); padding: 14px; border-radius: 10px;
-        font-size: 12px; line-height: 1.5; overflow-x: auto;
-        white-space: pre; max-height: 240px; overflow-y: auto;
+      .ld-qa-list { display: flex; flex-direction: column; gap: 0; }
+      .ld-qa-row {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 4px 12px; padding: 8px 0;
+        border-bottom: 1px solid hsl(var(--border));
+        align-items: start;
       }
+      .ld-qa-row:last-child { border-bottom: none; }
+      .ld-qa-q { font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.4; }
+      .ld-qa-a { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); line-height: 1.4; }
+      .ld-snap-price-grid {
+        display: grid; grid-template-columns: 1fr auto;
+        gap: 4px 16px; align-items: center;
+      }
+      .ld-sp-label { font-size: 12px; color: hsl(var(--muted-foreground)); }
+      .ld-sp-val   { font-size: 13px; font-weight: 600; text-align: right; color: hsl(var(--foreground)); }
 
       .ld-tag { display: inline-block; padding: 2px 10px; border-radius: 20px;
         font-size: 11px; font-weight: 600; background: hsl(var(--primary) / 0.1);

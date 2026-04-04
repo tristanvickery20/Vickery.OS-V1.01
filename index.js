@@ -11,7 +11,7 @@ const { handleGetBlocks }   = require("./api/schedule-blocks");
 const { handleBook }        = require("./api/schedule-book");
 const { handleGetBookings } = require("./api/schedule-admin");
 const { handleSeedQuote }   = require("./api/seed-quote");
-const { handleCreateLead, handleGetLeads } = require("./api/leads");
+const { handleCreateLead, handleGetLeads, handleGetLeadSnapshot } = require("./api/leads");
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
@@ -398,6 +398,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/leads" && req.method === "GET") {
     return handleGetLeads(req, res);
+  }
+
+  if (req.url.startsWith("/api/lead-snapshot") && req.method === "GET") {
+    return handleGetLeadSnapshot(req, res);
   }
 
   if (req.url === "/api/leads/status" && req.method === "PATCH") {
