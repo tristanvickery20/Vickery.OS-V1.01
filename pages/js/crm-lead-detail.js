@@ -307,9 +307,12 @@
     try {
       const data = await window.Api.fetchJson('/api/leads');
       const leads = data.leads || [];
-      const lead  = leads.find(l => String(l.id) === String(leadId));
+      const lead  = leads.find(l =>
+        String(l.id)      === String(leadId) ||
+        String(l.lead_id) === String(leadId)
+      );
       if (!lead) {
-        root.innerHTML = `<div class="ld-loading">Lead not found (ID: ${esc(leadId)}).<br><small>Available IDs: ${leads.slice(0,5).map(l=>esc(l.id)).join(', ')}</small></div>`;
+        root.innerHTML = `<div class="ld-loading">Lead not found.<br><small style="opacity:.6;">Looking for: ${esc(leadId)}<br>Available: ${leads.slice(0,8).map(l=>`${esc(l.id)}${l.lead_id ? ' / '+esc(l.lead_id) : ''}`).join(', ')}</small></div>`;
         return;
       }
       render(lead);

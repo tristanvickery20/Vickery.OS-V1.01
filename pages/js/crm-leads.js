@@ -141,7 +141,7 @@
         tr.innerHTML = `
           <td>${H.esc(lead.id)}</td>
           <td>${H.esc(lead.created_at)}</td>
-          <td>${H.esc(lead.name)}</td>
+          <td>${H.esc(lead.name || '(No name)')}</td>
           <td>${H.esc(lead.phone)}</td>
           <td>${H.esc(lead.job_type)}</td>
           <td>${H.esc(String(lead.deposit_required))}</td>
