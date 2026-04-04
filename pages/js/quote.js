@@ -388,9 +388,8 @@ function renderQuestions() {
     </div>
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-      <button class="q-btn-next" id="seePriceBtn">
+      <button class="q-btn-next" id="seePriceBtn" aria-label="See My Price">
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-        See My Price &rarr;
       </button>
     </div>
     ${NOTE}`;
@@ -565,9 +564,8 @@ function renderConfirm() {
       <div class="q-err" id="leadErr" style="display:none;"></div>
       <div class="q-nav-row" style="margin-top:8px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-        <button class="q-btn-next" id="submitLockBtn">
+        <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book">
           <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-          Confirm &amp; Book &rarr;
         </button>
       </div>
     </div>

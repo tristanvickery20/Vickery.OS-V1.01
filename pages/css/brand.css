@@ -1105,12 +1105,13 @@ html.dark .site-hero {
   background: transparent;
 }
 
-/* ── Dark mode logo ──────────────────────────────────────────────────────── */
+/* ── Dark mode logo — larger to compensate for portrait aspect ratio ─────── */
 html.dark .logo-img {
-  height: 36px;
+  height: 56px;
+  width: auto;
 }
 html.dark .app-header {
-  height: 64px;
+  height: 80px;
 }
 
 /* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */
