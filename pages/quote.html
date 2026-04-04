@@ -370,24 +370,27 @@
     .q-btn-back:hover { color: hsl(var(--foreground)); }
     .q-btn-next {
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0;
+      gap: 2px;
       padding: 0;
       background: transparent;
-      color: transparent;
+      color: hsl(var(--muted-foreground));
       border: none;
       border-radius: 0;
       font-family: var(--font-display);
-      font-size: 15px;
+      font-size: 11px;
       font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       cursor: pointer;
       transition: all 0.15s;
       white-space: nowrap;
-      letter-spacing: -0.01em;
       outline: none;
       box-shadow: none;
     }
+    .q-btn-next:hover:not(:disabled) { color: hsl(var(--foreground)); }
     .q-btn-next img {
       height: 80px;
       width: auto;
@@ -412,6 +415,10 @@
       line-height: 1.5;
     }
     .q-note-bar strong { color: hsl(var(--primary)); }
+    html.dark .q-note-bar {
+      background: hsl(220 10% 16%);
+      border: 1px solid hsl(220 10% 24%);
+    }
 
     /* ── Dark navy price footer card ─────────────────────────────────── */
     .q-price-footer {
@@ -934,6 +941,7 @@
       border-color: hsl(220 10% 24%) !important;
       color: hsl(210 18% 87%) !important;
     }
+    html.dark .q-price-footer { background: hsl(222 47% 16%); }
     html.dark .q-price-update {
       background: hsl(142 40% 10%) !important;
       border-color: hsl(142 40% 22%) !important;

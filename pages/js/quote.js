@@ -242,6 +242,7 @@ function renderSegment() {
     <div class="q-nav-row" style="justify-content:flex-end;">
       <button class="q-btn-next" id="nextSegment" ${S.segment ? "" : "disabled"}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>Next Step</span>
       </button>
     </div>
     ${NOTE}`;
@@ -287,6 +288,7 @@ function renderCategories() {
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextCategories" ${S.selectedCategories.length ? "" : "disabled"}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>Next Step</span>
       </button>
     </div>
     ${NOTE}`;
@@ -350,6 +352,7 @@ function renderServices() {
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="nextService" ${S.selectedServices.length ? "" : "disabled"}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>Next Step</span>
       </button>
     </div>
     ${NOTE}`;
@@ -390,6 +393,7 @@ function renderQuestions() {
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="seePriceBtn" aria-label="See My Price">
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>See My Price</span>
       </button>
     </div>
     ${NOTE}`;
@@ -503,7 +507,7 @@ function renderReview() {
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="goConfirmBtn" ${S.selectedSlot ? "" : "disabled"}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-        Confirm Booking &rarr;
+        <span>Confirm Booking</span>
       </button>
     </div>
     ${NOTE}`;
@@ -566,6 +570,7 @@ function renderConfirm() {
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
         <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book">
           <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+          <span>Confirm &amp; Book</span>
         </button>
       </div>
     </div>
@@ -1220,7 +1225,11 @@ async function submitLock() {
     else await submitBooking();
   } catch (e) {
     show(e.message);
-    if (btn) { btn.disabled = false; btn.textContent = "Confirm & Book \u2192"; }
+    if (btn) {
+      btn.disabled = false;
+      const sw = document.documentElement.classList.contains('dark') ? '/pages/img/sword-dark-mode.png' : '/pages/img/sword-light.png';
+      btn.innerHTML = `<img src="${sw}" class="sword-icon" alt=""><span>Confirm &amp; Book</span>`;
+    }
   }
 }
 
@@ -1301,7 +1310,11 @@ async function submitBooking() {
     const errEl = document.getElementById("leadErr");
     if (errEl) { errEl.textContent = e.message; errEl.style.display = "block"; }
     const btn = document.getElementById("submitLockBtn");
-    if (btn) { btn.disabled = false; btn.textContent = "Confirm & Book \u2192"; }
+    if (btn) {
+      btn.disabled = false;
+      const sw = document.documentElement.classList.contains('dark') ? '/pages/img/sword-dark-mode.png' : '/pages/img/sword-light.png';
+      btn.innerHTML = `<img src="${sw}" class="sword-icon" alt=""><span>Confirm &amp; Book</span>`;
+    }
   }
 }
 

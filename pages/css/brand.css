@@ -1105,13 +1105,9 @@ html.dark .site-hero {
   background: transparent;
 }
 
-/* ── Dark mode logo — larger to compensate for portrait aspect ratio ─────── */
+/* ── Dark mode logo — invert the light logo so it reads white on dark bg ─── */
 html.dark .logo-img {
-  height: 56px;
-  width: auto;
-}
-html.dark .app-header {
-  height: 80px;
+  filter: invert(1);
 }
 
 /* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */
