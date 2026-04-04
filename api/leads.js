@@ -188,6 +188,11 @@ async function handleGetLeads(req, res) {
           last_quote_id: String(getCellByHeader(r, idx, "last_quote_id") || ""),
           quote_snapshot_json: String(getCellByHeader(r, idx, "quote_snapshot_json") || ""),
 
+          email: String(getCellByHeader(r, idx, "email") || ""),
+          job_description: String(getCellByHeader(r, idx, "job_description") || ""),
+          status_code: statusCode,
+          sms_opt_in: String(getCellByHeader(r, idx, "sms_opt_in") || ""),
+
           // extra fields you already started showing on /clients
           lead_id: String(getCellByHeader(r, idx, "lead_id") || ""),
           job_number: String(getCellByHeader(r, idx, "job_number") || ""),
