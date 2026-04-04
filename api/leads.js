@@ -133,9 +133,10 @@ async function handleGetLeads(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    // We now treat "Leads" view as a pipeline view of Clients.
-    const [clientsData, timeData, expData, config] = await Promise.all([
+    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config
+    const [clientsData, leadsTabData, timeData, expData, config] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000"),
+      fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z5000"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       getConfig(),
@@ -146,35 +147,31 @@ async function handleGetLeads(req, res) {
     const laborRateTech = Number(config.labor_rate_tech || 50);
     const { laborMinutesByLead, expenseCostByLead } = buildFinancialLookups(timeData, expData);
 
-    const leads = (clientsData.rows || [])
+    // Build leads from Clients tab
+    const clientLeads = (clientsData.rows || [])
       .filter((r) => r && r.length && String(getCellByHeader(r, idx, "id") || "").trim() !== "")
       .map((r) => {
-        // Important: lead.id must match Time/Expenses lead_id.
         const leadId = String(getCellByHeader(r, idx, "lead_id") || "").trim() || String(getCellByHeader(r, idx, "id") || "").trim();
-
         const createdAt = String(getCellByHeader(r, idx, "created_at") || "");
         const statusCode = String(getCellByHeader(r, idx, "status_code") || "");
 
         const lead = {
           id: leadId,
+          _raw_id: String(getCellByHeader(r, idx, "id") || ""),
+          _source: "clients",
           created_at: createdAt,
           name: String(getCellByHeader(r, idx, "name") || ""),
           phone: String(getCellByHeader(r, idx, "phone") || ""),
-          address: String(getCellByHeader(r, idx, "primary_address") || ""), // optional column if you add later
+          address: String(getCellByHeader(r, idx, "primary_address") || getCellByHeader(r, idx, "address") || ""),
           job_type: "",
-
-          // keep old shape so existing UI doesn't explode
           deposit_required: false,
           estimated_value: parseNum(getCellByHeader(r, idx, "estimated_value") || 0),
-
-          // old UI expects "status"
-          status: statusCode || "",
-
+          status: statusCode || String(getCellByHeader(r, idx, "status") || ""),
+          status_code: statusCode,
           quoted_price: parseNum(getCellByHeader(r, idx, "quoted_price") || 0),
           deposit_received: parseNum(getCellByHeader(r, idx, "deposit_received") || 0),
           invoiced_amount: parseNum(getCellByHeader(r, idx, "invoiced_amount") || 0),
           paid_amount: parseNum(getCellByHeader(r, idx, "paid_amount") || 0),
-
           scheduled_date: String(getCellByHeader(r, idx, "scheduled_date") || ""),
           assigned_to: String(getCellByHeader(r, idx, "assigned_to") || ""),
           notes: String(getCellByHeader(r, idx, "notes") || ""),
@@ -187,20 +184,76 @@ async function handleGetLeads(req, res) {
           pricing_version: String(getCellByHeader(r, idx, "pricing_version") || ""),
           last_quote_id: String(getCellByHeader(r, idx, "last_quote_id") || ""),
           quote_snapshot_json: String(getCellByHeader(r, idx, "quote_snapshot_json") || ""),
-
           email: String(getCellByHeader(r, idx, "email") || ""),
           job_description: String(getCellByHeader(r, idx, "job_description") || ""),
-          status_code: statusCode,
           sms_opt_in: String(getCellByHeader(r, idx, "sms_opt_in") || ""),
-
-          // extra fields you already started showing on /clients
           lead_id: String(getCellByHeader(r, idx, "lead_id") || ""),
           job_number: String(getCellByHeader(r, idx, "job_number") || ""),
         };
-
         attachFinancials(lead, laborMinutesByLead, expenseCostByLead, laborRateTech);
         return lead;
+      });
+
+    // Track all IDs already covered by Clients tab to avoid duplicates
+    const coveredIds = new Set();
+    for (const l of clientLeads) {
+      coveredIds.add(l.id);
+      if (l.lead_id) coveredIds.add(l.lead_id);
+      if (l._raw_id) coveredIds.add(l._raw_id);
+    }
+
+    // Build leads from the legacy Leads tab (quoter-created records not already in Clients)
+    const lidx = toIndexMap(leadsTabData.headers);
+    const legacyLeads = (leadsTabData.rows || [])
+      .filter((r) => {
+        if (!r || !r.length) return false;
+        const rawId = String(getCellByHeader(r, lidx, "id") || "").trim();
+        return rawId !== "" && !coveredIds.has(rawId);
       })
+      .map((r) => {
+        const rawId = String(getCellByHeader(r, lidx, "id") || "").trim();
+        const statusRaw = String(getCellByHeader(r, lidx, "status") || "");
+
+        const lead = {
+          id: rawId,
+          _raw_id: rawId,
+          _source: "leads_tab",
+          created_at: String(getCellByHeader(r, lidx, "created_at") || ""),
+          name: String(getCellByHeader(r, lidx, "name") || ""),
+          phone: String(getCellByHeader(r, lidx, "phone") || ""),
+          address: String(getCellByHeader(r, lidx, "address") || ""),
+          job_type: String(getCellByHeader(r, lidx, "job_type") || ""),
+          deposit_required: false,
+          estimated_value: parseNum(getCellByHeader(r, lidx, "estimated_value") || 0),
+          status: statusRaw,
+          status_code: statusRaw,
+          quoted_price: parseNum(getCellByHeader(r, lidx, "quoted_price") || 0),
+          deposit_received: 0,
+          invoiced_amount: 0,
+          paid_amount: 0,
+          scheduled_date: String(getCellByHeader(r, lidx, "scheduled_date") || ""),
+          assigned_to: String(getCellByHeader(r, lidx, "assigned_to") || ""),
+          notes: String(getCellByHeader(r, lidx, "notes") || ""),
+          schedule_window: "",
+          schedule_preference: "",
+          duration_minutes: 0,
+          deposit_override: false,
+          invoice_date: "",
+          paid_date: "",
+          pricing_version: String(getCellByHeader(r, lidx, "pricing_version") || ""),
+          last_quote_id: String(getCellByHeader(r, lidx, "last_quote_id") || ""),
+          quote_snapshot_json: "",
+          email: String(getCellByHeader(r, lidx, "email") || ""),
+          job_description: String(getCellByHeader(r, lidx, "job_description") || ""),
+          sms_opt_in: "",
+          lead_id: rawId,
+          job_number: "",
+        };
+        attachFinancials(lead, laborMinutesByLead, expenseCostByLead, laborRateTech);
+        return lead;
+      });
+
+    const leads = [...clientLeads, ...legacyLeads]
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
     res.writeHead(200, { "Content-Type": "application/json" });
