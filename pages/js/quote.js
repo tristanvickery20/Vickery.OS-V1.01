@@ -239,8 +239,7 @@ function renderSegment() {
         <div class="q-type-radio"></div>
       </div>
     </div>
-    <div class="q-nav-row">
-      <div></div>
+    <div class="q-nav-row" style="justify-content:flex-end;">
       <button class="q-btn-next" id="nextSegment" ${S.segment ? "" : "disabled"}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
       </button>
@@ -271,7 +270,6 @@ function renderCategories() {
     </div>
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-      <div></div>
     </div>`;
 
   return `
@@ -308,7 +306,6 @@ function renderServices() {
     </div>
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-      <div></div>
     </div>`;
 
   // Group by category

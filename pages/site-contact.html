@@ -60,31 +60,8 @@
       font-size: 13px;
       color: hsl(var(--foreground));
     }
-    .emergency-banner {
-      background: hsl(0 84% 60% / 0.07);
-      border: 1px solid hsl(0 84% 60% / 0.25);
-      border-radius: 16px;
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      max-width: 900px;
-      margin-bottom: 32px;
-    }
-    .emergency-banner .emg-icon { display: flex; align-items: center; color: hsl(var(--primary)); }
-    .emergency-banner .emg-icon svg { display: block; }
-    .emergency-banner .emg-text h3 {
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 700;
-      color: hsl(0 70% 38%);
-      margin-bottom: 4px;
-    }
-    .emergency-banner .emg-text p {
-      font-size: 14px;
-      color: hsl(var(--muted-foreground));
-      margin: 0;
-    }
+    html.dark .contact-card { background: hsl(220 10% 16%); }
+    html.dark .area-list li { background: hsl(220 10% 22%); border-color: hsl(220 10% 28%); }
     .cta-btn {
       display: inline-flex;
       align-items: center;
@@ -159,14 +136,6 @@
   <main class="main-content">
     <h1>Contact Us</h1>
 
-    <div class="emergency-banner">
-      <div class="emg-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-      <div class="emg-text">
-        <h3>Electrical Emergency? Call Now.</h3>
-        <p>For urgent electrical issues — sparking outlets, burning smell, or power loss — call us directly. Don't wait.</p>
-      </div>
-    </div>
-
     <div class="contact-grid">
 
       <div class="contact-card">
@@ -192,8 +161,7 @@
           <div class="contact-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div class="contact-item-body">
             <div class="contact-item-label">Hours</div>
-            Monday – Friday, 7am – 5pm<br>
-            <span class="muted small">Emergency calls accepted after hours</span>
+            Monday – Friday, 7am – 5pm
           </div>
         </div>
       </div>

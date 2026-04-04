@@ -1110,8 +1110,7 @@ html.dark .logo-img {
   height: 36px;
 }
 html.dark .app-header {
-  height: auto;
-  padding: 6px 0;
+  height: 64px;
 }
 
 /* ── Sword icons — boost opacity on dark bg ─────────────────────────────── */

@@ -19,7 +19,7 @@
     statusEl.textContent = "Loading...";
     try {
       const data = await window.Api.fetchJson("/api/leads");
-      const lead = (data.leads || []).find((l) => l.id === leadId);
+      const lead = (data.leads || []).find((l) => String(l.id) === String(leadId));
       if (!lead) { statusEl.textContent = "Lead not found."; return; }
 
       titleEl.textContent = lead.name || lead.id;
