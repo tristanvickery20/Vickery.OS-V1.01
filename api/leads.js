@@ -401,6 +401,10 @@ async function handleGetLeadSnapshot(req, res) {
 
     const { modulesById, services } = estCfg;
 
+    // Assembly-ID → Service-ID fallback map (snapshot stores e.g. "A001", labels use "RECESSED_LIGHTING")
+    let ASSEMBLY_TO_SERVICE = {};
+    try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* ignore */ }
+
     // Find best snapshot row — prefer "locked" event, otherwise any row for that quote_id
     const allRows = (snapData.rows || []).map(r => {
       const obj = {};
@@ -414,9 +418,10 @@ async function handleGetLeadSnapshot(req, res) {
       return res.end(JSON.stringify({ ok: false, error: "Snapshot not found" }));
     }
 
-    // Resolve job type label
-    const svc = (services || []).find(s => s.service_id === snap.job_type_id);
-    const jobTypeLabel = svc ? svc.service_name : snap.job_type_id || "Unknown Service";
+    // Resolve job type label — snapshot may store assembly ID ("A001") or service_id ("RECESSED_LIGHTING")
+    const resolvedServiceId = ASSEMBLY_TO_SERVICE[snap.job_type_id] || snap.job_type_id;
+    const svc = (services || []).find(s => s.service_id === resolvedServiceId);
+    const jobTypeLabel = svc ? svc.service_name : resolvedServiceId || "Unknown Service";
 
     // Parse selected_options_json — shape: { answers: { MODULE_ID: "value" }, qty, classification }
     let answers = {};

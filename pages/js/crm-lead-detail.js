@@ -232,11 +232,22 @@
 
       let html = '';
 
+      // Readable classification labels (hide internal engineering flags)
+      const CLASS_LABELS = {
+        standard: 'Standard scope',
+        xl: 'Large scope',
+        disqualified: 'Needs site visit',
+        site_visit_required: 'Needs site visit',
+        ready_with_review_flag: 'Ready — flagged for review',
+      };
+      const clsKey = (data.classification || '').toLowerCase();
+      const clsLabel = CLASS_LABELS[clsKey] || null;
+
       // Service + quantity header
       html += `<div style="margin-bottom:12px;">
         <div style="font-size:15px;font-weight:700;color:hsl(var(--foreground));">${esc(data.job_type_label)}</div>
         ${data.qty > 1 ? `<div style="font-size:12px;margin-top:2px;color:hsl(var(--muted-foreground));">Quantity: ${data.qty}</div>` : ''}
-        ${data.classification && data.classification !== 'standard' ? `<div style="font-size:12px;margin-top:2px;color:hsl(var(--muted-foreground));">Scope: ${esc(data.classification)}</div>` : ''}
+        ${clsLabel && clsLabel !== 'Standard scope' ? `<div style="font-size:12px;margin-top:2px;color:hsl(var(--muted-foreground));">${esc(clsLabel)}</div>` : ''}
       </div>`;
 
       // Q&A table
