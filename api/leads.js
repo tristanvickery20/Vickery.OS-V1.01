@@ -281,21 +281,31 @@ async function handleGetLeads(req, res) {
 
     // Also index Bookings by quote_id → { name, phone, email, address }
     // Bookings is the source the Schedule page uses — guaranteed to have the name.
-    const bkIdx       = toIndexMap(bookingsData.headers);
+    const bkIdx        = toIndexMap(bookingsData.headers);
     const bookingByQuoteId = {};
     const bookingByPhone   = {};
+    // schedByQuoteId stores the LATEST non-cancelled booking per quote_id for scheduling enrichment
+    const schedByQuoteId   = {};
     for (const r of (bookingsData.rows || [])) {
-      const bqid  = String(getCellByHeader(r, bkIdx, "quote_id")      || "").trim();
-      const bName = String(getCellByHeader(r, bkIdx, "customer_name") || "").trim();
-      const bPh   = String(getCellByHeader(r, bkIdx, "phone")         || "").replace(/\D/g, "");
-      const bAddr = String(getCellByHeader(r, bkIdx, "address")       || "").trim();
-      const bEmail= String(getCellByHeader(r, bkIdx, "email")         || "").trim();
+      const bqid  = String(getCellByHeader(r, bkIdx, "quote_id")          || "").trim();
+      const bName = String(getCellByHeader(r, bkIdx, "customer_name")     || "").trim();
+      const bPh   = String(getCellByHeader(r, bkIdx, "phone")             || "").replace(/\D/g, "");
+      const bAddr = String(getCellByHeader(r, bkIdx, "address")           || "").trim();
+      const bEmail= String(getCellByHeader(r, bkIdx, "email")             || "").trim();
+      const bStat = String(getCellByHeader(r, bkIdx, "status")            || "").toLowerCase();
+      const bDt   = String(getCellByHeader(r, bkIdx, "scheduled_datetime")|| "").trim();
+      const bBlk  = String(getCellByHeader(r, bkIdx, "schedule_block")    || "").trim();
+      const bDur  = String(getCellByHeader(r, bkIdx, "duration_minutes")  || "").trim();
       const bEntry = { name: bName, phone: bPh, email: bEmail, address: bAddr };
       if (bqid && bName && !bookingByQuoteId[bqid]) bookingByQuoteId[bqid] = bEntry;
       if (bPh  && bName && !bookingByPhone[bPh])    bookingByPhone[bPh]    = bEntry;
+      // Only index scheduling for active (non-cancelled) bookings
+      if (bqid && bDt && bStat !== "cancelled" && !schedByQuoteId[bqid]) {
+        schedByQuoteId[bqid] = { scheduled_datetime: bDt, schedule_block: bBlk, duration_minutes: bDur };
+      }
     }
 
-    // Enrich any lead missing contact info:
+    // Enrich any lead missing contact info or scheduling:
     // Priority: 1) quote_id in snapshots  2) phone in snapshots  3) quote_id in bookings  4) phone in bookings
     const stripHtml = (s) => String(s || "").replace(/<[^>]*>/g, "").trim();
     for (const lead of [...clientLeads, ...legacyLeads]) {
@@ -304,18 +314,39 @@ async function handleGetLeads(req, res) {
       lead.phone   = stripHtml(lead.phone);
       lead.email   = stripHtml(lead.email);
       lead.address = stripHtml(lead.address);
-      if (lead.name && lead.phone && lead.email) continue; // already complete
+
+      // Enrich contact fields
       const cleanLeadPhone = lead.phone.replace(/\D/g, "");
       const src =
         (lead.last_quote_id && snapByQuoteId[lead.last_quote_id]) ||
         (cleanLeadPhone      && snapByPhone[cleanLeadPhone])       ||
         (lead.last_quote_id && bookingByQuoteId[lead.last_quote_id]) ||
         (cleanLeadPhone      && bookingByPhone[cleanLeadPhone]);
-      if (!src) continue;
-      if (!lead.name    && src.name)    lead.name    = src.name;
-      if (!lead.phone   && src.phone)   lead.phone   = src.phone;
-      if (!lead.email   && src.email)   lead.email   = src.email;
-      if (!lead.address && src.address) lead.address = src.address;
+      if (src) {
+        if (!lead.name    && src.name)    lead.name    = src.name;
+        if (!lead.phone   && src.phone)   lead.phone   = src.phone;
+        if (!lead.email   && src.email)   lead.email   = src.email;
+        if (!lead.address && src.address) lead.address = src.address;
+      }
+
+      // Enrich scheduling from Bookings (fills in what updateLeadSchedule may have missed)
+      if (lead.last_quote_id && schedByQuoteId[lead.last_quote_id]) {
+        const sched = schedByQuoteId[lead.last_quote_id];
+        if (!lead.scheduled_date || lead.scheduled_date === "") {
+          // Extract date portion from ISO datetime e.g. "2026-04-10T13:00:00"
+          lead.scheduled_date = sched.scheduled_datetime.slice(0, 10);
+        }
+        if (!lead.schedule_window || lead.schedule_window === "") {
+          lead.schedule_window = sched.schedule_block;
+        }
+        if (!lead.duration_minutes || lead.duration_minutes === 0) {
+          lead.duration_minutes = Number(sched.duration_minutes) || 0;
+        }
+        // If lead status is still "New" but there's a booking, upgrade to Scheduled
+        if (lead.status && lead.status.toLowerCase() === "new") {
+          lead.status = "Scheduled";
+        }
+      }
     }
 
     const leads = [...clientLeads, ...legacyLeads]

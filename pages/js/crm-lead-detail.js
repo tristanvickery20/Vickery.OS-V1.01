@@ -126,8 +126,8 @@
           <div class="ld-card">
             <div class="ld-card-title">Contact Info</div>
             ${fieldRow('Name', lead.name)}
-            ${fieldRow('Phone', cleanPhone(lead.phone), { href: cleanPhone(lead.phone) ? `tel:${cleanPhone(lead.phone).replace(/\D/g,'')}` : '' })}
-            ${fieldRow('Email', stripHtml(lead.email), { href: stripHtml(lead.email) ? `mailto:${stripHtml(lead.email)}` : '' })}
+            ${fieldRow('Phone', cleanPhone(lead.phone))}
+            ${fieldRow('Email', stripHtml(lead.email))}
             ${fieldRow('Address', lead.address)}
             ${fieldRow('SMS Opt-in', lead.sms_opt_in === 'true' ? 'Yes' : lead.sms_opt_in === 'false' ? 'No' : '—')}
           </div>
