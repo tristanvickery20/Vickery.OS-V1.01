@@ -396,4 +396,5 @@
   }
 
   load();
+  setInterval(load, 30000);
 })();

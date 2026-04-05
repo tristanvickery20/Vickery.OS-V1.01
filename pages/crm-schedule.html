@@ -96,16 +96,35 @@
         font-weight: 700;
         white-space: nowrap;
       }
+
+      /* ── Dark mode overrides ── */
+      html.dark .sched-date-card {
+        background: hsl(220 10% 14%);
+        border-color: hsl(220 10% 22%);
+      }
+      html.dark .sched-date-heading {
+        background: hsl(220 10% 18%);
+        color: hsl(215 20% 85%);
+        border-color: hsl(220 10% 22%);
+      }
+      html.dark .sched-block-heading {
+        background: hsl(220 10% 16%);
+        color: hsl(215 20% 75%);
+        border-color: hsl(220 10% 22%);
+      }
+      html.dark .sched-block-window { color: hsl(215 15% 55%); }
+      html.dark .sched-table th { color: hsl(215 15% 55%); border-color: hsl(220 10% 22%); }
+      html.dark .sched-table td { border-color: hsl(220 10% 20%); color: hsl(215 20% 80%); }
+      html.dark .sched-table tbody tr:hover { background: hsl(220 10% 18%); }
+      html.dark .sched-table tbody tr.is-continuation { background: hsl(220 10% 16%); }
+      html.dark .sched-hours-track { background: hsl(220 10% 24%); }
     </style>
   </head>
   <body>
     <div class="app-shell">
       <div class="sidebar" id="sidebarMount"></div>
       <main class="main-area">
-        <div class="page-header-row">
-          <h1>Schedule</h1>
-          <button id="refreshBtn" class="btn-outline" type="button">Refresh</button>
-        </div>
+        <button id="refreshBtn" style="display:none;" type="button">Refresh</button>
         <div class="main-content">
           <div class="date-filter" style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
             <label style="font-size:13px;font-weight:600;">Filter by date:</label>

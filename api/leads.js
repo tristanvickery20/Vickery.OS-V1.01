@@ -133,13 +133,14 @@ async function handleGetLeads(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config
-    const [clientsData, leadsTabData, timeData, expData, config] = await Promise.all([
+    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config, Snapshots
+    const [clientsData, leadsTabData, timeData, expData, config, snapshotsData] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000"),
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z5000"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       getConfig(),
+      fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A:U").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const idx = toIndexMap(clientsData.headers);
@@ -252,6 +253,35 @@ async function handleGetLeads(req, res) {
         attachFinancials(lead, laborMinutesByLead, expenseCostByLead, laborRateTech);
         return lead;
       });
+
+    // Build QuoteSnapshot lookup: quote_id → { name, phone, email, address }
+    // Prefer "locked" event rows; used to enrich leads with missing contact info
+    const snapIdx = toIndexMap(snapshotsData.headers);
+    const snapByQuoteId = {};
+    for (const r of (snapshotsData.rows || [])) {
+      const qid = String(getCellByHeader(r, snapIdx, "quote_id") || "").trim();
+      if (!qid) continue;
+      const evtType = String(getCellByHeader(r, snapIdx, "event_type") || "");
+      if (!snapByQuoteId[qid] || evtType === "locked") {
+        snapByQuoteId[qid] = {
+          name:    String(getCellByHeader(r, snapIdx, "customer_name") || "").trim(),
+          phone:   String(getCellByHeader(r, snapIdx, "phone")         || "").trim(),
+          email:   String(getCellByHeader(r, snapIdx, "email")         || "").trim(),
+          address: String(getCellByHeader(r, snapIdx, "address")       || "").trim(),
+        };
+      }
+    }
+
+    // Enrich any lead that has a last_quote_id but missing contact info
+    for (const lead of [...clientLeads, ...legacyLeads]) {
+      if (!lead.last_quote_id) continue;
+      const snap = snapByQuoteId[lead.last_quote_id];
+      if (!snap) continue;
+      if (!lead.name    && snap.name)    lead.name    = snap.name;
+      if (!lead.phone   && snap.phone)   lead.phone   = snap.phone;
+      if (!lead.email   && snap.email)   lead.email   = snap.email;
+      if (!lead.address && snap.address) lead.address = snap.address;
+    }
 
     const leads = [...clientLeads, ...legacyLeads]
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));

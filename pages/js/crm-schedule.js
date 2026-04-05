@@ -167,7 +167,7 @@
       : "";
 
     return `
-      <tr${j.is_continuation ? ' style="opacity:0.8;background:#fafafa;"' : ""}>
+      <tr${j.is_continuation ? ' class="is-continuation" style="opacity:0.8;"' : ""}>
         <td>${contBadge}${esc(j.customer_name || "–")}</td>
         <td style="font-size:13px;color:#555;">${esc(j.address || "–")}</td>
         <td>${esc(j.job_type || "–")}</td>
