@@ -133,14 +133,15 @@ async function handleGetLeads(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config, Snapshots
-    const [clientsData, leadsTabData, timeData, expData, config, snapshotsData] = await Promise.all([
+    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config, Snapshots, Bookings
+    const [clientsData, leadsTabData, timeData, expData, config, snapshotsData, bookingsData] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000"),
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z5000"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       getConfig(),
       fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A:U").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, spreadsheetId, "Bookings!A:P").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const idx = toIndexMap(clientsData.headers);
@@ -254,33 +255,61 @@ async function handleGetLeads(req, res) {
         return lead;
       });
 
-    // Build QuoteSnapshot lookup: quote_id → { name, phone, email, address }
-    // Prefer "locked" event rows; used to enrich leads with missing contact info
-    const snapIdx = toIndexMap(snapshotsData.headers);
+    // Build QuoteSnapshot lookup — two indexes:
+    //   1. by quote_id  (for leads that have last_quote_id set)
+    //   2. by phone     (fallback — phone is always captured)
+    // Prefer "locked" event rows so we get the name the customer typed at lock time.
+    const snapIdx       = toIndexMap(snapshotsData.headers);
     const snapByQuoteId = {};
+    const snapByPhone   = {};
     for (const r of (snapshotsData.rows || [])) {
-      const qid = String(getCellByHeader(r, snapIdx, "quote_id") || "").trim();
-      if (!qid) continue;
-      const evtType = String(getCellByHeader(r, snapIdx, "event_type") || "");
-      if (!snapByQuoteId[qid] || evtType === "locked") {
-        snapByQuoteId[qid] = {
-          name:    String(getCellByHeader(r, snapIdx, "customer_name") || "").trim(),
-          phone:   String(getCellByHeader(r, snapIdx, "phone")         || "").trim(),
-          email:   String(getCellByHeader(r, snapIdx, "email")         || "").trim(),
-          address: String(getCellByHeader(r, snapIdx, "address")       || "").trim(),
-        };
+      const qid     = String(getCellByHeader(r, snapIdx, "quote_id")      || "").trim();
+      const evtType = String(getCellByHeader(r, snapIdx, "event_type")    || "");
+      const sName   = String(getCellByHeader(r, snapIdx, "customer_name") || "").trim();
+      const sPhone  = String(getCellByHeader(r, snapIdx, "phone")         || "").replace(/\D/g, "");
+      const sEmail  = String(getCellByHeader(r, snapIdx, "email")         || "").trim();
+      const sAddr   = String(getCellByHeader(r, snapIdx, "address")       || "").trim();
+      const entry   = { name: sName, phone: sPhone, email: sEmail, address: sAddr };
+
+      if (qid && (!snapByQuoteId[qid] || evtType === "locked")) {
+        snapByQuoteId[qid] = entry;
+      }
+      if (sPhone && sName && (!snapByPhone[sPhone] || evtType === "locked")) {
+        snapByPhone[sPhone] = entry;
       }
     }
 
-    // Enrich any lead that has a last_quote_id but missing contact info
+    // Also index Bookings by quote_id → { name, phone, email, address }
+    // Bookings is the source the Schedule page uses — guaranteed to have the name.
+    const bkIdx       = toIndexMap(bookingsData.headers);
+    const bookingByQuoteId = {};
+    const bookingByPhone   = {};
+    for (const r of (bookingsData.rows || [])) {
+      const bqid  = String(getCellByHeader(r, bkIdx, "quote_id")      || "").trim();
+      const bName = String(getCellByHeader(r, bkIdx, "customer_name") || "").trim();
+      const bPh   = String(getCellByHeader(r, bkIdx, "phone")         || "").replace(/\D/g, "");
+      const bAddr = String(getCellByHeader(r, bkIdx, "address")       || "").trim();
+      const bEmail= String(getCellByHeader(r, bkIdx, "email")         || "").trim();
+      const bEntry = { name: bName, phone: bPh, email: bEmail, address: bAddr };
+      if (bqid && bName && !bookingByQuoteId[bqid]) bookingByQuoteId[bqid] = bEntry;
+      if (bPh  && bName && !bookingByPhone[bPh])    bookingByPhone[bPh]    = bEntry;
+    }
+
+    // Enrich any lead missing contact info:
+    // Priority: 1) quote_id in snapshots  2) phone in snapshots  3) quote_id in bookings  4) phone in bookings
     for (const lead of [...clientLeads, ...legacyLeads]) {
-      if (!lead.last_quote_id) continue;
-      const snap = snapByQuoteId[lead.last_quote_id];
-      if (!snap) continue;
-      if (!lead.name    && snap.name)    lead.name    = snap.name;
-      if (!lead.phone   && snap.phone)   lead.phone   = snap.phone;
-      if (!lead.email   && snap.email)   lead.email   = snap.email;
-      if (!lead.address && snap.address) lead.address = snap.address;
+      if (lead.name && lead.phone && lead.email) continue; // already complete
+      const cleanLeadPhone = String(lead.phone || "").replace(/\D/g, "");
+      const src =
+        (lead.last_quote_id && snapByQuoteId[lead.last_quote_id]) ||
+        (cleanLeadPhone      && snapByPhone[cleanLeadPhone])       ||
+        (lead.last_quote_id && bookingByQuoteId[lead.last_quote_id]) ||
+        (cleanLeadPhone      && bookingByPhone[cleanLeadPhone]);
+      if (!src) continue;
+      if (!lead.name    && src.name)    lead.name    = src.name;
+      if (!lead.phone   && src.phone)   lead.phone   = src.phone;
+      if (!lead.email   && src.email)   lead.email   = src.email;
+      if (!lead.address && src.address) lead.address = src.address;
     }
 
     const leads = [...clientLeads, ...legacyLeads]
