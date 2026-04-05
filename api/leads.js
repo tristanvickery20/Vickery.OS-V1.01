@@ -297,9 +297,15 @@ async function handleGetLeads(req, res) {
 
     // Enrich any lead missing contact info:
     // Priority: 1) quote_id in snapshots  2) phone in snapshots  3) quote_id in bookings  4) phone in bookings
+    const stripHtml = (s) => String(s || "").replace(/<[^>]*>/g, "").trim();
     for (const lead of [...clientLeads, ...legacyLeads]) {
+      // Strip any HTML that may have been stored in phone/email/name
+      lead.name    = stripHtml(lead.name);
+      lead.phone   = stripHtml(lead.phone);
+      lead.email   = stripHtml(lead.email);
+      lead.address = stripHtml(lead.address);
       if (lead.name && lead.phone && lead.email) continue; // already complete
-      const cleanLeadPhone = String(lead.phone || "").replace(/\D/g, "");
+      const cleanLeadPhone = lead.phone.replace(/\D/g, "");
       const src =
         (lead.last_quote_id && snapByQuoteId[lead.last_quote_id]) ||
         (cleanLeadPhone      && snapByPhone[cleanLeadPhone])       ||

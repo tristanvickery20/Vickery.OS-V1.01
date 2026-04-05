@@ -31,6 +31,10 @@ function bestSortDate(lead) {
   );
 }
 
+function stripHtml(s) {
+  return String(s || "").replace(/<[^>]*>/g, "").trim();
+}
+
 async function handleGetClients(req, res) {
   try {
     const parsed = url.parse(req.url, true);
@@ -39,21 +43,72 @@ async function handleGetClients(req, res) {
     const limitRaw = Number(parsed.query.limit) || 200;
     const limit = Math.min(Math.max(1, limitRaw), 500);
 
-    const leads = await readTab("Leads");
+    const [leads, snapshots, bookings] = await Promise.all([
+      readTab("Leads"),
+      readTab("QuoteSnapshots").catch(() => []),
+      readTab("Bookings").catch(() => []),
+    ]);
 
-    let results = leads.map((l) => ({
-      id: l.id || "",
-      client_id: l.client_id || "",
-      job_number: pickJobNumber(l),
-      name: l.name || "",
-      phone: l.phone || "",
-      address: l.address || "",
-      status: l.status || "",
-      estimated_value: l.estimated_value || "",
-      scheduled_date: l.scheduled_date || "",
-      assigned_to: l.assigned_to || "",
-      notes: l.notes || "",
-    }));
+    // Build name lookup from QuoteSnapshots (prefer "locked" event)
+    const snapByQuoteId = {}, snapByPhone = {};
+    for (const s of snapshots) {
+      const qid   = stripHtml(s.quote_id      || "").trim();
+      const sName = stripHtml(s.customer_name || "").trim();
+      const sPhone= stripHtml(s.phone         || "").replace(/\D/g, "");
+      const isPref= (s.event_type || "") === "locked";
+      const entry = { name: sName, phone: sPhone, email: stripHtml(s.email || "").trim(), address: stripHtml(s.address || "").trim() };
+      if (qid   && (!snapByQuoteId[qid]   || isPref)) snapByQuoteId[qid]   = entry;
+      if (sPhone && sName && (!snapByPhone[sPhone] || isPref)) snapByPhone[sPhone] = entry;
+    }
+
+    // Build name lookup from Bookings — this is what the Schedule page uses
+    const bookingByQuoteId = {}, bookingByPhone = {};
+    for (const b of bookings) {
+      const qid   = stripHtml(b.quote_id       || "").trim();
+      const bName = stripHtml(b.customer_name  || "").trim();
+      const bPhone= stripHtml(b.phone          || "").replace(/\D/g, "");
+      const entry = { name: bName, phone: bPhone, email: stripHtml(b.email || "").trim(), address: stripHtml(b.address || "").trim() };
+      if (qid   && bName && !bookingByQuoteId[qid])    bookingByQuoteId[qid]   = entry;
+      if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;
+    }
+
+    let results = leads.map((l) => {
+      let name    = stripHtml(l.name    || "").trim();
+      let phone   = stripHtml(l.phone   || "").trim();
+      let email   = stripHtml(l.email   || "").trim();
+      let address = stripHtml(l.address || "").trim();
+
+      // Enrich missing fields — 4-layer lookup
+      if (!name || !phone || !email) {
+        const cleanPh = phone.replace(/\D/g, "");
+        const qid     = (l.last_quote_id || "").trim();
+        const src =
+          (qid     && snapByQuoteId[qid])      ||
+          (cleanPh && snapByPhone[cleanPh])     ||
+          (qid     && bookingByQuoteId[qid])    ||
+          (cleanPh && bookingByPhone[cleanPh]);
+        if (src) {
+          if (!name    && src.name)    name    = src.name;
+          if (!phone   && src.phone)   phone   = src.phone;
+          if (!email   && src.email)   email   = src.email;
+          if (!address && src.address) address = src.address;
+        }
+      }
+
+      return {
+        id: l.id || "",
+        client_id: l.client_id || "",
+        job_number: pickJobNumber(l),
+        name,
+        phone,
+        address,
+        status: l.status || "",
+        estimated_value: l.estimated_value || "",
+        scheduled_date: l.scheduled_date || "",
+        assigned_to: l.assigned_to || "",
+        notes: l.notes || "",
+      };
+    });
 
     if (status && status !== "all") {
       results = results.filter((r) => normalizeStr(r.status) === status);

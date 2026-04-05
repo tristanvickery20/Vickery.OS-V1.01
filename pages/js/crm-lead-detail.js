@@ -34,6 +34,14 @@
       c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c]));
   }
 
+  function stripHtml(s) {
+    return String(s || '').replace(/<[^>]*>/g, '').trim();
+  }
+
+  function cleanPhone(s) {
+    return stripHtml(s).replace(/[^\d+\-\s().]/g, '').trim();
+  }
+
   function fmt$(n) {
     const v = Number(n || 0);
     return '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -103,8 +111,8 @@
           </div>
         </div>
         <div class="ld-actions">
-          ${lead.phone ? `<a class="ld-btn" href="tel:${esc(lead.phone.replace(/\D/g,''))}">&#128222; Call</a>` : ''}
-          ${lead.email ? `<a class="ld-btn" href="mailto:${esc(lead.email)}">&#9993; Email</a>` : ''}
+          ${cleanPhone(lead.phone) ? `<a class="ld-btn" href="tel:${esc(cleanPhone(lead.phone).replace(/\D/g,''))}">&#128222; Call</a>` : ''}
+          ${stripHtml(lead.email) ? `<a class="ld-btn" href="mailto:${esc(stripHtml(lead.email))}">&#9993; Email</a>` : ''}
           <button class="ld-btn ld-btn-primary" id="ldSaveBtn" style="display:none;">Save Changes</button>
         </div>
       </div>
@@ -118,8 +126,8 @@
           <div class="ld-card">
             <div class="ld-card-title">Contact Info</div>
             ${fieldRow('Name', lead.name)}
-            ${fieldRow('Phone', lead.phone, { href: lead.phone ? `tel:${lead.phone.replace(/\D/g,'')}` : '' })}
-            ${fieldRow('Email', lead.email, { href: lead.email ? `mailto:${lead.email}` : '' })}
+            ${fieldRow('Phone', cleanPhone(lead.phone), { href: cleanPhone(lead.phone) ? `tel:${cleanPhone(lead.phone).replace(/\D/g,'')}` : '' })}
+            ${fieldRow('Email', stripHtml(lead.email), { href: stripHtml(lead.email) ? `mailto:${stripHtml(lead.email)}` : '' })}
             ${fieldRow('Address', lead.address)}
             ${fieldRow('SMS Opt-in', lead.sms_opt_in === 'true' ? 'Yes' : lead.sms_opt_in === 'false' ? 'No' : '—')}
           </div>

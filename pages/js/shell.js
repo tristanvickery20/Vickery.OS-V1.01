@@ -17,6 +17,7 @@ function openSidebar() {
   var bd = ensureBackdrop();
   if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
+  document.body.style.overflow = "hidden";
 }
 
 function closeSidebar() {
@@ -24,6 +25,7 @@ function closeSidebar() {
   var bd = ensureBackdrop();
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
+  document.body.style.overflow = "";
 }
 
 function getPageTitle() {

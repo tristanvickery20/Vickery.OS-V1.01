@@ -40,7 +40,9 @@ body{
   top:0;
   height:100vh;
   overflow:auto;
+  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Main area */
