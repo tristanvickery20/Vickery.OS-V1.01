@@ -418,7 +418,9 @@
     html.dark .q-note-bar {
       background: hsl(220 10% 16%);
       border: 1px solid hsl(220 10% 24%);
+      color: hsl(215 15% 60%);
     }
+    html.dark .q-note-bar strong { color: hsl(var(--primary)); }
 
     /* ── Dark navy price footer card ─────────────────────────────────── */
     .q-price-footer {
@@ -746,6 +748,24 @@
     .q-input:focus { outline: none; border-color: hsl(var(--accent)); box-shadow: 0 0 0 3px hsl(var(--accent) / 0.1); }
     .q-zip-note { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 6px; font-style: italic; }
     .q-zip-note.q-zip-warn { color: hsl(30 90% 50%); font-weight: 600; font-style: normal; }
+
+    /* ── Address autocomplete dropdown ───────────────────────────────── */
+    .q-addr-wrap { position: relative; }
+    .q-addr-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 300;
+      background: white; border: 1.5px solid hsl(var(--border));
+      border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+      overflow: hidden; max-height: 260px; overflow-y: auto;
+    }
+    .q-addr-opt {
+      padding: 11px 14px; font-size: 13px; cursor: pointer; line-height: 1.4;
+      border-bottom: 1px solid hsl(var(--border)); color: hsl(var(--foreground));
+    }
+    .q-addr-opt:last-child { border-bottom: none; }
+    .q-addr-opt:hover, .q-addr-opt:focus { background: hsl(var(--muted)); outline: none; }
+    html.dark .q-addr-dropdown { background: hsl(220 10% 16%); border-color: hsl(220 10% 24%); }
+    html.dark .q-addr-opt { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); }
+    html.dark .q-addr-opt:hover, html.dark .q-addr-opt:focus { background: hsl(220 10% 20%); }
     .q-price-update {
       font-size: 14px; font-weight: 600; color: hsl(var(--foreground));
       margin-top: 6px; padding: 8px 12px;
@@ -788,7 +808,8 @@
     /* ── Booked ─────────────────────────────────────────────────────── */
     .q-booked { text-align: center; margin-bottom: 28px; }
     .q-booked-icon { margin-bottom: 16px; display: block; }
-    .booked-ve-logo { height: 90px !important; width: auto !important; margin: 0 auto; display: block; }
+    .booked-ve-logo { max-width: 200px !important; width: 100% !important; height: auto !important; margin: 0 auto; display: block; }
+    html.dark .booked-ve-logo { max-width: 135px !important; }
     .q-booking-card {
       background: white;
       border: 1.5px solid hsl(var(--border));

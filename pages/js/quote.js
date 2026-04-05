@@ -129,8 +129,8 @@ function enrichConfigWithModules(config, est) {
 // ── Navigation ────────────────────────────────────────────────────────────────
 function go(step) {
   S.step = step;
-  window.scrollTo({ top: 0, behavior: "smooth" });
   renderStep();
+  window.scrollTo(0, 0);
 }
 
 function back() {
@@ -555,8 +555,11 @@ function renderConfirm() {
       </div>
       <div class="q-field">
         <label class="q-label">Service Address <span class="q-req">*</span></label>
-        <input type="text" id="ld_address" class="q-input"
-          placeholder="123 Main St, Beaumont TX 77701" autocomplete="street-address">
+        <div class="q-addr-wrap">
+          <input type="text" id="ld_address" class="q-input"
+            placeholder="123 Main St, Beaumont TX 77701" autocomplete="off">
+          <div id="addrDropdown" class="q-addr-dropdown" style="display:none;"></div>
+        </div>
       </div>
       <div class="q-field">
         <label class="q-label">ZIP Code <span class="q-req">*</span></label>
@@ -915,6 +918,69 @@ function bindEvents() {
   document.getElementById("photoFile")?.addEventListener("change", onPhotoSelected);
   document.getElementById("uploadPhotoBtn")?.addEventListener("click", uploadPhoto);
   document.getElementById("finalizeBtn")?.addEventListener("click", submitBooking);
+
+  // ── Address autocomplete (Nominatim/OpenStreetMap, US only) ─────────────────
+  (function attachAddressAutocomplete() {
+    const addrInput = document.getElementById("ld_address");
+    const addrDrop  = document.getElementById("addrDropdown");
+    if (!addrInput || !addrDrop) return;
+
+    let timer = null;
+
+    function fmtAddress(item) {
+      const a = item.address || {};
+      const parts = [];
+      if (a.house_number && a.road) parts.push(`${a.house_number} ${a.road}`);
+      else if (a.road) parts.push(a.road);
+      const city = a.city || a.town || a.village || a.hamlet || "";
+      if (city) parts.push(city);
+      if (a.state) parts.push(a.state);
+      if (a.postcode) parts.push(a.postcode);
+      return parts.length > 1 ? parts.join(", ") : item.display_name;
+    }
+
+    function hideDropdown() { addrDrop.style.display = "none"; }
+
+    function showResults(results) {
+      if (!results.length) { hideDropdown(); return; }
+      addrDrop.innerHTML = results.map(item => {
+        const label = fmtAddress(item);
+        return `<div class="q-addr-opt" tabindex="0">${escHtml(label)}</div>`;
+      }).join("");
+      addrDrop.style.display = "block";
+      addrDrop.querySelectorAll(".q-addr-opt").forEach((el, i) => {
+        const label = fmtAddress(results[i]);
+        el.addEventListener("mousedown", e => {
+          e.preventDefault();
+          addrInput.value = label;
+          // Auto-fill ZIP if empty
+          const zip = results[i].address?.postcode || "";
+          const zipInput = document.getElementById("ld_zip");
+          if (zipInput && !zipInput.value && zip) {
+            zipInput.value = zip.slice(0, 5);
+            zipInput.dispatchEvent(new Event("input"));
+          }
+          hideDropdown();
+        });
+      });
+    }
+
+    addrInput.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = addrInput.value.trim();
+      if (q.length < 3) { hideDropdown(); return; }
+      timer = setTimeout(async () => {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&limit=6&q=${encodeURIComponent(q)}`;
+          const r = await fetch(url, { headers: { "Accept-Language": "en-US,en" } });
+          const data = await r.json();
+          showResults(data);
+        } catch { hideDropdown(); }
+      }, 400);
+    });
+
+    addrInput.addEventListener("blur", () => setTimeout(hideDropdown, 200));
+  })();
 }
 
 // ── API: Calculate price ───────────────────────────────────────────────────────
