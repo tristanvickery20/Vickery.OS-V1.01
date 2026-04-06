@@ -160,11 +160,12 @@ function bindJobDetailOverlay() {
 
 function classificationLabel(s) {
   const key = String(s || "").toLowerCase();
-  if (!key || key === "standard") return "";
+  if (!key || key === "production_ready" || key === "standard") return "";
   const map = {
-    manual_review_required: "Needs office review before starting",
-    ready_with_review_flag: "Ready — double-check with office before starting",
-    blocked:                "DO NOT START — office must clear this first",
+    ready_with_review_flag: "Ready — flagged for review",
+    manual_review_required: "Needs manual review — contact office",
+    manual_quote_only:      "Manual quote only — contact office",
+    blocked:                "DO NOT START — contact office first",
   };
   return map[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }

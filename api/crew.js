@@ -2,9 +2,15 @@
 // GET /api/crew/members — returns list of crew member names from Config tab
 // GET /api/crew/today  — returns today's bookings (date-filtered, public endpoint)
 
-const { getSheetsClient } = require("../lib/sheets");
-const { getConfig }       = require("../lib/config");
-const { getQuoteConfig }  = require("../lib/sheetsConfig");
+const { getSheetsClient }    = require("../lib/sheets");
+const { getConfig }          = require("../lib/config");
+const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
+
+let ASSEMBLY_TO_SERVICE = {};
+try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
+
+// Modules to skip — photos and internal-only fields
+const SKIP_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -12,89 +18,49 @@ function json(res, status, data) {
 }
 
 function todayLocalStr() {
-  // Orange TX is CST/CDT (UTC-6/UTC-5). Use a simple local date string.
+  // Orange TX is CST/CDT (UTC-6/UTC-5). Use local date string.
   const d = new Date();
   const offset = d.getTimezoneOffset(); // minutes
   const local = new Date(d.getTime() - offset * 60000);
   return local.toISOString().slice(0, 10); // "YYYY-MM-DD"
 }
 
-// Shorten a question prompt to a quick crew-readable label.
-// "What is the ceiling height in the work area?" → "Ceiling height"
-function crewLabel(prompt) {
-  return prompt
-    .replace(/\?.*$/, "")
-    .replace(/^(what\s+(is\s+the?\s+|are\s+the?\s+|type\s+of\s+|kind\s+of\s+)|how\s+(old|many|much|long)\s+(is|are)\s+(the?\s+)?|is\s+there\s+(an?\s+)?|will\s+you\s+|is\s+this\s+|are\s+there\s+|do\s+you\s+)/i, "")
-    .replace(/^\s*the\s+/i, "")
-    .replace(/\s+(in\s+the\s+work\s+area|above\s+the\s+ceiling|of\s+(the\s+)?(home|building|this\s+job)|above|below)\s*$/i, "")
-    .trim()
-    .replace(/^\w/, c => c.toUpperCase()) || prompt.replace(/\?$/, "").trim();
-}
-
-// Decode a QuoteSnapshot into structured crew-readable items.
-// Returns { items: [{label, value}], qty, classification, addons: [string] }
-// Strategy: try snapshotJobTypeId first, then bookingJobTypeId, then scan all
-// questions by answer key as a last resort — so we always surface data when
-// a snapshot exists, even if the booking was edited to a different type code.
-function buildScopeItems(selectedOptionsJson, selectedAddonsJson, questionsByType, optionsByQuestion, addonsByType, bookingJobTypeId, snapshotJobTypeId) {
+// Decode a QuoteSnapshot into structured crew-readable items using the estimator module system.
+// This is the same approach as the Lead Detail "Quote Breakdown" section.
+// Returns { items: [{label, value}], qty, classification, addons: [] }
+function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
   const items = [];
-  let qty = null;
+  let qty = 1;
   let classification = "";
   const addons = [];
 
   try {
-    const snap = JSON.parse(selectedOptionsJson || "{}");
-    const answers = snap.answers || {};
-    const answerKeys = Object.keys(answers).filter(k => answers[k] !== undefined && answers[k] !== null && answers[k] !== "");
-    qty = snap.qty ? Number(snap.qty) : null;
-    classification = snap.classification || "";
+    const raw = JSON.parse(selectedOptionsJson || "{}");
+    if (!Array.isArray(raw)) {
+      const answers  = raw.answers        || {};
+      qty            = Number(raw.qty)    || 1;
+      classification = raw.classification || "";
 
-    if (answerKeys.length > 0) {
-      // Build a flat question lookup from ALL types so we can always find prompts
-      const allQuestions = {};
-      for (const typeQuestions of Object.values(questionsByType)) {
-        for (const q of typeQuestions) allQuestions[q.question_id] = q;
-      }
-
-      // Prefer snapshot's job type questions (sorted), then booking's, then any match
-      const preferred  = questionsByType[snapshotJobTypeId]  || [];
-      const secondary  = questionsByType[bookingJobTypeId]   || [];
-      // Union: snapshot type first, then booking type extras, then anything else
-      const seen = new Set();
-      const orderedQuestions = [];
-      for (const q of [...preferred, ...secondary]) {
-        if (!seen.has(q.question_id)) { seen.add(q.question_id); orderedQuestions.push(q); }
-      }
-      // Fallback: any question matching an answer key that wasn't already included
-      for (const key of answerKeys) {
-        if (!seen.has(key) && allQuestions[key]) {
-          seen.add(key);
-          orderedQuestions.push(allQuestions[key]);
+      for (const [moduleId, value] of Object.entries(answers)) {
+        if (!value || value === "_unsure" || value === "" || SKIP_MODULES.has(moduleId)) continue;
+        const mod = modulesById[moduleId];
+        const question = mod
+          ? mod.question
+          : moduleId.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        let answer = String(value);
+        if (mod && mod.options && mod.options.length) {
+          const opt = mod.options.find(o => o.value === value || o.option_id === value);
+          if (opt) answer = opt.label || String(value);
         }
-      }
-
-      for (const q of orderedQuestions) {
-        const rawAnswer = answers[q.question_id];
-        if (rawAnswer === undefined || rawAnswer === null || rawAnswer === "") continue;
-        const opts = optionsByQuestion[q.question_id] || [];
-        let displayAnswer;
-        if (opts.length > 0) {
-          const opt = opts.find(o => o.option_id === String(rawAnswer));
-          displayAnswer = opt ? opt.label : String(rawAnswer);
-        } else {
-          displayAnswer = String(rawAnswer);
-        }
-        items.push({ label: crewLabel(q.prompt), value: displayAnswer });
+        items.push({ label: question, value: answer });
       }
     }
   } catch (_) { /* malformed JSON — skip */ }
 
   try {
     const addonIds = JSON.parse(selectedAddonsJson || "[]");
-    const allAddons = [...(addonsByType[snapshotJobTypeId] || []), ...(addonsByType[bookingJobTypeId] || [])];
     for (const aid of addonIds) {
-      const addon = allAddons.find(a => a.addon_id === aid);
-      if (addon) addons.push(addon.name_public);
+      if (aid && String(aid).trim()) addons.push(String(aid).trim());
     }
   } catch (_) { /* skip */ }
 
@@ -121,12 +87,23 @@ async function handleGetTodayJobs(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
     if (!spreadsheetId) return json(res, 200, { ok: true, jobs: [] });
 
-    // Fetch bookings, quote snapshots, and quote config in parallel
-    const [bookingsResp, quotesResp, qcfg] = await Promise.all([
+    // Fetch bookings, quote snapshots, and estimator config in parallel
+    const [bookingsResp, quotesResp, estCfg] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
-      getQuoteConfig().catch(() => null),
+      getEstimatorConfig().catch(() => null),
     ]);
+
+    const modulesById = estCfg ? estCfg.modulesById : {};
+    const services    = estCfg ? estCfg.services    : [];
+
+    // Build job type name lookup: job_type_id (or assembly ID) → service_name
+    function resolveJobTypeName(rawId) {
+      if (!rawId) return "";
+      const serviceId = ASSEMBLY_TO_SERVICE[rawId] || rawId;
+      const svc = services.find(s => s.service_id === serviceId);
+      return svc ? svc.service_name : rawId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }
 
     const rows = bookingsResp.data.values || [];
     if (rows.length < 2) return json(res, 200, { ok: true, jobs: [] });
@@ -134,29 +111,24 @@ async function handleGetTodayJobs(req, res) {
     const [headers, ...data] = rows;
     const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 
-    // Build job type name lookup: job_type_id → name_public
-    const jobTypeNames = {};
-    if (qcfg) {
-      for (const jt of qcfg.jobTypes) {
-        jobTypeNames[jt.job_type_id] = jt.name_public;
-      }
-    }
-
-    // Build lookup from QuoteSnapshots keyed by quote_id
-    // Stores: selected_options_json, selected_addons_json, job_type_id (snapshot may have it too)
+    // Build QuoteSnapshots lookup: quote_id → { selected_options_json, selected_addons_json, job_type_id }
+    // Prefer "locked" event rows (same as Lead Detail page)
     const snapshotMap = {};
     const qRows = quotesResp.data.values || [];
     if (qRows.length > 1) {
       const [qHeaders, ...qData] = qRows;
       const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
       qData.forEach(r => {
-        const qid = String(r[qi["quote_id"] ?? -1] ?? "").trim();
+        const qid      = String(r[qi["quote_id"]              ?? -1] ?? "").trim();
+        const evtType  = String(r[qi["event_type"]            ?? -1] ?? "").trim();
         if (!qid) return;
-        snapshotMap[qid] = {
+        const entry = {
           selected_options_json: String(r[qi["selected_options_json"] ?? -1] ?? "").trim(),
           selected_addons_json:  String(r[qi["selected_addons_json"]  ?? -1] ?? "").trim(),
           job_type_id:           String(r[qi["job_type_id"]           ?? -1] ?? "").trim(),
         };
+        // Prefer the "locked" snapshot (same preference as Lead Detail)
+        if (!snapshotMap[qid] || evtType === "locked") snapshotMap[qid] = entry;
       });
     }
 
@@ -165,40 +137,29 @@ async function handleGetTodayJobs(req, res) {
     const jobs = data
       .map(r => {
         const get = col => String(r[idx[col] ?? -1] ?? "").trim();
-        const dt      = get("scheduled_datetime");
-        const dateStr = dt ? dt.slice(0, 10) : "";
-        const qid     = get("quote_id");
+        const dt        = get("scheduled_datetime");
+        const dateStr   = dt ? dt.slice(0, 10) : "";
+        const qid       = get("quote_id");
         const jobTypeId = get("job_type_id");
 
-        // Build scope from quote snapshot answers (structured items)
+        // Decode scope from quote snapshot answers using estimator module system
         const snap = snapshotMap[qid] || {};
-        const scopeResult = qcfg
-          ? buildScopeItems(
-              snap.selected_options_json,
-              snap.selected_addons_json,
-              qcfg.questionsByType,
-              qcfg.optionsByQuestion,
-              qcfg.addonsByType,
-              jobTypeId,          // booking's job_type_id (may be edited/overridden)
-              snap.job_type_id,   // snapshot's original job_type_id (preferred)
-            )
-          : { items: [], qty: null, classification: "", addons: [] };
+        const scopeResult = buildScopeItems(
+          snap.selected_options_json,
+          snap.selected_addons_json,
+          modulesById,
+        );
 
-        // Fallback plain-text scope for manually-created bookings (no quote snapshot)
-        const scopeRaw   = get("scope_of_work");
+        // Plain-text fallback for manually-created bookings with no quote snapshot
+        const scopeRaw     = get("scope_of_work");
         const bookingNotes = get("notes");
         const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
-        const plainScope = scopeResult.items.length === 0
+        const plainScope   = scopeResult.items.length === 0
           ? ([scopeRaw, bookingNotes].find(v => v && !isInternalId(v)) || "")
           : "";
 
-        // Job type: use name_public from config; always fall back to the raw ID
-        // so the crew sees something (even internal codes like A001)
-        const rawJobTypeName = jobTypeNames[jobTypeId] || jobTypeNames[snap.job_type_id] || "";
-        const jobTypeFallback = jobTypeId
-          ? jobTypeId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-          : "";
-        const jobTypeName = rawJobTypeName || jobTypeFallback;
+        // Resolve human-readable job type name (handles both assembly IDs like "A001" and service IDs)
+        const jobTypeName = resolveJobTypeName(snap.job_type_id || jobTypeId);
 
         return {
           booking_id:         get("booking_id"),
@@ -215,12 +176,12 @@ async function handleGetTodayJobs(req, res) {
           final_price:        get("final_price"),
           job_type_id:        jobTypeId,
           job_type_name:      jobTypeName,
-          // Structured scope (from quote answers — preferred)
+          // Structured scope (from quote answers)
           scope_items:        scopeResult.items,
           scope_qty:          scopeResult.qty,
           scope_status:       scopeResult.classification,
           scope_addons:       scopeResult.addons,
-          // Plain-text fallback (for manually-created bookings)
+          // Plain-text fallback (manually-created bookings)
           scope_of_work:      plainScope,
         };
       })
