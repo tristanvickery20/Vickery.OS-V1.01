@@ -33,7 +33,10 @@ function crewLabel(prompt) {
 
 // Decode a QuoteSnapshot into structured crew-readable items.
 // Returns { items: [{label, value}], qty, classification, addons: [string] }
-function buildScopeItems(selectedOptionsJson, selectedAddonsJson, questionsByType, optionsByQuestion, addonsByType, jobTypeId) {
+// Strategy: try snapshotJobTypeId first, then bookingJobTypeId, then scan all
+// questions by answer key as a last resort — so we always surface data when
+// a snapshot exists, even if the booking was edited to a different type code.
+function buildScopeItems(selectedOptionsJson, selectedAddonsJson, questionsByType, optionsByQuestion, addonsByType, bookingJobTypeId, snapshotJobTypeId) {
   const items = [];
   let qty = null;
   let classification = "";
@@ -42,30 +45,53 @@ function buildScopeItems(selectedOptionsJson, selectedAddonsJson, questionsByTyp
   try {
     const snap = JSON.parse(selectedOptionsJson || "{}");
     const answers = snap.answers || {};
+    const answerKeys = Object.keys(answers).filter(k => answers[k] !== undefined && answers[k] !== null && answers[k] !== "");
     qty = snap.qty ? Number(snap.qty) : null;
     classification = snap.classification || "";
 
-    const questions = questionsByType[jobTypeId] || [];
-    for (const q of questions) {
-      const rawAnswer = answers[q.question_id];
-      if (rawAnswer === undefined || rawAnswer === null || rawAnswer === "") continue;
-
-      const opts = optionsByQuestion[q.question_id] || [];
-      let displayAnswer;
-      if (opts.length > 0) {
-        const opt = opts.find(o => o.option_id === String(rawAnswer));
-        displayAnswer = opt ? opt.label : String(rawAnswer);
-      } else {
-        displayAnswer = String(rawAnswer);
+    if (answerKeys.length > 0) {
+      // Build a flat question lookup from ALL types so we can always find prompts
+      const allQuestions = {};
+      for (const typeQuestions of Object.values(questionsByType)) {
+        for (const q of typeQuestions) allQuestions[q.question_id] = q;
       }
 
-      items.push({ label: crewLabel(q.prompt), value: displayAnswer });
+      // Prefer snapshot's job type questions (sorted), then booking's, then any match
+      const preferred  = questionsByType[snapshotJobTypeId]  || [];
+      const secondary  = questionsByType[bookingJobTypeId]   || [];
+      // Union: snapshot type first, then booking type extras, then anything else
+      const seen = new Set();
+      const orderedQuestions = [];
+      for (const q of [...preferred, ...secondary]) {
+        if (!seen.has(q.question_id)) { seen.add(q.question_id); orderedQuestions.push(q); }
+      }
+      // Fallback: any question matching an answer key that wasn't already included
+      for (const key of answerKeys) {
+        if (!seen.has(key) && allQuestions[key]) {
+          seen.add(key);
+          orderedQuestions.push(allQuestions[key]);
+        }
+      }
+
+      for (const q of orderedQuestions) {
+        const rawAnswer = answers[q.question_id];
+        if (rawAnswer === undefined || rawAnswer === null || rawAnswer === "") continue;
+        const opts = optionsByQuestion[q.question_id] || [];
+        let displayAnswer;
+        if (opts.length > 0) {
+          const opt = opts.find(o => o.option_id === String(rawAnswer));
+          displayAnswer = opt ? opt.label : String(rawAnswer);
+        } else {
+          displayAnswer = String(rawAnswer);
+        }
+        items.push({ label: crewLabel(q.prompt), value: displayAnswer });
+      }
     }
   } catch (_) { /* malformed JSON — skip */ }
 
   try {
     const addonIds = JSON.parse(selectedAddonsJson || "[]");
-    const allAddons = addonsByType[jobTypeId] || [];
+    const allAddons = [...(addonsByType[snapshotJobTypeId] || []), ...(addonsByType[bookingJobTypeId] || [])];
     for (const aid of addonIds) {
       const addon = allAddons.find(a => a.addon_id === aid);
       if (addon) addons.push(addon.name_public);
@@ -146,7 +172,6 @@ async function handleGetTodayJobs(req, res) {
 
         // Build scope from quote snapshot answers (structured items)
         const snap = snapshotMap[qid] || {};
-        const effectiveJobTypeId = jobTypeId || snap.job_type_id;
         const scopeResult = qcfg
           ? buildScopeItems(
               snap.selected_options_json,
@@ -154,7 +179,8 @@ async function handleGetTodayJobs(req, res) {
               qcfg.questionsByType,
               qcfg.optionsByQuestion,
               qcfg.addonsByType,
-              effectiveJobTypeId,
+              jobTypeId,          // booking's job_type_id (may be edited/overridden)
+              snap.job_type_id,   // snapshot's original job_type_id (preferred)
             )
           : { items: [], qty: null, classification: "", addons: [] };
 
