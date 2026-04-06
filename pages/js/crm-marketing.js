@@ -643,7 +643,7 @@
             await window.Api.fetchJson("/api/reviews/ask", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lead_id: leadId }),
+              body: JSON.stringify({ lead_id: leadId, name, phone }),
             });
           } else {
             await window.Api.fetchJson("/api/marketing/followup/send", {

@@ -292,7 +292,7 @@ async function handleSendAsk(req, res) {
     const service = job_type || "your recent electrical work";
     let smsBody = template
       ? renderTemplate(template.body, { first_name: firstName, service, review_link: reviewUrl, city: city || "Orange, TX" })
-      : `Hi ${firstName}, thanks for choosing Vickery Electric! A quick Google review means the world to us: ${reviewUrl} — Cody`;
+      : `Hi ${firstName}, thanks for choosing Vickery Electric for ${service}! A quick Google review means the world to us: ${reviewUrl} — Cody at Vickery Electric`;
 
     let smsSent = false;
     let phoneClean = String(phone || "").replace(/\D/g, "");
@@ -388,7 +388,7 @@ async function handleSendReminder(req, res) {
     const firstName = firstN(name);
     let smsBody = template
       ? renderTemplate(template.body, { first_name: firstName, service: job_type || "service", review_link: reviewUrl, city: city || "" })
-      : `Hi ${firstName}, just a quick follow-up — if you had a great experience with Vickery Electric, we'd love a Google review: ${reviewUrl} Thank you!`;
+      : `Hi ${firstName}, just a quick follow-up on your ${job_type || "recent electrical work"} with Vickery Electric — if you had a great experience, we'd love a Google review: ${reviewUrl} — Cody at Vickery Electric`;
 
     let smsSent = false;
     let phoneClean = String(phone || "").replace(/\D/g, "");

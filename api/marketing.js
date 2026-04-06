@@ -1,7 +1,7 @@
 // api/marketing.js — Marketing Hub: Overview scoreboard, Segments, Follow-up queue
 const { getSheetsClient } = require("../lib/sheets");
 const { sendSms } = require("../lib/staff");
-const { getConfig } = require("../lib/config");
+const { getConfig, setConfigKeys } = require("../lib/config");
 
 const COMPLETE_STATUSES = ["complete", "completed", "paid", "closed", "invoiced"];
 const BOOKED_STATUSES   = ["scheduled", "in progress", "complete", "completed", "paid", "closed", "invoiced"];
