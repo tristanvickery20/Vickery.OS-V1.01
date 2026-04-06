@@ -1,54 +1,98 @@
 // Profit & Expense Calculator — CRM version
-// Loads defaults from /api/actuals-rollup. User edits are what-if only; never written back.
+// Page load: fills ALL fields from Config tab (your saved defaults).
+// "Load Actuals" button: overwrites only job-derived fields (mix, hours, materials, utilization)
+//   with data computed from real completed jobs. Everything else stays as configured.
 
 const FIELD_DEFAULTS = { hoursPerWorkerPerDay: 8, daysPerWeek: 5, utilizationPct: 87 };
 const SOLO_UTIL_PENALTY = 0.30;
 const SOLO_COST_UPLIFT  = 0.10;
 
-// ─── Data loading ────────────────────────────────────────────────────────────
+// Fields that "Load Actuals" is allowed to overwrite — derived from real completed job data.
+const ACTUALS_FIELDS = new Set([
+  "utilizationPct",
+  "smallJobMix", "mediumJobMix", "largeJobMix",
+  "smallJobHours", "mediumJobHours", "largeJobHours",
+  "smallJobMaterials", "mediumJobMaterials", "largeJobMaterials",
+]);
 
-async function fetchAndPopulateData(windowDays) {
+// ─── Data loading ─────────────────────────────────────────────────────────────
+
+// Fills every input field with Config tab values. Ignores touched state.
+async function loadFromConfig() {
   const statusEl = document.getElementById("calcStatus");
-  if (statusEl) statusEl.textContent = "Loading actuals…";
+  if (statusEl) { statusEl.textContent = "Loading config…"; statusEl.className = "calc-status"; }
+
+  try {
+    const res = await fetch("/api/actuals-rollup?configOnly=true");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    Object.entries(data).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = val === 0 || val === "0" ? (id === "jobsPerWeek" ? "" : String(val)) : String(val);
+      el.dataset.touched = "";  // clear touched so actuals can overwrite actuals-fields
+    });
+
+    // Hard defaults for schedule fields if still blank after config
+    ["hoursPerWorkerPerDay", "daysPerWeek", "utilizationPct"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const hasValue = el.value !== "" && !Number.isNaN(parseFloat(el.value));
+      if (!hasValue) el.value = String(FIELD_DEFAULTS[id]);
+    });
+
+    if (statusEl) {
+      statusEl.textContent = "Config loaded — tweak any number or click Load Actuals to pull real job data";
+      statusEl.className = "calc-status ok";
+    }
+  } catch (e) {
+    console.error("Config fetch failed:", e);
+    if (statusEl) {
+      statusEl.textContent = "Could not load config — enter values manually";
+      statusEl.className = "calc-status warn";
+    }
+    ["hoursPerWorkerPerDay", "daysPerWeek", "utilizationPct"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value === "") el.value = String(FIELD_DEFAULTS[id]);
+    });
+  }
+
+  calculateProfit();
+}
+
+// Overwrites ONLY actuals-derived fields with data computed from real completed jobs.
+// All other fields (overhead, labor rates, crew config, projections) are left as-is.
+async function loadActuals(windowDays) {
+  const statusEl = document.getElementById("calcStatus");
+  if (statusEl) { statusEl.textContent = "Loading real job data…"; statusEl.className = "calc-status"; }
 
   try {
     const res = await fetch(`/api/actuals-rollup?windowDays=${windowDays || 30}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    let populated = 0;
+    let updated = 0;
     Object.entries(data).forEach(([id, val]) => {
+      if (!ACTUALS_FIELDS.has(id)) return;  // only update actuals-derived fields
       const el = document.getElementById(id);
-      if (el && !el.dataset.touched) {
-        el.value = String(val);
-        populated++;
-      }
-    });
-
-    // Apply hard defaults for schedule fields if still blank
-    ["hoursPerWorkerPerDay", "daysPerWeek", "utilizationPct"].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el || el.dataset.touched) return;
-      const hasValue = el.value !== "" && !Number.isNaN(parseFloat(el.value));
-      if (!hasValue) el.value = String(FIELD_DEFAULTS[id]);
+      if (!el) return;
+      el.value = String(val);
+      updated++;
     });
 
     if (statusEl) {
-      statusEl.textContent = `Actuals loaded (${populated} fields, last 30 days)`;
+      statusEl.textContent = updated > 0
+        ? `Real job data applied (last ${windowDays} days) — job mix, hours & materials updated`
+        : `No completed jobs found in last ${windowDays} days — config values unchanged`;
       statusEl.className = "calc-status ok";
     }
   } catch (e) {
     console.error("Actuals fetch failed:", e);
     if (statusEl) {
-      statusEl.textContent = "Could not load actuals — enter values manually";
+      statusEl.textContent = "Could not load job data — config values unchanged";
       statusEl.className = "calc-status warn";
     }
-    ["hoursPerWorkerPerDay", "daysPerWeek", "utilizationPct"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && !el.dataset.touched && el.value === "") {
-        el.value = String(FIELD_DEFAULTS[id]);
-      }
-    });
   }
 
   calculateProfit();
@@ -255,7 +299,6 @@ function calculateProfit() {
 
     // Display helpers
     const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-    const setClass = (id, cls) => { const el = document.getElementById(id); if (el) el.className = cls; };
 
     setText("activeJourneymen", deploy.activeJourneymen.toString());
     setText("activeApprentices", deploy.activeApprentices.toString());
@@ -314,32 +357,28 @@ function renderYear(containerId, title, worst, likely, best, scaleBase) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Mark fields as touched on change so they aren't overwritten
+  // Recalculate live as the user types
   document.querySelectorAll("input[type=number]").forEach(el => {
-    el.addEventListener("input", () => {
-      el.dataset.touched = "1";
-      calculateProfit();
-    });
+    el.addEventListener("input", calculateProfit);
   });
 
-  // Window-days selector
-  const winSel = document.getElementById("windowDays");
-  if (winSel) {
-    winSel.addEventListener("change", () => {
-      document.querySelectorAll("input[type=number]").forEach(e => delete e.dataset.touched);
-      fetchAndPopulateData(parseInt(winSel.value, 10));
-    });
-  }
-
-  // Reload actuals button
+  // "Load Actuals" button — only overwrites job-data-derived fields
   const reloadBtn = document.getElementById("reloadActuals");
   if (reloadBtn) {
     reloadBtn.addEventListener("click", () => {
       const days = parseInt(document.getElementById("windowDays")?.value || "30", 10);
-      document.querySelectorAll("input[type=number]").forEach(e => delete e.dataset.touched);
-      fetchAndPopulateData(days);
+      loadActuals(days);
     });
   }
 
-  fetchAndPopulateData(30);
+  // Window-days selector (only relevant when Load Actuals is clicked)
+  const winSel = document.getElementById("windowDays");
+  if (winSel) {
+    winSel.addEventListener("change", () => {
+      loadActuals(parseInt(winSel.value, 10));
+    });
+  }
+
+  // Page load — fill everything from Config
+  loadFromConfig();
 });

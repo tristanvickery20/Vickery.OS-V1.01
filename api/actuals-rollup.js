@@ -238,9 +238,53 @@ async function computeRollup(windowDays) {
   return rollup;
 }
 
+// Returns all calculator field values straight from the Config tab — no job computation.
+async function computeConfigOnly() {
+  const cfg = await getConfig();
+  return {
+    journeymanLaborBurden:  toNum(cfg.journeymanLaborBurden  || cfg.labor_rate_tech         || 61),
+    apprenticeLaborBurden:  toNum(cfg.apprenticeLaborBurden  || cfg.labor_rate_apprentice   || 30),
+    numJourneymen:          toNum(cfg.numJourneymen          || 1),
+    numApprentices:         toNum(cfg.numApprentices         || 1),
+    crewCount:              toNum(cfg.crewCount              || 1),
+    hoursPerWorkerPerDay:   toNum(cfg.hoursPerWorkerPerDay   || 8),
+    daysPerWeek:            toNum(cfg.daysPerWeek            || 5),
+    utilizationPct:         toNum(cfg.utilizationPct         || 87),
+    prepDriveHoursPerJob:   toNum(cfg.prepDriveHoursPerJob   || 0),
+    overrunRatePct:         toNum(cfg.overrunRatePct         || 0),
+    cancelRatePct:          toNum(cfg.cancelRatePct          || 0),
+    leadsPerWeek:           toNum(cfg.leadsPerWeek           || 0),
+    closeRatePct:           toNum(cfg.closeRatePct           || 0),
+    jobsPerWeek:            toNum(cfg.jobsPerWeek            || 0),
+    smallJobMix:            toNum(cfg.smallJobMix            || 0),
+    mediumJobMix:           toNum(cfg.mediumJobMix           || 0),
+    largeJobMix:            toNum(cfg.largeJobMix            || 0),
+    smallJobHours:          toNum(cfg.smallJobHours          || 0),
+    smallJobMaterials:      toNum(cfg.smallJobMaterials      || 0),
+    mediumJobHours:         toNum(cfg.mediumJobHours         || 0),
+    mediumJobMaterials:     toNum(cfg.mediumJobMaterials     || 0),
+    largeJobHours:          toNum(cfg.largeJobHours          || 0),
+    largeJobMaterials:      toNum(cfg.largeJobMaterials      || 0),
+    vehicleInsurance:       toNum(cfg.vehicleInsurance       || cfg.overhead_vehicle_insurance || 0),
+    fuelCost:               toNum(cfg.fuelCost               || cfg.overhead_fuel              || 0),
+    vehicleMaintenance:     toNum(cfg.vehicleMaintenance     || cfg.overhead_vehicle_maint     || 0),
+    generalLiability:       toNum(cfg.generalLiability       || cfg.overhead_gen_liability     || 0),
+    toolRepair:             toNum(cfg.toolRepair             || cfg.overhead_tool_repair        || 0),
+    loanPayments:           toNum(cfg.loanPayments           || cfg.overhead_loan_payments     || 0),
+    softwarePayments:       toNum(cfg.softwarePayments       || cfg.overhead_software           || 0),
+    marketingCost:          toNum(cfg.marketingCost          || cfg.overhead_marketing          || 0),
+    ownerSalary:            toNum(cfg.ownerSalary            || cfg.overhead_owner_salary       || 0),
+    taxRate:                toNum(cfg.taxRate                || cfg.tax_rate                    || 25),
+    targetProfitMargin:     toNum(cfg.targetProfitMargin     || cfg.target_profit_margin        || 30),
+    bidAccuracy:            toNum(cfg.bidAccuracy            || cfg.bid_accuracy                || 10),
+    annualGrowthRate:       toNum(cfg.annualGrowthRate       || cfg.annual_growth_rate          || 10),
+  };
+}
+
 async function handleActualsRollup(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
+    const configOnly = url.searchParams.get("configOnly") === "true";
     const windowDays = parseInt(url.searchParams.get("windowDays") || "30", 10) || 30;
 
     if (!SPREADSHEET_ID()) {
@@ -248,7 +292,7 @@ async function handleActualsRollup(req, res) {
       return res.end(JSON.stringify({}));
     }
 
-    const rollup = await computeRollup(windowDays);
+    const rollup = configOnly ? await computeConfigOnly() : await computeRollup(windowDays);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(rollup));
   } catch (err) {
