@@ -102,6 +102,8 @@ async function handleGetOverview(req, res) {
     const nameIdx     = headers.indexOf("name");
     const phoneIdx    = headers.indexOf("phone");
 
+    const updatedAtIdx = headers.indexOf("updated_at");
+
     const leadsTotal = rows.filter(r => r && r.length && String(r[0] || "").trim()).length;
     let bookedCount = 0;
     let completedCount = 0;
@@ -115,6 +117,7 @@ async function handleGetOverview(req, res) {
     let reviewReceived = 0;
     let staleQuoteCount = 0;
     let repeatCustomers = 0;
+    const firstResponseHoursArr = [];
 
     // phone → job count for repeat customer rate
     const phoneCounts = {};
@@ -165,6 +168,24 @@ async function handleGetOverview(req, res) {
       if (phone) {
         phoneCounts[phone] = (phoneCounts[phone] || 0) + 1;
       }
+
+      // First-response time: created_at → updated_at (proxy for first status change / touch)
+      const createdAt  = String(row[createdIdx] || "").trim();
+      const updatedAt  = String(row[updatedAtIdx >= 0 ? updatedAtIdx : actIdx] || "").trim();
+      if (createdAt && updatedAt && createdAt !== updatedAt) {
+        const diffMs = new Date(updatedAt).getTime() - new Date(createdAt).getTime();
+        if (diffMs > 0) firstResponseHoursArr.push(diffMs / 3600000);
+      }
+    }
+
+    // Median first-response time (hours)
+    let medianFirstResponseHours = null;
+    if (firstResponseHoursArr.length > 0) {
+      const sorted = [...firstResponseHoursArr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianFirstResponseHours = sorted.length % 2 === 0
+        ? Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 10) / 10
+        : Math.round(sorted[mid] * 10) / 10;
     }
 
     // Repeat customer rate
@@ -201,6 +222,7 @@ async function handleGetOverview(req, res) {
         revenue_total: Math.round(revenueTotal * 100) / 100,
         close_rate_pct: closeRate,
         quote_to_book_pct: quoteToBookRate,
+        median_first_response_hours: medianFirstResponseHours,
         review_eligible: reviewEligible,
         review_asked: reviewAsked,
         review_received: reviewReceived,
@@ -287,8 +309,9 @@ async function handleGetSegments(req, res) {
 
       const baseEntry = { lead_id: leadId, name, phone, email, status, last_activity: lastAct, value };
 
-      // 1. Needs Review Ask
-      if (COMPLETE_STATUSES.includes(status) && (!revStat || revStat === "none")) {
+      // 1. Needs Review Ask — requires sms_opt_in + phone (same eligibility as review engine queue)
+      const hasSmsOptIn = smsOpt === "true" || smsOpt === "yes" || smsOpt === "1";
+      if (COMPLETE_STATUSES.includes(status) && hasSmsOptIn && phoneDigits && (!revStat || revStat === "none")) {
         segments.needs_review_ask.push({ ...baseEntry, days_since_complete: daysSince(lastAct) });
       }
 
@@ -424,24 +447,30 @@ async function handleSendFollowup(req, res) {
       smsSent = await sendSms(phoneClean, smsBody);
     }
 
-    // Log the follow-up touch on the client
+    // Log the follow-up touch on the client: update last_activity_at and last_followup_at
     const now = new Date().toISOString();
-    // Update last_activity_at to move it out of the stale bucket
     const { headers, rows } = await readTabRows(sheets, spreadsheetId, "Clients");
-    const lidIdx2 = headers.indexOf("lead_id");
-    const idIdx2  = headers.indexOf("id");
-    const actIdx2 = headers.indexOf("last_activity_at");
+    const lidIdx2     = headers.indexOf("lead_id");
+    const idIdx2      = headers.indexOf("id");
+    const actIdx2     = headers.indexOf("last_activity_at");
+    const followupIdx = headers.indexOf("last_followup_at");
     for (let i = 0; i < rows.length; i++) {
       const rowId   = String(rows[i][idIdx2] || "").trim();
       const rowLid  = String(rows[i][lidIdx2] || "").trim();
       if (rowId === lead_id || rowLid === lead_id) {
+        const colLetter = c => String.fromCharCode(65 + c);
+        const updateOps = [];
         if (actIdx2 >= 0) {
-          const colLetter = c => String.fromCharCode(65 + c);
+          updateOps.push({ range: `Clients!${colLetter(actIdx2)}${i + 2}`, values: [[now]] });
+        }
+        if (followupIdx >= 0) {
+          updateOps.push({ range: `Clients!${colLetter(followupIdx)}${i + 2}`, values: [[now]] });
+        }
+        for (const op of updateOps) {
           await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `Clients!${colLetter(actIdx2)}${i + 2}`,
+            spreadsheetId, range: op.range,
             valueInputOption: "RAW",
-            requestBody: { values: [[now]] },
+            requestBody: { values: op.values },
           });
         }
         break;

@@ -406,6 +406,10 @@ async function handleCreateLead(req, res) {
       setCellByHeader(row, idx, "estimated_value", String(Number(data.estimated_value || 0)));
       setCellByHeader(row, idx, "notes", data.notes || "");
 
+      // Marketing attribution fields
+      setCellByHeader(row, idx, "lead_source", data.lead_source || "");
+      setCellByHeader(row, idx, "referring_customer", data.referring_customer || "");
+
       // Optional shortcut if you add later
       if (idx["primary_address"] !== undefined) {
         setCellByHeader(row, idx, "primary_address", data.address || "");

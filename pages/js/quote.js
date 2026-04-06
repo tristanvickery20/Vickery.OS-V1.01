@@ -568,6 +568,22 @@ function renderConfirm() {
         <div class="q-zip-note" id="zipNote" style="display:none;"></div>
         <div class="q-price-update" id="priceUpdate" style="display:none;"></div>
       </div>
+      <div class="q-field">
+        <label class="q-label">How did you find us?</label>
+        <select id="ld_source" class="q-input" style="background:var(--q-surface,#1e2435);color:inherit;border:1px solid var(--q-border,#2d3348);">
+          <option value="">-- Select one (optional) --</option>
+          <option value="GBP">Google Search / Google Maps</option>
+          <option value="LSA">Google Local Services Ad</option>
+          <option value="Google Ads">Google Ad</option>
+          <option value="Organic SEO">Website / Organic Search</option>
+          <option value="Facebook">Facebook</option>
+          <option value="Referral">Friend or Family Referral</option>
+          <option value="Yard Sign">Yard Sign</option>
+          <option value="Truck Wrap">Truck / Van</option>
+          <option value="Repeat Customer">Previous Customer</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
       <div class="q-nav-row" style="margin-top:8px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
@@ -1266,6 +1282,8 @@ async function submitLock() {
   const email   = val("ld_email");
   const address = val("ld_address");
   const zip     = val("ld_zip");
+  const source  = val("ld_source");
+  S.lead_source = source || "";
 
   const errEl = document.getElementById("leadErr");
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
@@ -1282,7 +1300,7 @@ async function submitLock() {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
@@ -1366,6 +1384,7 @@ async function submitBooking() {
         address:            lockData?.address || "",
         customer_name:      lockData?.customer_name || "",
         final_price:        lockData?.final_price,
+        lead_source:        S.lead_source || "",
       }),
     });
     const d = await r.json();

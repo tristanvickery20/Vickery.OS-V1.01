@@ -85,7 +85,7 @@ async function appendSnapshot(sheets, fields) {
 // ── Lead upsert on lock ───────────────────────────────────────────────────────
 // Creates or updates the Lead row so schedule-book can find it by last_quote_id.
 // Non-fatal: any Sheets error is logged but does not break the quote response.
-async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing }) {
+async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source }) {
   try {
     const sheetId  = SPREADSHEET_ID();
     const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Leads!A1:Z2000" });
@@ -115,6 +115,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       set("pricing_version", pricing.pricing_version || "v2");
       if (!row[idxOf("name")]    && customer_name) set("name",    customer_name);
       if (!row[idxOf("address")] && address)       set("address", address);
+      if (lead_source && !row[idxOf("lead_source")]) set("lead_source", lead_source);
       const sIdx = idxOf("status");
       if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
       await sheets.spreadsheets.values.update({
@@ -141,6 +142,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       set("quoted_price",    String(pricing.final_price || ""));
       set("pricing_version", pricing.pricing_version || "v2");
       set("last_quote_id",   quote_id);
+      if (lead_source) set("lead_source", lead_source);
       await sheets.spreadsheets.values.append({
         spreadsheetId: sheetId, range: "Leads!A:A",
         valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
@@ -424,7 +426,7 @@ async function handleQuoteLock(req, res) {
     const body = await parseBody(req);
     const {
       quote_id, job_type_id, answers, addons, qty,
-      customer_name, phone, email, address, zip,
+      customer_name, phone, email, address, zip, lead_source,
     } = body;
 
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
@@ -527,7 +529,7 @@ async function handleQuoteLock(req, res) {
     });
 
     // Upsert the Lead row so the booking can find it by last_quote_id
-    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing });
+    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "" });
 
     json(res, 200, lockResponse);
   } catch (err) {
