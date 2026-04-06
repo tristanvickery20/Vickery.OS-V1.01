@@ -24,6 +24,10 @@ function readBody(req) {
 }
 
 function norm(v) { return String(v || "").trim().toLowerCase(); }
+function isSmsOptIn(v) {
+  const s = norm(v);
+  return s === "true" || s === "1" || s === "yes";
+}
 
 function daysSince(isoStr) {
   if (!isoStr) return 9999;
@@ -191,6 +195,7 @@ async function handleGetReviews(req, res) {
       const remSentAt = String(row[revRemIdx] || "").trim();
       const daysSinceComplete = daysSince(lastAct);
 
+      const hasSmsOptIn = isSmsOptIn(smsOpt);
       const entry = {
         lead_id: leadId,
         name,
@@ -204,11 +209,15 @@ async function handleGetReviews(req, res) {
         review_reminder_sent_at: remSentAt,
         sms_opt_in: smsOpt,
         has_phone: !!phone,
+        has_sms_opt_in: hasSmsOptIn,
         review: reviewByLead[leadId] || null,
       };
 
       if (!reviewStatus || reviewStatus === "none") {
-        queue.push(entry);
+        // Queue only includes sms_opt_in + has phone (can actually receive the text)
+        if (hasSmsOptIn && phone) {
+          queue.push(entry);
+        }
       } else if (reviewStatus === "asked") {
         const daysSinceAsk = daysSince(askSentAt);
         entry.days_since_ask = daysSinceAsk;
@@ -251,6 +260,29 @@ async function handleSendAsk(req, res) {
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    // Prevent duplicate ask — check current review_status on this client
+    const clientsResp = await sheets.spreadsheets.values.get({
+      spreadsheetId, range: `${CLIENTS_TAB}!A:ZZ`,
+    });
+    const cRows = clientsResp.data.values || [];
+    if (cRows.length > 1) {
+      const cHeaders = cRows[0].map(h => String(h || "").trim());
+      const cIdIdx = cHeaders.indexOf("id");
+      const cLidIdx = cHeaders.indexOf("lead_id");
+      const cRevStatIdx = cHeaders.indexOf("review_status");
+      for (let i = 1; i < cRows.length; i++) {
+        const rowId  = String(cRows[i][cIdIdx] || "").trim();
+        const rowLid = String(cRows[i][cLidIdx] || "").trim();
+        if (rowId === lead_id || rowLid === lead_id) {
+          const existing = cRevStatIdx >= 0 ? String(cRows[i][cRevStatIdx] || "").trim() : "";
+          if (existing && existing !== "none" && existing !== "") {
+            return json(res, 409, { ok: false, error: `Review already in progress: status is '${existing}'` });
+          }
+          break;
+        }
+      }
+    }
     const config = await getConfig();
 
     const reviewUrl = config.google_review_url || "https://g.page/r/vickeryelectric/review";
@@ -306,7 +338,7 @@ async function handleSendAsk(req, res) {
   }
 }
 
-// POST /api/reviews/remind — send reminder SMS
+// POST /api/reviews/remind — send reminder SMS (max 1 reminder; min 48h after ask)
 async function handleSendReminder(req, res) {
   try {
     const body = await readBody(req);
@@ -315,6 +347,39 @@ async function handleSendReminder(req, res) {
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    // Enforce eligibility: must be status=asked, 48h+ elapsed, not already reminded
+    const clientsResp = await sheets.spreadsheets.values.get({
+      spreadsheetId, range: `${CLIENTS_TAB}!A:ZZ`,
+    });
+    const cRows = clientsResp.data.values || [];
+    if (cRows.length > 1) {
+      const cH = cRows[0].map(h => String(h || "").trim());
+      const cIdIdx      = cH.indexOf("id");
+      const cLidIdx     = cH.indexOf("lead_id");
+      const cRevStatIdx = cH.indexOf("review_status");
+      const cAskIdx     = cH.indexOf("review_ask_sent_at");
+      const cRemIdx     = cH.indexOf("review_reminder_sent_at");
+      for (let i = 1; i < cRows.length; i++) {
+        const rowId  = String(cRows[i][cIdIdx] || "").trim();
+        const rowLid = String(cRows[i][cLidIdx] || "").trim();
+        if (rowId === lead_id || rowLid === lead_id) {
+          const revStat = cRevStatIdx >= 0 ? String(cRows[i][cRevStatIdx] || "").trim() : "";
+          if (revStat !== "asked") {
+            return json(res, 409, { ok: false, error: `Cannot send reminder: review_status is '${revStat}' (must be 'asked')` });
+          }
+          const askAt = cAskIdx >= 0 ? String(cRows[i][cAskIdx] || "").trim() : "";
+          if (daysSince(askAt) < 2) {
+            return json(res, 409, { ok: false, error: "Cannot send reminder: minimum 48 hours must pass after initial ask" });
+          }
+          const remAt = cRemIdx >= 0 ? String(cRows[i][cRemIdx] || "").trim() : "";
+          if (remAt) {
+            return json(res, 409, { ok: false, error: "Reminder already sent for this lead (one reminder maximum)" });
+          }
+          break;
+        }
+      }
+    }
     const config = await getConfig();
 
     const reviewUrl = config.google_review_url || "https://g.page/r/vickeryelectric/review";

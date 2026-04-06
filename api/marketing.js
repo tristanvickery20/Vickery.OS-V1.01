@@ -6,6 +6,7 @@ const { getConfig } = require("../lib/config");
 const COMPLETE_STATUSES = ["complete", "completed", "paid", "closed", "invoiced"];
 const BOOKED_STATUSES   = ["scheduled", "in progress", "complete", "completed", "paid", "closed", "invoiced"];
 const STALE_QUOTE_STATUSES = ["estimate_sent", "awaiting_response", "new", "quoted"];
+const QUOTED_STATUSES   = ["quoted", "estimate_sent", "awaiting_response"];
 
 const SOURCE_CATEGORIES = [
   "GBP", "Organic SEO", "LSA", "Google Ads", "Direct",
@@ -105,6 +106,7 @@ async function handleGetOverview(req, res) {
     let bookedCount = 0;
     let completedCount = 0;
     let revenueTotal = 0;
+    let quotedOrBookedCount = 0;
     const sourceLeads = {};
     const sourceBooked = {};
     const sourceRevenue = {};
@@ -135,8 +137,11 @@ async function handleGetOverview(req, res) {
       if (!sourceLeads[src]) sourceLeads[src] = 0;
       sourceLeads[src]++;
 
+      if (QUOTED_STATUSES.includes(status)) quotedOrBookedCount++;
+
       if (BOOKED_STATUSES.includes(status)) {
         bookedCount++;
+        quotedOrBookedCount++; // booked leads were all quoted at some point
         if (!sourceBooked[src]) sourceBooked[src] = 0;
         sourceBooked[src]++;
         if (!sourceRevenue[src]) sourceRevenue[src] = 0;
@@ -183,6 +188,7 @@ async function handleGetOverview(req, res) {
     })).sort((a, b) => b.leads - a.leads);
 
     const closeRate = leadsTotal > 0 ? Math.round((bookedCount / leadsTotal) * 100) : 0;
+    const quoteToBookRate = quotedOrBookedCount > 0 ? Math.round((bookedCount / quotedOrBookedCount) * 100) : 0;
     const reviewRequestRate = reviewEligible > 0 ? Math.round((reviewAsked / reviewEligible) * 100) : 0;
     const reviewConversionRate = reviewAsked > 0 ? Math.round((reviewReceived / reviewAsked) * 100) : 0;
 
@@ -194,6 +200,7 @@ async function handleGetOverview(req, res) {
         completed_count: completedCount,
         revenue_total: Math.round(revenueTotal * 100) / 100,
         close_rate_pct: closeRate,
+        quote_to_book_pct: quoteToBookRate,
         review_eligible: reviewEligible,
         review_asked: reviewAsked,
         review_received: reviewReceived,
