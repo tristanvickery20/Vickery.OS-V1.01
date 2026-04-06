@@ -28,7 +28,7 @@ const { handleGetCrewMembers, handleGetTodayJobs } = require("./api/crew");
 const {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
-  handleCrewReviewAsk,
+  handleCrewReviewAsk, handleCrewNotify,
 } = require("./api/crew-auth");
 const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
@@ -178,6 +178,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/api/crew/logout" && req.method === "POST") return handleLogout(req, res);
   if (req.url === "/api/crew/me"     && req.method === "GET")  return handleMe(req, res);
   if (req.url === "/api/crew/review-ask" && req.method === "POST") return handleCrewReviewAsk(req, res);
+  if (req.url === "/api/crew/notify"     && req.method === "POST") return handleCrewNotify(req, res);
 
   // Crew portal public API endpoints (no auth required — employee-facing)
   if (req.url.startsWith("/api/crew/members") && req.method === "GET") {

@@ -149,9 +149,49 @@ async function sendReviewAsk(job, btn) {
 }
 
 // ── Job Detail Overlay ────────────────────────────────────────────────────────
+let _detailJob = null; // currently-open job, used by notify buttons
+
 function closeJobDetail() {
+  _detailJob = null;
   closeOverlay("jobDetailOverlay");
   if (typeof _unlockBody === "function") _unlockBody();
+}
+
+async function sendCrewNotify(action, btn) {
+  if (!_detailJob?.phone) return;
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  try {
+    const res  = await fetch("/api/crew/notify", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        action,
+        phone:         _detailJob.phone,
+        customer_name: _detailJob.customer_name,
+        booking_id:    _detailJob.booking_id,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = "✓ Sent!";
+      btn.classList.add("sent");
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove("sent");
+        btn.disabled = false;
+      }, 4000);
+    } else {
+      showToast(data.error || "Send failed", true);
+      btn.textContent = orig;
+      btn.disabled = false;
+    }
+  } catch {
+    showToast("Network error — try again", true);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 }
 
 function bindJobDetailOverlay() {
@@ -159,6 +199,12 @@ function bindJobDetailOverlay() {
   document.getElementById("jobDetailOverlay")?.addEventListener("click", e => {
     if (e.target === e.currentTarget) closeJobDetail();
   });
+  document.getElementById("notifyOnTheWay")?.addEventListener("click", e =>
+    sendCrewNotify("on_the_way", e.currentTarget));
+  document.getElementById("notifyWeAreHere")?.addEventListener("click", e =>
+    sendCrewNotify("we_are_here", e.currentTarget));
+  document.getElementById("notifyRunningLate")?.addEventListener("click", e =>
+    sendCrewNotify("running_late", e.currentTarget));
 }
 
 function classificationLabel(s) {
@@ -271,6 +317,19 @@ function openJobDetail(j) {
     typeSection.style.display = "none";
   }
 
+  // Notify Customer section — show only when job has a phone number
+  const notifySection = document.getElementById("jdNotifySection");
+  if (notifySection) notifySection.style.display = j.phone ? "block" : "none";
+  // Reset any previously-sent button states
+  document.querySelectorAll(".btn-notify").forEach(b => {
+    b.textContent = b.id === "notifyOnTheWay" ? "On the way"
+      : b.id === "notifyWeAreHere" ? "We're here"
+      : "Running late";
+    b.classList.remove("sent");
+    b.disabled = false;
+  });
+
+  _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");
   if (typeof _lockBody === "function") _lockBody();
 }

@@ -6,6 +6,7 @@ const {
   hashPassword, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
+const { CREW_TEMPLATES } = require("../lib/sms");
 const { setAuthCookie } = require("../lib/auth");
 
 function json(res, status, data) {
@@ -242,8 +243,28 @@ async function handleCrewReviewAsk(req, res) {
   }
 }
 
+// POST /api/crew/notify — crew one-tap customer notifications
+async function handleCrewNotify(req, res) {
+  try {
+    const session = getCrewSession(req);
+    if (!session) return json(res, 401, { ok: false, error: "Not authenticated" });
+
+    const { action, phone, customer_name, booking_id } = await readBody(req);
+    const template = CREW_TEMPLATES[action];
+    if (!template)  return json(res, 400, { ok: false, error: "Unknown action." });
+    if (!phone)     return json(res, 400, { ok: false, error: "Customer phone is required." });
+
+    const sent = await sendSms(phone, template);
+    console.log(`[crew/notify] booking=${booking_id} action=${action} phone=${phone} sent=${sent}`);
+    json(res, 200, { ok: true, sent });
+  } catch (err) {
+    console.error("[crew/notify]", err.message);
+    json(res, 500, { ok: false, error: "Server error." });
+  }
+}
+
 module.exports = {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
-  handleCrewReviewAsk,
+  handleCrewReviewAsk, handleCrewNotify,
 };

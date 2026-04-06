@@ -1,0 +1,284 @@
+Build an SMS module for my Node/Express CRM using SMS Gateway for Android (SMSGate) in CLOUD mode first.
+
+Important constraints:
+- The CRM is hosted on Replit.
+- Do NOT use SMSGate Local mode for production because Replit cannot reach a local-network-only API.
+- Build the SMS layer so the provider can be swapped later to SMSGate Private Server or Twilio without changing business logic.
+- Use TypeScript if possible.
+- Prefer the official JS/TS SMSGate client if it simplifies integration.
+- Start with Basic Auth for setup simplicity, but keep auth abstracted so JWT can replace it later.
+- Keep code modular and small.
+
+Provider facts to implement around:
+- Base URL default: https://api.sms-gate.app/3rdparty/v1
+- SMS send endpoint uses POST and JSON.
+- Webhooks must verify HMAC-SHA256 using raw request body + X-Timestamp and compare against X-Signature.
+- Incoming replies must be stored and attached to the lead/customer/job.
+
+Build these pieces:
+
+1) ENV VARIABLES
+- SMS_PROVIDER=smsgate
+- SMSGATE_BASE_URL=https://api.sms-gate.app/3rdparty/v1
+- SMSGATE_LOGIN=
+- SMSGATE_PASSWORD=
+- SMSGATE_DEVICE_ID=
+- SMSGATE_SIM_NUMBER=1
+- SMSGATE_WEBHOOK_SIGNING_KEY=
+- SMS_FROM_LABEL=Vickery Electric
+
+2) DATABASE / DATA MODEL
+Create tables or sheet-backed models for:
+- sms_contacts
+  - id
+  - lead_id nullable
+  - customer_id nullable
+  - phone_e164
+  - first_name
+  - service_sms_opt_in boolean
+  - service_sms_opt_in_at datetime nullable
+  - service_sms_opt_in_source text nullable
+  - marketing_sms_opt_in boolean
+  - marketing_sms_opt_in_at datetime nullable
+  - marketing_sms_opt_in_source text nullable
+  - sms_revoked_at datetime nullable
+  - sms_revoked_reason text nullable
+  - created_at
+  - updated_at
+
+- sms_templates
+  - id
+  - key unique
+  - name
+  - category enum: operational, marketing
+  - body
+  - is_active
+  - created_at
+  - updated_at
+
+- sms_messages
+  - id
+  - provider enum
+  - provider_message_id nullable
+  - contact_id
+  - lead_id nullable
+  - job_id nullable
+  - quote_id nullable
+  - template_key nullable
+  - category enum: operational, marketing
+  - direction enum: outbound, inbound
+  - body
+  - status enum: queued, sent, delivered, failed, received
+  - error_text nullable
+  - parts_count nullable
+  - sent_at nullable
+  - delivered_at nullable
+  - received_at nullable
+  - created_by_user_id nullable
+  - automation_run_id nullable
+  - metadata_json
+
+- sms_automations
+  - id
+  - key unique
+  - name
+  - category enum: operational, marketing
+  - trigger_type enum: job_scheduled, before_job, quote_age, job_completed, manual_campaign
+  - enabled boolean
+  - delay_minutes integer default 0
+  - requires_manual_approval boolean
+  - rules_json
+  - template_key
+  - created_at
+  - updated_at
+
+- sms_send_queue
+  - id
+  - contact_id
+  - lead_id nullable
+  - job_id nullable
+  - quote_id nullable
+  - automation_id nullable
+  - template_key nullable
+  - category enum: operational, marketing
+  - body
+  - scheduled_for datetime
+  - status enum: pending, approved, rejected, processing, sent, failed, canceled
+  - approval_required boolean
+  - approved_by_user_id nullable
+  - approved_at nullable
+  - cancel_reason nullable
+  - created_at
+  - updated_at
+
+3) SMS SERVICE LAYER
+Create a provider abstraction:
+- sendSms(args)
+- getMessageStatus(providerMessageId)
+- verifyWebhook(rawBody, headers)
+- parseInboundWebhook(payload)
+- parseStatusWebhook(payload)
+
+Create SMSGate provider implementation:
+- send outbound text messages to one phone number
+- support template interpolation like {{first_name}}, {{appt_date}}, {{tech_name}}, {{quote_total}}
+- save provider message id and status
+- handle failures gracefully
+
+4) API ROUTES
+Create these routes:
+- POST /api/sms/send
+  Sends one SMS immediately after permission checks.
+
+- POST /api/sms/schedule
+  Queues an SMS for later send.
+
+- POST /api/sms/approve/:queueId
+  Approves a queued marketing SMS.
+
+- POST /api/sms/cancel/:queueId
+  Cancels queued SMS.
+
+- POST /api/sms/crew-action/:jobId/:action
+  One-tap crew actions:
+  - ON_THE_WAY
+  - WE_ARE_HERE
+  - RUNNING_LATE
+  - JOB_COMPLETE
+  These must send operational templates immediately if service_sms_opt_in is true.
+
+- POST /api/webhooks/sms/smsgate
+  Receives SMSGate webhooks.
+  Must:
+  - use raw request body
+  - verify HMAC-SHA256 with X-Signature and X-Timestamp
+  - reject invalid signatures
+  - handle inbound customer replies
+  - handle sent/delivered/failed status updates
+  - upsert messages in sms_messages
+
+- GET /api/sms/conversation/:contactId
+  Returns conversation history
+
+- GET /api/sms/queue
+  Returns queued and pending approvals
+
+5) BUSINESS RULES
+Implement these guardrails:
+- Operational messages require:
+  - valid phone number
+  - no revoke flag
+  - service_sms_opt_in = true
+- Marketing messages require:
+  - valid phone number
+  - no revoke flag
+  - marketing_sms_opt_in = true
+- If customer replies STOP, UNSUBSCRIBE, CANCEL, END, or QUIT:
+  - set marketing_sms_opt_in = false
+  - set sms_revoked_at
+  - stop future marketing sends immediately
+- If customer replies HELP:
+  - log it
+  - optionally auto-reply with support text
+
+6) AUTOMATIONS
+Build a worker / cron process that runs every 5 minutes and creates or sends queue records.
+
+Implement these automations:
+- quote_followup_7d
+  Trigger: quote remains open for 7 days
+  Category: marketing
+  Requires manual approval: true
+  Template key: quote_followup_7d
+
+- appointment_reminder_24h
+  Trigger: 24 hours before scheduled appointment
+  Category: operational
+  Requires manual approval: false
+  Template key: appt_reminder_24h
+
+- appointment_reminder_2h
+  Trigger: 2 hours before scheduled appointment
+  Category: operational
+  Requires manual approval: false
+  Template key: appt_reminder_2h
+
+- job_completed_review_request
+  Trigger: 24 hours after completed job
+  Category: marketing
+  Requires manual approval: true
+  Template key: review_request
+
+- referral_offer_after_completion
+  Trigger: 7 days after completed job
+  Category: marketing
+  Requires manual approval: true
+  Template key: referral_offer
+
+7) TEMPLATES
+Seed templates:
+- crew_on_the_way
+  "Vickery Electric update: {{tech_name}} is on the way and should arrive around {{eta}}."
+
+- crew_we_are_here
+  "Vickery Electric update: we’re here."
+
+- crew_running_late
+  "Vickery Electric update: we’re running about {{delay_minutes}} minutes behind. Thanks for your patience."
+
+- appt_reminder_24h
+  "Reminder from Vickery Electric: your appointment is scheduled for {{appt_date}} at {{appt_time}}."
+
+- appt_reminder_2h
+  "Vickery Electric reminder: we’re scheduled to arrive around {{appt_time}} today."
+
+- quote_followup_7d
+  "Hey {{first_name}}, just checking in on your quote from Vickery Electric. Want us to get you scheduled?"
+
+- review_request
+  "Thanks for choosing Vickery Electric. If everything looks good, would you mind leaving us a review? {{review_link}}"
+
+- referral_offer
+  "Thanks again for choosing Vickery Electric. If you refer someone who books with us, we’ll give you $50. Reply if you want the details."
+
+8) UI
+Add an SMS tab to the CRM with:
+- conversation view
+- template picker
+- send now
+- schedule send
+- approval queue
+- automation log
+- opt-in / opt-out badges
+- filters by operational vs marketing
+- failed message retry button
+
+In crew view add one-tap buttons:
+- On the way
+- We’re here
+- Running late
+- Complete + trigger follow-up workflow
+
+9) LOGGING / SAFETY
+- Log every outbound attempt
+- Log provider response raw JSON in metadata_json
+- Prevent duplicate automation sends for the same contact + automation + reference entity
+- Add idempotency protection for webhook processing
+- Normalize all numbers to E.164
+- Write tests for:
+  - webhook signature verification
+  - consent gating
+  - queue approval
+  - duplicate prevention
+  - STOP handling
+
+10) DELIVERABLE
+Give me:
+- file tree
+- exact env vars needed
+- migration/schema
+- implementation code
+- seed data
+- test routes
+- instructions for where I plug in my SMSGate credentials, device id, and webhook URL
+- keep files under 200 lines if possible
