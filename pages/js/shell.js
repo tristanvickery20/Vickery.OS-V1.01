@@ -12,12 +12,47 @@ function ensureBackdrop() {
   return bd;
 }
 
+// iOS Safari ignores overflow:hidden on body — block touchmove on the backdrop/body
+// but allow native scroll inside the sidebar nav.
+var _navTouchStartY = 0;
+
+function _blockBodyTouch(e) {
+  // If the touch target is inside the scrollable nav, allow it
+  var nav = qs(".sidebar-nav");
+  if (nav && nav.contains(e.target)) return;
+  e.preventDefault();
+}
+
+function _navBoundaryGuard(e) {
+  // Prevent rubber-band when nav is at top or bottom edge
+  var nav = qs(".sidebar-nav");
+  if (!nav) return;
+  var touch = e.touches[0];
+  var delta = _navTouchStartY - touch.clientY;
+  var atTop    = nav.scrollTop === 0;
+  var atBottom = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 1;
+  if ((atTop && delta < 0) || (atBottom && delta > 0)) {
+    e.preventDefault();
+  }
+}
+
+function _navTouchStart(e) {
+  _navTouchStartY = e.touches[0].clientY;
+}
+
 function openSidebar() {
   var sb = qs(".sidebar");
   var bd = ensureBackdrop();
   if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
   document.body.style.overflow = "hidden";
+  // iOS Safari: block body bounce and guard nav edges
+  document.addEventListener("touchmove", _blockBodyTouch, { passive: false });
+  var nav = qs(".sidebar-nav");
+  if (nav) {
+    nav.addEventListener("touchstart", _navTouchStart, { passive: true });
+    nav.addEventListener("touchmove", _navBoundaryGuard, { passive: false });
+  }
 }
 
 function closeSidebar() {
@@ -26,6 +61,12 @@ function closeSidebar() {
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
   document.body.style.overflow = "";
+  document.removeEventListener("touchmove", _blockBodyTouch);
+  var nav = qs(".sidebar-nav");
+  if (nav) {
+    nav.removeEventListener("touchstart", _navTouchStart);
+    nav.removeEventListener("touchmove", _navBoundaryGuard);
+  }
 }
 
 function getPageTitle() {
