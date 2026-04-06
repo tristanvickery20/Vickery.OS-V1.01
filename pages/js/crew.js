@@ -203,8 +203,9 @@ function openJobDetail(j) {
   // Job type
   const typeSection = document.getElementById("jdTypeSection");
   const typeEl = document.getElementById("jdType");
-  if (j.job_type_id) {
-    typeEl.textContent = j.job_type_id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const typeName = j.job_type_name || "";
+  if (typeName) {
+    typeEl.textContent = typeName;
     typeSection.style.display = "block";
   } else {
     typeSection.style.display = "none";
