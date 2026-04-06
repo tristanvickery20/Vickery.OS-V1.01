@@ -1,0 +1,822 @@
+Build it around one loop:
+
+traffic → lead → quote → booked job → 5-star review → repeat job / referral
+
+If your CRM can own that loop, you can compete hard even as a small shop.
+
+I’d build your “elite engine” in 4 stacked layers:
+	1.	Acquisition engine — SEO, GBP, LSA, direct traffic, referrals
+	2.	Conversion engine — instant response, quote follow-up, booking
+	3.	Reputation engine — review requests, recovery, social proof
+	4.	Compounding engine — reactivation, referrals, repeat work, content reuse
+
+The mistake would be building “marketing” as a tab with campaigns and texts.
+You need to build a revenue engine that starts at first click and ends at repeat business.
+
+⸻
+
+What to think about at the highest level
+
+Your CRM should answer these questions instantly:
+	•	Where did this lead come from?
+	•	How fast did we respond?
+	•	Did they book?
+	•	What revenue came from that source?
+	•	Did they leave a review?
+	•	Did they buy again?
+	•	How many jobs did that review/referral/content page help create?
+
+That means every marketing feature needs to connect to:
+	•	lead
+	•	quote
+	•	job
+	•	customer
+	•	revenue
+	•	review
+	•	source
+
+⸻
+
+The real goal
+
+You are not trying to “do marketing.”
+
+You are trying to build a machine that does this better than local competitors:
+	•	gets found
+	•	looks trustworthy
+	•	responds faster
+	•	follows up more consistently
+	•	gets more reviews
+	•	reuses every customer better
+	•	tracks what works
+
+That’s what elite looks like.
+
+⸻
+
+Core doctrine for Vickery
+
+For your setup, I’d build around these principles:
+
+1. Own first-party data
+
+Do not depend on ad platforms or third-party dashboards to tell you what happened.
+
+Your CRM should store:
+	•	source
+	•	campaign
+	•	landing page
+	•	keyword if available
+	•	click ID if available
+	•	call tracking number
+	•	form submission time
+	•	first response time
+	•	booked yes/no
+	•	job value
+	•	review left yes/no
+	•	repeat-customer yes/no
+
+If you own this data, you can outlearn bigger companies.
+
+2. Speed beats polish
+
+A mediocre company with instant response often beats a better company with slow response.
+
+So your CRM needs:
+	•	immediate SMS on new lead
+	•	immediate internal alert
+	•	task creation
+	•	auto-email
+	•	call queue / missed call text-back
+	•	quote follow-up automation
+
+3. Reviews are not a side thing
+
+For local home service, reviews are part of your ranking engine, trust engine, and conversion engine.
+
+Your CRM should treat reviews like pipeline.
+
+4. Every completed job should create future demand
+
+Every finished job should feed:
+	•	review ask
+	•	before/after photos
+	•	service tags
+	•	testimonial request
+	•	referral request
+	•	reactivation timer
+	•	local content opportunities
+
+⸻
+
+What your CRM needs to store
+
+A. Lead source and attribution
+
+You need this at lead creation:
+	•	original_source
+	•	original_medium
+	•	original_campaign
+	•	original_content
+	•	original_keyword
+	•	landing_page
+	•	gclid / wbraid / gbraid if present
+	•	referring_url
+	•	call_tracking_number
+	•	source_category
+	•	manual_override_source
+	•	first_touch_timestamp
+
+Then later:
+	•	booked_source_credit
+	•	revenue_source_credit
+	•	last_touch_source
+	•	repeat_source
+
+Do not settle for just:
+“Google” or “Website”
+
+That is not enough.
+
+Use categories like:
+	•	GBP
+	•	Organic SEO
+	•	LSA
+	•	Google Ads
+	•	Direct
+	•	Referral
+	•	Yard Sign
+	•	Truck Wrap
+	•	Repeat Customer
+	•	Facebook
+	•	Manual Outreach
+
+⸻
+
+B. SEO page intelligence
+
+Each page should have fields in the CRM or admin system for:
+	•	page slug
+	•	service
+	•	city
+	•	title tag
+	•	meta description
+	•	H1
+	•	supporting FAQs
+	•	schema fields
+	•	primary CTA
+	•	secondary CTA
+	•	internal links
+	•	status
+	•	canonical
+	•	image set
+	•	last updated
+	•	ranking notes
+	•	lead count from page
+
+This lets you manage SEO pages like assets, not static pages.
+
+⸻
+
+C. Review pipeline
+
+Each job/customer needs review fields:
+	•	eligible_for_review
+	•	review_request_status
+	•	first_ask_sent_at
+	•	second_ask_sent_at
+	•	review_completed
+	•	review_platform
+	•	review_url_clicked
+	•	review_text_excerpt
+	•	negative_feedback_flag
+	•	complaint_flag
+	•	sentiment_notes
+
+This makes reputation measurable.
+
+⸻
+
+D. Customer lifecycle status
+
+Marketing has to know where the person is.
+
+Examples:
+	•	new_lead
+	•	contacted
+	•	quoted
+	•	quote_stale
+	•	booked
+	•	completed
+	•	review_pending
+	•	reviewed
+	•	reactivation_ready
+	•	repeat_customer
+	•	do_not_market
+
+⸻
+
+The elite marketing engine structure
+
+1. Local SEO engine
+
+This is not just “write blogs.”
+
+It is a system made of:
+
+Service pages
+
+You need strong core pages for launch services:
+	•	ceiling fan installation
+	•	recessed lighting
+	•	dimmer switch installation
+	•	surge protection
+	•	smoke detector installation
+	•	dedicated circuits
+	•	EV outlet / EV receptacle
+	•	exterior lighting
+	•	fixture replacement
+	•	troubleshooting if offered
+
+These should be your money pages.
+
+City/service pages
+
+Then build local combinations carefully:
+	•	Ceiling Fan Installation in Orange, TX
+	•	Recessed Lighting in Beaumont, TX
+	•	Dimmer Switch Installation in Bridge City, TX
+
+But do not mass-spam garbage pages.
+Each one needs useful localized copy, FAQs, trust proof, service-area clarity, and real conversion elements.
+
+Conversion blocks on every page
+
+Every SEO page should include:
+	•	headline with service + city
+	•	trust block
+	•	review excerpts
+	•	service-area clarity
+	•	instant quote / request quote CTA
+	•	FAQ
+	•	photo block
+	•	financing/payment note if relevant
+	•	recent job proof
+	•	internal links to related services
+
+Technical SEO basics you should build into the CMS/admin
+
+Your CRM or site admin should let you control:
+	•	title tags
+	•	meta descriptions
+	•	slug
+	•	canonicals
+	•	robots settings
+	•	sitemap inclusion
+	•	schema markup inputs
+	•	image alt text
+	•	internal links
+	•	FAQ blocks
+	•	review snippets where appropriate
+	•	page last updated date
+
+SEO reporting inside CRM
+
+Track per page:
+	•	impressions
+	•	clicks
+	•	average position
+	•	form leads
+	•	calls
+	•	booked jobs
+	•	revenue
+	•	close rate
+
+That way you can see:
+this page ranks, but converts poorly
+or
+this page gets less traffic, but produces better leads
+
+That is how you improve intelligently.
+
+⸻
+
+2. GBP / local presence engine
+
+This matters a lot for you.
+
+Your CRM should have a GBP operations module even if posting/updating still happens partially outside it.
+
+Track:
+	•	primary category
+	•	secondary categories
+	•	services listed
+	•	service areas
+	•	business description versions
+	•	photo uploads
+	•	posts published
+	•	Q&A ideas
+	•	review count
+	•	average rating
+	•	unanswered reviews
+	•	negative review alerts
+	•	call volume
+	•	direction requests if available
+	•	website clicks if available
+
+Then make recurring tasks:
+	•	upload fresh job photos
+	•	publish offer/update posts
+	•	answer new reviews
+	•	add jobsite/service photos
+	•	log common questions
+	•	update service descriptions
+
+The key thought:
+GBP is not a profile. It is a weekly operating process.
+
+⸻
+
+3. Review engine
+
+This is one of the biggest advantages you can build.
+
+What elite looks like
+
+Not just “send review request.”
+
+It means:
+	•	send at the right moment
+	•	use the right channel
+	•	send from the right number/email
+	•	stop automatically when review is left
+	•	route unhappy customers away from public damage
+	•	make responses fast and consistent
+	•	use reviews in SEO and conversion pages
+
+Review workflow I’d build
+
+After job completion:
+	1.	mark job completed
+	2.	wait a short delay
+	3.	send SMS review ask
+	4.	if no click, send one follow-up
+	5.	if review comes in, stop
+	6.	create task to respond publicly
+	7.	save review text to testimonial library
+	8.	tag review by service and city
+	9.	surface it on matching service pages later
+
+What to store
+	•	ask_sent
+	•	ask_channel
+	•	click_detected
+	•	review_received
+	•	star_rating
+	•	review_text
+	•	service_tag
+	•	city_tag
+	•	technician_tag
+	•	public_response_status
+
+Smart twist
+
+Make the CRM ask for an internal satisfaction score first if you want service recovery — but be careful not to build anything that feels manipulative or like sketchy gating. The safe operational version is:
+	•	internal feedback form available
+	•	complaint workflow
+	•	public review request still handled cleanly and fairly
+	•	no shady “only happy people get the link” logic
+
+Review response engine
+
+You should also build a response queue:
+	•	new review detected
+	•	suggested response draft
+	•	owner approve/edit
+	•	mark responded
+
+This helps speed and consistency.
+
+⸻
+
+4. Follow-up engine
+
+Most contractors leak money here.
+
+Your CRM should automate:
+
+New lead follow-up
+	•	instant SMS
+	•	instant email
+	•	internal alert
+	•	call task
+	•	stale lead reminders
+
+Quote follow-up
+	•	sent + 24h
+	•	72h
+	•	7d
+	•	14d final touch
+	•	stop when booked / declined
+
+Unscheduled approved work
+	•	approved but not scheduled reminder
+
+Completed job
+	•	thank you
+	•	review ask
+	•	referral ask
+	•	future service reminder
+
+Reactivation
+	•	no service in 6 months
+	•	no service in 12 months
+	•	seasonal campaign by service type
+	•	past estimate but no close
+
+This is where small companies can punch above their weight.
+
+⸻
+
+5. Referral and repeat-business engine
+
+A true elite engine turns one customer into multiple jobs.
+
+Track:
+	•	referral source customer
+	•	referred lead created
+	•	referral converted
+	•	total referral revenue
+	•	repeat customer rate
+	•	days to repeat purchase
+
+Then automate:
+	•	ask for referral after good review
+	•	send seasonal service offers
+	•	send safety reminders
+	•	send maintenance / upgrade suggestions by installed service type
+
+For example:
+	•	ceiling fan customer → outdoor lighting later
+	•	smoke detector customer → surge protection later
+	•	EV outlet lead → panel upgrade or dedicated circuit later
+
+⸻
+
+What to build in Replit
+
+Think in terms of modules.
+
+Must-have modules
+
+1. Marketing dashboard
+
+Show:
+	•	leads today / week / month
+	•	leads by source
+	•	booked jobs by source
+	•	revenue by source
+	•	review requests due
+	•	review conversion
+	•	quote follow-up queue
+	•	reactivation opportunities
+	•	page performance
+	•	response time
+
+2. Source tracking module
+
+Capture UTMs, click IDs, landing pages, referral sources, tracking number.
+
+3. Templates module
+
+Store:
+	•	SMS templates
+	•	email templates
+	•	review asks
+	•	quote follow-up
+	•	reactivation
+	•	referral asks
+
+Include variables like:
+	•	first_name
+	•	city
+	•	service_name
+	•	quote_link
+	•	booking_link
+	•	review_link
+
+4. Automations module
+
+Need:
+	•	trigger
+	•	delay
+	•	channel
+	•	template
+	•	filters
+	•	stop conditions
+	•	active/inactive
+	•	execution log
+
+5. Conversations / inbox module
+
+Unified:
+	•	SMS threads
+	•	email threads
+	•	notes
+	•	automation history
+
+6. Review center
+
+Need:
+	•	eligible jobs
+	•	pending asks
+	•	reviews received
+	•	review responses due
+	•	negative feedback flags
+
+7. SEO page manager
+
+If you really want to compete, this matters.
+
+Let yourself manage:
+	•	service pages
+	•	city pages
+	•	FAQs
+	•	titles/meta
+	•	schema
+	•	internal links
+	•	review embeds
+	•	page notes
+	•	performance metrics
+
+8. Campaign / reactivation module
+
+For blasting or drip messaging to saved segments.
+
+⸻
+
+What integrations you need
+
+You do not need everything native day one.
+You need your CRM to be the brain, while outside tools handle transport.
+
+Likely stack
+
+SMS
+
+Twilio
+
+Use for:
+	•	outbound SMS
+	•	inbound SMS
+	•	delivery status
+	•	missed call text-back if you add voice
+
+Email
+
+Resend / Mailgun / SendGrid / Gmail API
+
+Use for:
+	•	outbound email
+	•	bounce tracking
+	•	reply handling if possible
+
+Forms
+
+Your website form should push directly into CRM with source data attached.
+
+Call tracking
+
+Very valuable.
+Even basic number tracking by source helps.
+
+Search Console
+
+You want page-level performance data.
+
+Google Analytics / simple event tracking
+
+At least:
+	•	form submit
+	•	click-to-call
+	•	instant quote start
+	•	instant quote completion
+	•	booking start
+	•	booking completion
+
+QuickBooks sync back
+
+Even if accounting stays outside, send back:
+	•	invoice total
+	•	paid status
+	•	revenue actual
+	•	customer/job mapping
+
+Marketing is not complete until revenue is tied back.
+
+⸻
+
+The SEO architecture I would use for Vickery
+
+Core structure
+	•	Home
+	•	Service Area
+	•	About / trust page
+	•	Contact
+	•	Instant Quote
+	•	One page per launch service
+	•	One page per important city/service combo
+	•	FAQ hub
+	•	Review page / testimonial page
+	•	Recent jobs / project proof
+	•	Financing / payment options if relevant
+
+Content strategy
+
+Not generic blogging.
+
+Focus on:
+	•	service pages
+	•	city pages
+	•	FAQs from real customer questions
+	•	job-based proof pages
+	•	comparison pages
+	•	safety pages
+	•	seasonal pages only where useful
+
+Examples:
+	•	Cost to Install a Ceiling Fan in Orange, TX
+	•	Do I Need a Dedicated Circuit for My Garage Fridge?
+	•	Recessed Lighting vs Flush Mount in Older Homes
+	•	Why Your GFCI Keeps Tripping
+	•	Exterior Lighting Ideas for Southeast Texas Homes
+
+This kind of content actually helps convert.
+
+⸻
+
+The review architecture I would use
+
+Review capture
+
+Every completed job gets considered.
+
+Eligibility rules:
+	•	job marked complete
+	•	not in dispute
+	•	not do-not-contact
+	•	no unresolved complaint flag
+
+Ask cadence
+	•	first ask
+	•	one reminder
+	•	stop
+
+Internal handling
+	•	negative feedback opens service recovery task
+	•	public review response queue
+	•	good reviews tagged by service/city
+	•	reusable snippets stored
+
+Review deployment
+
+Reuse great reviews on:
+	•	homepage
+	•	service pages
+	•	city pages
+	•	quote pages
+	•	truck wrap / printed materials
+	•	email signatures
+	•	automation snippets
+
+A review is not just reputation. It is content.
+
+⸻
+
+What elite competitors do that you should copy in software
+
+They usually win because they do these consistently:
+	•	answer first
+	•	follow up more
+	•	ask for reviews more consistently
+	•	show more proof
+	•	look more organized
+	•	stay in front of old customers
+	•	understand lead source ROI
+
+So your CRM should turn those into systems, not habits.
+
+⸻
+
+Replit build priorities
+
+Phase 1
+
+Build these first:
+	•	lead source tracking
+	•	instant lead response
+	•	communication log
+	•	templates
+	•	quote follow-up automation
+	•	review request automation
+	•	review tracking
+	•	basic source reporting
+
+Phase 2
+
+Then add:
+	•	unified inbox
+	•	reactivation campaigns
+	•	SEO page manager
+	•	referral engine
+	•	review response queue
+	•	page-level attribution
+
+Phase 3
+
+Then add:
+	•	call tracking integration
+	•	advanced segmentation
+	•	campaign testing
+	•	content library
+	•	job-photo to content workflow
+	•	AI-assisted response drafts / page drafts
+
+⸻
+
+What you should be thinking about while coding
+
+Think like this:
+
+“Can I tie this to revenue?”
+
+If not, it is probably not a top priority.
+
+“Can this be automated after one human action?”
+
+Example:
+job marked complete → review flow fires automatically
+
+“Can I reuse this asset?”
+
+Example:
+review → testimonial → page content → ad copy → text snippet
+
+“Can I see this by source?”
+
+If not, you will not know what to scale.
+
+“Can I make this impossible to forget?”
+
+If not, it should become a queue or automation.
+
+⸻
+
+The biggest mistake to avoid
+
+Do not build a marketing tab that is mostly:
+	•	mass texting
+	•	email blasts
+	•	vanity metrics
+	•	random blog drafting
+	•	disconnected analytics
+
+That is not elite.
+
+Elite is:
+	•	source attribution
+	•	fast response
+	•	systematic follow-up
+	•	systematic review generation
+	•	systematic reactivation
+	•	revenue visibility
+
+⸻
+
+The simplest elite scoreboard
+
+Inside your marketing dashboard, show these first:
+	•	leads by source
+	•	booked jobs by source
+	•	revenue by source
+	•	close rate by source
+	•	median first response time
+	•	quote-to-book rate
+	•	review request rate
+	•	review conversion rate
+	•	repeat customer rate
+	•	reactivation revenue
+
+That alone will make you smarter than a lot of contractors.
+
+⸻
+
+Best one-line build target
+
+Build your CRM so every lead, review, and dollar can be traced through this chain:
+
+source → conversation → quote → booking → job → review → repeat revenue
+
+That is the engine.
+
+Next step: I can turn this into an exact Replit build spec with modules, tables, endpoints, and page layouts in your CRM style.
