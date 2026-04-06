@@ -38,35 +38,54 @@ async function handleGetTodayJobs(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
     if (!spreadsheetId) return json(res, 200, { ok: true, jobs: [] });
 
-    const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Bookings!A:P",
-    });
+    // Fetch bookings and quote snapshots in parallel
+    const [bookingsResp, quotesResp] = await Promise.all([
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
+    ]);
 
-    const rows = resp.data.values || [];
+    const rows = bookingsResp.data.values || [];
     if (rows.length < 2) return json(res, 200, { ok: true, jobs: [] });
 
     const [headers, ...data] = rows;
     const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
+
+    // Build a notes lookup from QuoteSnapshots keyed by quote_id
+    const qRows = quotesResp.data.values || [];
+    const notesMap = {};
+    if (qRows.length > 1) {
+      const [qHeaders, ...qData] = qRows;
+      const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
+      qData.forEach(r => {
+        const qid   = String(r[qi["quote_id"] ?? -1] ?? "").trim();
+        const notes = String(r[qi["notes"]    ?? -1] ?? "").trim();
+        if (qid && notes && !notesMap[qid]) notesMap[qid] = notes;
+      });
+    }
 
     const today = todayLocalStr();
 
     const jobs = data
       .map(r => {
         const get = col => String(r[idx[col] ?? -1] ?? "").trim();
-        const dt = get("scheduled_datetime");
+        const dt      = get("scheduled_datetime");
         const dateStr = dt ? dt.slice(0, 10) : "";
+        const qid     = get("quote_id");
         return {
-          booking_id:    get("booking_id"),
-          quote_id:      get("quote_id"),
-          customer_name: get("customer_name"),
-          address:       get("address"),
-          phone:         get("phone"),
+          booking_id:       get("booking_id"),
+          quote_id:         qid,
+          customer_name:    get("customer_name"),
+          address:          get("address"),
+          phone:            get("phone"),
+          email:            get("email"),
           scheduled_datetime: dt,
-          date:          dateStr,
-          schedule_block: get("schedule_block"),
+          date:             dateStr,
+          schedule_block:   get("schedule_block"),
           duration_minutes: Number(r[idx["duration_minutes"] ?? -1] || 0),
-          status:        get("status"),
+          status:           get("status"),
+          final_price:      get("final_price"),
+          job_type_id:      get("job_type_id"),
+          scope_of_work:    get("scope_of_work") || notesMap[qid] || "",
         };
       })
       .filter(j => j.date === today && j.status !== "cancelled")

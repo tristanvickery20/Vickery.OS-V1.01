@@ -131,6 +131,112 @@
       color: #fff;
     }
 
+    /* ── Job card tap target ── */
+    .job-card-top { cursor: pointer; }
+    .job-card-top:active { opacity: .85; }
+    .job-tap-hint {
+      font-size: 11px;
+      color: hsl(220 15% 40%);
+      margin-bottom: 10px;
+      letter-spacing: .04em;
+    }
+
+    /* ── Job detail overlay ── */
+    .jd-section { margin-bottom: 20px; }
+    .jd-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: hsl(220 15% 45%);
+      margin-bottom: 6px;
+    }
+    .jd-value {
+      font-size: 15px;
+      color: hsl(220 15% 85%);
+      line-height: 1.5;
+    }
+    .jd-customer {
+      font-size: 22px;
+      font-weight: 700;
+      color: hsl(220 15% 94%);
+      margin-bottom: 4px;
+    }
+    .jd-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: hsl(142 55% 55%);
+      margin-bottom: 18px;
+    }
+    .jd-divider {
+      border: none;
+      border-top: 1px solid hsl(220 10% 22%);
+      margin: 20px 0;
+    }
+    .btn-navigate {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: hsl(217 91% 60%);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-navigate:active { opacity: .8; }
+    .btn-invoice {
+      width: 100%;
+      padding: 15px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: not-allowed;
+      border: 1px solid hsl(220 10% 26%);
+      background: hsl(220 10% 16%);
+      color: hsl(220 15% 50%);
+      margin-bottom: 10px;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn-payment {
+      width: 100%;
+      padding: 15px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: not-allowed;
+      border: 1px dashed hsl(220 10% 28%);
+      background: hsl(220 10% 13%);
+      color: hsl(220 15% 45%);
+      font-family: inherit;
+      text-align: center;
+    }
+    .coming-soon-tag {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: hsl(220 15% 38%);
+      margin-top: 3px;
+    }
+    .scope-box {
+      background: hsl(220 10% 11%);
+      border: 1px solid hsl(220 10% 20%);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: hsl(220 15% 75%);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
     /* ── No jobs ── */
     .no-jobs {
       text-align: center; padding: 40px 20px;
@@ -399,6 +505,53 @@
       <textarea class="form-textarea" id="expenseNotes" placeholder="Any details…"></textarea>
     </div>
     <button class="btn-submit" id="submitExpense">Save Expense</button>
+  </div>
+</div>
+
+<!-- Job detail overlay -->
+<div class="overlay" id="jobDetailOverlay">
+  <div class="overlay-card">
+    <div class="overlay-header">
+      <div class="overlay-title">Job Details</div>
+      <button class="btn-close" id="closeJobDetail">✕</button>
+    </div>
+
+    <div class="jd-customer" id="jdCustomer"></div>
+    <div class="jd-price" id="jdPrice"></div>
+
+    <div class="jd-section">
+      <div class="jd-label">Scheduled</div>
+      <div class="jd-value" id="jdTime"></div>
+    </div>
+
+    <div class="jd-section">
+      <div class="jd-label">Address</div>
+      <div class="jd-value" id="jdAddress"></div>
+      <a class="btn-navigate" id="jdNavigate" href="#" target="_blank" rel="noopener">
+        Navigate
+      </a>
+    </div>
+
+    <div class="jd-section" id="jdScopeSection">
+      <div class="jd-label">Scope of Work / Notes</div>
+      <div class="scope-box" id="jdScope"></div>
+    </div>
+
+    <div class="jd-section" id="jdTypeSection">
+      <div class="jd-label">Job Type</div>
+      <div class="jd-value" id="jdType"></div>
+    </div>
+
+    <hr class="jd-divider">
+
+    <button class="btn-invoice" disabled>
+      Send Invoice via QuickBooks
+      <span class="coming-soon-tag">QuickBooks integration — coming soon</span>
+    </button>
+    <button class="btn-payment" disabled>
+      Accept Payment
+      <span class="coming-soon-tag">Payment integration — coming soon</span>
+    </button>
   </div>
 </div>
 

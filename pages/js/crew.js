@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupHeader();
   loadTodayJobs();
   bindOverlayControls();
+  bindJobDetailOverlay();
   bindManualButtons();
   bindLogout();
 });
@@ -81,6 +82,9 @@ async function loadTodayJobs() {
     list.querySelectorAll(".btn-review-ask").forEach(btn =>
       btn.addEventListener("click", () => sendReviewAsk(JSON.parse(btn.dataset.job), btn))
     );
+    list.querySelectorAll(".job-card-top").forEach(el =>
+      el.addEventListener("click", () => openJobDetail(JSON.parse(el.dataset.job)))
+    );
   } catch {
     list.innerHTML = `<div style="color:hsl(0 60% 55%);padding:16px;">Could not load today's jobs.</div>`;
   }
@@ -95,9 +99,12 @@ function jobCard(j) {
     : "";
   return `
     <div class="job-card">
-      <div class="job-block">${block}${dur}</div>
-      <div class="job-customer">${esc(j.customer_name || "Customer")}</div>
-      <div class="job-address">${esc(j.address || "—")}</div>
+      <div class="job-card-top" data-job='${jobData}'>
+        <div class="job-block">${block}${dur}</div>
+        <div class="job-customer">${esc(j.customer_name || "Customer")}</div>
+        <div class="job-address">${esc(j.address || "—")}</div>
+        <div class="job-tap-hint">Tap to view details</div>
+      </div>
       <div class="job-actions">
         <button class="btn-time"    data-job='${jobData}'>Log Time</button>
         <button class="btn-expense" data-job='${jobData}'>Expense</button>
@@ -139,6 +146,71 @@ async function sendReviewAsk(job, btn) {
     btn.textContent = origText;
     btn.disabled = false;
   }
+}
+
+// ── Job Detail Overlay ────────────────────────────────────────────────────────
+function bindJobDetailOverlay() {
+  document.getElementById("closeJobDetail")?.addEventListener("click", () =>
+    closeOverlay("jobDetailOverlay")
+  );
+  document.getElementById("jobDetailOverlay")?.addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeOverlay("jobDetailOverlay");
+  });
+}
+
+function openJobDetail(j) {
+  // Customer + price
+  document.getElementById("jdCustomer").textContent = j.customer_name || "Customer";
+  const priceEl = document.getElementById("jdPrice");
+  priceEl.textContent = j.final_price
+    ? `$${Number(j.final_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "";
+  priceEl.style.display = j.final_price ? "block" : "none";
+
+  // Scheduled time
+  const timeEl = document.getElementById("jdTime");
+  if (j.scheduled_datetime) {
+    const d = new Date(j.scheduled_datetime);
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const dur  = j.duration_minutes ? ` · ${j.duration_minutes} min` : "";
+    const blk  = j.schedule_block   ? ` (${j.schedule_block})` : "";
+    timeEl.textContent = `${time}${dur}${blk}`;
+  } else {
+    timeEl.textContent = j.schedule_block || "—";
+  }
+
+  // Address + navigate link
+  const addr = j.address || "";
+  document.getElementById("jdAddress").textContent = addr || "—";
+  const navLink = document.getElementById("jdNavigate");
+  if (addr) {
+    navLink.href = "https://maps.google.com/maps?q=" + encodeURIComponent(addr);
+    navLink.style.display = "inline-flex";
+  } else {
+    navLink.style.display = "none";
+  }
+
+  // Scope / notes
+  const scopeSection = document.getElementById("jdScopeSection");
+  const scopeEl = document.getElementById("jdScope");
+  if (j.scope_of_work) {
+    scopeEl.textContent = j.scope_of_work;
+    scopeSection.style.display = "block";
+  } else {
+    scopeSection.style.display = "none";
+  }
+
+  // Job type
+  const typeSection = document.getElementById("jdTypeSection");
+  const typeEl = document.getElementById("jdType");
+  if (j.job_type_id) {
+    typeEl.textContent = j.job_type_id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    typeSection.style.display = "block";
+  } else {
+    typeSection.style.display = "none";
+  }
+
+  document.getElementById("jobDetailOverlay").classList.add("open");
 }
 
 // ── Overlay controls ──────────────────────────────────────────────────────────
