@@ -40,6 +40,11 @@ function setupHeader() {
   const greet = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
   const el    = document.getElementById("greeting");
   if (el) el.textContent = `${greet}, ${currentSession.firstName}`;
+
+  if (currentSession.role === "owner") {
+    const crmBtn = document.getElementById("btnCRM");
+    if (crmBtn) crmBtn.style.display = "block";
+  }
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────
