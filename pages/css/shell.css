@@ -40,7 +40,7 @@ body{
   top:0;
   height:100vh;
   overflow-y: auto;
-  overscroll-behavior: none;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -302,6 +302,9 @@ tr:hover td{ background: rgba(255,255,255,0.02); }
     position:fixed;
     left:0; top:0; bottom:0;
     height:100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     transform: translateX(-102%);
     transition: transform .18s ease;
     z-index:70;

@@ -151,11 +151,21 @@ async function handleGetTodayJobs(req, res) {
             )
           : "";
 
-        // Prefer explicit scope_of_work field, then decoded quote answers
-        const scopeRaw = get("scope_of_work");
-        // Only use scope_of_work if it looks like real text (not an ID like BK-xxx or just whitespace)
-        const scopeIsId = /^[A-Z]{2}-[A-Z0-9]{6,}$/i.test(scopeRaw);
-        const scope = (!scopeRaw || scopeIsId) ? scopeFromQuote : scopeRaw;
+        // Build scope: prefer decoded quote answers, then explicit scope_of_work,
+        // then fall back to the booking-level notes field.
+        // Skip any value that looks like an internal ID (e.g. BK-EF461573, Q-XXXX).
+        const scopeRaw   = get("scope_of_work");
+        const bookingNotes = get("notes");
+        const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
+        const scopeCandidates = [scopeFromQuote, scopeRaw, bookingNotes];
+        const scope = scopeCandidates.find(v => v && !isInternalId(v)) || "";
+
+        // Job type: use name_public from config, fall back to formatted raw ID
+        const rawJobTypeName = jobTypeNames[jobTypeId] || jobTypeNames[snap.job_type_id] || "";
+        const jobTypeFallback = jobTypeId && !/^[A-Z]\d+$/i.test(jobTypeId)
+          ? jobTypeId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+          : "";
+        const jobTypeName = rawJobTypeName || jobTypeFallback;
 
         return {
           booking_id:         get("booking_id"),
@@ -171,7 +181,7 @@ async function handleGetTodayJobs(req, res) {
           status:             get("status"),
           final_price:        get("final_price"),
           job_type_id:        jobTypeId,
-          job_type_name:      jobTypeNames[jobTypeId] || jobTypeNames[snap.job_type_id] || "",
+          job_type_name:      jobTypeName,
           scope_of_work:      scope,
         };
       })

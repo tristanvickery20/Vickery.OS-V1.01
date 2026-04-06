@@ -12,35 +12,14 @@ function ensureBackdrop() {
   return bd;
 }
 
-// iOS Safari bounce prevention for sidebar drawer
-var _sbPrevY = 0;
-
-function _sidebarTouchStart(e) {
-  _sbPrevY = e.touches[0].clientY;
-}
-
+// iOS Safari: prevent body scroll while sidebar drawer is open.
+// We only block touchmove when the finger is OUTSIDE the sidebar (backdrop area).
+// Inside the sidebar we let native scroll work freely — no boundary fighting.
 function _sidebarTouchMove(e) {
   var sb = qs(".sidebar");
   if (!sb) return;
-
-  var currentY = e.touches[0].clientY;
-  // dy > 0 means finger moving DOWN → scrolling UP toward top
-  // dy < 0 means finger moving UP   → scrolling DOWN toward bottom
-  var dy = currentY - _sbPrevY;
-  _sbPrevY = currentY;
-
-  var atTop    = sb.scrollTop <= 0;
-  var atBottom = sb.scrollTop + sb.clientHeight >= sb.scrollHeight - 1;
-
-  if (sb.contains(e.target)) {
-    // Inside sidebar: only block at hard boundaries
-    if ((atTop && dy > 0) || (atBottom && dy < 0)) {
-      e.preventDefault();
-    }
-  } else {
-    // Outside sidebar (backdrop): always block body scroll
-    e.preventDefault();
-  }
+  if (sb.contains(e.target)) return; // inside sidebar: do nothing, let it scroll
+  e.preventDefault(); // outside (backdrop): block body scroll
 }
 
 function openSidebar() {
@@ -49,7 +28,6 @@ function openSidebar() {
   if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
   document.body.style.overflow = "hidden";
-  document.addEventListener("touchstart", _sidebarTouchStart, { passive: true });
   document.addEventListener("touchmove", _sidebarTouchMove, { passive: false });
 }
 
@@ -59,7 +37,6 @@ function closeSidebar() {
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
   document.body.style.overflow = "";
-  document.removeEventListener("touchstart", _sidebarTouchStart);
   document.removeEventListener("touchmove", _sidebarTouchMove);
 }
 
