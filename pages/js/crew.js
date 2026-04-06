@@ -149,12 +149,15 @@ async function sendReviewAsk(job, btn) {
 }
 
 // ── Job Detail Overlay ────────────────────────────────────────────────────────
+function closeJobDetail() {
+  closeOverlay("jobDetailOverlay");
+  if (typeof _unlockBody === "function") _unlockBody();
+}
+
 function bindJobDetailOverlay() {
-  document.getElementById("closeJobDetail")?.addEventListener("click", () =>
-    closeOverlay("jobDetailOverlay")
-  );
+  document.getElementById("closeJobDetail")?.addEventListener("click", closeJobDetail);
   document.getElementById("jobDetailOverlay")?.addEventListener("click", e => {
-    if (e.target === e.currentTarget) closeOverlay("jobDetailOverlay");
+    if (e.target === e.currentTarget) closeJobDetail();
   });
 }
 
@@ -230,8 +233,8 @@ function openJobDetail(j) {
       html += `<div class="scope-status ${isBlocked ? "scope-status--alert" : ""}">${esc(clsLabel)}</div>`;
     }
 
-    // Quantity — show prominently when > 1
-    if (qty && qty > 1) {
+    // Quantity — always show when we have structured scope
+    if (qty != null) {
       html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
     }
 
@@ -269,6 +272,7 @@ function openJobDetail(j) {
   }
 
   document.getElementById("jobDetailOverlay").classList.add("open");
+  if (typeof _lockBody === "function") _lockBody();
 }
 
 // ── Overlay controls ──────────────────────────────────────────────────────────

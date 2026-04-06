@@ -335,7 +335,9 @@
       border-radius: 24px 24px 0 0;
       padding: 24px 20px 40px;
       max-height: 90dvh;
-      overflow-y: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     .overlay-header {
       display: flex;
@@ -595,7 +597,7 @@
     </div>
 
     <div class="jd-section" id="jdScopeSection">
-      <div class="jd-label">Quote Breakdown</div>
+      <div class="jd-label">Scope of Work</div>
       <div class="scope-box" id="jdScope"></div>
     </div>
 
