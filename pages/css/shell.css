@@ -39,10 +39,8 @@ body{
   position: sticky;
   top:0;
   height:100vh;
-  overflow:auto;
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 /* Main area */
@@ -184,9 +182,6 @@ body{
 .sidebar .sidebar-footer{
   padding:12px 14px;
   border-top:1px solid var(--line2);
-  position: sticky;
-  bottom:0;
-  background: linear-gradient(180deg, rgba(15,22,33,0.6), rgba(12,18,27,0.95));
 }
 .sidebar .sidebar-footer a{
   display:block;
