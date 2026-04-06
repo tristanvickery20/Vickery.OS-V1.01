@@ -190,17 +190,19 @@ function openJobDetail(j) {
     navLink.style.display = "none";
   }
 
-  // Scope / notes
+  // Scope / notes — always show; "No notes on file" when empty
   const scopeSection = document.getElementById("jdScopeSection");
   const scopeEl = document.getElementById("jdScope");
+  scopeSection.style.display = "block";
   if (j.scope_of_work) {
     scopeEl.textContent = j.scope_of_work;
-    scopeSection.style.display = "block";
+    scopeEl.style.color = "";
   } else {
-    scopeSection.style.display = "none";
+    scopeEl.textContent = "No notes on file for this job.";
+    scopeEl.style.color = "hsl(220 15% 40%)";
   }
 
-  // Job type
+  // Job type — show if available, hide only when truly nothing
   const typeSection = document.getElementById("jdTypeSection");
   const typeEl = document.getElementById("jdType");
   const typeName = j.job_type_name || "";

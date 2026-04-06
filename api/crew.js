@@ -160,9 +160,10 @@ async function handleGetTodayJobs(req, res) {
         const scopeCandidates = [scopeFromQuote, scopeRaw, bookingNotes];
         const scope = scopeCandidates.find(v => v && !isInternalId(v)) || "";
 
-        // Job type: use name_public from config, fall back to formatted raw ID
+        // Job type: use name_public from config; always fall back to the raw ID
+        // so the crew sees something (even internal codes like A001)
         const rawJobTypeName = jobTypeNames[jobTypeId] || jobTypeNames[snap.job_type_id] || "";
-        const jobTypeFallback = jobTypeId && !/^[A-Z]\d+$/i.test(jobTypeId)
+        const jobTypeFallback = jobTypeId
           ? jobTypeId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
           : "";
         const jobTypeName = rawJobTypeName || jobTypeFallback;

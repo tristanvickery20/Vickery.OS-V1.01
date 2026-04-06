@@ -12,23 +12,61 @@ function ensureBackdrop() {
   return bd;
 }
 
-// iOS Safari: prevent body scroll while sidebar drawer is open.
-// We only block touchmove when the finger is OUTSIDE the sidebar (backdrop area).
-// Inside the sidebar we let native scroll work freely — no boundary fighting.
+// ── iOS-safe sidebar scroll ───────────────────────────────────────────────────
+// iOS Safari ignores overflow:hidden on <body> and rubber-bands fixed elements.
+// Fix 1: Body-lock (position:fixed) prevents page scroll without blocking sidebar.
+// Fix 2: touchmove handler blocks overscroll ONLY at the hard top/bottom edge,
+//        using the TOUCH-START Y as the reference (per-frame delta drifts).
+
+var _savedScrollY   = 0;
+var _sbTouchStartY  = 0;
+
+function _lockBody() {
+  _savedScrollY = window.scrollY || window.pageYOffset || 0;
+  var b = document.body;
+  b.style.position   = "fixed";
+  b.style.top        = "-" + _savedScrollY + "px";
+  b.style.left       = "0";
+  b.style.right      = "0";
+  b.style.overflow   = "hidden";
+}
+
+function _unlockBody() {
+  var b = document.body;
+  b.style.position = b.style.top = b.style.left = b.style.right = b.style.overflow = "";
+  window.scrollTo(0, _savedScrollY);
+}
+
+function _sidebarTouchStart(e) {
+  _sbTouchStartY = e.touches[0].clientY;
+}
+
 function _sidebarTouchMove(e) {
   var sb = qs(".sidebar");
-  if (!sb) return;
-  if (sb.contains(e.target)) return; // inside sidebar: do nothing, let it scroll
-  e.preventDefault(); // outside (backdrop): block body scroll
+  if (!sb) { e.preventDefault(); return; }
+
+  // Touch outside sidebar (backdrop) → always block
+  if (!sb.contains(e.target)) { e.preventDefault(); return; }
+
+  // Touch inside sidebar → block only at hard boundaries to stop rubber-band
+  var dy      = e.touches[0].clientY - _sbTouchStartY; // + = finger moving down = intending scroll up
+  var atTop    = sb.scrollTop <= 0;
+  var atBottom = sb.scrollTop + sb.clientHeight >= sb.scrollHeight - 1;
+  if ((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
 }
 
 function openSidebar() {
   var sb = qs(".sidebar");
   var bd = ensureBackdrop();
-  if (sb) sb.classList.add("open");
+  if (sb) {
+    sb.classList.add("open");
+    // Push scrollTop 1px off zero so iOS never sees a "can't scroll up" boundary on open
+    if (sb.scrollTop === 0) sb.scrollTop = 1;
+  }
   if (bd) bd.classList.add("show");
-  document.body.style.overflow = "hidden";
-  document.addEventListener("touchmove", _sidebarTouchMove, { passive: false });
+  _lockBody();
+  document.addEventListener("touchstart", _sidebarTouchStart, { passive: true });
+  document.addEventListener("touchmove",  _sidebarTouchMove,  { passive: false });
 }
 
 function closeSidebar() {
@@ -36,8 +74,9 @@ function closeSidebar() {
   var bd = ensureBackdrop();
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
-  document.body.style.overflow = "";
-  document.removeEventListener("touchmove", _sidebarTouchMove);
+  _unlockBody();
+  document.removeEventListener("touchstart", _sidebarTouchStart);
+  document.removeEventListener("touchmove",  _sidebarTouchMove);
 }
 
 function getPageTitle() {
