@@ -159,13 +159,14 @@ function bindJobDetailOverlay() {
 }
 
 function classificationLabel(s) {
-  if (!s || s === "standard") return "";
+  const key = String(s || "").toLowerCase();
+  if (!key || key === "standard") return "";
   const map = {
     manual_review_required: "Needs office review before starting",
     ready_with_review_flag: "Ready — double-check with office before starting",
     blocked:                "DO NOT START — office must clear this first",
   };
-  return map[s] || s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return map[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function openJobDetail(j) {

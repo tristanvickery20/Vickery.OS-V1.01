@@ -43,8 +43,9 @@ async function handleGetClients(req, res) {
     const limitRaw = Number(parsed.query.limit) || 200;
     const limit = Math.min(Math.max(1, limitRaw), 500);
 
-    const [leads, snapshots, bookings] = await Promise.all([
-      readTab("Leads"),
+    const [clientsTab, leadsTab, snapshots, bookings] = await Promise.all([
+      readTab("Clients").catch(() => []),
+      readTab("Leads").catch(() => []),
       readTab("QuoteSnapshots").catch(() => []),
       readTab("Bookings").catch(() => []),
     ]);
@@ -61,7 +62,7 @@ async function handleGetClients(req, res) {
       if (sPhone && sName && (!snapByPhone[sPhone] || isPref)) snapByPhone[sPhone] = entry;
     }
 
-    // Build name lookup from Bookings — this is what the Schedule page uses
+    // Build name lookup from Bookings — guaranteed to have customer_name
     const bookingByQuoteId = {}, bookingByPhone = {};
     for (const b of bookings) {
       const qid   = stripHtml(b.quote_id       || "").trim();
@@ -72,20 +73,21 @@ async function handleGetClients(req, res) {
       if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;
     }
 
-    let results = leads.map((l) => {
+    function enrichAndShape(l, idField, statusField, addressField) {
       let name    = stripHtml(l.name    || "").trim();
       let phone   = stripHtml(l.phone   || "").trim();
       let email   = stripHtml(l.email   || "").trim();
-      let address = stripHtml(l.address || "").trim();
+      let address = stripHtml(l[addressField || "address"] || l.address || l.primary_address || "").trim();
+      const status = stripHtml(l[statusField] || l.status || l.status_code || "").trim();
 
-      // Enrich missing fields — 4-layer lookup
+      // Enrich missing fields via 4-layer lookup
       if (!name || !phone || !email) {
         const cleanPh = phone.replace(/\D/g, "");
-        const qid     = (l.last_quote_id || "").trim();
+        const qid     = stripHtml(l.last_quote_id || "").trim();
         const src =
-          (qid     && snapByQuoteId[qid])      ||
-          (cleanPh && snapByPhone[cleanPh])     ||
-          (qid     && bookingByQuoteId[qid])    ||
+          (qid     && snapByQuoteId[qid])    ||
+          (cleanPh && snapByPhone[cleanPh])   ||
+          (qid     && bookingByQuoteId[qid])  ||
           (cleanPh && bookingByPhone[cleanPh]);
         if (src) {
           if (!name    && src.name)    name    = src.name;
@@ -96,19 +98,40 @@ async function handleGetClients(req, res) {
       }
 
       return {
-        id: l.id || "",
-        client_id: l.client_id || "",
-        job_number: pickJobNumber(l),
+        id:              stripHtml(l[idField] || l.id || ""),
+        client_id:       stripHtml(l.client_id || l.id || ""),
+        job_number:      pickJobNumber(l),
         name,
         phone,
+        email,
         address,
-        status: l.status || "",
+        status,
         estimated_value: l.estimated_value || "",
-        scheduled_date: l.scheduled_date || "",
-        assigned_to: l.assigned_to || "",
-        notes: l.notes || "",
+        scheduled_date:  l.scheduled_date  || "",
+        assigned_to:     l.assigned_to     || "",
+        notes:           l.notes || l.job_description || "",
+        created_at:      l.created_at || "",
       };
+    }
+
+    // CRM-created leads live in the Clients tab — these take priority
+    const seenIds = new Set();
+    const clientsRows = clientsTab.map(l => {
+      const shaped = enrichAndShape(l, "id", "status_code", "address");
+      seenIds.add(shaped.id);
+      if (l.lead_id) seenIds.add(stripHtml(l.lead_id));
+      return shaped;
     });
+
+    // Legacy quote-flow leads from the Leads tab — skip any already in Clients
+    const leadsRows = leadsTab
+      .filter(l => {
+        const rawId = stripHtml(l.id || "").trim();
+        return rawId && !seenIds.has(rawId);
+      })
+      .map(l => enrichAndShape(l, "id", "status", "address"));
+
+    let results = [...clientsRows, ...leadsRows];
 
     if (status && status !== "all") {
       results = results.filter((r) => normalizeStr(r.status) === status);
