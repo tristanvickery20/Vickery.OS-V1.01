@@ -6,7 +6,7 @@ const {
   hashPassword, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
-const { CREW_TEMPLATES } = require("../lib/sms");
+const { CREW_TEMPLATES, buildMessage } = require("../lib/sms");
 const { setAuthCookie } = require("../lib/auth");
 
 function json(res, status, data) {
@@ -229,10 +229,11 @@ async function handleCrewReviewAsk(req, res) {
     const { phone, customer_name, booking_id } = await readBody(req);
     if (!phone) return json(res, 400, { ok: false, error: "Customer phone is required." });
 
+    const techName  = session.firstName || "Your technician";
     const reviewUrl = process.env.GOOGLE_REVIEW_URL || "";
     const body = reviewUrl
-      ? `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review: ${reviewUrl} — Cody at Vickery Electric`
-      : `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review. — Cody at Vickery Electric`;
+      ? `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review: ${reviewUrl} — ${techName} at Vickery Electric`
+      : `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review. — ${techName} at Vickery Electric`;
 
     const sent = await sendSms(phone, body);
     console.log(`[crew/review-ask] booking=${booking_id} phone=${phone} sent=${sent}`);
@@ -254,7 +255,9 @@ async function handleCrewNotify(req, res) {
     if (!template)  return json(res, 400, { ok: false, error: "Unknown action." });
     if (!phone)     return json(res, 400, { ok: false, error: "Customer phone is required." });
 
-    const sent = await sendSms(phone, template);
+    const techName = session.firstName || "Your technician";
+    const body     = buildMessage(template, { tech_name: techName });
+    const sent     = await sendSms(phone, body);
     console.log(`[crew/notify] booking=${booking_id} action=${action} phone=${phone} sent=${sent}`);
     json(res, 200, { ok: true, sent });
   } catch (err) {
