@@ -488,11 +488,44 @@ async function handleGetSources(req, res) {
   json(res, 200, { ok: true, sources: SOURCE_CATEGORIES });
 }
 
+// GET /api/marketing/settings — return editable marketing config
+async function handleGetMarketingSettings(req, res) {
+  try {
+    const config = await getConfig();
+    json(res, 200, {
+      ok: true,
+      settings: {
+        google_review_url:   config.google_review_url   || "",
+        high_value_threshold: config.high_value_threshold || "1000",
+      },
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+// POST /api/marketing/settings — save editable marketing config
+async function handleSaveMarketingSettings(req, res) {
+  try {
+    const body = await readBody(req);
+    const map  = {};
+    if (body.google_review_url   !== undefined) map.google_review_url   = String(body.google_review_url || "").trim();
+    if (body.high_value_threshold !== undefined) map.high_value_threshold = String(Number(body.high_value_threshold) || 1000);
+    if (Object.keys(map).length === 0) return json(res, 400, { ok: false, error: "No settings provided" });
+    await setConfigKeys(map);
+    json(res, 200, { ok: true });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGetOverview,
   handleGetSegments,
   handleGetFollowupQueue,
   handleSendFollowup,
   handleGetSources,
+  handleGetMarketingSettings,
+  handleSaveMarketingSettings,
   SOURCE_CATEGORIES,
 };

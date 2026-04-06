@@ -104,9 +104,16 @@
       .seg-desc { font-size:11px; color:hsl(var(--text-2,220 15% 55%)); }
       .seg-rows { display:none; margin-top:4px; }
       .seg-rows.open { display:block; }
-      .seg-row { display:flex; align-items:center; gap:10px; padding:9px 16px; background:hsl(var(--surface-3,220 20% 14%)); margin-bottom:3px; border-radius:8px; font-size:13px; }
-      .seg-row-name { font-weight:600; flex:1; }
+      .seg-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 16px; background:hsl(var(--surface-3,220 20% 14%)); margin-bottom:3px; border-radius:8px; font-size:13px; }
+      .seg-row-info { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+      .seg-row-name { font-weight:600; }
       .seg-row-meta { font-size:11px; color:hsl(var(--text-2,220 15% 55%)); }
+      .seg-row-actions { display:flex; gap:6px; flex-shrink:0; }
+      .seg-qa-btn { padding:3px 10px; font-size:11px; font-weight:600; border-radius:6px; border:1px solid hsl(var(--border,220 20% 22%)); background:hsl(var(--surface-2,220 20% 18%)); color:hsl(var(--text-1,220 15% 90%)); cursor:pointer; text-decoration:none; display:inline-block; transition:background .12s; }
+      .seg-qa-btn:hover { background:hsl(var(--primary,215 80% 55%)); color:#fff; border-color:transparent; }
+      .seg-qa-btn:disabled { opacity:.5; cursor:not-allowed; }
+      .seg-qa-call { color:hsl(140 60% 50%); }
+      .seg-qa-view { color:hsl(215 80% 65%); }
 
       /* ── Templates ─────────────────────────────────────── */
       .tmpl-grid { display:grid; gap:12px; }
@@ -180,6 +187,7 @@
             <button class="mhub-tab" data-panel="followup">Follow-Up Queue</button>
             <button class="mhub-tab" data-panel="segments">Smart Lists</button>
             <button class="mhub-tab" data-panel="templates">Templates</button>
+            <button class="mhub-tab" data-panel="mkt-settings">Settings</button>
           </div>
 
           <!-- ━━━ OVERVIEW PANEL ━━━ -->
@@ -283,6 +291,26 @@
             </div>
             <div id="templatesLoading" class="loading-state">Loading templates…</div>
             <div id="templateGrid" class="tmpl-grid" style="display:none;"></div>
+          </div>
+
+          <!-- ━━━ SETTINGS PANEL ━━━ -->
+          <div class="mhub-panel" id="panel-mkt-settings">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:hsl(var(--text-2,220 15% 60%));letter-spacing:.5px;text-transform:uppercase;">Marketing Settings</h3>
+            <div id="mktSettingsLoading" class="loading-state">Loading settings…</div>
+            <div id="mktSettingsContent" style="display:none;">
+              <div class="form-group" style="max-width:520px;margin-bottom:14px;">
+                <label class="form-label">Google Review Link</label>
+                <input id="mktGoogleReviewUrl" type="url" placeholder="https://g.page/r/…/review" style="width:100%;" />
+                <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Paste your Google review shortlink — included in review-ask SMS messages.</p>
+              </div>
+              <div class="form-group" style="max-width:220px;margin-bottom:20px;">
+                <label class="form-label">High-Value Lead Threshold ($)</label>
+                <input id="mktHvThreshold" type="number" min="0" step="50" placeholder="1000" style="width:100%;" />
+                <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Jobs at or above this amount appear in the High Value smart list.</p>
+              </div>
+              <button id="mktSettingsSaveBtn" type="button" class="btn-save">Save Settings</button>
+              <p id="mktSettingsResult" style="font-size:12px;margin-top:10px;"></p>
+            </div>
           </div>
 
         </div>

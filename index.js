@@ -32,7 +32,7 @@ const {
 const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
 const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
-const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources } = require("./api/marketing");
+const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings } = require("./api/marketing");
 const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
 const {
   handleGetClients,
@@ -568,6 +568,12 @@ const server = http.createServer(async (req, res) => {
   }
   if (_epath === "/api/marketing/sources" && req.method === "GET") {
     return handleGetSources(req, res);
+  }
+  if (_epath === "/api/marketing/settings" && req.method === "GET") {
+    return handleGetMarketingSettings(req, res);
+  }
+  if (_epath === "/api/marketing/settings" && req.method === "POST") {
+    return handleSaveMarketingSettings(req, res);
   }
 
   // Reviews API

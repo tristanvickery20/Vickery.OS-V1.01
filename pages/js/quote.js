@@ -581,6 +581,8 @@ function renderConfirm() {
           <option value="Yard Sign">Yard Sign</option>
           <option value="Truck Wrap">Truck / Van</option>
           <option value="Repeat Customer">Previous Customer</option>
+          <option value="Direct">Called / Walked In Directly</option>
+          <option value="Manual Outreach">Outreach / Door Hanger</option>
           <option value="Other">Other</option>
         </select>
       </div>

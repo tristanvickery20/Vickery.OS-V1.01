@@ -86,7 +86,8 @@
     if (id === "reviews")   return loadReviews();
     if (id === "followup")  return loadFollowup();
     if (id === "segments")  return loadSegments();
-    if (id === "templates") return loadTemplates();
+    if (id === "templates")   return loadTemplates();
+    if (id === "mkt-settings") return loadMktSettings();
   }
 
   document.getElementById("refreshBtn").addEventListener("click", () => {
@@ -582,10 +583,23 @@
             else if (def.key === "repeat_customers")   meta = r.job_count + " jobs";
             else if (def.key === "high_value")    meta = fmt$(r.value);
             else meta = "No opt-in";
+
+            // Build quick actions: Send (where relevant), Call, View
+            const phone = esc(r.phone || "");
+            const lid   = esc(r.lead_id || "");
+            const sendAction = ["needs_review_ask", "stale_quote", "reactivation_ready", "repeat_customers"].includes(def.key)
+              ? `<button class="seg-qa-btn" data-lead-id="${lid}" data-name="${esc(r.name)}" data-phone="${phone}" data-seg="${def.key}" data-action="seg-send">Send</button>`
+              : "";
+            const callBtn  = phone ? `<a class="seg-qa-btn seg-qa-call" href="tel:${phone}" title="Call ${esc(r.name)}">Call</a>` : "";
+            const viewBtn  = lid  ? `<a class="seg-qa-btn seg-qa-view" href="/crm/lead/${lid}">View</a>` : "";
+
             return `
               <div class="seg-row">
-                <span class="seg-row-name">${esc(r.name)}</span>
-                <span class="seg-row-meta">${esc(r.phone || "No phone")} &bull; ${meta}</span>
+                <div class="seg-row-info">
+                  <span class="seg-row-name">${esc(r.name)}</span>
+                  <span class="seg-row-meta">${esc(r.phone || "No phone")} &bull; ${meta}</span>
+                </div>
+                <div class="seg-row-actions">${sendAction}${callBtn}${viewBtn}</div>
               </div>`;
           }).join("") + (rows.length > 60 ? `<div class="seg-row" style="justify-content:center;color:hsl(220 15% 50%);font-size:12px;">+ ${rows.length - 60} more</div>` : "");
 
@@ -608,6 +622,42 @@
         rows.classList.toggle("open");
         const arrow = header.querySelector(".seg-arrow");
         if (arrow) arrow.textContent = rows.classList.contains("open") ? "▾" : "▸";
+      });
+    });
+
+    el.querySelectorAll("[data-action='seg-send']").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const leadId = btn.dataset.leadId;
+        const name   = btn.dataset.name;
+        const phone  = btn.dataset.phone;
+        const seg    = btn.dataset.seg;
+        if (!leadId && !phone) return alert("No lead ID or phone number available.");
+        const confirm = window.confirm(`Send a text to ${name || phone}?`);
+        if (!confirm) return;
+
+        btn.disabled = true;
+        btn.textContent = "Sending…";
+        try {
+          // Route to review ask for review segments, follow-up for others
+          if (seg === "needs_review_ask") {
+            await window.Api.fetchJson("/api/reviews/ask", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lead_id: leadId }),
+            });
+          } else {
+            await window.Api.fetchJson("/api/marketing/followup/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lead_id: leadId, name, phone }),
+            });
+          }
+          btn.textContent = "Sent ✓";
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = "Send";
+          alert("Error: " + e.message);
+        }
       });
     });
   }
@@ -822,6 +872,50 @@
       }
     } catch (e) { resultEl.textContent = e.message; resultEl.style.color = "hsl(0 70% 60%)"; }
   });
+
+  // ── MARKETING SETTINGS ────────────────────────────────────────────────────
+  async function loadMktSettings() {
+    panels["mkt-settings"] = true;
+    const loading = document.getElementById("mktSettingsLoading");
+    const content = document.getElementById("mktSettingsContent");
+    loading.style.display = "block"; content.style.display = "none";
+    try {
+      const d = await window.Api.fetchJson("/api/marketing/settings");
+      if (d.ok && d.settings) {
+        document.getElementById("mktGoogleReviewUrl").value  = d.settings.google_review_url   || "";
+        document.getElementById("mktHvThreshold").value      = d.settings.high_value_threshold || "1000";
+      }
+    } catch (e) { /* silently ignore — show whatever is in the inputs */ }
+    loading.style.display = "none"; content.style.display = "block";
+
+    document.getElementById("mktSettingsSaveBtn").addEventListener("click", async () => {
+      const btn    = document.getElementById("mktSettingsSaveBtn");
+      const result = document.getElementById("mktSettingsResult");
+      btn.disabled = true; btn.textContent = "Saving…";
+      result.textContent = "";
+      try {
+        const d = await window.Api.fetchJson("/api/marketing/settings", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            google_review_url:   document.getElementById("mktGoogleReviewUrl").value.trim(),
+            high_value_threshold: Number(document.getElementById("mktHvThreshold").value) || 1000,
+          }),
+        });
+        if (d.ok) {
+          result.textContent = "Settings saved.";
+          result.style.color = "hsl(140 60% 50%)";
+        } else {
+          result.textContent = d.error || "Save failed.";
+          result.style.color = "hsl(0 70% 60%)";
+        }
+      } catch (e) {
+        result.textContent = e.message;
+        result.style.color = "hsl(0 70% 60%)";
+      }
+      btn.disabled = false; btn.textContent = "Save Settings";
+    });
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────────
   loadOverview();
