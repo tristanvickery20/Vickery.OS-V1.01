@@ -10,6 +10,33 @@ function json(res, code, data) {
   res.end(JSON.stringify(data));
 }
 
+// Canonical source categories — normalize incoming lead_source to curated list
+const CANONICAL_SOURCES = [
+  "GBP", "Organic SEO", "LSA", "Google Ads", "Direct",
+  "Referral", "Yard Sign", "Truck Wrap", "Repeat Customer",
+  "Facebook", "Manual Outreach", "Other",
+];
+function normalizeLeadSource(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  const exact = CANONICAL_SOURCES.find(c => c.toLowerCase() === s.toLowerCase());
+  if (exact) return exact;
+  const sl = s.toLowerCase();
+  if (sl.includes("gbp") || sl.includes("google business") || sl.includes("google maps")) return "GBP";
+  if (sl.includes("lsa") || sl.includes("local service")) return "LSA";
+  if (sl.includes("google ad")) return "Google Ads";
+  if (sl.includes("organic") || sl.includes("seo")) return "Organic SEO";
+  if (sl.includes("facebook") || sl.includes("fb") || sl.includes("meta")) return "Facebook";
+  if (sl.includes("referral") || sl.includes("referred") || sl.includes("word of mouth")) return "Referral";
+  if (sl.includes("yard sign") || sl.includes("sign")) return "Yard Sign";
+  if (sl.includes("truck") || sl.includes("wrap") || sl.includes("van")) return "Truck Wrap";
+  if (sl.includes("repeat") || sl.includes("returning") || sl.includes("previous")) return "Repeat Customer";
+  if (sl.includes("direct") || sl.includes("walk") || sl.includes("call")) return "Direct";
+  if (sl.includes("outreach") || sl.includes("door") || sl.includes("hanger")) return "Manual Outreach";
+  return "Other";
+}
+
 function readBody(req) {
   return new Promise((resolve) => {
     let body = "";
@@ -144,7 +171,7 @@ async function handleCreateRequest(req, res) {
       updated_at: now,
       client_id,
       property_id,
-      lead_source: String(body.lead_source || "").trim(),
+      lead_source: normalizeLeadSource(body.lead_source),
       summary,
       status_code: "Lead",
       deposit_required: body.deposit_required === true || body.deposit_required === "true" ? "true" : "false",
@@ -304,7 +331,8 @@ async function handleUpdateRequest(req, res) {
 
     for (const field of EDITABLE) {
       if (body[field] === undefined) continue;
-      const newVal = String(body[field]).trim();
+      const rawVal = String(body[field]).trim();
+      const newVal = field === "lead_source" ? normalizeLeadSource(rawVal) : rawVal;
       const oldVal = currentRow[field] || "";
       if (newVal === oldVal) continue;
 

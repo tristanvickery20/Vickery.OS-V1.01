@@ -875,20 +875,11 @@
   });
 
   // ── MARKETING SETTINGS ────────────────────────────────────────────────────
-  async function loadMktSettings() {
-    panels["mkt-settings"] = true;
-    const loading = document.getElementById("mktSettingsLoading");
-    const content = document.getElementById("mktSettingsContent");
-    loading.style.display = "block"; content.style.display = "none";
-    try {
-      const d = await window.Api.fetchJson("/api/marketing/settings");
-      if (d.ok && d.settings) {
-        document.getElementById("mktGoogleReviewUrl").value  = d.settings.google_review_url   || "";
-        document.getElementById("mktHvThreshold").value      = d.settings.high_value_threshold || "1000";
-      }
-    } catch (e) { /* silently ignore — show whatever is in the inputs */ }
-    loading.style.display = "none"; content.style.display = "block";
-
+  // Settings save handler bound exactly once (flag prevents stacking on repeated tab visits)
+  let mktSettingsSaveBound = false;
+  function bindMktSettingsSaveOnce() {
+    if (mktSettingsSaveBound) return;
+    mktSettingsSaveBound = true;
     document.getElementById("mktSettingsSaveBtn").addEventListener("click", async () => {
       const btn    = document.getElementById("mktSettingsSaveBtn");
       const result = document.getElementById("mktSettingsResult");
@@ -916,6 +907,22 @@
       }
       btn.disabled = false; btn.textContent = "Save Settings";
     });
+  }
+
+  async function loadMktSettings() {
+    panels["mkt-settings"] = true;
+    const loading = document.getElementById("mktSettingsLoading");
+    const content = document.getElementById("mktSettingsContent");
+    loading.style.display = "block"; content.style.display = "none";
+    try {
+      const d = await window.Api.fetchJson("/api/marketing/settings");
+      if (d.ok && d.settings) {
+        document.getElementById("mktGoogleReviewUrl").value  = d.settings.google_review_url   || "";
+        document.getElementById("mktHvThreshold").value      = d.settings.high_value_threshold || "1000";
+      }
+    } catch (e) { /* silently ignore — show whatever is in the inputs */ }
+    loading.style.display = "none"; content.style.display = "block";
+    bindMktSettingsSaveOnce();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
