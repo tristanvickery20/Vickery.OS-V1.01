@@ -13,22 +13,21 @@ function ensureBackdrop() {
 }
 
 // ── iOS-safe sidebar scroll ───────────────────────────────────────────────────
-// iOS Safari ignores overflow:hidden on <body> and rubber-bands fixed elements.
-// Fix 1: Body-lock (position:fixed) prevents page scroll without blocking sidebar.
-// Fix 2: touchmove handler blocks overscroll ONLY at the hard top/bottom edge,
-//        using the TOUCH-START Y as the reference (per-frame delta drifts).
+// iOS Safari ignores overflow:hidden on <body>.  The only reliable fix is the
+// body-lock pattern: position the body as fixed so the page cannot scroll at all.
+// The sidebar is a separate fixed element with its own overflow-y:scroll so it
+// scrolls fully and independently — no JS boundary fighting needed.
 
-var _savedScrollY   = 0;
-var _sbTouchStartY  = 0;
+var _savedScrollY = 0;
 
 function _lockBody() {
   _savedScrollY = window.scrollY || window.pageYOffset || 0;
   var b = document.body;
-  b.style.position   = "fixed";
-  b.style.top        = "-" + _savedScrollY + "px";
-  b.style.left       = "0";
-  b.style.right      = "0";
-  b.style.overflow   = "hidden";
+  b.style.position = "fixed";
+  b.style.top      = "-" + _savedScrollY + "px";
+  b.style.left     = "0";
+  b.style.right    = "0";
+  b.style.overflow = "hidden";
 }
 
 function _unlockBody() {
@@ -37,36 +36,20 @@ function _unlockBody() {
   window.scrollTo(0, _savedScrollY);
 }
 
-function _sidebarTouchStart(e) {
-  _sbTouchStartY = e.touches[0].clientY;
-}
-
-function _sidebarTouchMove(e) {
+// Block touch-scroll on the backdrop ONLY — never touch sidebar scroll.
+function _backdropTouchMove(e) {
   var sb = qs(".sidebar");
-  if (!sb) { e.preventDefault(); return; }
-
-  // Touch outside sidebar (backdrop) → always block
-  if (!sb.contains(e.target)) { e.preventDefault(); return; }
-
-  // Touch inside sidebar → block only at hard boundaries to stop rubber-band
-  var dy      = e.touches[0].clientY - _sbTouchStartY; // + = finger moving down = intending scroll up
-  var atTop    = sb.scrollTop <= 0;
-  var atBottom = sb.scrollTop + sb.clientHeight >= sb.scrollHeight - 1;
-  if ((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
+  if (sb && sb.contains(e.target)) return; // inside sidebar: let it scroll freely
+  e.preventDefault();
 }
 
 function openSidebar() {
   var sb = qs(".sidebar");
   var bd = ensureBackdrop();
-  if (sb) {
-    sb.classList.add("open");
-    // Push scrollTop 1px off zero so iOS never sees a "can't scroll up" boundary on open
-    if (sb.scrollTop === 0) sb.scrollTop = 1;
-  }
+  if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
   _lockBody();
-  document.addEventListener("touchstart", _sidebarTouchStart, { passive: true });
-  document.addEventListener("touchmove",  _sidebarTouchMove,  { passive: false });
+  document.addEventListener("touchmove", _backdropTouchMove, { passive: false });
 }
 
 function closeSidebar() {
@@ -75,8 +58,7 @@ function closeSidebar() {
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
   _unlockBody();
-  document.removeEventListener("touchstart", _sidebarTouchStart);
-  document.removeEventListener("touchmove",  _sidebarTouchMove);
+  document.removeEventListener("touchmove", _backdropTouchMove);
 }
 
 function getPageTitle() {
