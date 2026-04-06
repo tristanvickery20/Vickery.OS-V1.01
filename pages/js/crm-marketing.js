@@ -562,12 +562,12 @@
   }
 
   const SEG_DEFS = [
-    { key: "needs_review_ask",   icon: "⭐", title: "Needs Review Ask",   desc: "Completed, SMS opted-in, not yet contacted" },
-    { key: "stale_quote",        icon: "⏳", title: "Stale Quotes",        desc: "Open quotes with no activity in 48+ hours" },
-    { key: "reactivation_ready", icon: "🔄", title: "Reactivation Ready",  desc: "No job in 6+ months" },
-    { key: "repeat_customers",   icon: "🏆", title: "Repeat Customers",     desc: "2 or more completed jobs" },
-    { key: "high_value",         icon: "💰", title: "High Value Leads",     desc: "At or above your configured value threshold" },
-    { key: "no_sms_opt_in",      icon: "📵", title: "No SMS Opt-in",        desc: "Completed jobs we can't text — consider calling" },
+    { key: "needs_review_ask",   icon: "★",  title: "Needs Review Ask",   desc: "Completed, SMS opted-in, not yet contacted" },
+    { key: "stale_quote",        icon: "◇",  title: "Stale Quotes",        desc: "Open quotes with no activity in 48+ hours" },
+    { key: "reactivation_ready", icon: "↻",  title: "Reactivation Ready",  desc: "No job in 6+ months" },
+    { key: "repeat_customers",   icon: "◆",  title: "Repeat Customers",     desc: "2 or more completed jobs" },
+    { key: "high_value",         icon: "$",  title: "High Value Leads",     desc: "At or above your configured value threshold" },
+    { key: "no_sms_opt_in",      icon: "○",  title: "No SMS Opt-in",        desc: "Completed jobs we can't text — consider calling" },
   ];
 
   function renderSegments(segments) {

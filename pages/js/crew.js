@@ -86,7 +86,7 @@ function jobCard(j) {
   const dur     = j.duration_minutes ? `${j.duration_minutes} min` : "";
   const jobData = esc(JSON.stringify(j));
   const reviewBtn = j.phone
-    ? `<button class="btn-review-ask" data-job='${jobData}'>⭐ Review Ask</button>`
+    ? `<button class="btn-review-ask" data-job='${jobData}'>Review Ask</button>`
     : "";
   return `
     <div class="job-card">
@@ -94,8 +94,8 @@ function jobCard(j) {
       <div class="job-customer">${esc(j.customer_name || "Customer")}</div>
       <div class="job-address">${esc(j.address || "—")}</div>
       <div class="job-actions">
-        <button class="btn-time"    data-job='${jobData}'>⏱ Log Time</button>
-        <button class="btn-expense" data-job='${jobData}'>💳 Expense</button>
+        <button class="btn-time"    data-job='${jobData}'>Log Time</button>
+        <button class="btn-expense" data-job='${jobData}'>Expense</button>
         ${reviewBtn}
       </div>
     </div>`;
