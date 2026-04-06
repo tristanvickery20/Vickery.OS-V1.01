@@ -12,32 +12,35 @@ function ensureBackdrop() {
   return bd;
 }
 
-// iOS Safari ignores overflow:hidden on body — block touchmove on the backdrop/body
-// but allow native scroll inside the sidebar nav.
-var _navTouchStartY = 0;
+// iOS Safari bounce prevention for sidebar drawer
+var _sbPrevY = 0;
 
-function _blockBodyTouch(e) {
-  // Allow touches inside the sidebar itself; block everything else
-  var sb = qs(".sidebar");
-  if (sb && sb.contains(e.target)) return;
-  e.preventDefault();
+function _sidebarTouchStart(e) {
+  _sbPrevY = e.touches[0].clientY;
 }
 
-function _sidebarBoundaryGuard(e) {
-  // Prevent rubber-band when sidebar hits top or bottom edge on iOS
+function _sidebarTouchMove(e) {
   var sb = qs(".sidebar");
   if (!sb) return;
-  var touch = e.touches[0];
-  var delta = _navTouchStartY - touch.clientY;
-  var atTop    = sb.scrollTop === 0;
+
+  var currentY = e.touches[0].clientY;
+  // dy > 0 means finger moving DOWN → scrolling UP toward top
+  // dy < 0 means finger moving UP   → scrolling DOWN toward bottom
+  var dy = currentY - _sbPrevY;
+  _sbPrevY = currentY;
+
+  var atTop    = sb.scrollTop <= 0;
   var atBottom = sb.scrollTop + sb.clientHeight >= sb.scrollHeight - 1;
-  if ((atTop && delta < 0) || (atBottom && delta > 0)) {
+
+  if (sb.contains(e.target)) {
+    // Inside sidebar: only block at hard boundaries
+    if ((atTop && dy > 0) || (atBottom && dy < 0)) {
+      e.preventDefault();
+    }
+  } else {
+    // Outside sidebar (backdrop): always block body scroll
     e.preventDefault();
   }
-}
-
-function _navTouchStart(e) {
-  _navTouchStartY = e.touches[0].clientY;
 }
 
 function openSidebar() {
@@ -46,12 +49,8 @@ function openSidebar() {
   if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
   document.body.style.overflow = "hidden";
-  // iOS Safari: block body bounce and guard sidebar scroll edges
-  document.addEventListener("touchmove", _blockBodyTouch, { passive: false });
-  if (sb) {
-    sb.addEventListener("touchstart", _navTouchStart, { passive: true });
-    sb.addEventListener("touchmove", _sidebarBoundaryGuard, { passive: false });
-  }
+  document.addEventListener("touchstart", _sidebarTouchStart, { passive: true });
+  document.addEventListener("touchmove", _sidebarTouchMove, { passive: false });
 }
 
 function closeSidebar() {
@@ -60,11 +59,8 @@ function closeSidebar() {
   if (sb) sb.classList.remove("open");
   if (bd) bd.classList.remove("show");
   document.body.style.overflow = "";
-  document.removeEventListener("touchmove", _blockBodyTouch);
-  if (sb) {
-    sb.removeEventListener("touchstart", _navTouchStart);
-    sb.removeEventListener("touchmove", _sidebarBoundaryGuard);
-  }
+  document.removeEventListener("touchstart", _sidebarTouchStart);
+  document.removeEventListener("touchmove", _sidebarTouchMove);
 }
 
 function getPageTitle() {

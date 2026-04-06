@@ -181,7 +181,7 @@ body{
 
 /* Footer */
 .sidebar .sidebar-footer{
-  padding:12px 14px;
+  padding:12px 14px 28px;
   border-top:1px solid var(--line2);
 }
 .sidebar .sidebar-footer a{
