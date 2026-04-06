@@ -158,6 +158,16 @@ function bindJobDetailOverlay() {
   });
 }
 
+function classificationLabel(s) {
+  if (!s || s === "standard") return "";
+  const map = {
+    manual_review_required: "Needs office review before starting",
+    ready_with_review_flag: "Ready — double-check with office before starting",
+    blocked:                "DO NOT START — office must clear this first",
+  };
+  return map[s] || s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function openJobDetail(j) {
   // Customer + price
   document.getElementById("jdCustomer").textContent = j.customer_name || "Customer";
@@ -166,6 +176,14 @@ function openJobDetail(j) {
     ? `$${Number(j.final_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : "";
   priceEl.style.display = j.final_price ? "block" : "none";
+
+  // Reference IDs — always show so crew has a paper trail
+  const refEl = document.getElementById("jdRef");
+  const refs = [];
+  if (j.booking_id) refs.push(j.booking_id);
+  if (j.quote_id)   refs.push(j.quote_id);
+  refEl.textContent = refs.join("  ·  ");
+  refEl.style.display = refs.length ? "block" : "none";
 
   // Scheduled time
   const timeEl = document.getElementById("jdTime");
@@ -195,18 +213,19 @@ function openJobDetail(j) {
   const scopeEl = document.getElementById("jdScope");
   scopeSection.style.display = "block";
 
-  const items  = j.scope_items  || [];
-  const addons = j.scope_addons || [];
-  const qty    = j.scope_qty;
-  const status = j.scope_status || "";
+  const items      = j.scope_items  || [];
+  const addons     = j.scope_addons || [];
+  const qty        = j.scope_qty;
+  const clsLabel   = classificationLabel(j.scope_status || "");
+  const hasDetails = items.length > 0 || addons.length > 0 || qty > 1 || j.scope_of_work;
 
-  if (items.length > 0 || addons.length > 0 || qty || j.scope_of_work) {
-    let html = "";
+  let html = "";
 
-    // Status pill — only show when flagged
-    if (status && status !== "standard") {
-      const isAlert = status.includes("review") || status.includes("blocked");
-      html += `<div class="scope-status ${isAlert ? "scope-status--alert" : ""}">${esc(status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()))}</div>`;
+  if (hasDetails) {
+    // Status notice — only show alongside real detail rows, not alone
+    if (clsLabel) {
+      const isBlocked = (j.scope_status || "").includes("blocked");
+      html += `<div class="scope-status ${isBlocked ? "scope-status--alert" : ""}">${esc(clsLabel)}</div>`;
     }
 
     // Quantity — show prominently when > 1
@@ -214,7 +233,7 @@ function openJobDetail(j) {
       html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
     }
 
-    // Q&A items
+    // Q&A rows from quote answers
     items.forEach(item => {
       html += `<div class="scope-row"><span class="scope-row-label">${esc(item.label)}</span><span class="scope-row-val">${esc(item.value)}</span></div>`;
     });
@@ -224,15 +243,17 @@ function openJobDetail(j) {
       html += `<div class="scope-row"><span class="scope-row-label">Add-on</span><span class="scope-row-val">${esc(name)}</span></div>`;
     });
 
-    // Plain-text fallback (manually-created bookings)
+    // Plain-text notes (manually-created bookings with no quote answers)
     if (items.length === 0 && j.scope_of_work) {
       html += `<div class="scope-plain">${esc(j.scope_of_work)}</div>`;
     }
-
-    scopeEl.innerHTML = html;
   } else {
-    scopeEl.innerHTML = `<span class="scope-empty">No notes on file for this job.</span>`;
+    // No detail data at all
+    const notice = clsLabel ? `<div class="scope-status">${esc(clsLabel)}</div>` : "";
+    html = notice + `<span class="scope-empty">No quote details on file — this job was booked manually. Check with the office for scope.</span>`;
   }
+
+  scopeEl.innerHTML = html;
 
   // Job type — show if available, hide only when truly nothing
   const typeSection = document.getElementById("jdTypeSection");
