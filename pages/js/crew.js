@@ -14,10 +14,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const res  = await fetch("/api/crew/me");
     const data = await res.json();
-    if (!data.ok) { window.location.replace("/crew/login"); return; }
+    if (!data.ok) { window.location.replace("/login"); return; }
     currentSession = data.staff;
   } catch {
-    window.location.replace("/crew/login");
+    window.location.replace("/login");
     return;
   }
 
@@ -46,7 +46,7 @@ function setupHeader() {
 function bindLogout() {
   document.getElementById("btnLogout")?.addEventListener("click", async () => {
     await fetch("/api/crew/logout", { method: "POST" });
-    window.location.replace("/crew/login");
+    window.location.replace("/login");
   });
 }
 
@@ -73,6 +73,9 @@ async function loadTodayJobs() {
     list.querySelectorAll(".btn-expense").forEach(btn =>
       btn.addEventListener("click", () => openExpenseOverlay(JSON.parse(btn.dataset.job)))
     );
+    list.querySelectorAll(".btn-review-ask").forEach(btn =>
+      btn.addEventListener("click", () => sendReviewAsk(JSON.parse(btn.dataset.job), btn))
+    );
   } catch {
     list.innerHTML = `<div style="color:hsl(0 60% 55%);padding:16px;">Could not load today's jobs.</div>`;
   }
@@ -82,6 +85,9 @@ function jobCard(j) {
   const block   = j.schedule_block ? `${j.schedule_block} · ` : "";
   const dur     = j.duration_minutes ? `${j.duration_minutes} min` : "";
   const jobData = esc(JSON.stringify(j));
+  const reviewBtn = j.phone
+    ? `<button class="btn-review-ask" data-job='${jobData}'>⭐ Review Ask</button>`
+    : "";
   return `
     <div class="job-card">
       <div class="job-block">${block}${dur}</div>
@@ -90,8 +96,44 @@ function jobCard(j) {
       <div class="job-actions">
         <button class="btn-time"    data-job='${jobData}'>⏱ Log Time</button>
         <button class="btn-expense" data-job='${jobData}'>💳 Expense</button>
+        ${reviewBtn}
       </div>
     </div>`;
+}
+
+async function sendReviewAsk(job, btn) {
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  try {
+    const res  = await fetch("/api/crew/review-ask", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        phone:         job.phone,
+        customer_name: job.customer_name,
+        booking_id:    job.booking_id,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = "✓ Sent!";
+      btn.style.background = "hsl(142 55% 35%)";
+      setTimeout(() => {
+        btn.textContent = origText;
+        btn.style.background = "";
+        btn.disabled = false;
+      }, 3000);
+    } else {
+      showToast(data.error || "Send failed", true);
+      btn.textContent = origText;
+      btn.disabled = false;
+    }
+  } catch {
+    showToast("Network error — try again", true);
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
 }
 
 // ── Overlay controls ──────────────────────────────────────────────────────────

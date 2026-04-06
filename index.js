@@ -28,6 +28,7 @@ const { handleGetCrewMembers, handleGetTodayJobs } = require("./api/crew");
 const {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
+  handleCrewReviewAsk,
 } = require("./api/crew-auth");
 const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
@@ -160,11 +161,12 @@ const server = http.createServer(async (req, res) => {
 
   // Crew portal pages and auth endpoints (public — no CRM auth required)
   if (req.url === "/crew/login") {
-    return serveFile(res, path.join(__dirname, "pages/crew-login.html"), "text/html");
+    res.writeHead(302, { Location: "/login" });
+    return res.end();
   }
   if (req.url === "/crew" || req.url === "/crew/") {
     if (!getCrewSession(req)) {
-      res.writeHead(302, { Location: "/crew/login" });
+      res.writeHead(302, { Location: "/login" });
       return res.end();
     }
     return serveFile(res, path.join(__dirname, "pages/crew.html"), "text/html");
@@ -175,6 +177,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/api/crew/login"  && req.method === "POST") return handleLogin(req, res);
   if (req.url === "/api/crew/logout" && req.method === "POST") return handleLogout(req, res);
   if (req.url === "/api/crew/me"     && req.method === "GET")  return handleMe(req, res);
+  if (req.url === "/api/crew/review-ask" && req.method === "POST") return handleCrewReviewAsk(req, res);
 
   // Crew portal public API endpoints (no auth required — employee-facing)
   if (req.url.startsWith("/api/crew/members") && req.method === "GET") {
@@ -208,17 +211,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/login" && req.method === "GET") {
     return serveFile(res, path.join(__dirname, "pages/login.html"), "text/html");
-  }
-
-  if (req.url === "/login" && req.method === "POST") {
-    const body = await readBody(req);
-    if (body.pin && body.pin === process.env.CRM_PIN) {
-      setAuthCookie(res);
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: true, redirect: "/clients" }));
-    }
-    res.writeHead(401, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify({ ok: false, error: "Invalid PIN." }));
   }
 
   if (req.url === "/logout") {

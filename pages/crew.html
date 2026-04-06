@@ -98,9 +98,22 @@
       transition: opacity .15s;
       font-family: inherit;
     }
-    .btn-time:active, .btn-expense:active { opacity: .75; }
+    .btn-time:active, .btn-expense:active, .btn-review-ask:active { opacity: .75; }
     .btn-time { background: hsl(217 91% 60%); color: #fff; }
     .btn-expense { background: hsl(220 10% 20%); border: 1px solid hsl(220 10% 28%); color: hsl(220 15% 80%); }
+    .btn-review-ask {
+      flex: 1;
+      padding: 13px 8px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, background .2s;
+      font-family: inherit;
+      background: hsl(38 90% 45%);
+      color: #fff;
+    }
 
     /* ── No jobs ── */
     .no-jobs {

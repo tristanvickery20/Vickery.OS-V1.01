@@ -61,6 +61,7 @@ async function handleGetTodayJobs(req, res) {
           quote_id:      get("quote_id"),
           customer_name: get("customer_name"),
           address:       get("address"),
+          phone:         get("phone"),
           scheduled_datetime: dt,
           date:          dateStr,
           schedule_block: get("schedule_block"),

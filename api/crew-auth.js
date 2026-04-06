@@ -2,10 +2,11 @@
 
 const crypto = require("crypto");
 const {
-  ensureStaffSheet, readAllStaff, findStaffByPhone, appendStaffRow, updateStaffRow,
-  hashPassword, normalizePhone, setCrewSessionCookie, clearCrewSessionCookie,
+  ensureStaffSheet, readAllStaff, findStaffByUsername, appendStaffRow, updateStaffRow,
+  hashPassword, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
+const { setAuthCookie } = require("../lib/auth");
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -21,45 +22,72 @@ function readBody(req) {
   });
 }
 
+// Generate first.last username (lowercase letters only), ensuring uniqueness
+async function generateUsername(firstName, lastName) {
+  const base = [firstName, lastName]
+    .map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    .join(".");
+  const existing = await readAllStaff();
+  const taken = new Set(existing.map(s => (s.username || "").toLowerCase()));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}${n}`)) n++;
+  return `${base}${n}`;
+}
+
 // POST /api/crew/signup
 async function handleSignup(req, res) {
   try {
-    const { first_name, last_name, phone, password } = await readBody(req);
-    if (!first_name?.trim() || !last_name?.trim() || !phone?.trim() || !password) {
-      return json(res, 400, { ok: false, error: "All fields are required." });
+    const { first_name, last_name, password } = await readBody(req);
+    if (!first_name?.trim() || !last_name?.trim() || !password) {
+      return json(res, 400, { ok: false, error: "First name, last name, and password are required." });
     }
     if (password.length < 6) {
       return json(res, 400, { ok: false, error: "Password must be at least 6 characters." });
     }
-    const normPhone = normalizePhone(phone);
-    const existing = await findStaffByPhone(normPhone);
-    if (existing) {
-      return json(res, 409, { ok: false, error: "An account with that phone number already exists." });
-    }
+
+    const username = await generateUsername(first_name.trim(), last_name.trim());
+
+    // First active account becomes the owner — auto-approved
+    const all = await readAllStaff();
+    const hasActiveOwner = all.some(s => s.role === "owner" && s.status === "active");
+    const isOwner = !hasActiveOwner;
+
     const staff = {
       staff_id:      crypto.randomUUID(),
       first_name:    first_name.trim(),
       last_name:     last_name.trim(),
-      phone:         normPhone,
+      phone:         "",
       password_hash: hashPassword(password),
-      status:        "pending",
-      permissions:   "jobs,time,expenses",
+      status:        isOwner ? "active" : "pending",
+      permissions:   isOwner ? "owner" : "jobs,time,expenses",
       created_at:    new Date().toISOString(),
-      approved_at:   "",
-      notes:         "",
+      approved_at:   isOwner ? new Date().toISOString() : "",
+      notes:         isOwner ? "Auto-approved as owner (first account)" : "",
+      username,
+      role:          isOwner ? "owner" : "crew",
     };
     await appendStaffRow(staff);
 
-    // Text the owner
+    if (isOwner) {
+      console.log(`[crew-auth] Owner account created: ${staff.first_name} ${staff.last_name} (${username})`);
+      return json(res, 200, {
+        ok: true,
+        message: "Owner account created. You can now sign in.",
+        isOwner: true,
+      });
+    }
+
+    // Notify owner of pending request
     const ownerPhone = process.env.OWNER_PHONE;
     if (ownerPhone) {
       const host = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "";
       await sendSms(ownerPhone,
-        `Vickery Electric CRM: New crew account request from ${staff.first_name} ${staff.last_name} (${normPhone}). Approve at ${host}/crm/staff`
+        `Vickery Electric CRM: New crew account request from ${staff.first_name} ${staff.last_name} (@${username}). Approve at ${host}/crm/staff`
       );
     }
 
-    console.log(`[crew-auth] Signup pending: ${staff.first_name} ${staff.last_name} ${normPhone}`);
+    console.log(`[crew-auth] Signup pending: ${staff.first_name} ${staff.last_name} @${username}`);
     json(res, 200, { ok: true, message: "Account request submitted! You\u2019ll receive a text when it\u2019s approved." });
   } catch (err) {
     console.error("[crew-auth/signup]", err.message);
@@ -67,16 +95,16 @@ async function handleSignup(req, res) {
   }
 }
 
-// POST /api/crew/login
+// POST /api/crew/login  — accepts username + password
 async function handleLogin(req, res) {
   try {
-    const { phone, password } = await readBody(req);
-    if (!phone || !password) {
-      return json(res, 400, { ok: false, error: "Phone and password are required." });
+    const { username, password } = await readBody(req);
+    if (!username || !password) {
+      return json(res, 400, { ok: false, error: "Username and password are required." });
     }
-    const staff = await findStaffByPhone(normalizePhone(phone));
+    const staff = await findStaffByUsername(username.trim());
     if (!staff) {
-      return json(res, 401, { ok: false, error: "No account found with that phone number." });
+      return json(res, 401, { ok: false, error: "No account found with that username." });
     }
     if (staff.status === "pending") {
       return json(res, 403, { ok: false, error: "Your account is pending approval. You\u2019ll receive a text when it\u2019s ready." });
@@ -87,13 +115,23 @@ async function handleLogin(req, res) {
     if (hashPassword(password) !== staff.password_hash) {
       return json(res, 401, { ok: false, error: "Incorrect password." });
     }
+
+    const isOwner = staff.role === "owner";
+
+    // Set crew session first; then append CRM session for owner (setAuthCookie appends to existing Set-Cookie)
     setCrewSessionCookie(res, staff);
+    if (isOwner) {
+      setAuthCookie(res);
+    }
+
     json(res, 200, {
       ok: true,
+      redirect: isOwner ? "/clients" : "/crew",
+      role: staff.role || "crew",
       staff: {
         firstName:   staff.first_name,
         lastName:    staff.last_name,
-        phone:       staff.phone,
+        username:    staff.username,
         permissions: (staff.permissions || "").split(",").filter(Boolean),
       },
     });
@@ -119,7 +157,8 @@ function handleMe(req, res) {
       staffId:     session.staffId,
       firstName:   session.firstName,
       lastName:    session.lastName,
-      phone:       session.phone,
+      username:    session.username || "",
+      role:        session.role || "crew",
       permissions: (session.permissions || "").split(",").filter(Boolean),
     },
   });
@@ -152,7 +191,7 @@ async function handleUpdateStaff(req, res, staffId) {
   try {
     const body = await readBody(req);
     const updates = {};
-    ["status", "permissions", "notes"].forEach(k => {
+    ["status", "permissions", "notes", "role"].forEach(k => {
       if (body[k] !== undefined) updates[k] = body[k];
     });
     if (updates.status === "active" && !updates.approved_at) {
@@ -180,7 +219,31 @@ async function handleUpdateStaff(req, res, staffId) {
   }
 }
 
+// POST /api/crew/review-ask  — crew-initiated review request (no client_id needed)
+async function handleCrewReviewAsk(req, res) {
+  try {
+    const session = getCrewSession(req);
+    if (!session) return json(res, 401, { ok: false, error: "Not authenticated" });
+
+    const { phone, customer_name, booking_id } = await readBody(req);
+    if (!phone) return json(res, 400, { ok: false, error: "Customer phone is required." });
+
+    const reviewUrl = process.env.GOOGLE_REVIEW_URL || "";
+    const body = reviewUrl
+      ? `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review: ${reviewUrl} — Cody at Vickery Electric`
+      : `Hi ${customer_name || "there"}, thank you for choosing Vickery Electric! We'd really appreciate a quick Google review. — Cody at Vickery Electric`;
+
+    const sent = await sendSms(phone, body);
+    console.log(`[crew/review-ask] booking=${booking_id} phone=${phone} sent=${sent}`);
+    json(res, 200, { ok: true, sent });
+  } catch (err) {
+    console.error("[crew/review-ask]", err.message);
+    json(res, 500, { ok: false, error: "Server error." });
+  }
+}
+
 module.exports = {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
+  handleCrewReviewAsk,
 };
