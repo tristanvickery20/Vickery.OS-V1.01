@@ -1,5 +1,5 @@
 const { getSheetsClient } = require("../lib/sheets");
-const { getConfig } = require("../lib/config");
+const { getConfig, setConfigKeys } = require("../lib/config");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 const ROLLUP_TAB = "Actuals_Rollup_30D";
@@ -302,4 +302,46 @@ async function handleActualsRollup(req, res) {
   }
 }
 
-module.exports = { handleActualsRollup };
+// Computes actuals and writes them to the Config tab as "actual_*" keys.
+// Called nightly by the server scheduler and by the "Load Actuals" button.
+async function saveActualsToConfig(windowDays = 30) {
+  if (!SPREADSHEET_ID()) return { ok: false, error: "CRM_SHEET_ID not set" };
+
+  const rollup = await computeRollup(windowDays);
+
+  // Only the job-data-derived fields are saved as actuals
+  const actuals = {
+    actual_utilizationPct:      rollup.utilizationPct,
+    actual_smallJobMix:         rollup.smallJobMix,
+    actual_mediumJobMix:        rollup.mediumJobMix,
+    actual_largeJobMix:         rollup.largeJobMix,
+    actual_smallJobHours:       rollup.smallJobHours,
+    actual_mediumJobHours:      rollup.mediumJobHours,
+    actual_largeJobHours:       rollup.largeJobHours,
+    actual_smallJobMaterials:   rollup.smallJobMaterials,
+    actual_mediumJobMaterials:  rollup.mediumJobMaterials,
+    actual_largeJobMaterials:   rollup.largeJobMaterials,
+    actual_windowDays:          windowDays,
+    actual_lastUpdated:         new Date().toISOString(),
+  };
+
+  await setConfigKeys(actuals);
+  console.log(`[actuals-rollup] Saved actuals to Config (window=${windowDays}d, util=${rollup.utilizationPct}%)`);
+  return { ok: true, actuals, windowDays };
+}
+
+async function handleSaveActuals(req, res) {
+  try {
+    const url = new URL(req.url, "http://localhost");
+    const windowDays = parseInt(url.searchParams.get("windowDays") || "30", 10) || 30;
+    const result = await saveActualsToConfig(windowDays);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(result));
+  } catch (err) {
+    console.error("[actuals-rollup/save] error:", err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: err.message }));
+  }
+}
+
+module.exports = { handleActualsRollup, handleSaveActuals, saveActualsToConfig };

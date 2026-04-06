@@ -1,7 +1,7 @@
 # Vickery Electric CRM
 
 ## Overview
-Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, and instant quotes. Backed by Google Sheets via API.
+Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, and invoicing. Backed by Google Sheets API.
 
 ## Tech Stack
 - **Backend**: Node.js (vanilla `http` module), Express-less

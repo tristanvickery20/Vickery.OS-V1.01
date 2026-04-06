@@ -23,7 +23,8 @@ const { handleGetExpenses, handleCreateExpense } = require("./api/expenses");
 const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
-const { handleActualsRollup } = require("./api/actuals-rollup");
+const { handleActualsRollup, handleSaveActuals, saveActualsToConfig } = require("./api/actuals-rollup");
+const { handleGetCrewMembers, handleGetTodayJobs } = require("./api/crew");
 const { handleReferralSubmit } = require("./api/referral");
 const {
   handleGetClients,
@@ -147,6 +148,25 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/financing") {
     return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
+  }
+
+  if (req.url === "/crew") {
+    return serveFile(res, path.join(__dirname, "pages/crew.html"), "text/html");
+  }
+
+  // Crew portal public API endpoints (no auth required — employee-facing)
+  if (req.url.startsWith("/api/crew/members") && req.method === "GET") {
+    return handleGetCrewMembers(req, res);
+  }
+  if (req.url.startsWith("/api/crew/today") && req.method === "GET") {
+    return handleGetTodayJobs(req, res);
+  }
+  // Time and expense POSTs are allowed without auth so crew can submit from /crew
+  if (req.url === "/api/time" && req.method === "POST") {
+    return handleCreateTime(req, res);
+  }
+  if (req.url === "/api/expenses" && req.method === "POST") {
+    return handleCreateExpense(req, res);
   }
 
   if (req.url === "/crm") {
@@ -444,6 +464,10 @@ const server = http.createServer(async (req, res) => {
     return handleCreateAttachment(req, res);
   }
 
+  if (req.url.startsWith("/api/actuals-rollup/save") && req.method === "POST") {
+    return handleSaveActuals(req, res);
+  }
+
   if (req.url.startsWith("/api/actuals-rollup") && req.method === "GET") {
     return handleActualsRollup(req, res);
   }
@@ -506,4 +530,24 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())
     .catch((err) => console.error("[Startup]", err.message));
+
+  // Nightly actuals → Config job (runs once per day at midnight server time)
+  function scheduleNightlyActuals() {
+    const now  = new Date();
+    const next = new Date(now);
+    next.setHours(24, 0, 5, 0); // next midnight + 5 seconds
+    const msUntil = next - now;
+    setTimeout(async () => {
+      try {
+        console.log("[Nightly] Running actuals rollup…");
+        await saveActualsToConfig(30);
+        console.log("[Nightly] Actuals saved to Config.");
+      } catch (err) {
+        console.error("[Nightly] Actuals rollup failed:", err.message);
+      }
+      scheduleNightlyActuals(); // reschedule for next night
+    }, msUntil);
+    console.log(`[Nightly] Actuals scheduled in ${Math.round(msUntil/3600000)}h`);
+  }
+  scheduleNightlyActuals();
 });

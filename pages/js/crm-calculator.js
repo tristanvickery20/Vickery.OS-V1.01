@@ -61,20 +61,36 @@ async function loadFromConfig() {
   calculateProfit();
 }
 
-// Overwrites ONLY actuals-derived fields with data computed from real completed jobs.
-// All other fields (overhead, labor rates, crew config, projections) are left as-is.
+// Computes actuals from real completed jobs, saves them to Config tab, then
+// overwrites ONLY the actuals-derived calculator fields in the UI.
 async function loadActuals(windowDays) {
   const statusEl = document.getElementById("calcStatus");
-  if (statusEl) { statusEl.textContent = "Loading real job data…"; statusEl.className = "calc-status"; }
+  if (statusEl) { statusEl.textContent = "Computing actuals from real job data…"; statusEl.className = "calc-status"; }
 
   try {
-    const res = await fetch(`/api/actuals-rollup?windowDays=${windowDays || 30}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    // Step 1: compute & save actuals to Config tab
+    const saveRes = await fetch(`/api/actuals-rollup/save?windowDays=${windowDays || 30}`, { method: "POST" });
+    if (!saveRes.ok) throw new Error(`HTTP ${saveRes.status}`);
+    const saveData = await saveRes.json();
+    if (!saveData.ok) throw new Error(saveData.error || "Save failed");
 
+    // Step 2: read the now-updated actuals from the save response and update UI
+    const actuals = saveData.actuals || {};
     let updated = 0;
-    Object.entries(data).forEach(([id, val]) => {
-      if (!ACTUALS_FIELDS.has(id)) return;  // only update actuals-derived fields
+    const fieldMap = {
+      utilizationPct:       actuals.actual_utilizationPct,
+      smallJobMix:          actuals.actual_smallJobMix,
+      mediumJobMix:         actuals.actual_mediumJobMix,
+      largeJobMix:          actuals.actual_largeJobMix,
+      smallJobHours:        actuals.actual_smallJobHours,
+      mediumJobHours:       actuals.actual_mediumJobHours,
+      largeJobHours:        actuals.actual_largeJobHours,
+      smallJobMaterials:    actuals.actual_smallJobMaterials,
+      mediumJobMaterials:   actuals.actual_mediumJobMaterials,
+      largeJobMaterials:    actuals.actual_largeJobMaterials,
+    };
+    Object.entries(fieldMap).forEach(([id, val]) => {
+      if (val === undefined || val === null) return;
       const el = document.getElementById(id);
       if (!el) return;
       el.value = String(val);
@@ -83,7 +99,7 @@ async function loadActuals(windowDays) {
 
     if (statusEl) {
       statusEl.textContent = updated > 0
-        ? `Real job data applied (last ${windowDays} days) — job mix, hours & materials updated`
+        ? `Real job data applied & saved (last ${windowDays} days) — job mix, hours & materials updated`
         : `No completed jobs found in last ${windowDays} days — config values unchanged`;
       statusEl.className = "calc-status ok";
     }

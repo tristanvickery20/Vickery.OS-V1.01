@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Crew Portal — Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body, system-ui, sans-serif);
+      background: hsl(220 14% 8%);
+      color: hsl(220 15% 88%);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .page { width: 100%; max-width: 480px; padding: 0 16px 40px; }
+
+    /* ── Header ── */
+    .crew-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0 12px;
+      border-bottom: 1px solid hsl(220 10% 18%);
+      margin-bottom: 20px;
+    }
+    .crew-header-left { display: flex; flex-direction: column; gap: 2px; }
+    .crew-logo {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: hsl(220 15% 55%);
+    }
+    .crew-greeting {
+      font-size: 20px;
+      font-weight: 700;
+      color: hsl(220 15% 92%);
+    }
+    .crew-date { font-size: 13px; color: hsl(220 15% 55%); margin-top: 2px; }
+    .btn-switch {
+      background: hsl(220 10% 18%);
+      border: 1px solid hsl(220 10% 26%);
+      color: hsl(220 15% 70%);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-switch:active { opacity: .75; }
+
+    /* ── Name screen ── */
+    #nameScreen { text-align: center; padding: 48px 0 32px; }
+    .name-logo { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: hsl(220 15% 50%); margin-bottom: 32px; }
+    .name-title { font-size: 26px; font-weight: 700; color: hsl(220 15% 90%); margin-bottom: 8px; }
+    .name-sub { font-size: 14px; color: hsl(220 15% 55%); margin-bottom: 32px; }
+    .name-grid { display: flex; flex-direction: column; gap: 12px; }
+    .name-btn {
+      width: 100%;
+      padding: 20px;
+      background: hsl(220 10% 14%);
+      border: 2px solid hsl(220 10% 22%);
+      border-radius: 16px;
+      color: hsl(220 15% 88%);
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+      letter-spacing: .01em;
+    }
+    .name-btn:active, .name-btn:hover { border-color: hsl(var(--primary, 217 91% 60%)); background: hsl(220 10% 17%); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: hsl(220 15% 45%);
+      margin: 20px 0 10px;
+    }
+
+    /* ── Job card ── */
+    .job-card {
+      background: hsl(220 10% 13%);
+      border: 1px solid hsl(220 10% 20%);
+      border-radius: 18px;
+      padding: 18px 16px 14px;
+      margin-bottom: 14px;
+    }
+    .job-block {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: hsl(220 15% 55%);
+      margin-bottom: 6px;
+    }
+    .job-customer { font-size: 18px; font-weight: 700; color: hsl(220 15% 90%); margin-bottom: 4px; }
+    .job-address { font-size: 14px; color: hsl(220 15% 60%); margin-bottom: 14px; line-height: 1.4; }
+    .job-actions { display: flex; gap: 10px; }
+    .btn-time, .btn-expense {
+      flex: 1;
+      padding: 13px 8px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+    }
+    .btn-time:active, .btn-expense:active { opacity: .75; }
+    .btn-time {
+      background: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+    }
+    .btn-expense {
+      background: hsl(220 10% 20%);
+      border: 1px solid hsl(220 10% 28%);
+      color: hsl(220 15% 80%);
+    }
+
+    /* ── No jobs message ── */
+    .no-jobs {
+      text-align: center;
+      padding: 40px 20px;
+      color: hsl(220 15% 50%);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .no-jobs strong { color: hsl(220 15% 70%); display: block; margin-bottom: 8px; font-size: 18px; }
+
+    /* ── Manual log button ── */
+    .btn-manual {
+      width: 100%;
+      margin-top: 8px;
+      padding: 16px;
+      background: hsl(220 10% 14%);
+      border: 1px dashed hsl(220 10% 26%);
+      border-radius: 14px;
+      color: hsl(220 15% 60%);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-manual:active { opacity: .75; }
+
+    /* ── Overlay ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 100;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .overlay-card {
+      width: 100%;
+      max-width: 480px;
+      background: hsl(220 10% 13%);
+      border: 1px solid hsl(220 10% 22%);
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 40px;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+    .overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .overlay-title { font-size: 18px; font-weight: 700; color: hsl(220 15% 90%); }
+    .overlay-job-label { font-size: 13px; color: hsl(220 15% 55%); margin-top: 2px; }
+    .btn-close {
+      background: hsl(220 10% 20%);
+      border: 1px solid hsl(220 10% 28%);
+      border-radius: 50%;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: hsl(220 15% 70%);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: hsl(220 15% 55%);
+      margin-bottom: 7px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: hsl(220 10% 10%);
+      border: 1px solid hsl(220 10% 22%);
+      border-radius: 12px;
+      color: hsl(220 15% 88%);
+      font-size: 16px;
+      padding: 14px 14px;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: hsl(var(--primary, 217 91% 60%));
+    }
+    .form-select { -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+    .form-textarea { min-height: 72px; resize: vertical; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 9px 16px;
+      border-radius: 99px;
+      border: 1.5px solid hsl(220 10% 24%);
+      background: hsl(220 10% 14%);
+      color: hsl(220 15% 72%);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .chip.selected {
+      background: hsl(var(--primary, 217 91% 60%));
+      border-color: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 18px;
+      background: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity .15s;
+    }
+    .btn-submit:active { opacity: .8; }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: hsl(142 60% 32%);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      z-index: 200;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: hsl(0 60% 36%); }
+
+    /* ── Hours big input ── */
+    .hours-row { display: flex; align-items: center; gap: 10px; }
+    .hours-display {
+      font-size: 48px;
+      font-weight: 800;
+      color: hsl(220 15% 90%);
+      min-width: 100px;
+      text-align: center;
+    }
+    .hours-btns { display: flex; flex-direction: column; gap: 6px; }
+    .btn-adj {
+      width: 44px; height: 44px;
+      background: hsl(220 10% 20%);
+      border: 1px solid hsl(220 10% 28%);
+      border-radius: 10px;
+      font-size: 22px;
+      font-weight: 700;
+      color: hsl(220 15% 80%);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-adj:active { opacity: .7; }
+    .hours-unit { font-size: 16px; color: hsl(220 15% 55%); font-weight: 600; align-self: flex-end; margin-bottom: 10px; }
+    .hours-fine { display: flex; gap: 8px; margin-top: 8px; }
+    .btn-fine {
+      flex: 1;
+      padding: 10px;
+      background: hsl(220 10% 16%);
+      border: 1px solid hsl(220 10% 24%);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: hsl(220 15% 70%);
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-fine:active { opacity: .7; }
+
+    /* ── Amount ── */
+    .amount-display {
+      font-size: 42px;
+      font-weight: 800;
+      color: hsl(220 15% 90%);
+      text-align: center;
+      padding: 12px 0 4px;
+    }
+    .amount-display span { font-size: 28px; color: hsl(220 15% 55%); }
+    .amount-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .key {
+      padding: 18px;
+      background: hsl(220 10% 17%);
+      border: 1px solid hsl(220 10% 25%);
+      border-radius: 12px;
+      font-size: 20px;
+      font-weight: 700;
+      color: hsl(220 15% 85%);
+      cursor: pointer;
+      text-align: center;
+    }
+    .key:active { background: hsl(220 10% 22%); }
+    .key.del { color: hsl(0 60% 60%); }
+  </style>
+</head>
+<body>
+<div class="page">
+  <!-- Name selection screen -->
+  <div id="nameScreen">
+    <div class="name-logo">Vickery Electric</div>
+    <div class="name-title">Who's logging in?</div>
+    <div class="name-sub">Tap your name to get started</div>
+    <div class="name-grid" id="nameGrid">
+      <div style="text-align:center;color:hsl(220 15% 45%);padding:20px;">Loading crew list…</div>
+    </div>
+  </div>
+
+  <!-- Main portal -->
+  <div id="mainScreen" hidden>
+    <div class="crew-header">
+      <div class="crew-header-left">
+        <div class="crew-logo">Vickery Electric · Crew</div>
+        <div class="crew-greeting" id="greeting">Good morning</div>
+        <div class="crew-date" id="todayLabel"></div>
+      </div>
+      <button class="btn-switch" id="switchUser">Switch</button>
+    </div>
+
+    <div class="section-label">Today's Jobs</div>
+    <div id="jobList"></div>
+    <div id="noJobs" class="no-jobs" hidden>
+      <strong>No jobs scheduled today</strong>
+      You can still log time or expenses below.
+    </div>
+
+    <div class="section-label" style="margin-top:24px;">Log Without a Job</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-manual" id="manualTime" style="flex:1;">⏱ Log Time</button>
+      <button class="btn-manual" id="manualExpense" style="flex:1;">💳 Log Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- Time overlay -->
+<div class="overlay" id="timeOverlay">
+  <div class="overlay-card">
+    <div class="overlay-header">
+      <div>
+        <div class="overlay-title">Log Time</div>
+        <div class="overlay-job-label" id="timeJobLabel"></div>
+      </div>
+      <button class="btn-close" id="closeTime">✕</button>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Hours Worked</div>
+      <div class="hours-row">
+        <div class="hours-btns">
+          <button class="btn-adj" id="hoursUp">+</button>
+          <button class="btn-adj" id="hoursDown">−</button>
+        </div>
+        <div class="hours-display" id="hoursDisplay">2</div>
+        <div class="hours-unit">hrs</div>
+      </div>
+      <div class="hours-fine">
+        <button class="btn-fine" data-add="0.25">+15 min</button>
+        <button class="btn-fine" data-add="0.5">+30 min</button>
+        <button class="btn-fine" data-add="-0.25">−15 min</button>
+        <button class="btn-fine" data-add="-0.5">−30 min</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Type</div>
+      <div class="chip-group" id="timeCategory">
+        <div class="chip selected" data-val="On-site">On-site</div>
+        <div class="chip" data-val="Drive">Drive</div>
+        <div class="chip" data-val="Prep">Prep</div>
+        <div class="chip" data-val="Other">Other</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Notes (optional)</div>
+      <textarea class="form-textarea" id="timeNotes" placeholder="Any details…"></textarea>
+    </div>
+
+    <button class="btn-submit" id="submitTime">Save Time Entry</button>
+  </div>
+</div>
+
+<!-- Expense overlay -->
+<div class="overlay" id="expenseOverlay">
+  <div class="overlay-card">
+    <div class="overlay-header">
+      <div>
+        <div class="overlay-title">Log Expense</div>
+        <div class="overlay-job-label" id="expenseJobLabel"></div>
+      </div>
+      <button class="btn-close" id="closeExpense">✕</button>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Category</div>
+      <div class="chip-group" id="expenseCategory">
+        <div class="chip selected" data-val="Materials">Materials</div>
+        <div class="chip" data-val="Gas">Gas</div>
+        <div class="chip" data-val="Tools">Tools</div>
+        <div class="chip" data-val="Other">Other</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Amount</div>
+      <div class="amount-display" id="amountDisplay"><span>$</span><span id="amountVal">0.00</span></div>
+      <div class="amount-keypad" id="keypad">
+        <div class="key" data-k="1">1</div><div class="key" data-k="2">2</div><div class="key" data-k="3">3</div>
+        <div class="key" data-k="4">4</div><div class="key" data-k="5">5</div><div class="key" data-k="6">6</div>
+        <div class="key" data-k="7">7</div><div class="key" data-k="8">8</div><div class="key" data-k="9">9</div>
+        <div class="key" data-k=".">.</div><div class="key" data-k="0">0</div><div class="key del" data-k="del">⌫</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Vendor / Store (optional)</div>
+      <input class="form-input" type="text" id="expenseVendor" placeholder="e.g. Home Depot" />
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Notes (optional)</div>
+      <textarea class="form-textarea" id="expenseNotes" placeholder="Any details…"></textarea>
+    </div>
+
+    <button class="btn-submit" id="submitExpense">Save Expense</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/pages/js/crew.js"></script>
+</body>
+</html>
