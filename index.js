@@ -25,6 +25,11 @@ const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
 const { handleActualsRollup, handleSaveActuals, saveActualsToConfig } = require("./api/actuals-rollup");
 const { handleGetCrewMembers, handleGetTodayJobs } = require("./api/crew");
+const {
+  handleSignup, handleLogin, handleLogout, handleMe,
+  handleListStaff, handlePendingCount, handleUpdateStaff,
+} = require("./api/crew-auth");
+const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
 const {
   handleGetClients,
@@ -150,9 +155,23 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
   }
 
-  if (req.url === "/crew") {
+  // Crew portal pages and auth endpoints (public — no CRM auth required)
+  if (req.url === "/crew/login") {
+    return serveFile(res, path.join(__dirname, "pages/crew-login.html"), "text/html");
+  }
+  if (req.url === "/crew" || req.url === "/crew/") {
+    if (!getCrewSession(req)) {
+      res.writeHead(302, { Location: "/crew/login" });
+      return res.end();
+    }
     return serveFile(res, path.join(__dirname, "pages/crew.html"), "text/html");
   }
+
+  // Crew auth API (public — these are the auth endpoints themselves)
+  if (req.url === "/api/crew/signup" && req.method === "POST") return handleSignup(req, res);
+  if (req.url === "/api/crew/login"  && req.method === "POST") return handleLogin(req, res);
+  if (req.url === "/api/crew/logout" && req.method === "POST") return handleLogout(req, res);
+  if (req.url === "/api/crew/me"     && req.method === "GET")  return handleMe(req, res);
 
   // Crew portal public API endpoints (no auth required — employee-facing)
   if (req.url.startsWith("/api/crew/members") && req.method === "GET") {
@@ -161,7 +180,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/crew/today") && req.method === "GET") {
     return handleGetTodayJobs(req, res);
   }
-  // Time and expense POSTs are allowed without auth so crew can submit from /crew
+  // Time and expense POSTs are allowed without CRM auth so crew can submit from /crew
   if (req.url === "/api/time" && req.method === "POST") {
     return handleCreateTime(req, res);
   }
@@ -379,6 +398,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-leads.html"), "text/html");
   }
 
+  if (req.url === "/crm/staff") {
+    return serveFile(res, path.join(__dirname, "pages/crm-staff.html"), "text/html");
+  }
+
   if (req.url === "/crm/schedule") {
     return serveFile(res, path.join(__dirname, "pages/crm-schedule.html"), "text/html");
   }
@@ -464,6 +487,18 @@ const server = http.createServer(async (req, res) => {
     return handleCreateAttachment(req, res);
   }
 
+  // Staff management API (CRM owner only — behind requireAuth gate)
+  if (req.url === "/api/crew/staff" && req.method === "GET") {
+    return handleListStaff(req, res);
+  }
+  if (req.url === "/api/crew/staff/pending-count" && req.method === "GET") {
+    return handlePendingCount(req, res);
+  }
+  if (req.url.startsWith("/api/crew/staff/") && req.method === "PATCH") {
+    const staffId = req.url.replace("/api/crew/staff/", "").split("?")[0];
+    return handleUpdateStaff(req, res, staffId);
+  }
+
   if (req.url.startsWith("/api/actuals-rollup/save") && req.method === "POST") {
     return handleSaveActuals(req, res);
   }
@@ -526,6 +561,7 @@ server.listen(5000, "0.0.0.0", () => {
   ensureAllHeaders()
     .then(() => ensureConfigDefaults())
     .then(() => ensureCalculatorDefaults())
+    .then(() => ensureStaffSheet())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())

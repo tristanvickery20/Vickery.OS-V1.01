@@ -1,0 +1,650 @@
+Yes. You need a real marketing system inside the CRM, not just a page that says “send text” or “send email.”
+
+For Vickery, the marketing tab should really be the control center for:
+	•	lead generation
+	•	follow-up
+	•	reactivation
+	•	reviews
+	•	repeat business
+	•	attribution
+	•	campaign performance
+
+If you build it right, you can run almost all customer communication from inside the CRM even if the actual sending is done by Twilio / Mailgun / Resend / Gmail / some Zap.
+
+The big idea
+
+Your CRM marketing tab should manage 5 things:
+	1.	Who you are marketing to
+	2.	What you are sending
+	3.	When it gets sent
+	4.	Why it was sent / what triggered it
+	5.	What happened after it was sent
+
+That means your marketing tab should not just be “campaigns.”
+It should include contacts, segments, templates, automations, inbox/history, attribution, and results.
+
+⸻
+
+What to put in the Marketing tab
+
+1. Contact marketing profile
+
+Every lead/customer needs a marketing profile, not just a basic contact record.
+
+Add fields like:
+	•	contact_id / lead_id
+	•	customer type
+	•	lifecycle stage
+	•	lead source
+	•	original lead source
+	•	latest lead source
+	•	tags
+	•	service interests
+	•	property type
+	•	city / zone
+	•	last job date
+	•	total revenue
+	•	last contact date
+	•	last marketing touch date
+	•	preferred channel
+	•	email opt-in status
+	•	sms opt-in status
+	•	do-not-contact flag
+	•	review status
+	•	referral source
+	•	reactivation eligible yes/no
+
+This is what lets you later do stuff like:
+	•	“text all past customers in Orange that bought lighting work”
+	•	“email everyone who got a quote but never booked”
+	•	“exclude anyone who opted out”
+	•	“send review request only after completed jobs”
+
+Without this, marketing gets messy fast.
+
+⸻
+
+2. Segments / audiences
+
+You need saved audiences.
+
+Examples:
+	•	New leads not yet contacted
+	•	Quoted not booked
+	•	Scheduled but not completed
+	•	Completed jobs awaiting review request
+	•	Past customers no job in 6 months
+	•	High-value customers
+	•	Landlords / investors
+	•	Estimate abandoned
+	•	Outer-zone leads
+	•	Bad leads excluded
+	•	Customers with ceiling fan jobs
+	•	Customers with panel/safety related jobs
+
+So in the CRM, build:
+	•	segment name
+	•	rule logic
+	•	count
+	•	last refreshed
+	•	channel eligibility
+	•	exclusions
+
+This matters because marketing is really just sending the right message to the right group.
+
+⸻
+
+3. Templates library
+
+This is a big one.
+
+You need a template center for:
+	•	SMS templates
+	•	email templates
+	•	subject lines
+	•	review request templates
+	•	missed call / missed lead templates
+	•	estimate follow-up templates
+	•	job reminder templates
+	•	reactivation offers
+	•	referral request templates
+
+Each template should have:
+	•	template_id
+	•	channel
+	•	category
+	•	internal name
+	•	subject line if email
+	•	body
+	•	variables used
+	•	approved status
+	•	active/inactive
+	•	version
+	•	created_by
+	•	last updated
+
+Variables should support stuff like:
+	•	first_name
+	•	city
+	•	service_name
+	•	quoted_price
+	•	scheduled_date
+	•	technician_name
+	•	review_link
+	•	booking_link
+	•	quote_link
+
+Do this early. Otherwise you’ll rewrite the same texts forever.
+
+⸻
+
+4. Automations / journeys
+
+This is where the real power is.
+
+Your CRM should let you define triggers like:
+	•	new lead created
+	•	quote created
+	•	quote not accepted after X hours
+	•	job scheduled
+	•	job completed
+	•	invoice unpaid after X days
+	•	no response after X days
+	•	customer inactive for 6 months
+	•	abandoned quote flow
+	•	review not left after completed job
+	•	repeat-customer reminder after 12 months
+
+For each automation store:
+	•	automation_id
+	•	name
+	•	trigger event
+	•	delay
+	•	channel
+	•	template_id
+	•	filters
+	•	stop conditions
+	•	owner
+	•	status
+	•	version
+
+Example automations you absolutely want:
+
+Immediate lead response
+
+New lead comes in → instant SMS → optional email → task to call
+
+Quote follow-up
+
+Quote sent → reminder at 24h → 72h → 7d if not approved
+
+Scheduled job reminders
+
+Confirmation → 24h reminder → “on the way” message
+
+Review request flow
+
+Job completed → wait X hours → send review SMS → one follow-up only
+
+Reactivation
+
+No booked job in 6–12 months → send seasonal or service-specific message
+
+Referral ask
+
+Happy customer after completed job / review → ask for referral
+
+⸻
+
+5. Unified communication history
+
+Inside the CRM, you need one place that shows:
+	•	calls
+	•	texts
+	•	emails
+	•	status changes
+	•	notes
+	•	automation sends
+	•	opens/clicks if available
+	•	replies
+	•	delivery failures
+	•	opt-outs
+
+This is critical.
+
+A CRM is not really controlling the business if the communication history lives somewhere else.
+
+Each log entry should store:
+	•	message_id
+	•	contact_id / lead_id
+	•	channel
+	•	direction inbound/outbound
+	•	source manual/automation
+	•	template_id if used
+	•	content snapshot
+	•	sent time
+	•	delivered time
+	•	opened/clicked if email
+	•	reply status
+	•	assigned user
+	•	cost
+	•	provider id
+	•	error code if failed
+
+⸻
+
+6. Inbox / conversations
+
+You said you want SMS and email inside the CRM.
+Then you need a conversation view, not just send buttons.
+
+At minimum:
+	•	thread by lead/customer
+	•	channel filter
+	•	newest message first or conversation style
+	•	manual reply box
+	•	template insert
+	•	mark done / snooze / assign
+	•	unread count
+	•	automation pause toggle
+	•	opt-out toggle
+
+For Vickery, this matters because you want a lightweight AI-ish call center / lead desk experience.
+
+⸻
+
+7. Lead attribution + source tracking
+
+This is one of the most important parts and most small shops screw it up.
+
+You need fields for:
+	•	original source
+	•	original campaign
+	•	original medium
+	•	original keyword if available
+	•	landing page
+	•	gclid / click id if possible
+	•	referral source
+	•	call tracking number used
+	•	GBP yes/no
+	•	LSA yes/no
+	•	manual source override
+	•	close source
+	•	revenue credited to source
+
+Even if your CRM is basic, at least track:
+	•	source
+	•	subsource
+	•	campaign
+	•	first touch
+	•	last touch
+	•	job revenue
+
+Sources might be:
+	•	Google Business Profile
+	•	Local Services Ads
+	•	Google Ads
+	•	Organic SEO
+	•	Direct
+	•	Referral
+	•	Yard sign
+	•	Wrap / truck
+	•	Facebook
+	•	Repeat customer
+
+Without attribution, you’ll waste money and never know what is actually working.
+
+⸻
+
+8. Review and reputation system
+
+For home service, this needs to be built in.
+
+Track:
+	•	eligible for review
+	•	review request sent date
+	•	review completed yes/no
+	•	review link used
+	•	review source
+	•	number of asks
+	•	opted out of review asks
+	•	negative sentiment flag / complaint flag
+
+Simple flow:
+
+job completed → review request → follow-up → stop if review left
+
+This should live in marketing because reviews are marketing.
+
+⸻
+
+9. Reactivation engine
+
+This is huge for your model.
+
+Your CRM should be able to identify:
+	•	old customers not contacted in 6 months
+	•	old quotes not closed
+	•	seasonal opportunities
+	•	customers by service type
+	•	customers by geography
+
+Then let you blast or drip:
+	•	“Need a ceiling fan installed before summer?”
+	•	“Want exterior lighting before hurricane season?”
+	•	“Need smoke detector replacement?”
+	•	“Need surge protection / panel safety check?”
+
+Reactivation is one of the highest ROI things you can build.
+
+⸻
+
+10. Offer / campaign tracking
+
+You need a place to store actual campaigns.
+
+Each campaign should include:
+	•	campaign_id
+	•	name
+	•	channel
+	•	objective
+	•	audience / segment
+	•	offer
+	•	CTA
+	•	start/end dates
+	•	budget
+	•	status
+	•	template set
+	•	landing page / booking link
+	•	response count
+	•	booked jobs
+	•	revenue
+	•	cost
+	•	ROI notes
+
+Examples:
+	•	Spring Ceiling Fan Promo
+	•	Review Push – Past 90 Days
+	•	Quote Recovery – April
+	•	Smoke Detector Awareness
+	•	Referral Push – Completed Jobs
+	•	Surge Protection Campaign
+
+⸻
+
+11. Compliance + suppression
+
+This is boring but necessary.
+
+You need:
+	•	sms consent status
+	•	consent source
+	•	consent timestamp
+	•	email unsubscribe status
+	•	global do-not-contact
+	•	channel-specific suppression
+	•	STOP / unsubscribe handling
+	•	complaint flag
+	•	quiet hours rules
+	•	automation suppression after manual reply
+
+Do not skip this.
+
+Even if you start simple, the CRM should be designed for it now.
+
+⸻
+
+12. KPI dashboard inside marketing
+
+Your marketing tab should show numbers, not just tools.
+
+Track:
+	•	leads by source
+	•	booked jobs by source
+	•	revenue by source
+	•	close rate by source
+	•	response time to new leads
+	•	quote follow-up performance
+	•	SMS delivery rate
+	•	SMS reply rate
+	•	email open rate
+	•	email click rate
+	•	review request conversion
+	•	reactivation conversion
+	•	cost per lead
+	•	cost per booked job
+	•	cost per acquired customer
+	•	repeat customer rate
+
+For Vickery, the most important marketing KPIs are probably:
+	•	new leads
+	•	speed to first contact
+	•	quote-to-book conversion
+	•	review rate
+	•	repeat customer rate
+	•	revenue by source
+
+⸻
+
+What integrations you likely need
+
+You do not need all this custom-built from day one.
+You need your CRM to act as the brain, while outside tools do the sending.
+
+Core likely integrations
+
+SMS
+
+Use something like:
+	•	Twilio
+
+Need:
+	•	send SMS
+	•	receive SMS webhook
+	•	delivery status webhook
+	•	opt-out handling
+
+Email
+
+Use something like:
+	•	Gmail API
+	•	Mailgun
+	•	Resend
+	•	SendGrid
+
+Need:
+	•	send email
+	•	inbound routing if possible
+	•	delivery/open/click events if available
+	•	unsubscribe handling
+
+Forms / web leads
+
+Need:
+	•	website form webhook into CRM
+	•	quote request capture
+	•	source/campaign tagging
+
+Call tracking / call events
+
+Optional but valuable:
+	•	call outcome
+	•	missed call text back
+	•	source number attribution
+
+Reviews
+
+Need:
+	•	Google review link storage
+	•	review request tracking
+
+Ad platform reporting
+
+At minimum manually import if needed:
+	•	Google Ads spend
+	•	LSA spend
+	•	campaign naming consistency
+
+QuickBooks
+
+You already know this sits partly outside.
+Still sync these concepts back into CRM if possible:
+	•	invoice status
+	•	paid/unpaid
+	•	revenue actuals
+	•	customer/job link
+
+⸻
+
+What I would make on the marketing page itself
+
+If I were designing your CRM, the marketing area would have these sections:
+
+Marketing Dashboard
+	•	leads today/week/month
+	•	source breakdown
+	•	pending follow-ups
+	•	active automations
+	•	campaign performance
+	•	review requests due
+	•	reactivation opportunities
+
+Campaigns
+	•	list of current/past campaigns
+	•	create new campaign
+	•	audience selector
+	•	send test
+	•	launch/pause
+
+Automations
+	•	lead follow-up
+	•	quote follow-up
+	•	reminder flows
+	•	review flows
+	•	reactivation flows
+	•	referral flows
+
+Templates
+	•	SMS
+	•	email
+	•	review
+	•	reminders
+	•	seasonal promos
+
+Segments
+	•	smart lists / saved audiences
+
+Inbox
+	•	all text/email conversations
+	•	unread / assigned / needs response
+
+Reputation
+	•	review requests
+	•	review outcomes
+	•	unhappy customer flags
+
+Attribution
+	•	lead source reporting
+	•	campaign reporting
+	•	ROI
+
+Settings
+	•	Twilio/API keys
+	•	sender email
+	•	business hours
+	•	quiet hours
+	•	default booking links
+	•	unsubscribe footer/settings
+	•	automation defaults
+
+⸻
+
+Minimum viable version vs later version
+
+Build now
+
+This is the must-have version:
+	•	lead source tracking
+	•	SMS + email templates
+	•	basic automations
+	•	communication history
+	•	inbox/thread view
+	•	review request flow
+	•	quote follow-up flow
+	•	reactivation list
+	•	opt-out tracking
+	•	campaign reporting by source
+
+Build later
+
+This can wait:
+	•	fancy journey builder
+	•	complex branching automation
+	•	AI-generated campaign copy
+	•	multichannel attribution modeling
+	•	deep ad platform sync
+	•	advanced deliverability analytics
+	•	custom A/B testing engine
+
+⸻
+
+Most important design rule
+
+Do not design marketing as a separate disconnected system.
+
+Everything should tie back to:
+	•	lead
+	•	quote
+	•	job
+	•	customer
+	•	revenue
+
+That way you can answer:
+	•	where did this lead come from?
+	•	who followed up?
+	•	what was sent?
+	•	did they book?
+	•	how much revenue came from it?
+	•	should they get marketed to again?
+
+That’s how the CRM becomes the real operating system.
+
+⸻
+
+My recommendation for Vickery specifically
+
+For your business, I’d prioritize these six flows first:
+	1.	New lead instant response
+	2.	Quote follow-up
+	3.	Scheduled job reminders
+	4.	Completed job review request
+	5.	Past customer reactivation
+	6.	Referral ask after successful job
+
+That will cover the majority of useful marketing early.
+
+⸻
+
+Simple schema you should plan for
+
+At minimum, create or plan these tables/modules:
+	•	Contacts / Leads
+	•	Communication_Log
+	•	Conversations
+	•	Templates
+	•	Segments
+	•	Campaigns
+	•	Automations
+	•	Automation_Executions
+	•	Opt_Outs / Consent
+	•	Lead_Sources
+	•	Review_Requests
+	•	Attribution / Revenue_By_Source
+
+⸻
+
+One sentence answer
+
+Your marketing tab should not just be a “send messages” screen — it should be a full communication, follow-up, attribution, review, and reactivation system tied directly to leads, jobs, and revenue.
+
+I can map this into an exact CRM module list + fields list + page layout for your build next.

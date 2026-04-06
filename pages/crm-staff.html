@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Staff — Vickery Electric CRM</title>
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .staff-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .staff-title { font-size: 22px; font-weight: 800; }
+    .btn-primary {
+      padding: 10px 20px;
+      background: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .9; }
+
+    /* ── Pending banner ── */
+    .pending-banner {
+      display: none;
+      background: hsl(38 90% 14%);
+      border: 1px solid hsl(38 80% 30%);
+      border-radius: 14px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      color: hsl(38 90% 72%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pending-banner.hidden { display: none !important; }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-tab {
+      padding: 7px 16px;
+      border: 1.5px solid hsl(220 10% 24%);
+      border-radius: 99px;
+      background: transparent;
+      color: hsl(220 15% 64%);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .filter-tab.active {
+      background: hsl(var(--primary, 217 91% 60%));
+      border-color: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+    }
+
+    /* ── Staff cards ── */
+    .staff-grid { display: flex; flex-direction: column; gap: 14px; }
+
+    .staff-card {
+      background: var(--surface, hsl(220 10% 13%));
+      border: 1px solid var(--border, hsl(220 10% 20%));
+      border-radius: 16px;
+      padding: 18px 20px;
+      transition: border-color .15s;
+    }
+    .staff-card.pending { border-color: hsl(38 70% 35%); }
+    .staff-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .staff-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .staff-meta { font-size: 13px; color: var(--text-muted, hsl(220 12% 52%)); line-height: 1.5; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-pending  { background: hsl(38 80% 16%); color: hsl(38 90% 68%); }
+    .badge-active   { background: hsl(142 50% 13%); color: hsl(142 65% 55%); }
+    .badge-inactive { background: hsl(220 10% 16%); color: hsl(220 12% 50%); }
+
+    /* ── Permissions ── */
+    .perms-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted, hsl(220 12% 52%));
+      margin-bottom: 8px;
+    }
+    .perms-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .perm-chip {
+      padding: 5px 12px;
+      border-radius: 99px;
+      border: 1.5px solid hsl(220 10% 26%);
+      background: hsl(220 10% 15%);
+      color: hsl(220 15% 65%);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      user-select: none;
+    }
+    .perm-chip.on {
+      background: hsl(var(--primary, 217 91% 60%));
+      border-color: hsl(var(--primary, 217 91% 60%));
+      color: #fff;
+    }
+
+    /* ── Actions ── */
+    .staff-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-action {
+      padding: 9px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      font-family: inherit;
+      transition: opacity .15s;
+    }
+    .btn-action:active { opacity: .75; }
+    .btn-approve  { background: hsl(142 55% 32%); color: #fff; }
+    .btn-deny     { background: hsl(0 55% 30%); color: #fff; }
+    .btn-activate { background: hsl(142 45% 28%); color: #fff; }
+    .btn-deactivate { background: hsl(220 10% 20%); color: hsl(220 15% 65%); border-color: hsl(220 10% 28%); }
+    .btn-save-perms { background: hsl(var(--primary, 217 91% 60%)); color: #fff; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 48px 20px; color: hsl(220 12% 48%); }
+    .empty strong { display: block; font-size: 17px; margin-bottom: 8px; color: hsl(220 15% 65%); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: hsl(142 50% 28%); color: #fff;
+      padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      opacity: 0; transition: all .25s; z-index: 200;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: hsl(0 55% 35%); }
+
+    html.dark body { background: hsl(220 14% 8%); }
+    html.dark .staff-card { background: hsl(220 10% 12%); border-color: hsl(220 10% 18%); }
+    html.dark .staff-card.pending { border-color: hsl(38 60% 30%); }
+  </style>
+</head>
+<body>
+<div class="sidebar" id="sidebarMount"></div>
+<div class="main-area">
+  <div class="page-content">
+
+    <div class="staff-header">
+      <div class="staff-title">Staff Management</div>
+      <a href="/crew/login" target="_blank" class="btn-primary">Open Crew Portal →</a>
+    </div>
+
+    <div class="pending-banner hidden" id="pendingBanner">
+      ⚠️ <span id="pendingText"></span>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">All</button>
+      <button class="filter-tab" data-filter="pending">Pending Approval</button>
+      <button class="filter-tab" data-filter="active">Active</button>
+      <button class="filter-tab" data-filter="inactive">Inactive</button>
+    </div>
+
+    <div class="staff-grid" id="staffGrid">
+      <div class="empty"><strong>Loading staff…</strong></div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/crm-staff.js"></script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Crew Portal — Vickery Electric</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: 217 91% 60%;
+      --primary-dark: 217 91% 52%;
+      --bg: hsl(220 14% 7%);
+      --surface: hsl(220 12% 11%);
+      --surface2: hsl(220 10% 15%);
+      --border: hsl(220 10% 22%);
+      --text: hsl(220 15% 88%);
+      --muted: hsl(220 12% 52%);
+      --danger: hsl(0 65% 58%);
+      --success: hsl(142 55% 42%);
+    }
+
+    body {
+      font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Brand ── */
+    .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .brand-bolt {
+      font-size: 36px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .brand-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 6px;
+      letter-spacing: -.01em;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px 32px;
+    }
+
+    /* ── Tab toggle ── */
+    .tabs {
+      display: flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: hsl(var(--primary));
+      color: #fff;
+    }
+
+    /* ── Forms ── */
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+    .form-input {
+      width: 100%;
+      background: hsl(220 10% 9%);
+      border: 1.5px solid var(--border);
+      border-radius: 11px;
+      color: var(--text);
+      font-size: 16px;
+      font-family: inherit;
+      padding: 14px 14px;
+      transition: border-color .15s;
+      -webkit-appearance: none;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: hsl(var(--primary));
+    }
+    .form-input.error { border-color: var(--danger); }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: hsl(var(--primary));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: opacity .15s, background .15s;
+      letter-spacing: .01em;
+    }
+    .btn-submit:hover { background: hsl(var(--primary-dark)); }
+    .btn-submit:active { opacity: .85; }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Alert banner ── */
+    .alert {
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: none;
+      line-height: 1.4;
+    }
+    .alert.error { background: hsl(0 60% 15%); border: 1px solid hsl(0 55% 30%); color: hsl(0 80% 75%); display: block; }
+    .alert.success { background: hsl(142 40% 12%); border: 1px solid hsl(142 40% 25%); color: hsl(142 65% 60%); display: block; }
+
+    /* ── Footer ── */
+    .footer-link {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer-link a {
+      color: hsl(var(--primary));
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-link a:hover { text-decoration: underline; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+<div class="brand">
+  <div class="brand-bolt">⚡</div>
+  <div class="brand-name">Vickery Electric</div>
+  <div class="brand-title">Crew Portal</div>
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="login">Sign In</button>
+    <button class="tab-btn" data-tab="signup">Create Account</button>
+  </div>
+
+  <!-- Sign In -->
+  <div class="form-panel active" id="panel-login">
+    <div class="alert" id="login-alert"></div>
+    <form id="loginForm" autocomplete="on" onsubmit="return false;">
+      <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true" tabindex="-1" />
+      <div class="form-group">
+        <label class="form-label" for="login-phone">Phone Number</label>
+        <input class="form-input" id="login-phone" type="tel" autocomplete="tel"
+          placeholder="(409) 555-1234" inputmode="tel" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">Password</label>
+        <input class="form-input" id="login-password" type="password" autocomplete="current-password"
+          placeholder="Your password" />
+      </div>
+      <button class="btn-submit" id="btn-login" type="submit">Sign In</button>
+    </form>
+  </div>
+
+  <!-- Create Account -->
+  <div class="form-panel" id="panel-signup">
+    <div class="alert" id="signup-alert"></div>
+    <form id="signupForm" autocomplete="on" onsubmit="return false;">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="signup-first">First Name</label>
+          <input class="form-input" id="signup-first" type="text" autocomplete="given-name"
+            placeholder="Cody" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="signup-last">Last Name</label>
+          <input class="form-input" id="signup-last" type="text" autocomplete="family-name"
+            placeholder="Vickery" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="signup-phone">Phone Number</label>
+        <input class="form-input" id="signup-phone" type="tel" autocomplete="tel"
+          placeholder="(409) 555-1234" inputmode="tel" />
+        <div class="hint">Used for job alerts and account verification.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="signup-password">Password</label>
+        <input class="form-input" id="signup-password" type="password" autocomplete="new-password"
+          placeholder="At least 6 characters" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="signup-confirm">Confirm Password</label>
+        <input class="form-input" id="signup-confirm" type="password" autocomplete="new-password"
+          placeholder="Same password again" />
+      </div>
+      <button class="btn-submit" id="btn-signup" type="submit">Request Account</button>
+      <div class="hint" style="text-align:center;margin-top:14px;">
+        Your request will be reviewed and approved by the owner. You'll receive a text when it's ready.
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="footer-link">
+  Owner / Admin? <a href="/login">CRM Login →</a>
+</div>
+
+<script src="/pages/js/crew-login.js"></script>
+</body>
+</html>
