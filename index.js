@@ -31,6 +31,9 @@ const {
 } = require("./api/crew-auth");
 const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
+const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
+const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources } = require("./api/marketing");
+const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
 const {
   handleGetClients,
   handleGetClientById,
@@ -402,6 +405,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-staff.html"), "text/html");
   }
 
+  if (req.url === "/crm/marketing") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing.html"), "text/html");
+  }
+
   if (req.url === "/crm/schedule") {
     return serveFile(res, path.join(__dirname, "pages/crm-schedule.html"), "text/html");
   }
@@ -544,6 +551,50 @@ const server = http.createServer(async (req, res) => {
   // Ticket 21: payments API
   if (req.url === "/api/payments" && req.method === "POST") {
     return handleCreatePayment(req, res);
+  }
+
+  // Marketing Hub API
+  if (_epath === "/api/marketing/overview" && req.method === "GET") {
+    return handleGetOverview(req, res);
+  }
+  if (_epath === "/api/marketing/segments" && req.method === "GET") {
+    return handleGetSegments(req, res);
+  }
+  if (_epath === "/api/marketing/followup" && req.method === "GET") {
+    return handleGetFollowupQueue(req, res);
+  }
+  if (_epath === "/api/marketing/followup/send" && req.method === "POST") {
+    return handleSendFollowup(req, res);
+  }
+  if (_epath === "/api/marketing/sources" && req.method === "GET") {
+    return handleGetSources(req, res);
+  }
+
+  // Reviews API
+  if (_epath === "/api/reviews" && req.method === "GET") {
+    return handleGetReviews(req, res);
+  }
+  if (_epath === "/api/reviews/ask" && req.method === "POST") {
+    return handleSendAsk(req, res);
+  }
+  if (_epath === "/api/reviews/remind" && req.method === "POST") {
+    return handleSendReminder(req, res);
+  }
+  if (_epath.startsWith("/api/reviews/") && req.method === "PATCH") {
+    const reviewId = _epath.replace("/api/reviews/", "");
+    return handleUpdateReview(req, res, reviewId);
+  }
+
+  // Templates API
+  if (_epath === "/api/templates" && req.method === "GET") {
+    return handleGetTemplates(req, res);
+  }
+  if (_epath === "/api/templates" && req.method === "POST") {
+    return handleCreateTemplate(req, res);
+  }
+  if (_epath.startsWith("/api/templates/") && req.method === "PATCH") {
+    const templateId = _epath.replace("/api/templates/", "");
+    return handleUpdateTemplate(req, res, templateId);
   }
 
   res.writeHead(404, { "Content-Type": "text/plain" });
