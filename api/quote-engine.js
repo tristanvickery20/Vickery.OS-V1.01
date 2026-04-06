@@ -82,6 +82,33 @@ async function appendSnapshot(sheets, fields) {
   });
 }
 
+// ── Source normalization ──────────────────────────────────────────────────────
+const CANONICAL_SOURCES = [
+  "GBP", "Organic SEO", "LSA", "Google Ads", "Direct",
+  "Referral", "Yard Sign", "Truck Wrap", "Repeat Customer",
+  "Facebook", "Manual Outreach", "Other",
+];
+function normalizeLeadSource(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  const exact = CANONICAL_SOURCES.find(c => c.toLowerCase() === s.toLowerCase());
+  if (exact) return exact;
+  const sl = s.toLowerCase();
+  if (sl.includes("gbp") || sl.includes("google business") || sl.includes("google maps")) return "GBP";
+  if (sl.includes("lsa") || sl.includes("local service")) return "LSA";
+  if (sl.includes("google ad")) return "Google Ads";
+  if (sl.includes("organic") || sl.includes("seo")) return "Organic SEO";
+  if (sl.includes("facebook") || sl.includes("fb") || sl.includes("meta")) return "Facebook";
+  if (sl.includes("referral") || sl.includes("referred") || sl.includes("word of mouth")) return "Referral";
+  if (sl.includes("yard sign") || sl.includes("sign")) return "Yard Sign";
+  if (sl.includes("truck") || sl.includes("wrap") || sl.includes("van")) return "Truck Wrap";
+  if (sl.includes("repeat") || sl.includes("returning") || sl.includes("previous")) return "Repeat Customer";
+  if (sl.includes("direct") || sl.includes("walk") || sl.includes("call")) return "Direct";
+  if (sl.includes("outreach") || sl.includes("door") || sl.includes("hanger")) return "Manual Outreach";
+  return "Other";
+}
+
 // ── Lead upsert on lock ───────────────────────────────────────────────────────
 // Creates or updates the Lead row so schedule-book can find it by last_quote_id.
 // Non-fatal: any Sheets error is logged but does not break the quote response.
@@ -115,7 +142,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       set("pricing_version", pricing.pricing_version || "v2");
       if (!row[idxOf("name")]    && customer_name) set("name",    customer_name);
       if (!row[idxOf("address")] && address)       set("address", address);
-      if (lead_source && !row[idxOf("lead_source")]) set("lead_source", lead_source);
+      if (lead_source && !row[idxOf("lead_source")]) set("lead_source", normalizeLeadSource(lead_source));
       const sIdx = idxOf("status");
       if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
       await sheets.spreadsheets.values.update({
@@ -142,7 +169,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       set("quoted_price",    String(pricing.final_price || ""));
       set("pricing_version", pricing.pricing_version || "v2");
       set("last_quote_id",   quote_id);
-      if (lead_source) set("lead_source", lead_source);
+      if (lead_source) set("lead_source", normalizeLeadSource(lead_source));
       await sheets.spreadsheets.values.append({
         spreadsheetId: sheetId, range: "Leads!A:A",
         valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",

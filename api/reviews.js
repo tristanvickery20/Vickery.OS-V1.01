@@ -169,6 +169,8 @@ async function handleGetReviews(req, res) {
     const createdIdx = headers.indexOf("created_at");
     const srcIdx     = headers.indexOf("lead_source");
     const emailIdx   = headers.indexOf("email");
+    const cityIdx    = headers.indexOf("city");
+    const addrIdx    = headers.indexOf("primary_address");
 
     const queue = [], pending = [], received = [], response_due = [];
 
@@ -191,6 +193,15 @@ async function handleGetReviews(req, res) {
       const lastAct = String(row[actIdx] || row[createdIdx] || "").trim();
       const source  = String(row[srcIdx] || "").trim();
       const email   = String(row[emailIdx] || "").trim();
+      const cityRaw = cityIdx >= 0 ? String(row[cityIdx] || "").trim() : "";
+      const addrRaw = addrIdx >= 0 ? String(row[addrIdx] || "").trim() : "";
+      // Extract city: prefer explicit city column, else parse from address, else default
+      let city = cityRaw;
+      if (!city && addrRaw) {
+        const m = addrRaw.match(/,\s*([A-Za-z\s]+?)(?:\s+TX|\s+\d{5}|$)/);
+        if (m) city = m[1].trim();
+      }
+      if (!city) city = "Orange";
       const askSentAt = String(row[revAskIdx] || "").trim();
       const remSentAt = String(row[revRemIdx] || "").trim();
       const daysSinceComplete = daysSince(lastAct);
@@ -201,6 +212,7 @@ async function handleGetReviews(req, res) {
         name,
         phone,
         email,
+        city,
         job_type: job,
         source,
         days_since_complete: daysSinceComplete,

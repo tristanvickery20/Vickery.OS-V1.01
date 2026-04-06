@@ -123,6 +123,7 @@
       { label: "Revenue",             value: fmt$(o.revenue_total || 0),                  sub: "invoiced / paid",      cls: "accent-green" },
       { label: "Close Rate",          value: (o.close_rate_pct || 0) + "%",               sub: "leads → booked",       cls: "" },
       { label: "Quote-to-Book",       value: (o.quote_to_book_pct || 0) + "%",            sub: "quoted → booked",      cls: "" },
+      { label: "Median Response",     value: o.median_first_response_hours != null ? o.median_first_response_hours + "h" : "—", sub: "first-touch time",    cls: o.median_first_response_hours != null && o.median_first_response_hours <= 4 ? "accent-green" : "" },
       { label: "Review Eligible",     value: o.review_eligible || 0,                      sub: "completed jobs",       cls: "" },
       { label: "Asks Sent",           value: o.review_asked || 0,                         sub: "all time",             cls: "accent-blue" },
       { label: "Reviews Received",    value: o.review_received || 0,                      sub: "captured",             cls: "accent-green" },
@@ -210,7 +211,7 @@
           <div class="rev-card-body">
             <div class="rev-card-name">${esc(r.name)}</div>
             <div class="rev-card-meta">
-              ${esc(r.job_type || "Service")} &bull; ${esc(r.phone)} &bull; Completed ${daysBadge(r.days_since_complete)}
+              ${esc(r.job_type || "Service")} &bull; ${esc(r.city || "Orange")} &bull; ${esc(r.phone)} &bull; Completed ${daysBadge(r.days_since_complete)}
             </div>
           </div>
           <button class="rev-btn rev-btn-ask" data-lead-id="${esc(r.lead_id)}" data-action="ask">Send Review Ask</button>
@@ -235,7 +236,7 @@
           <div class="rev-card-body">
             <div class="rev-card-name">${esc(r.name)}</div>
             <div class="rev-card-meta">
-              ${esc(r.job_type || "Service")} &bull; ${esc(r.phone || "No phone")}
+              ${esc(r.job_type || "Service")} &bull; ${esc(r.city || "Orange")} &bull; ${esc(r.phone || "No phone")}
               &bull; Ask sent ${daysBadge(daysSinceAsk)}
               &bull; Status: <strong>${esc(r.review_status)}</strong>
             </div>

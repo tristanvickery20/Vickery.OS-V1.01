@@ -19,6 +19,36 @@ function normalizeStr(v) {
   return String(v || "").trim();
 }
 
+// Canonical lead source categories — normalize any incoming value to the nearest match
+const CANONICAL_SOURCES = [
+  "GBP", "Organic SEO", "LSA", "Google Ads", "Direct",
+  "Referral", "Yard Sign", "Truck Wrap", "Repeat Customer",
+  "Facebook", "Manual Outreach", "Other",
+];
+
+function normalizeLeadSource(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  // Exact match first (case-insensitive)
+  const exact = CANONICAL_SOURCES.find(c => c.toLowerCase() === s.toLowerCase());
+  if (exact) return exact;
+  // Partial/keyword match
+  const sl = s.toLowerCase();
+  if (sl.includes("gbp") || sl.includes("google business") || sl.includes("google maps")) return "GBP";
+  if (sl.includes("lsa") || sl.includes("local service")) return "LSA";
+  if (sl.includes("google ad")) return "Google Ads";
+  if (sl.includes("organic") || sl.includes("seo")) return "Organic SEO";
+  if (sl.includes("facebook") || sl.includes("fb") || sl.includes("meta")) return "Facebook";
+  if (sl.includes("referral") || sl.includes("referred") || sl.includes("word of mouth")) return "Referral";
+  if (sl.includes("yard sign") || sl.includes("sign")) return "Yard Sign";
+  if (sl.includes("truck") || sl.includes("wrap") || sl.includes("van")) return "Truck Wrap";
+  if (sl.includes("repeat") || sl.includes("returning") || sl.includes("previous")) return "Repeat Customer";
+  if (sl.includes("direct") || sl.includes("walk") || sl.includes("call")) return "Direct";
+  if (sl.includes("outreach") || sl.includes("door") || sl.includes("hanger")) return "Manual Outreach";
+  return "Other";
+}
+
 function parseNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -406,8 +436,8 @@ async function handleCreateLead(req, res) {
       setCellByHeader(row, idx, "estimated_value", String(Number(data.estimated_value || 0)));
       setCellByHeader(row, idx, "notes", data.notes || "");
 
-      // Marketing attribution fields
-      setCellByHeader(row, idx, "lead_source", data.lead_source || "");
+      // Marketing attribution fields (normalize source to canonical set)
+      setCellByHeader(row, idx, "lead_source", normalizeLeadSource(data.lead_source));
       setCellByHeader(row, idx, "referring_customer", data.referring_customer || "");
 
       // Optional shortcut if you add later
