@@ -17,20 +17,20 @@ function ensureBackdrop() {
 var _navTouchStartY = 0;
 
 function _blockBodyTouch(e) {
-  // If the touch target is inside the scrollable nav, allow it
-  var nav = qs(".sidebar-nav");
-  if (nav && nav.contains(e.target)) return;
+  // Allow touches inside the sidebar itself; block everything else
+  var sb = qs(".sidebar");
+  if (sb && sb.contains(e.target)) return;
   e.preventDefault();
 }
 
-function _navBoundaryGuard(e) {
-  // Prevent rubber-band when nav is at top or bottom edge
-  var nav = qs(".sidebar-nav");
-  if (!nav) return;
+function _sidebarBoundaryGuard(e) {
+  // Prevent rubber-band when sidebar hits top or bottom edge on iOS
+  var sb = qs(".sidebar");
+  if (!sb) return;
   var touch = e.touches[0];
   var delta = _navTouchStartY - touch.clientY;
-  var atTop    = nav.scrollTop === 0;
-  var atBottom = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 1;
+  var atTop    = sb.scrollTop === 0;
+  var atBottom = sb.scrollTop + sb.clientHeight >= sb.scrollHeight - 1;
   if ((atTop && delta < 0) || (atBottom && delta > 0)) {
     e.preventDefault();
   }
@@ -46,12 +46,11 @@ function openSidebar() {
   if (sb) sb.classList.add("open");
   if (bd) bd.classList.add("show");
   document.body.style.overflow = "hidden";
-  // iOS Safari: block body bounce and guard nav edges
+  // iOS Safari: block body bounce and guard sidebar scroll edges
   document.addEventListener("touchmove", _blockBodyTouch, { passive: false });
-  var nav = qs(".sidebar-nav");
-  if (nav) {
-    nav.addEventListener("touchstart", _navTouchStart, { passive: true });
-    nav.addEventListener("touchmove", _navBoundaryGuard, { passive: false });
+  if (sb) {
+    sb.addEventListener("touchstart", _navTouchStart, { passive: true });
+    sb.addEventListener("touchmove", _sidebarBoundaryGuard, { passive: false });
   }
 }
 
@@ -62,10 +61,9 @@ function closeSidebar() {
   if (bd) bd.classList.remove("show");
   document.body.style.overflow = "";
   document.removeEventListener("touchmove", _blockBodyTouch);
-  var nav = qs(".sidebar-nav");
-  if (nav) {
-    nav.removeEventListener("touchstart", _navTouchStart);
-    nav.removeEventListener("touchmove", _navBoundaryGuard);
+  if (sb) {
+    sb.removeEventListener("touchstart", _navTouchStart);
+    sb.removeEventListener("touchmove", _sidebarBoundaryGuard);
   }
 }
 

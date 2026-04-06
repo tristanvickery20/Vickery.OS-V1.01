@@ -39,9 +39,9 @@ body{
   position: sticky;
   top:0;
   height:100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Main area */
@@ -104,7 +104,6 @@ body{
   display:flex;
   align-items:center;
   gap:10px;
-  flex-shrink: 0;
 }
 .sidebar .sidebar-brand{ font-size:11px; font-weight:600; color:var(--muted2); letter-spacing:0.08em; text-transform:uppercase; }
 .sidebar .sidebar-brand small{ display:none; }
@@ -113,7 +112,7 @@ body{
 .sidebar .mobile-toggle{ display:none !important; } /* we use drawer menu instead */
 
 /* Create */
-.sidebar .create-wrap{ padding:10px 14px 0; flex-shrink: 0; }
+.sidebar .create-wrap{ padding:10px 14px 0; }
 .sidebar .create-btn{
   width:100%;
   display:flex;
@@ -146,15 +145,8 @@ body{
 }
 .sidebar .create-menu a:last-child{ border-bottom:none; }
 
-/* Nav — fills remaining space and scrolls internally */
-.sidebar .sidebar-nav{
-  padding:10px 8px 16px;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-}
+/* Nav */
+.sidebar .sidebar-nav{ padding:10px 8px 16px; }
 .sidebar .sidebar-section-title{
   padding:10px 10px 6px;
   font-size:12px;
@@ -191,7 +183,6 @@ body{
 .sidebar .sidebar-footer{
   padding:12px 14px;
   border-top:1px solid var(--line2);
-  flex-shrink: 0;
 }
 .sidebar .sidebar-footer a{
   display:block;
