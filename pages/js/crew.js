@@ -190,16 +190,48 @@ function openJobDetail(j) {
     navLink.style.display = "none";
   }
 
-  // Scope / notes — always show; "No notes on file" when empty
+  // Scope / notes — always show
   const scopeSection = document.getElementById("jdScopeSection");
   const scopeEl = document.getElementById("jdScope");
   scopeSection.style.display = "block";
-  if (j.scope_of_work) {
-    scopeEl.textContent = j.scope_of_work;
-    scopeEl.style.color = "";
+
+  const items  = j.scope_items  || [];
+  const addons = j.scope_addons || [];
+  const qty    = j.scope_qty;
+  const status = j.scope_status || "";
+
+  if (items.length > 0 || addons.length > 0 || qty || j.scope_of_work) {
+    let html = "";
+
+    // Status pill — only show when flagged
+    if (status && status !== "standard") {
+      const isAlert = status.includes("review") || status.includes("blocked");
+      html += `<div class="scope-status ${isAlert ? "scope-status--alert" : ""}">${esc(status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()))}</div>`;
+    }
+
+    // Quantity — show prominently when > 1
+    if (qty && qty > 1) {
+      html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
+    }
+
+    // Q&A items
+    items.forEach(item => {
+      html += `<div class="scope-row"><span class="scope-row-label">${esc(item.label)}</span><span class="scope-row-val">${esc(item.value)}</span></div>`;
+    });
+
+    // Add-ons
+    addons.forEach(name => {
+      html += `<div class="scope-row"><span class="scope-row-label">Add-on</span><span class="scope-row-val">${esc(name)}</span></div>`;
+    });
+
+    // Plain-text fallback (manually-created bookings)
+    if (items.length === 0 && j.scope_of_work) {
+      html += `<div class="scope-plain">${esc(j.scope_of_work)}</div>`;
+    }
+
+    scopeEl.innerHTML = html;
   } else {
-    scopeEl.textContent = "No notes on file for this job.";
-    scopeEl.style.color = "hsl(220 15% 40%)";
+    scopeEl.innerHTML = `<span class="scope-empty">No notes on file for this job.</span>`;
   }
 
   // Job type — show if available, hide only when truly nothing

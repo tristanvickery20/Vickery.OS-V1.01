@@ -19,16 +19,31 @@ function todayLocalStr() {
   return local.toISOString().slice(0, 10); // "YYYY-MM-DD"
 }
 
-// Decode a QuoteSnapshot row into a human-readable scope string.
-// selected_options_json = { answers: { question_id: option_id }, qty, classification }
-// selected_addons_json  = [ addon_id, ... ]
-function buildScope(selectedOptionsJson, selectedAddonsJson, questionsByType, optionsByQuestion, addonsByType, jobTypeId) {
-  const lines = [];
+// Shorten a question prompt to a quick crew-readable label.
+// "What is the ceiling height in the work area?" → "Ceiling height"
+function crewLabel(prompt) {
+  return prompt
+    .replace(/\?.*$/, "")
+    .replace(/^(what\s+(is\s+the?\s+|are\s+the?\s+|type\s+of\s+|kind\s+of\s+)|how\s+(old|many|much|long)\s+(is|are)\s+(the?\s+)?|is\s+there\s+(an?\s+)?|will\s+you\s+|is\s+this\s+|are\s+there\s+|do\s+you\s+)/i, "")
+    .replace(/^\s*the\s+/i, "")
+    .replace(/\s+(in\s+the\s+work\s+area|above\s+the\s+ceiling|of\s+(the\s+)?(home|building|this\s+job)|above|below)\s*$/i, "")
+    .trim()
+    .replace(/^\w/, c => c.toUpperCase()) || prompt.replace(/\?$/, "").trim();
+}
+
+// Decode a QuoteSnapshot into structured crew-readable items.
+// Returns { items: [{label, value}], qty, classification, addons: [string] }
+function buildScopeItems(selectedOptionsJson, selectedAddonsJson, questionsByType, optionsByQuestion, addonsByType, jobTypeId) {
+  const items = [];
+  let qty = null;
+  let classification = "";
+  const addons = [];
 
   try {
     const snap = JSON.parse(selectedOptionsJson || "{}");
     const answers = snap.answers || {};
-    const qty = snap.qty;
+    qty = snap.qty ? Number(snap.qty) : null;
+    classification = snap.classification || "";
 
     const questions = questionsByType[jobTypeId] || [];
     for (const q of questions) {
@@ -37,36 +52,27 @@ function buildScope(selectedOptionsJson, selectedAddonsJson, questionsByType, op
 
       const opts = optionsByQuestion[q.question_id] || [];
       let displayAnswer;
-
       if (opts.length > 0) {
-        // Multiple choice — look up the label
         const opt = opts.find(o => o.option_id === String(rawAnswer));
         displayAnswer = opt ? opt.label : String(rawAnswer);
       } else {
-        // Free-text / numeric answer
         displayAnswer = String(rawAnswer);
       }
 
-      lines.push(`${q.prompt}: ${displayAnswer}`);
-    }
-
-    // Quantity (number of units like panels, fixtures, etc.)
-    if (qty && Number(qty) > 1) {
-      lines.push(`Quantity: ${qty}`);
+      items.push({ label: crewLabel(q.prompt), value: displayAnswer });
     }
   } catch (_) { /* malformed JSON — skip */ }
 
-  // Add-ons
   try {
     const addonIds = JSON.parse(selectedAddonsJson || "[]");
     const allAddons = addonsByType[jobTypeId] || [];
     for (const aid of addonIds) {
       const addon = allAddons.find(a => a.addon_id === aid);
-      if (addon) lines.push(`Add-on: ${addon.name_public}`);
+      if (addon) addons.push(addon.name_public);
     }
   } catch (_) { /* skip */ }
 
-  return lines.join("\n");
+  return { items, qty, classification, addons };
 }
 
 async function handleGetCrewMembers(req, res) {
@@ -138,27 +144,27 @@ async function handleGetTodayJobs(req, res) {
         const qid     = get("quote_id");
         const jobTypeId = get("job_type_id");
 
-        // Build scope from quote snapshot answers (human-readable)
+        // Build scope from quote snapshot answers (structured items)
         const snap = snapshotMap[qid] || {};
-        const scopeFromQuote = qcfg
-          ? buildScope(
+        const effectiveJobTypeId = jobTypeId || snap.job_type_id;
+        const scopeResult = qcfg
+          ? buildScopeItems(
               snap.selected_options_json,
               snap.selected_addons_json,
               qcfg.questionsByType,
               qcfg.optionsByQuestion,
               qcfg.addonsByType,
-              jobTypeId || snap.job_type_id,
+              effectiveJobTypeId,
             )
-          : "";
+          : { items: [], qty: null, classification: "", addons: [] };
 
-        // Build scope: prefer decoded quote answers, then explicit scope_of_work,
-        // then fall back to the booking-level notes field.
-        // Skip any value that looks like an internal ID (e.g. BK-EF461573, Q-XXXX).
+        // Fallback plain-text scope for manually-created bookings (no quote snapshot)
         const scopeRaw   = get("scope_of_work");
         const bookingNotes = get("notes");
         const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
-        const scopeCandidates = [scopeFromQuote, scopeRaw, bookingNotes];
-        const scope = scopeCandidates.find(v => v && !isInternalId(v)) || "";
+        const plainScope = scopeResult.items.length === 0
+          ? ([scopeRaw, bookingNotes].find(v => v && !isInternalId(v)) || "")
+          : "";
 
         // Job type: use name_public from config; always fall back to the raw ID
         // so the crew sees something (even internal codes like A001)
@@ -183,7 +189,13 @@ async function handleGetTodayJobs(req, res) {
           final_price:        get("final_price"),
           job_type_id:        jobTypeId,
           job_type_name:      jobTypeName,
-          scope_of_work:      scope,
+          // Structured scope (from quote answers — preferred)
+          scope_items:        scopeResult.items,
+          scope_qty:          scopeResult.qty,
+          scope_status:       scopeResult.classification,
+          scope_addons:       scopeResult.addons,
+          // Plain-text fallback (for manually-created bookings)
+          scope_of_work:      plainScope,
         };
       })
       .filter(j => j.date === today && j.status !== "cancelled")

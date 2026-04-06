@@ -226,15 +226,64 @@
       color: hsl(220 15% 38%);
       margin-top: 3px;
     }
-    .scope-box {
-      background: hsl(220 10% 11%);
-      border: 1px solid hsl(220 10% 20%);
-      border-radius: 10px;
-      padding: 12px 14px;
+    /* ── Scope rows ── */
+    .scope-box { display: flex; flex-direction: column; gap: 0; }
+    .scope-status {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: hsl(220 10% 20%);
+      color: hsl(220 15% 65%);
+      border-radius: 6px;
+      padding: 3px 8px;
+      margin-bottom: 10px;
+      align-self: flex-start;
+    }
+    .scope-status--alert {
+      background: hsl(38 80% 18%);
+      color: hsl(38 90% 65%);
+    }
+    .scope-qty {
+      font-size: 17px;
+      font-weight: 700;
+      color: hsl(220 15% 92%);
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid hsl(220 10% 18%);
+    }
+    .scope-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid hsl(220 10% 16%);
+    }
+    .scope-row:last-child { border-bottom: none; }
+    .scope-row-label {
+      font-size: 12px;
+      color: hsl(220 15% 45%);
+      flex-shrink: 0;
+      max-width: 45%;
+    }
+    .scope-row-val {
+      font-size: 14px;
+      font-weight: 600;
+      color: hsl(220 15% 88%);
+      text-align: right;
+      line-height: 1.4;
+    }
+    .scope-plain {
       font-size: 14px;
       color: hsl(220 15% 75%);
       line-height: 1.6;
-      white-space: pre-wrap;
+    }
+    .scope-empty {
+      font-size: 14px;
+      color: hsl(220 15% 38%);
+      font-style: italic;
     }
 
     /* ── No jobs ── */
