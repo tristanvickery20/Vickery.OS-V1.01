@@ -1595,11 +1595,12 @@
         return iOS ? `maps://maps.apple.com/?q=${q}` : `https://maps.google.com/maps?q=${q}`;
       }
 
-      let _map          = null;
-      let _mapMarkers   = [];
-      let _optOrder     = null; // booking_ids in optimized order
-      let _mapTokenP    = null; // cached token promise
-      const MAP_DEPOT   = [-93.7363, 30.0930]; // Orange, TX
+      let _map                = null;
+      let _mapMarkers         = [];
+      let _optOrder           = null; // booking_ids in optimized order
+      let _mapTokenP          = null; // cached token promise
+      let _mapGeocodedDate    = ""; // guard: track which date was auto-geocoded
+      const MAP_DEPOT         = [-93.7363, 30.0930]; // Orange, TX
 
       const MAP_STATUS_COLORS = {
         confirmed: "#4ade80", scheduled: "#4ade80",
@@ -1681,8 +1682,12 @@
             mapDrawRoute(sorted);
             mapFitBounds(sorted);
             mapUpdateStatus(withCoords, needCoords);
-            // Auto-geocode missing addresses on first map load
-            if (needCoords.length) mapGeocode(needCoords, true);
+            // Auto-geocode missing addresses — fires once per date (date-keyed guard
+            // prevents retry loop: even if loadData() re-renders, same dateStr skips it)
+            if (needCoords.length && _mapGeocodedDate !== dateStr) {
+              _mapGeocodedDate = dateStr;
+              mapGeocode(needCoords, true);
+            }
           });
 
           document.getElementById("mapOptimize")?.addEventListener("click", () => mapOptimize(withCoords, dayBookings));
@@ -1831,9 +1836,23 @@
           });
           const d = await r.json();
           if (!d.ok) throw new Error(d.error || "Geocoding failed");
-          await loadData(); // reload to get updated coords + re-render map
+          // Only reload when coordinates were actually written — prevents reload loop
+          // when all addresses fail (e.g., no geocode result for bad addresses)
+          if (d.updated > 0) {
+            await loadData(); // refreshes map with new coords
+          } else {
+            // No coords resolved — surface the unresolved count without re-triggering
+            const failed = (d.results || []).filter(r => !r.ok).length;
+            if (st) {
+              st.textContent = failed
+                ? `${failed} address${failed > 1 ? "es" : ""} could not be geocoded — check addresses`
+                : "Geocoding complete";
+              st.style.color = failed ? "#fbbf24" : "";
+            }
+            if (btn) { btn.disabled = false; btn.textContent = `Retry geocode (${failed})`; }
+          }
         } catch (err) {
-          if (auto && st) { st.textContent = `Could not geocode all addresses: ${err.message}`; st.style.color = "#fbbf24"; }
+          if (auto && st) { st.textContent = `Geocoding error: ${err.message}`; st.style.color = "#f87171"; }
           else alert("Geocoding error: " + err.message);
           if (btn) { btn.disabled = false; btn.textContent = `Retry geocode (${needCoords.length})`; }
         }
