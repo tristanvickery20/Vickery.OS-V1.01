@@ -506,6 +506,14 @@ function bindViewTabs() {
   });
 }
 
+// ── Nav URL helper (platform-aware deep link) ─────────────────────────────────
+function navHref(addr) {
+  if (!addr) return "";
+  const q = encodeURIComponent(addr);
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return iOS ? `maps://maps.apple.com/?q=${q}` : `https://maps.google.com/maps?q=${q}`;
+}
+
 // ── Crew Map ──────────────────────────────────────────────────────────────────
 function crewMapToken() {
   if (!_crewTokenP) {
@@ -595,16 +603,17 @@ async function renderCrewMap() {
         el.textContent = String(idx + 1);
 
         const addr = job.address || "";
-        const navUrl = addr ? `https://maps.google.com/maps?q=${encodeURIComponent(addr)}` : "";
+        const nav  = navHref(addr);
 
         const popup = new mapboxgl.Popup({ offset: 18, maxWidth: "260px", closeButton: true })
           .setHTML(`<div>
             <div class="cpop-name">${esc(job.customer_name || "—")}</div>
             <div class="cpop-addr">${esc(addr || "No address")}</div>
             <div class="cpop-btns">
-              ${navUrl ? `<a class="cpop-btn cpop-nav" href="${navUrl}" target="_blank" rel="noopener">Navigate &#10132;</a>` : ""}
-              ${job.phone ? `<button class="cpop-btn cpop-way" data-bid="${esc(job.booking_id)}" data-action="on_the_way">On the way</button>` : ""}
-              ${job.phone ? `<button class="cpop-btn cpop-here" data-bid="${esc(job.booking_id)}" data-action="we_are_here">We're here</button>` : ""}
+              ${nav ? `<a class="cpop-btn cpop-nav" href="${nav}" target="_blank" rel="noopener">Navigate &#10132;</a>` : ""}
+              ${job.phone ? `<button class="cpop-btn cpop-way"  data-bid="${esc(job.booking_id)}" data-action="on_the_way">On the way</button>`    : ""}
+              ${job.phone ? `<button class="cpop-btn cpop-here" data-bid="${esc(job.booking_id)}" data-action="we_are_here">We're here</button>`    : ""}
+              ${job.phone ? `<button class="cpop-btn cpop-late" data-bid="${esc(job.booking_id)}" data-action="running_late">Running late</button>` : ""}
             </div>
           </div>`);
 

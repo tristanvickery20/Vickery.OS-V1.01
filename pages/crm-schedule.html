@@ -1550,7 +1550,7 @@
 
         detailBody.innerHTML = body;
         detailFooter.innerHTML = `
-          ${b.address ? `<a class="detail-btn" href="https://maps.google.com/maps?q=${encodeURIComponent(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
+          ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/leads?q=${esc(b.quote_id)}" target="_blank">Open Full Record &#8599;</a>` : ""}
           ${S.staff.length > 0 ? `<button class="detail-btn" id="detailSaveTech">Save Assignment</button>` : ""}
         `;
@@ -1576,6 +1576,13 @@
       }
 
       // ── MAP VIEW ──────────────────────────────────────────────────
+      function navHref(addr) {
+        if (!addr) return "";
+        const q = encodeURIComponent(addr);
+        const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        return iOS ? `maps://maps.apple.com/?q=${q}` : `https://maps.google.com/maps?q=${q}`;
+      }
+
       let _map          = null;
       let _mapMarkers   = [];
       let _optOrder     = null; // booking_ids in optimized order
@@ -1662,6 +1669,8 @@
             mapDrawRoute(sorted);
             mapFitBounds(sorted);
             mapUpdateStatus(withCoords, needCoords);
+            // Auto-geocode missing addresses on first map load
+            if (needCoords.length) mapGeocode(needCoords, true);
           });
 
           document.getElementById("mapOptimize")?.addEventListener("click", () => mapOptimize(withCoords, dayBookings));
@@ -1693,13 +1702,14 @@
           el.textContent = String(idx + 1);
 
           const addr = b.address || "";
+          const nav  = navHref(addr);
           const popup = new mapboxgl.Popup({ offset: 18, maxWidth: "220px", closeButton: true })
             .setHTML(`<div>
               <div class="map-popup-name">${esc(b.customer_name || "—")}</div>
               <div class="map-popup-addr">${esc(addr)}</div>
               <div class="map-popup-time">${esc(fmtTime(b.scheduled_datetime) || "No time set")}</div>
               <div class="map-popup-row">
-                ${addr ? `<a class="map-popup-btn map-popup-nav" href="https://maps.google.com/maps?q=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Navigate</a>` : ""}
+                ${nav ? `<a class="map-popup-btn map-popup-nav" href="${nav}" target="_blank" rel="noopener">Navigate</a>` : ""}
                 <button class="map-popup-btn map-popup-open" data-bid="${esc(b.booking_id)}">Details</button>
               </div>
             </div>`);
@@ -1783,9 +1793,11 @@
         }
       }
 
-      async function mapGeocode(needCoords) {
+      async function mapGeocode(needCoords, auto = false) {
         const btn = document.getElementById("mapGeocode");
+        const st  = document.getElementById("mapStatus");
         if (btn) { btn.disabled = true; btn.textContent = "Geocoding…"; }
+        if (auto && st) { st.textContent = `Geocoding ${needCoords.length} address${needCoords.length > 1 ? "es" : ""}…`; st.style.color = ""; }
         try {
           const r = await fetch("/api/schedule/geocode", {
             method: "POST", headers: { "Content-Type": "application/json" },
@@ -1793,10 +1805,11 @@
           });
           const d = await r.json();
           if (!d.ok) throw new Error(d.error || "Geocoding failed");
-          await loadData(); // reload to get updated coords
+          await loadData(); // reload to get updated coords + re-render map
         } catch (err) {
-          alert("Geocoding error: " + err.message);
-          if (btn) { btn.disabled = false; btn.textContent = `Geocode ${needCoords.length} address${needCoords.length > 1 ? "es" : ""}`; }
+          if (auto && st) { st.textContent = `Could not geocode all addresses: ${err.message}`; st.style.color = "#fbbf24"; }
+          else alert("Geocoding error: " + err.message);
+          if (btn) { btn.disabled = false; btn.textContent = `Retry geocode (${needCoords.length})`; }
         }
       }
 
@@ -1805,13 +1818,17 @@
         const saveBtn = document.getElementById("mapSave");
         if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Saving…"; }
         try {
-          // Collect existing times in scheduled order
+          // Original times in scheduled order (stable slots to reassign)
           const times = sortByTime(dayBookings.filter(b => b.scheduled_datetime))
             .map(b => b.scheduled_datetime);
           const order = _optOrder.slice(0, times.length);
-          for (let i = 0; i < order.length; i++) {
-            await patchBooking(order[i], { scheduled_datetime: times[i] });
-          }
+          // Use batch API — single sheet batchUpdate instead of N individual patches
+          const r = await fetch("/api/schedule/optimize/save", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order, times }),
+          });
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "Save failed");
           _optOrder = null;
           await loadData();
         } catch (err) {
