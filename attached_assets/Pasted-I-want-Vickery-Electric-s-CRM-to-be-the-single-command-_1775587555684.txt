@@ -1,0 +1,227 @@
+I want Vickery Electric’s CRM to be the single command center for the business.
+
+My goal is not for my team to use QuickBooks, Google Sheets, and other tools directly. My goal is for the team to live inside my CRM, while outside systems run quietly in the background. I want the CRM to feel like one complete software even if it is controlling multiple systems behind the scenes.
+
+My vision is:
+
+CRM = command center
+QuickBooks = accounting and payments engine in the background
+Google Sheets = mirror, analytics, pricing logic, and custom reporting
+
+The office and field team should only touch the CRM.
+
+Inside the CRM, I want buttons and workflows like:
+- Create invoice
+- Send invoice
+- Mark deposit received
+- Take payment
+- View payment status
+- View customer balance
+- Refresh/sync accounting status
+- View receivables, cash, and business dashboard data
+- Push/update records to Google Sheets automatically
+
+I want the CRM to control operationally important actions, while QuickBooks handles the accounting guts underneath.
+
+Important: I am NOT paying for QuickBooks right now. I do not want live QuickBooks to be required in order to build the system. I want the CRM built so it can be developed and tested now, before I subscribe to QuickBooks. That means the accounting integration must be abstracted from the rest of the CRM.
+
+I want an accounting adapter/provider architecture from day one.
+
+Build the CRM so that the rest of the app talks to generic accounting functions like:
+- createCustomer()
+- createInvoice()
+- sendInvoice()
+- recordPayment()
+- getInvoiceStatus()
+- getCustomerBalance()
+- getARSummary()
+- getCashSnapshot()
+
+Then implement those functions through providers, not directly throughout the app.
+
+I want at least these providers:
+1. MockAccountingProvider
+2. QuickBooksSandboxProvider
+3. QuickBooksLiveProvider (same shape, activated later)
+
+Why I want this:
+- I want to build the full CRM now without paying for QuickBooks yet
+- I want the app testable even when QuickBooks is disconnected
+- I want to avoid hardcoding QuickBooks everywhere
+- I want the ability to switch from mock to sandbox to live without rewriting the CRM
+- If I ever replace QuickBooks later, I want that to be a provider swap, not a full rebuild
+
+Non-negotiable architecture idea:
+The CRM must never depend directly on QuickBooks field names or QuickBooks-only logic in the UI.
+The UI should depend on my own internal business objects and statuses.
+
+For example:
+- internal customer record
+- internal invoice record
+- internal payment record
+- internal sync status
+- internal exception flag
+
+Then the provider maps those to QuickBooks-specific entities in the background.
+
+I want the main architecture to look like this:
+
+Layer 1: CRM front end
+This is what users see and use every day.
+It should handle:
+- leads
+- quotes
+- schedule
+- dispatch
+- job cards
+- time logging
+- expense logging
+- invoices
+- deposits
+- payments
+- customer communication
+- dashboards
+- audit trail
+- sync status / exception visibility
+
+Layer 2: CRM backend/service layer
+This is my business logic and orchestration layer.
+It should:
+- store CRM-native records first
+- write to Google Sheets where needed
+- queue accounting sync jobs
+- call the selected accounting provider
+- retry failed syncs
+- track all sync attempts
+- log errors cleanly
+- handle webhook processing later
+- expose clean APIs to the frontend
+
+Layer 3: Accounting provider layer
+This should be swappable.
+It should provide the accounting functions without the CRM caring whether the provider is:
+- mock
+- QuickBooks sandbox
+- QuickBooks live
+- or something else later
+
+Layer 4: External systems
+- QuickBooks for accounting/payments when activated
+- Google Sheets for reporting mirror, estimator/pricing source, audit visibility, and exception queues
+
+Google Sheets should NOT be the accounting engine.
+Use Sheets for:
+- reporting mirror
+- pricing source
+- ops dashboard support
+- sync visibility
+- lightweight audit trail
+- exception queue
+
+I want CRM actions to write locally first, not depend on QuickBooks being available in real time.
+
+The preferred flow is:
+CRM action → save to CRM database → optionally mirror to Google Sheets → queue accounting sync → provider sends to accounting system → returned IDs/statuses saved back to CRM → later webhooks/status refresh update the CRM again
+
+Why I want this:
+- speed
+- resilience
+- lower chaos
+- better user experience
+- ability to keep operating even if accounting sync is temporarily down
+
+Invoice workflow vision:
+When someone clicks Create Invoice in the CRM:
+- pull customer and line items from the CRM job
+- create a CRM invoice record first
+- mirror key fields to Sheets if needed
+- send through provider to accounting system
+- save external invoice ID back into CRM
+- show sync status and invoice status inside CRM
+
+When someone clicks Send Invoice:
+- the CRM should trigger the provider to send the invoice
+- mark invoice_sent_at in CRM
+- show current send/payment state inside CRM
+- keep external IDs and timestamps stored
+
+When someone refreshes invoice status:
+- the CRM should retrieve latest accounting/payment state through provider or webhook updates
+- update:
+  - open / partial / paid
+  - balance due
+  - sent date
+  - last payment date
+  - deposit status
+  - sync status
+  - accounting exception flag
+
+Payment workflow vision:
+I want a payment button in the CRM, but I understand there are two levels:
+
+1. Easy path:
+Send or open a payable invoice/payment flow from the CRM and let the customer pay through the accounting/payment rail.
+
+2. Advanced path:
+Build a deeper direct in-CRM payment experience later if needed.
+
+For now, design the CRM so the easy path works first.
+Do not assume that pure native tap-to-pay/card-present processing on iPhone will be part of the first version.
+Design payments so the basic experience is:
+- send payment-enabled invoice
+- mark deposit received
+- refresh payment status
+- show paid/partial/open in CRM
+- keep external payment references stored
+
+I want accounting data pushed back into the CRM so I can see the full business picture without living in QuickBooks.
+
+I want the CRM to be able to show:
+- invoice created
+- invoice sent
+- open balance
+- partial payment
+- full payment
+- deposit received
+- refund if applicable
+- customer balance
+- receivables snapshot
+- cash snapshot
+- accounting exception flags
+- sync health
+- bill/vendor spend visibility later if needed
+
+Important operating principle:
+My team should never have to “go do accounting.”
+The CRM should feel operational, simple, and fast.
+QuickBooks should exist in the background as infrastructure, not as a daily workspace for the crew.
+
+That same philosophy applies to time and expenses too.
+Do not make techs do bookkeeping.
+The CRM should make time and expense logging feel like part of the job card workflow, not like office/accounting work.
+
+My broader reason for all of this:
+I want one interface to control almost the entire business.
+I do not want to juggle multiple softwares all day.
+I understand there may be multiple systems behind the scenes, but the user experience must feel unified.
+
+I also want the system built in a way that lets me build now and buy later.
+That means:
+- build against mock first
+- support QuickBooks sandbox for integration testing
+- support live QuickBooks later
+- keep the system modular enough that external accounting is an implementation detail, not the backbone of the UI
+
+Design priority order:
+1. CRM-first user experience
+2. modular backend architecture
+3. local-first record creation with sync after
+4. accounting abstraction
+5. Google Sheets as mirror/reporting layer
+6. QuickBooks hidden behind the CRM, not exposed as a required daily tool
+
+In short:
+Build my CRM as the control center for Vickery Electric.
+Make external accounting/payment systems plug into it.
+Do not design the CRM as a QuickBooks frontend.
+Design it as my own business operating system with a swappable accounting back end.
