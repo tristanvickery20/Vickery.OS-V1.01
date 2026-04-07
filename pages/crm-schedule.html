@@ -302,7 +302,13 @@
       }
       .dv-chip:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 3; }
       .dv-chip.dragging { opacity: 0.4; }
+      .dv-chip.selected { outline: 2px solid #fff; outline-offset: 1px; }
       .dv-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .chip-resize-handle-right {
+        position: absolute; top: 0; bottom: 0; right: 0; width: 7px;
+        cursor: ew-resize; background: transparent; z-index: 4; border-radius: 0 6px 6px 0;
+      }
+      .chip-resize-handle-right:hover { background: rgba(255,255,255,0.15); }
 
       /* ── Detail panel ──────────────────────────────────────────── */
       .detail-panel {
@@ -1099,7 +1105,7 @@
             if (e.target.closest(".wv-chip")) return;
             const dateS = col.dataset.date;
             if (!dateS) return;
-            const relY = e.offsetY - col.querySelector(".wv-drop-zone").offsetTop;
+            const relY  = e.clientY - col.getBoundingClientRect().top;
             const dropH = START_HOUR + relY / HOUR_PX;
             const hour  = Math.min(Math.max(Math.floor(dropH), START_HOUR), END_HOUR - 1);
             window.location.href = `/crm/new?date=${dateS}&hour=${hour}`;
@@ -1256,10 +1262,11 @@
               );
               const selected = S.selected.has(b.booking_id) ? " selected" : "";
               html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
-                draggable="true" data-id="${esc(b.booking_id)}"
+                draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
                 style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;">
                 <span class="chip-name">${esc(b.customer_name || "—")}</span>
                 <span class="chip-time" style="font-size:10px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+                <div class="chip-resize-handle-right" title="Drag to resize"></div>
               </div>`;
             }
             html += `</div>`;
@@ -1282,6 +1289,7 @@
         html += `</div></div>`;
         calMain.innerHTML = html;
         setupDayEvents(curDate);
+        setupResizeDragHoriz(".dv-chip", HOUR_COL_PX);
       }
 
       function setupDayEvents(curDate) {
@@ -1377,6 +1385,47 @@
         });
       }
 
+      // ── Horizontal resize drag (day-view chip right-edge → adjust duration) ─
+      function setupResizeDragHoriz(chipSelector, hourColPx) {
+        calMain.querySelectorAll(chipSelector).forEach(chip => {
+          const handle = chip.querySelector(".chip-resize-handle-right");
+          if (!handle) return;
+          handle.addEventListener("mousedown", e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const bookingId = chip.dataset.id;
+            if (!bookingId) return;
+            const startX  = e.clientX;
+            const startW  = chip.getBoundingClientRect().width;
+
+            function onMove(ev) {
+              const delta = ev.clientX - startX;
+              const newW  = Math.max(hourColPx / 4, startW + delta);
+              chip.style.width = newW + "px";
+              const mins = Math.round((newW / hourColPx) * 60 / 15) * 15;
+              const timeEl = chip.querySelector(".chip-time");
+              if (timeEl) timeEl.textContent = fmtDuration(mins);
+            }
+
+            async function onUp() {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              const finalW  = chip.getBoundingClientRect().width;
+              const newMins = Math.max(15, Math.round((finalW / hourColPx) * 60 / 15) * 15);
+              try {
+                await patchBooking(bookingId, { duration_minutes: newMins });
+                await loadData();
+              } catch (err) {
+                alert("Failed to resize: " + err.message);
+              }
+            }
+
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        });
+      }
+
       // ── Unscheduled drawer ────────────────────────────────────────
       function renderDrawer() {
         const list = S.filterTech
@@ -1424,7 +1473,7 @@
         ];
 
         for (const [label, value] of rows) {
-          if (value && value !== "—" && value !== "—") {
+          if (value && value !== "—") {
             body += `<div class="detail-row">
               <div class="detail-label">${label}</div>
               <div class="detail-value">${value}</div>

@@ -137,6 +137,20 @@
             sel.appendChild(o);
           }
         } catch(e) {}
+
+        // Prefill from scheduler query params: ?date=YYYY-MM-DD&hour=H&tech_id=...
+        const sp = new URLSearchParams(window.location.search);
+        const pDate = sp.get("date");
+        const pHour = sp.get("hour");
+        const pTech = sp.get("tech_id");
+        if (pDate) {
+          document.getElementById("target_date").value = pDate;
+          const h = pHour !== null ? String(pHour).padStart(2, "0") : "08";
+          document.getElementById("scheduled_date").value = `${pDate}T${h}:00`;
+        }
+        if (pTech) {
+          document.getElementById("assigned_to").value = pTech;
+        }
       })();
 
       document.getElementById("suggestBtn").addEventListener("click", async () => {

@@ -61,7 +61,7 @@ async function handlePatchBooking(req, res) {
 
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId: id,
-      range:         "Bookings!A:Q",
+      range:         "Bookings!A:Z",
     });
     const rows = r.data.values || [];
     if (rows.length < 2) return json(res, 404, { ok: false, error: "Booking not found" });

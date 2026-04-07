@@ -95,7 +95,7 @@ async function handleGetCalendar(req, res) {
     const [rulesRes, bookingsRes, staffRes] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" })
         .catch(() => ({ data: { values: [] } })),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Q" }),
+      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Z" }),
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Staff!A:Z" })
         .catch(() => ({ data: { values: [] } })),
     ]);
