@@ -1906,7 +1906,9 @@
           if (!badge) return;
 
           if (!d.ok || !d.online) {
-            // offline — show badge if Traccar is configured (lastPoll !== null means it tried)
+            // Clear stale markers so dispatch doesn't see old "live" positions
+            mapRenderTrucks([]);
+            // Show offline badge if Traccar is configured (lastPoll !== null means it tried)
             if (d.lastPoll !== null) {
               badge.style.display = "flex";
               badge.className = "map-gps-badge";

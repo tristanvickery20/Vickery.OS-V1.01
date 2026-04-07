@@ -64,6 +64,7 @@ function distMeters(lat1, lng1, lat2, lng2) {
 }
 
 // Minimal HTTP/HTTPS GET that returns parsed JSON.
+// Rejects on non-2xx status codes so callers can treat them as offline/error.
 function traccarFetch(path) {
   return new Promise((resolve, reject) => {
     const base   = (process.env.TRACCAR_URL || "").replace(/\/$/, "");
@@ -86,6 +87,9 @@ function traccarFetch(path) {
       let data = "";
       res2.on("data", c => (data += c));
       res2.on("end", () => {
+        if (res2.statusCode < 200 || res2.statusCode >= 300) {
+          return reject(new Error(`Traccar HTTP ${res2.statusCode}`));
+        }
         try { resolve(JSON.parse(data)); }
         catch { reject(new Error("Traccar returned non-JSON")); }
       });
