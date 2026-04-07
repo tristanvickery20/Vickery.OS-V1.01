@@ -40,7 +40,7 @@ pages/
   crm-leads.html      # Lead management table (protected)
   crm-lead.html       # Single lead detail + financials + quote snapshot (protected)
   crm-new.html        # New lead form (protected)
-  crm-schedule.html   # Daily schedule view (protected)
+  crm-schedule.html   # Visual calendar scheduler — Month/Week/Day views, drag-and-drop dispatch (protected)
   crm-time.html       # Time tracking (protected)
   crm-expenses.html   # Expense tracking (protected)
   crm-audit.html      # Audit log viewer (protected)

@@ -572,16 +572,20 @@
         S.loading = true;
         calMain.innerHTML = '<div class="cal-loading">Loading schedule…</div>';
 
-        const [y, m] = [S.cursor.getFullYear(), S.cursor.getMonth()];
+        const y  = S.cursor.getFullYear();
+        const mo = S.cursor.getMonth();         // 0-indexed
+        const mn = mo + 1;                      // 1-indexed month number
         let start, end;
         if (S.view === "month") {
-          // Load 3 months around current for smoother nav
-          start = dateStr(y, m, 1);
-          end   = dateStr(y, m + 2, 0);   // last day of next month
-          // Clamp start back to beginning of the month grid (may need prev month days)
+          // Start = first of current month (1-indexed month)
+          start = `${y}-${String(mn).padStart(2,"0")}-01`;
+          // End = mid-way into the following month (covers the tail of the grid)
+          const ne = mn === 12 ? 1 : mn + 1;
+          const ye = mn === 12 ? y + 1 : y;
+          end = `${ye}-${String(ne).padStart(2,"0")}-14`;
+          // Extend start back to cover the Sunday before the 1st
           const firstDow = new Date(start + "T12:00:00").getDay();
           if (firstDow > 0) start = addDays(start, -firstDow);
-          end = addDays(end, 7); // buffer
         } else if (S.view === "week") {
           const ws = weekStart(S.cursor);
           start = ws.toISOString().slice(0, 10);
