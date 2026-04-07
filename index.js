@@ -20,7 +20,7 @@ const { handleGetTechs } = require("./api/techs");
 const { handleDashboard } = require("./api/dashboard");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
 const { handleScheduleLead } = require("./api/leads-schedule");
-const { handleGetTime, handleCreateTime } = require("./api/time");
+const { handleGetTime, handleCreateTime, handleUpdateTime } = require("./api/time");
 const { handleGetExpenses, handleCreateExpense } = require("./api/expenses");
 const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
@@ -202,12 +202,17 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/crew/today") && req.method === "GET") {
     return handleGetTodayJobs(req, res);
   }
-  // Time and expense POSTs are allowed without CRM auth so crew can submit from /crew
+  // Time and expense POSTs/PATCHes allowed without CRM auth so crew can submit from /crew
   if (req.url === "/api/time" && req.method === "POST") {
     return handleCreateTime(req, res);
   }
   if (req.url === "/api/expenses" && req.method === "POST") {
     return handleCreateExpense(req, res);
+  }
+  // PATCH /api/time/:id — crew clock-out update
+  if (req.url.startsWith("/api/time/") && req.method === "PATCH") {
+    const timeId = req.url.slice("/api/time/".length);
+    if (timeId) return handleUpdateTime(req, res, timeId);
   }
   // Crew-session-gated GETs for today's time + expenses (filtered to today only)
   if (req.url === "/api/crew/time-today" && req.method === "GET") {

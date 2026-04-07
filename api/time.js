@@ -128,4 +128,72 @@ async function handleCreateTime(req, res) {
   });
 }
 
-module.exports = { handleGetTime, handleCreateTime };
+async function handleUpdateTime(req, res, timeId) {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", async () => {
+    try {
+      const data = body ? JSON.parse(body) : {};
+      const sheets = await getSheetsClient();
+      const spreadsheetId = process.env.CRM_SHEET_ID;
+
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Time!A1:L2000",
+      });
+
+      const values = resp.data.values || [];
+      const rowIdx = values.findIndex((r, i) => i > 0 && String(r[0] || "").trim() === timeId);
+      if (rowIdx === -1) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "Time entry not found" }));
+      }
+
+      const existing = values[rowIdx];
+      const sheetRow = rowIdx + 1; // 1-indexed
+
+      const updated = [
+        existing[0] || "",                                                  // id
+        existing[1] || "",                                                  // created_at
+        existing[2] || "",                                                  // date
+        existing[3] || "",                                                  // tech_id
+        existing[4] || "",                                                  // lead_id
+        data.minutes  != null ? String(data.minutes)  : (existing[5] || "0"), // minutes
+        data.category != null ? String(data.category) : (existing[6] || ""), // category
+        data.notes    != null ? String(data.notes)    : (existing[7] || ""), // notes
+        data.lat_in   != null ? String(data.lat_in)   : (existing[8] || ""), // lat_in
+        data.lng_in   != null ? String(data.lng_in)   : (existing[9] || ""), // lng_in
+        data.lat_out  != null ? String(data.lat_out)  : (existing[10] || ""), // lat_out
+        data.lng_out  != null ? String(data.lng_out)  : (existing[11] || ""), // lng_out
+      ];
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Time!A${sheetRow}:L${sheetRow}`,
+        valueInputOption: "RAW",
+        requestBody: { majorDimension: "ROWS", values: [updated] },
+      });
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, id: timeId }));
+
+      logAudit({
+        action: "time.update",
+        entity_type: "time",
+        entity_id: timeId,
+        field: "*",
+        new_value: JSON.stringify({
+          minutes: updated[5], lat_out: updated[10], lng_out: updated[11],
+          notes: updated[7],
+        }),
+        source: "crew-portal",
+        request_id: genRequestId(),
+      }).catch(() => {});
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
+  });
+}
+
+module.exports = { handleGetTime, handleCreateTime, handleUpdateTime };

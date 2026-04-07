@@ -157,15 +157,44 @@ async function startTimer(job) {
     return;
   }
   const geo = await getGeo();
+  const now = new Date();
+  const techId = currentSession ? `${currentSession.firstName} ${currentSession.lastName}` : "Crew";
+
+  // POST clock-in record immediately so it's durable even if browser crashes
+  let timeId = null;
+  try {
+    const res = await fetch("/api/time", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        date:     now.toISOString().slice(0, 10),
+        tech_id:  techId,
+        lead_id:  job.quote_id || job.booking_id || "",
+        minutes:  0,
+        category: "On-site",
+        notes:    geo
+          ? "GPS clock-in — awaiting clock-out"
+          : "GPS clock-in unavailable — awaiting clock-out",
+        lat_in:   geo ? geo.lat : null,
+        lng_in:   geo ? geo.lng : null,
+        lat_out:  null,
+        lng_out:  null,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) timeId = data.entry?.id || null;
+  } catch {}
+
   timerState = {
-    date:      new Date().toISOString().slice(0, 10),
+    date:      now.toISOString().slice(0, 10),
     bookingId: job.booking_id,
     quoteId:   job.quote_id || "",
-    startTime: new Date().toISOString(),
+    startTime: now.toISOString(),
     pausedMs:  0,
     isPaused:  false,
     lat_in:    geo ? geo.lat : null,
     lng_in:    geo ? geo.lng : null,
+    timeId,
   };
   saveTimerState(timerState);
   renderJobCards();
@@ -224,10 +253,7 @@ async function stopTimer() {
     return "GPS unavailable for both clock-in and clock-out";
   })();
 
-  const body = {
-    date:     snapshot.date,
-    tech_id:  techId,
-    lead_id:  snapshot.quoteId || snapshot.bookingId || "",
+  const patchBody = {
     minutes,
     category: "On-site",
     notes:    gpsNote,
@@ -238,13 +264,34 @@ async function stopTimer() {
   };
 
   try {
-    const res  = await fetch("/api/time", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Server error");
+    let ok = false;
+    if (snapshot.timeId) {
+      // Two-phase: PATCH the existing clock-in record with duration + clock-out coords
+      const res  = await fetch(`/api/time/${encodeURIComponent(snapshot.timeId)}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(patchBody),
+      });
+      const data = await res.json();
+      ok = data.ok;
+      if (!ok) throw new Error(data.error || "Patch failed");
+    } else {
+      // Fallback: no timeId (clock-in POST may have failed) — create a fresh record
+      const body = {
+        date:     snapshot.date,
+        tech_id:  techId,
+        lead_id:  snapshot.quoteId || snapshot.bookingId || "",
+        ...patchBody,
+      };
+      const res  = await fetch("/api/time", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(body),
+      });
+      const data = await res.json();
+      ok = data.ok;
+      if (!ok) throw new Error(data.error || "Server error");
+    }
 
     const key = snapshot.quoteId || snapshot.bookingId;
     todayTimeMap[key] = (todayTimeMap[key] || 0) + minutes;
