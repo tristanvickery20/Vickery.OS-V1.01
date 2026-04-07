@@ -6,7 +6,7 @@
   "scope": "/crew",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0c1535",
+  "background_color": "#ffffff",
   "theme_color": "#1e45c0",
   "icons": [
     {
