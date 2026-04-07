@@ -651,11 +651,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Ticket 21: invoices API
-  if (req.url === "/api/invoices" && req.method === "GET") {
+  // Use _epath (the path without query string) so ?client_id= and ?lead_id= filters work
+  if (_epath === "/api/invoices" && req.method === "GET") {
     return handleGetInvoices(req, res);
   }
 
-  if (req.url === "/api/invoices" && req.method === "POST") {
+  if (_epath === "/api/invoices" && req.method === "POST") {
     return handleCreateInvoice(req, res);
   }
 
