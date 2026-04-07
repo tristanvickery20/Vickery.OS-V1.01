@@ -81,15 +81,33 @@ function bindLogout() {
 }
 
 // ── Geolocation ───────────────────────────────────────────────────────────────
+// Resolves to { lat, lng } on success, or { error: "reason" } on failure.
 function getGeo() {
   return new Promise((resolve) => {
-    if (!navigator.geolocation) { resolve(null); return; }
+    if (!navigator.geolocation) {
+      resolve({ error: "GPS not supported by this browser" });
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      ()    => resolve(null),
+      (err) => {
+        const reasons = {
+          1: "GPS permission denied by user",
+          2: "GPS position unavailable",
+          3: "GPS request timed out",
+        };
+        resolve({ error: reasons[err.code] || "GPS unavailable" });
+      },
       { timeout: 8000, maximumAge: 30000, enableHighAccuracy: false }
     );
   });
+}
+
+function geoCoords(geo) {
+  return geo && geo.lat != null ? geo : null;
+}
+function geoError(geo) {
+  return geo && geo.error ? geo.error : null;
 }
 
 // ── Timer — localStorage persistence ─────────────────────────────────────────
@@ -160,9 +178,15 @@ async function startTimer(job) {
   const now = new Date();
   const techId = currentSession ? `${currentSession.firstName} ${currentSession.lastName}` : "Crew";
 
+  const geoOk    = geoCoords(geo);
+  const geoErrIn = geoError(geo);
+
   // POST clock-in record immediately so it's durable even if browser crashes
   let timeId = null;
   try {
+    const clockInNote = geoOk
+      ? "GPS clock-in — awaiting clock-out"
+      : `GPS clock-in failed (${geoErrIn}) — awaiting clock-out`;
     const res = await fetch("/api/time", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,11 +196,9 @@ async function startTimer(job) {
         lead_id:  job.quote_id || job.booking_id || "",
         minutes:  0,
         category: "On-site",
-        notes:    geo
-          ? "GPS clock-in — awaiting clock-out"
-          : "GPS clock-in unavailable — awaiting clock-out",
-        lat_in:   geo ? geo.lat : null,
-        lng_in:   geo ? geo.lng : null,
+        notes:    clockInNote,
+        lat_in:   geoOk ? geoOk.lat : null,
+        lng_in:   geoOk ? geoOk.lng : null,
         lat_out:  null,
         lng_out:  null,
       }),
@@ -192,14 +214,15 @@ async function startTimer(job) {
     startTime: now.toISOString(),
     pausedMs:  0,
     isPaused:  false,
-    lat_in:    geo ? geo.lat : null,
-    lng_in:    geo ? geo.lng : null,
+    lat_in:    geoOk ? geoOk.lat : null,
+    lng_in:    geoOk ? geoOk.lng : null,
+    gpsInError: geoErrIn || null,
     timeId,
   };
   saveTimerState(timerState);
   renderJobCards();
   startTimerTick();
-  showToast(geo ? "Clock started" : "Clock started — GPS unavailable, location not recorded");
+  showToast(geoOk ? "Clock started" : `Clock started — ${geoErrIn || "GPS unavailable"}`);
 }
 
 // ── Timer — pause / resume ────────────────────────────────────────────────────
@@ -244,13 +267,21 @@ async function stopTimer() {
     ? `${currentSession.firstName} ${currentSession.lastName}`
     : "Crew";
 
+  const geoOkOut  = geoCoords(geo);
+  const geoErrOut = geoError(geo);
+
   const gpsNote = (() => {
-    const inOk  = snapshot.lat_in  != null;
-    const outOk = geo != null;
+    const inOk  = snapshot.lat_in != null;
+    const outOk = !!geoOkOut;
     if (inOk && outOk)  return "GPS clock-in/out via crew app";
-    if (inOk && !outOk) return "GPS clock-in via crew app; clock-out GPS unavailable";
-    if (!inOk && outOk) return "GPS clock-in unavailable; clock-out GPS via crew app";
-    return "GPS unavailable for both clock-in and clock-out";
+    if (inOk && !outOk) return `GPS clock-in OK; clock-out: ${geoErrOut || "GPS unavailable"}`;
+    if (!inOk && outOk) {
+      const inErr = snapshot.gpsInError || "GPS unavailable";
+      return `GPS clock-in: ${inErr}; clock-out OK via crew app`;
+    }
+    const inErr  = snapshot.gpsInError || "GPS unavailable";
+    const outErr = geoErrOut || "GPS unavailable";
+    return `GPS clock-in: ${inErr}; clock-out: ${outErr}`;
   })();
 
   const patchBody = {
@@ -259,8 +290,8 @@ async function stopTimer() {
     notes:    gpsNote,
     lat_in:   snapshot.lat_in,
     lng_in:   snapshot.lng_in,
-    lat_out:  geo ? geo.lat : null,
-    lng_out:  geo ? geo.lng : null,
+    lat_out:  geoOkOut ? geoOkOut.lat : null,
+    lng_out:  geoOkOut ? geoOkOut.lng : null,
   };
 
   try {

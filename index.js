@@ -202,17 +202,32 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/crew/today") && req.method === "GET") {
     return handleGetTodayJobs(req, res);
   }
-  // Time and expense POSTs/PATCHes allowed without CRM auth so crew can submit from /crew
+  // Time and expense POSTs — require crew OR CRM session (not fully public)
   if (req.url === "/api/time" && req.method === "POST") {
+    if (!getCrewSession(req) && !isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
     return handleCreateTime(req, res);
   }
   if (req.url === "/api/expenses" && req.method === "POST") {
+    if (!getCrewSession(req) && !isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
     return handleCreateExpense(req, res);
   }
-  // PATCH /api/time/:id — crew clock-out update
+  // PATCH /api/time/:id — crew clock-out update (crew session + same-user ownership enforced)
   if (req.url.startsWith("/api/time/") && req.method === "PATCH") {
-    const timeId = req.url.slice("/api/time/".length);
-    if (timeId) return handleUpdateTime(req, res, timeId);
+    const crewSess = getCrewSession(req);
+    if (!crewSess && !isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    const timeId = req.url.slice("/api/time/".length).split("?")[0];
+    if (timeId) {
+      return handleUpdateTime(req, res, timeId, crewSess);
+    }
   }
   // Crew-session-gated GETs for today's time + expenses (filtered to today only)
   if (req.url === "/api/crew/time-today" && req.method === "GET") {

@@ -128,7 +128,7 @@ async function handleCreateTime(req, res) {
   });
 }
 
-async function handleUpdateTime(req, res, timeId) {
+async function handleUpdateTime(req, res, timeId, crewSess) {
   let body = "";
   req.on("data", (chunk) => (body += chunk));
   req.on("end", async () => {
@@ -151,6 +151,22 @@ async function handleUpdateTime(req, res, timeId) {
 
       const existing = values[rowIdx];
       const sheetRow = rowIdx + 1; // 1-indexed
+
+      // Ownership check for crew sessions — must match tech_id and be today's record
+      if (crewSess) {
+        const expectedTechId = `${crewSess.firstName} ${crewSess.lastName}`;
+        const recordTechId   = String(existing[3] || "").trim();
+        const recordDate     = String(existing[2] || "").trim();
+        const today          = new Date().toISOString().slice(0, 10);
+        if (recordTechId !== expectedTechId) {
+          res.writeHead(403, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ ok: false, error: "Not authorized to update this record" }));
+        }
+        if (recordDate !== today) {
+          res.writeHead(403, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ ok: false, error: "Cannot update time records from another day" }));
+        }
+      }
 
       const updated = [
         existing[0] || "",                                                  // id
