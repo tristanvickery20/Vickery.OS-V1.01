@@ -766,6 +766,12 @@
     html.dark .q-addr-dropdown { background: hsl(220 10% 16%); border-color: hsl(220 10% 24%); }
     html.dark .q-addr-opt { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); }
     html.dark .q-addr-opt:hover, html.dark .q-addr-opt:focus { background: hsl(220 10% 20%); }
+    .q-addr-confirm-btn {
+      background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+      border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .q-addr-confirm-btn:hover { opacity: 0.88; }
     .q-price-update {
       font-size: 14px; font-weight: 600; color: hsl(var(--foreground));
       margin-top: 6px; padding: 8px 12px;

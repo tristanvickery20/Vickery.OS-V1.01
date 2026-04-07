@@ -19,6 +19,7 @@ const S = {
   pricing: null,            // {final_price, services:[]} — summed across all services
   lock: null,               // server lock response
   photoUploaded: false,
+  addressConfirmed: false,
   slotsData: null,
   selectedSlot: null,   // ISO string — start of selected block (or exact slot for legacy)
   selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
@@ -560,6 +561,7 @@ function renderConfirm() {
             placeholder="123 Main St, Beaumont TX 77701" autocomplete="off">
           <div id="addrDropdown" class="q-addr-dropdown" style="display:none;"></div>
         </div>
+        <div id="addrConfirmBanner" style="display:none;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:rgba(45,106,224,0.1);border:1px solid rgba(45,106,224,0.35);border-radius:8px;font-size:13px;"></div>
       </div>
       <div class="q-field">
         <label class="q-label">ZIP Code <span class="q-req">*</span></label>
@@ -569,9 +571,9 @@ function renderConfirm() {
         <div class="q-price-update" id="priceUpdate" style="display:none;"></div>
       </div>
       <div class="q-field">
-        <label class="q-label">How did you find us?</label>
+        <label class="q-label">How did you find us? <span class="q-req">*</span></label>
         <select id="ld_source" class="q-input" style="color:inherit;border:1px solid var(--q-border,#2d3348);">
-          <option value="">-- Select one (optional) --</option>
+          <option value="">-- Select one --</option>
           <option value="GBP">Google Search / Google Maps</option>
           <option value="LSA">Google Local Services Ad</option>
           <option value="Google Ads">Google Ad</option>
@@ -966,11 +968,13 @@ function bindEvents() {
 
   // ── Address autocomplete (Nominatim/OpenStreetMap, US only) ─────────────────
   (function attachAddressAutocomplete() {
-    const addrInput = document.getElementById("ld_address");
-    const addrDrop  = document.getElementById("addrDropdown");
+    const addrInput  = document.getElementById("ld_address");
+    const addrDrop   = document.getElementById("addrDropdown");
+    const confirmBnr = document.getElementById("addrConfirmBanner");
     if (!addrInput || !addrDrop) return;
 
     let timer = null;
+    let lastResults = [];
 
     function fmtAddress(item) {
       const a = item.address || {};
@@ -986,7 +990,33 @@ function bindEvents() {
 
     function hideDropdown() { addrDrop.style.display = "none"; }
 
+    function confirmAddress(label, zip) {
+      addrInput.value = label;
+      S.addressConfirmed = true;
+      // Auto-fill ZIP if blank
+      const zipInput = document.getElementById("ld_zip");
+      if (zipInput && !zipInput.value && zip) {
+        zipInput.value = zip.slice(0, 5);
+        zipInput.dispatchEvent(new Event("input"));
+      }
+      hideDropdown();
+      if (confirmBnr) confirmBnr.style.display = "none";
+      // Clear any address error
+      const errEl = document.getElementById("leadErr");
+      if (errEl && errEl.textContent.includes("address")) { errEl.style.display = "none"; }
+    }
+
+    function showConfirmBanner(label, zip) {
+      if (!confirmBnr) return;
+      confirmBnr.innerHTML =
+        `<span style="flex:1;">Did you mean: <strong>${escHtml(label)}</strong>?</span>` +
+        `<button class="q-addr-confirm-btn" type="button">Yes, that's it &#10003;</button>`;
+      confirmBnr.style.display = "flex";
+      confirmBnr.querySelector("button").addEventListener("click", () => confirmAddress(label, zip));
+    }
+
     function showResults(results) {
+      lastResults = results;
       if (!results.length) { hideDropdown(); return; }
       addrDrop.innerHTML = results.map(item => {
         const label = fmtAddress(item);
@@ -995,22 +1025,17 @@ function bindEvents() {
       addrDrop.style.display = "block";
       addrDrop.querySelectorAll(".q-addr-opt").forEach((el, i) => {
         const label = fmtAddress(results[i]);
+        const zip   = results[i].address?.postcode || "";
         el.addEventListener("mousedown", e => {
           e.preventDefault();
-          addrInput.value = label;
-          // Auto-fill ZIP if empty
-          const zip = results[i].address?.postcode || "";
-          const zipInput = document.getElementById("ld_zip");
-          if (zipInput && !zipInput.value && zip) {
-            zipInput.value = zip.slice(0, 5);
-            zipInput.dispatchEvent(new Event("input"));
-          }
-          hideDropdown();
+          confirmAddress(label, zip);
         });
       });
     }
 
     addrInput.addEventListener("input", () => {
+      S.addressConfirmed = false;
+      if (confirmBnr) confirmBnr.style.display = "none";
       clearTimeout(timer);
       const q = addrInput.value.trim();
       if (q.length < 3) { hideDropdown(); return; }
@@ -1024,7 +1049,16 @@ function bindEvents() {
       }, 400);
     });
 
-    addrInput.addEventListener("blur", () => setTimeout(hideDropdown, 200));
+    addrInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        hideDropdown();
+        // If address is filled but not confirmed, show top suggestion as banner
+        if (!S.addressConfirmed && addrInput.value.trim() && lastResults.length) {
+          const top = lastResults[0];
+          showConfirmBanner(fmtAddress(top), top.address?.postcode || "");
+        }
+      }, 200);
+    });
   })();
 }
 
@@ -1322,8 +1356,10 @@ async function submitLock() {
 
   if (!name)                return show("Name is required.");
   if (!phone)               return show("Phone is required.");
-  if (!address)             return show("Address is required.");
+  if (!address)             return show("Service address is required.");
+  if (!S.addressConfirmed)  return show("Please confirm your address — select it from the suggestions or tap \"Yes, that's it\" when it appears.");
   if (!/^\d{5}$/.test(zip)) return show("Please enter a valid 5-digit ZIP code.");
+  if (!source)              return show("Please let us know how you found us.");
 
   const btn = document.getElementById("submitLockBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Locking\u2026"; }
