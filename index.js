@@ -53,6 +53,9 @@ const { handleCreateAttachment } = require("./api/attachments");
 const {
   handleGetInvoices,
   handleCreateInvoice,
+  handleCreateInvoiceFromLead,
+  handleSendInvoice,
+  handleSyncInvoiceStatus,
   handleGetInvoiceById,
   handleUpdateInvoice,
 } = require("./api/invoices");
@@ -656,8 +659,20 @@ const server = http.createServer(async (req, res) => {
     return handleCreateInvoice(req, res);
   }
 
+  // Specific /api/invoices/* routes — must be before the generic catch-all below
+  if (_epath === "/api/invoices/from-lead" && req.method === "POST") {
+    return handleCreateInvoiceFromLead(req, res);
+  }
+
+  if (_epath.startsWith("/api/invoices/") && _epath.endsWith("/send") && req.method === "POST") {
+    return handleSendInvoice(req, res);
+  }
+
+  if (_epath.startsWith("/api/invoices/") && _epath.endsWith("/sync-status") && req.method === "POST") {
+    return handleSyncInvoiceStatus(req, res);
+  }
+
   if (req.url.startsWith("/api/invoices/")) {
-    const clean = req.url.replace(/\?.*$/, "");
     if (req.method === "GET") return handleGetInvoiceById(req, res);
     if (req.method === "PATCH") return handleUpdateInvoice(req, res);
   }

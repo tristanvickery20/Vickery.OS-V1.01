@@ -156,7 +156,19 @@ All public pages share the same 8-link nav (Home / Services / Service Area / Why
 - **Quote page spark animation**: Cards/pills in `#stepContent` use `visibility:hidden` (not `opacity:0`) so `::before` pseudo-element can show an independent blue glow spark before each card fades in; staggered `--sp-d` CSS variable delays via nth-child (up to 8 items)
 - **Quote page dark mode**: Comprehensive overrides for all `background: white` elements — svc cards, qty controls, option pills, addon cards, slots, block-day panels, confirm summary, photo gate, input fields, price-update boxes, error boxes
 
+## Accounting Adapter
+- `lib/accounting/index.js` — provider loader; reads `ACCOUNTING_PROVIDER` env (default: `mock`). Valid values: `mock`, `qb_sandbox`, `qb_live`.
+- `lib/accounting/mock-provider.js` — MockProvider: 150ms simulated delay, fake `INV-MOCK-xxxxx` refs. Implements: `createCustomer`, `createInvoice`, `sendInvoice`, `recordPayment`, `getInvoiceStatus`.
+- All invoice creates and payment posts route through the active provider before/after sheet writes.
+- Invoices schema additions: `lead_id` (old Leads model bridge), `provider_ref`, `provider_name`.
+- Payments schema addition: `provider_ref`.
+- New API routes: `POST /api/invoices/from-lead` (no request_id needed — uses lead data), `POST /api/invoices/:id/send` (marks sent + calls provider.sendInvoice).
+- `GET /api/invoices` now supports `?client_id=` and `?lead_id=` filters.
+- Lead detail (`crm-lead.html` / `crm-lead-detail.js`): Invoicing card in right column — fetches invoice by lead_id, shows status/amounts, Create Invoice / Send Invoice / Record Deposit / Mark Paid buttons + payment modal.
+- Client detail (`client-detail.js`): Invoices tab implemented — fetches by client_id, shows summary stats + invoice list with status badges.
+
 ## Recent Changes
+- 2026-04-07: Accounting adapter + invoice/payment workflow (Task 6) — MockProvider provider pattern, from-lead invoice creation, send action, payment modal on lead detail, Invoices tab on client detail, schema extended for lead_id/provider_ref/provider_name
 - 2026-03-09: Estimator Accuracy Fix Round 1 — CRIT-1: enriched /quote module answers now wire into V2 pricing engine (effect_type/effect_value); CRIT-2: instant-estimate now passes answersByModule to getBasePrice() and resolves module multipliers into selectedDriverOptions; CRIT-3: Driver_Multipliers sheet patched with 11 missing rows (CEILING_HT Under/Mid/High, ATTIC_ACCESS Yes/Limited/Not sure, WALL_TYPE Drywall/Tile/Wood, HOME_OCC Yes/No); CRIT-7: server-side disqualify guard in handleQuoteCalc + handleQuoteLock catches commercial/brick/etc. via resolveModuleAnswers(); HIGH-1: material_path_report.md documents 40 zero-cost placeholder rows needing pricing data. New deliverables: scripts/patch-driver-multipliers.js (idempotent), estimator_fix_round_1_report.md, estimator_driver_mapping.json, material_path_report.md.
 - 2026-03-02: Redesigned /quote UI — multi-select categories (checkmark badge), qty +/- per service, price+slots on same review screen (before lead info), lead form moved to confirm step, ZIP triggers live reprice with qty-adjusted total; GET /api/schedule/slots now accepts ?minutes=N for pre-lock slot browsing; profit calculator and CRM untouched
 - 2026-02-23: Notes + Photos MVP (Ticket 13) - POST /api/notes with validation/audit/touchClient, POST /api/attachments with file_type inference/audit/touchClient, lib/touchClient.js updates last_activity_at cell, Add Note form on Notes tab, Add Photo (URL) form on Photos tab with category badge, lightbox modal (X/backdrop/Escape close), fire-and-forget audit logging

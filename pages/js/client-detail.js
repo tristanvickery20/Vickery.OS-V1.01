@@ -20,6 +20,7 @@
   let jobsData = [];
   let notesData = [];
   let attachmentsData = [];
+  let invoicesData = [];
   let activeTab = "Overview";
 
   function esc(s) {
@@ -175,7 +176,8 @@
         el.innerHTML = renderJobs();
         break;
       case "Invoices":
-        el.innerHTML = '<div class="cd-empty">Invoices coming later.</div>';
+        el.innerHTML = renderInvoices();
+        attachInvoiceTabHandlers();
         break;
       case "Notes":
         el.innerHTML = renderNotes();
@@ -203,6 +205,7 @@
       stat(String(requestsData.length), "Requests") +
       stat(String(quotesData.length), "Quotes") +
       stat(String(jobsData.length), "Jobs") +
+      stat(String(invoicesData.length), "Invoices") +
       stat(String(notesData.length), "Notes") +
       stat(String(photos.length), "Photos") +
       "</div>"
@@ -297,6 +300,314 @@
     );
   }
 
+  const CD_INV_STATUS = {
+    draft:            { label: "Draft",            dot: "hsl(220,15%,60%)" },
+    sent:             { label: "Sent",             dot: "hsl(221,83%,53%)" },
+    deposit_received: { label: "Deposit Received", dot: "hsl(270,50%,50%)" },
+    partial:          { label: "Partial",          dot: "hsl(38,80%,45%)"  },
+    paid:             { label: "Paid",             dot: "hsl(142,50%,45%)" },
+    void:             { label: "Void",             dot: "hsl(0,70%,55%)"   },
+  };
+
+  function renderInvoices() {
+    const totalBilled = invoicesData.reduce((s, i) => s + Number(i.total || 0), 0);
+    const totalPaid   = invoicesData.reduce((s, i) => s + Number(i.paid_amount || 0), 0);
+    const totalBal    = invoicesData.reduce((s, i) => s + Number(i.balance_due || 0), 0);
+
+    const actionBarStyle = "display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;";
+    const btnStyle = (primary) =>
+      "padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;" +
+      (primary
+        ? "background:hsl(221,83%,53%);color:#fff;"
+        : "background:hsl(220,15%,22%);color:hsl(220,15%,80%);border:1px solid hsl(220,15%,30%);");
+
+    let html =
+      '<div style="' + actionBarStyle + '">' +
+        '<button id="cdInvCreate" style="' + btnStyle(true) + '">+ New Invoice</button>' +
+      '</div>' +
+      (invoicesData.length
+        ? '<div class="cd-overview-grid" style="margin-bottom:16px;">' +
+            stat(fmtMoney(totalBilled), "Total Billed") +
+            stat(fmtMoney(totalPaid),   "Total Paid") +
+            stat(fmtMoney(totalBal),    "Balance Due") +
+          '</div><div class="cd-list">'
+        : '<div class="cd-empty" style="margin-top:0;">No invoices yet.</div>');
+
+    for (const inv of invoicesData) {
+      const sc = (inv.status_code || "").toLowerCase();
+      const s = CD_INV_STATUS[sc] || { label: inv.status_code || "Unknown", dot: "hsl(215,16%,47%)" };
+      const bal = Number(inv.balance_due || 0);
+      const overdue = inv.overdue;
+      const canSend = sc === "draft" || sc === "sent";
+      const canPay  = sc !== "paid" && sc !== "void" && bal > 0;
+
+      html += '<div class="cd-list-item" style="flex-direction:column;align-items:stretch;gap:8px;">' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;">' +
+          '<div class="cd-list-main" style="flex:1;">' +
+            '<div class="cd-list-title">' + esc(inv.invoice_number || inv.id) + '</div>' +
+            '<div class="cd-list-sub">' + fmtShortDate(inv.issued_at) +
+              (inv.due_at ? " \u00b7 Due " + fmtShortDate(inv.due_at) : "") +
+              (inv.sent_at ? " \u00b7 Sent" : "") +
+              (inv.notes ? " \u00b7 " + esc(inv.notes.slice(0, 40)) : "") +
+            "</div>" +
+          "</div>" +
+          '<div class="cd-list-right" style="text-align:right;flex-shrink:0;">' +
+            '<span class="cd-status">' +
+              '<span class="cd-dot" style="background:' + (overdue ? "hsl(0,70%,55%)" : s.dot) + ';"></span>' +
+              (overdue ? "Overdue" : esc(s.label)) +
+            "</span>" +
+            '<div style="font-size:13px;font-weight:700;margin-top:4px;">' + fmtMoney(inv.total) + '</div>' +
+            (bal > 0 ? '<div style="font-size:12px;color:hsl(38,80%,40%);">Bal: ' + fmtMoney(bal) + '</div>' : '') +
+          "</div>" +
+        "</div>" +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          (canSend
+            ? '<button class="cd-inv-send" data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + 'font-size:12px;padding:5px 12px;">Send</button>'
+            : '') +
+          (canPay
+            ? '<button class="cd-inv-pay" data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + 'font-size:12px;padding:5px 12px;">Record Payment</button>'
+            : '') +
+        '</div>' +
+      "</div>";
+    }
+
+    if (invoicesData.length) html += "</div>";
+    return html;
+  }
+
+  function attachInvoiceTabHandlers() {
+    const createBtn = document.getElementById("cdInvCreate");
+    if (createBtn) {
+      createBtn.onclick = () => openCdCreateInvoiceModal();
+    }
+    document.querySelectorAll(".cd-inv-send").forEach(btn => {
+      btn.onclick = () => sendInvoice(btn.dataset.id);
+    });
+    document.querySelectorAll(".cd-inv-pay").forEach(btn => {
+      btn.onclick = () => {
+        const inv = invoicesData.find(i => i.id === btn.dataset.id);
+        if (inv) openCdPaymentModal(inv);
+      };
+    });
+  }
+
+  async function reloadInvoices() {
+    try {
+      const r = await fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId));
+      invoicesData = r.ok ? r.invoices : [];
+      renderTabContent();
+      attachInvoiceTabHandlers();
+    } catch {}
+  }
+
+  async function sendInvoice(invoiceId) {
+    if (!invoiceId) return;
+    try {
+      const r = await fetch("/api/invoices/" + encodeURIComponent(invoiceId) + "/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await r.json();
+      if (data.ok) {
+        await reloadInvoices();
+      } else {
+        alert("Send failed: " + (data.error || data.message || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Send failed: " + e.message);
+    }
+  }
+
+  /* ---- Create Invoice Modal (client detail) ---- */
+  function ensureCdCreateModal() {
+    if (document.getElementById("cdCreateInvModal")) return;
+    const div = document.createElement("div");
+    div.id = "cdCreateInvModal";
+    div.style.cssText = "display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;";
+    div.innerHTML =
+      '<div id="cdCreateInvBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);"></div>' +
+      '<div style="position:relative;background:hsl(220,10%,13%);border-radius:16px;padding:28px 24px;width:380px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.5);z-index:1;">' +
+        '<h3 style="margin:0 0 18px;font-size:17px;font-weight:700;color:#fff;">New Invoice</h3>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Subtotal ($) *</label>' +
+          '<input id="cdCreateSubtotal" type="number" min="0.01" step="0.01" placeholder="0.00" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Tax Rate (%)</label>' +
+          '<input id="cdCreateTaxRate" type="number" min="0" step="0.1" value="0" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Due Date</label>' +
+          '<input id="cdCreateDueAt" type="date" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:18px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Notes (optional)</label>' +
+          '<input id="cdCreateNotes" type="text" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div id="cdCreateErr" style="color:hsl(0,70%,50%);font-size:13px;margin-bottom:8px;display:none;"></div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+          '<button id="cdCreateCancel" style="padding:8px 16px;border-radius:8px;font-size:13px;background:hsl(220,15%,22%);color:hsl(220,15%,80%);border:1px solid hsl(220,15%,30%);cursor:pointer;">Cancel</button>' +
+          '<button id="cdCreateSubmit" style="padding:8px 16px;border-radius:8px;font-size:13px;background:hsl(221,83%,53%);color:#fff;border:none;cursor:pointer;font-weight:600;">Create Invoice</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(div);
+  }
+
+  function openCdCreateInvoiceModal() {
+    ensureCdCreateModal();
+    const modal = document.getElementById("cdCreateInvModal");
+    document.getElementById("cdCreateSubtotal").value = "";
+    document.getElementById("cdCreateTaxRate").value = "0";
+    document.getElementById("cdCreateDueAt").value = "";
+    document.getElementById("cdCreateNotes").value = "";
+    document.getElementById("cdCreateErr").style.display = "none";
+    document.getElementById("cdCreateSubmit").disabled = false;
+    document.getElementById("cdCreateSubmit").textContent = "Create Invoice";
+    modal.style.display = "flex";
+
+    const close = () => { modal.style.display = "none"; };
+    document.getElementById("cdCreateCancel").onclick = close;
+    document.getElementById("cdCreateInvBackdrop").onclick = close;
+
+    document.getElementById("cdCreateSubmit").onclick = async () => {
+      const subtotal = parseFloat(document.getElementById("cdCreateSubtotal").value);
+      const errEl = document.getElementById("cdCreateErr");
+      if (!subtotal || subtotal <= 0) {
+        errEl.textContent = "Enter a valid subtotal.";
+        errEl.style.display = "block";
+        return;
+      }
+      const submitBtn = document.getElementById("cdCreateSubmit");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating…";
+      errEl.style.display = "none";
+      try {
+        const r = await fetch("/api/invoices/from-lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: clientId,
+            customer_name: clientData ? (clientData.name || clientId) : clientId,
+            subtotal,
+            tax_rate: parseFloat(document.getElementById("cdCreateTaxRate").value) || 0,
+            due_at: document.getElementById("cdCreateDueAt").value || "",
+            notes: document.getElementById("cdCreateNotes").value.trim(),
+          }),
+        });
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || data.message || "Create failed");
+        close();
+        await reloadInvoices();
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Create Invoice";
+      }
+    };
+  }
+
+  /* ---- Payment Modal (client detail) ---- */
+  function ensureCdPaymentModal() {
+    if (document.getElementById("cdPayModal")) return;
+    const div = document.createElement("div");
+    div.id = "cdPayModal";
+    div.style.cssText = "display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;";
+    div.innerHTML =
+      '<div id="cdPayBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);"></div>' +
+      '<div style="position:relative;background:hsl(220,10%,13%);border-radius:16px;padding:28px 24px;width:360px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.5);z-index:1;">' +
+        '<h3 id="cdPayTitle" style="margin:0 0 18px;font-size:17px;font-weight:700;color:#fff;">Record Payment</h3>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Amount ($) *</label>' +
+          '<input id="cdPayAmount" type="number" min="0.01" step="0.01" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Method</label>' +
+          '<select id="cdPayMethod" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;">' +
+            '<option value="check">Check</option>' +
+            '<option value="cash">Cash</option>' +
+            '<option value="card">Card</option>' +
+            '<option value="ach">ACH/Bank Transfer</option>' +
+            '<option value="deposit">Deposit</option>' +
+            '<option value="other">Other</option>' +
+          '</select>' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Reference / Check # (optional)</label>' +
+          '<input id="cdPayReference" type="text" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Payment Date</label>' +
+          '<input id="cdPayDate" type="date" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<label style="font-size:12px;color:hsl(220,15%,60%);display:block;margin-bottom:4px;">Note (optional)</label>' +
+          '<input id="cdPayNote" type="text" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(220,15%,30%);border-radius:8px;font-size:14px;background:hsl(220,14%,8%);color:#fff;" />' +
+        '</div>' +
+        '<div id="cdPayErr" style="color:hsl(0,70%,50%);font-size:13px;margin-bottom:8px;display:none;"></div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+          '<button id="cdPayCancel" style="padding:8px 16px;border-radius:8px;font-size:13px;background:hsl(220,15%,22%);color:hsl(220,15%,80%);border:1px solid hsl(220,15%,30%);cursor:pointer;">Cancel</button>' +
+          '<button id="cdPaySubmit" style="padding:8px 16px;border-radius:8px;font-size:13px;background:hsl(221,83%,53%);color:#fff;border:none;cursor:pointer;font-weight:600;">Save Payment</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(div);
+  }
+
+  function openCdPaymentModal(inv) {
+    ensureCdPaymentModal();
+    const modal = document.getElementById("cdPayModal");
+    document.getElementById("cdPayAmount").value = Number(inv.balance_due || 0).toFixed(2);
+    document.getElementById("cdPayMethod").value = "check";
+    document.getElementById("cdPayReference").value = "";
+    document.getElementById("cdPayDate").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("cdPayNote").value = "";
+    document.getElementById("cdPayErr").style.display = "none";
+    document.getElementById("cdPaySubmit").disabled = false;
+    document.getElementById("cdPaySubmit").textContent = "Save Payment";
+    modal.style.display = "flex";
+
+    const close = () => { modal.style.display = "none"; };
+    document.getElementById("cdPayCancel").onclick = close;
+    document.getElementById("cdPayBackdrop").onclick = close;
+
+    document.getElementById("cdPaySubmit").onclick = async () => {
+      const amount = parseFloat(document.getElementById("cdPayAmount").value);
+      const errEl = document.getElementById("cdPayErr");
+      if (!amount || amount <= 0) {
+        errEl.textContent = "Enter a valid amount.";
+        errEl.style.display = "block";
+        return;
+      }
+      const submitBtn = document.getElementById("cdPaySubmit");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving…";
+      errEl.style.display = "none";
+      try {
+        const r = await fetch("/api/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            invoice_id: inv.id,
+            amount,
+            method: document.getElementById("cdPayMethod").value,
+            reference: document.getElementById("cdPayReference").value.trim(),
+            payment_date: document.getElementById("cdPayDate").value || "",
+            note: document.getElementById("cdPayNote").value.trim(),
+          }),
+        });
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || data.message || "Save failed");
+        close();
+        await reloadInvoices();
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save Payment";
+      }
+    };
+  }
+
   function renderNotes() {
     if (!notesData.length) return '<div class="cd-empty">No notes yet.</div>';
     return (
@@ -373,13 +684,14 @@
 
     try {
       const base = "/api/clients/" + encodeURIComponent(clientId);
-      const [cRes, rRes, qRes, jRes, nRes, aRes] = await Promise.all([
+      const [cRes, rRes, qRes, jRes, nRes, aRes, invRes] = await Promise.all([
         fetchJSON(base),
         fetchJSON(base + "/requests"),
         fetchJSON(base + "/quotes"),
         fetchJSON(base + "/jobs"),
         fetchJSON(base + "/notes"),
         fetchJSON(base + "/attachments"),
+        fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
       ]);
 
       if (!cRes.ok) return showError("Client not found.");
@@ -390,6 +702,7 @@
       jobsData = jRes.ok ? jRes.jobs : [];
       notesData = nRes.ok ? nRes.notes : [];
       attachmentsData = aRes.ok ? aRes.attachments : [];
+      invoicesData = invRes.ok ? invRes.invoices : [];
 
       document.getElementById("loadingMsg").style.display = "none";
       document.getElementById("clientContent").style.display = "block";

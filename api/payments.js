@@ -3,6 +3,7 @@ const { readTab } = require("../lib/readTab");
 const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { touchClient } = require("../lib/touchClient");
+const provider = require("../lib/accounting");
 
 function json(res, code, data) {
   res.writeHead(code, { "Content-Type": "application/json" });
@@ -88,6 +89,19 @@ async function handleCreatePayment(req, res) {
     const client_id = String(inv.client_id || "").trim();
     const request_id = String(inv.request_id || "").trim();
 
+    // Accept an explicit payment date (for back-dating), default to today
+    const paymentDateInput = String(body.payment_date || "").trim();
+    const paymentDate = paymentDateInput || now.slice(0, 10);
+
+    // Call accounting provider to record payment externally
+    const providerResult = await provider.recordPayment({
+      invoice_ref: inv.provider_ref || "",
+      amount,
+      method: String(body.method || "").trim(),
+      date: paymentDate,
+      note: String(body.note || "").trim(),
+    }).catch(() => ({ ok: false, provider_ref: "" }));
+
     // Append payment row
     const payment_id = "PAY-" + Date.now();
     const payRowObj = {
@@ -100,6 +114,8 @@ async function handleCreatePayment(req, res) {
       method: String(body.method || "").trim(),
       reference: String(body.reference || "").trim(),
       note: String(body.note || "").trim(),
+      payment_date: paymentDate,
+      provider_ref: providerResult.provider_ref || "",
     };
 
     const payHeadersResp = await sheets.spreadsheets.values.get({
@@ -157,20 +173,33 @@ async function handleCreatePayment(req, res) {
     setCell("balance_due", balance_due);
     setCell("updated_at", now);
 
-    // If fully paid, mark invoice paid
-    if (balance_due <= 0 && normalize(inv.status_code) !== "paid") {
-      setCell("status_code", "paid");
-      setCell("paid_at", now);
+    // Compute appropriate invoice status based on payment state
+    const currentStatus = normalize(inv.status_code);
+    let newStatus = null;
 
+    if (balance_due <= 0) {
+      // Fully paid
+      newStatus = "paid";
+    } else if (paid_amount > 0) {
+      // Partial payment — distinguish deposit vs general partial
+      const isDepositMethod = normalize(String(body.method || "")) === "deposit";
+      newStatus = isDepositMethod ? "deposit_received" : "partial";
+    }
+
+    if (newStatus && newStatus !== currentStatus) {
+      setCell("status_code", newStatus);
+      if (newStatus === "paid") {
+        setCell("paid_at", now);
+      }
       logAudit({
         actor: "admin",
         action: "UPDATE_INVOICE",
         entity_type: "invoice",
         entity_id: invoice_id,
         field: "status_code",
-        old_value: inv.status_code || "",
-        new_value: "paid",
-        note: "Auto-marked paid (balance_due <= 0)",
+        old_value: currentStatus,
+        new_value: newStatus,
+        note: `Auto-status after payment (balance_due=${balance_due})`,
         source: "crm",
         request_id: rid,
       });

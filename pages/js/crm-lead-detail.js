@@ -218,12 +218,19 @@
             ${fieldRow('Deposit Override', lead.deposit_override ? 'Yes' : '—')}
           </div>
 
+          <!-- Invoicing (populated by loadLeadInvoice) -->
+          <div class="ld-card" id="ldInvoiceCard">
+            <div class="ld-card-title">Invoicing</div>
+            <div id="ldInvoiceContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+          </div>
+
         </div>
       </div>
     `;
 
     attachEvents(lead);
     if (hasQuoteId) loadSnapshot(lead.last_quote_id);
+    loadLeadInvoice(lead.id || lead.lead_id, lead);
   }
 
   async function loadSnapshot(quoteId) {
@@ -380,6 +387,251 @@
         }
       });
     }
+  }
+
+  /* =============================================
+     INVOICING CARD — fetches and renders invoice
+  ============================================= */
+  const INV_STATUS = {
+    draft:             { label: 'Draft',             bg: 'hsl(220 15% 88%)', color: 'hsl(220 10% 35%)' },
+    sent:              { label: 'Sent',              bg: 'hsl(210 80% 92%)', color: 'hsl(210 70% 30%)' },
+    deposit_received:  { label: 'Deposit Received',  bg: 'hsl(270 60% 90%)', color: 'hsl(270 50% 30%)' },
+    partial:           { label: 'Partial',           bg: 'hsl(38 90% 90%)',  color: 'hsl(38 70% 30%)' },
+    paid:              { label: 'Paid',              bg: 'hsl(142 60% 90%)', color: 'hsl(142 50% 25%)' },
+    void:              { label: 'Void',              bg: 'hsl(0 60% 92%)',   color: 'hsl(0 50% 35%)' },
+  };
+
+  function invBadge(status) {
+    const s = INV_STATUS[status] || { label: status || 'Unknown', bg: 'hsl(220 15% 88%)', color: 'hsl(220 10% 35%)' };
+    return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;background:${s.bg};color:${s.color};">${esc(s.label)}</span>`;
+  }
+
+  function invActionBtn(id, label, style) {
+    return `<button class="ld-btn${style ? ' ld-btn-' + style : ''}" data-inv-action="${id}" style="font-size:12px;padding:6px 12px;">${esc(label)}</button>`;
+  }
+
+  async function loadLeadInvoice(lid, lead) {
+    const el = document.getElementById('ldInvoiceContent');
+    if (!el || !lid) return;
+    try {
+      const data = await window.Api.fetchJson('/api/invoices?lead_id=' + encodeURIComponent(lid));
+      const invoices = (data.invoices || []).sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at));
+      const inv = invoices[0] || null;
+      renderInvoiceCard(el, inv, lead, lid);
+    } catch (e) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);">Failed to load invoice: ${esc(e.message)}</span>`;
+    }
+  }
+
+  function renderInvoiceCard(el, inv, lead, lid) {
+    if (!inv) {
+      const quotedPrice = Number(lead.quoted_price || 0);
+      el.innerHTML = `
+        <div style="color:hsl(var(--muted-foreground));font-style:italic;margin-bottom:10px;">No invoice created yet.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${invActionBtn('create', 'Create Invoice', 'primary')}
+        </div>
+        <div class="ld-msg" id="ldInvMsg"></div>`;
+
+      el.querySelector('[data-inv-action="create"]').addEventListener('click', async () => {
+        const btn = el.querySelector('[data-inv-action="create"]');
+        const subtotal = quotedPrice > 0 ? quotedPrice : parseFloat(prompt('Enter invoice amount:') || '0');
+        if (!subtotal || subtotal <= 0) return;
+        btn.disabled = true; btn.textContent = 'Creating…';
+        try {
+          const r = await window.Api.fetchJson('/api/invoices/from-lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead_id: lid,
+              customer_name: lead.name || lid,
+              subtotal,
+              client_id: lead.client_id || '',
+            }),
+          });
+          if (!r.ok) throw new Error(r.error || 'Create failed');
+          showMsg('ldInvMsg', `Invoice ${r.invoice_number} created (ref: ${r.provider_ref || 'none'}).`, 'ok');
+          setTimeout(() => loadLeadInvoice(lid, lead), 600);
+        } catch (e) {
+          btn.disabled = false; btn.textContent = 'Create Invoice';
+          showMsg('ldInvMsg', 'Error: ' + e.message, 'err');
+        }
+      });
+      return;
+    }
+
+    const status = (inv.status_code || '').toLowerCase();
+    const total = Number(inv.total || 0);
+    const balance = Number(inv.balance_due || 0);
+    const paid = Number(inv.paid_amount || 0);
+
+    const canSend = status === 'draft' || status === 'sent';
+    const canPay  = status !== 'void' && status !== 'paid' && balance > 0;
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-weight:700;font-size:14px;">${esc(inv.invoice_number)}</span>
+        ${invBadge(status)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+        <div style="background:hsl(var(--muted)/.5);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--muted-foreground));">Total</div>
+          <div style="font-size:17px;font-weight:800;font-family:var(--font-display);">${fmt$(total)}</div>
+        </div>
+        <div style="background:hsl(var(--muted)/.5);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--muted-foreground));">Balance</div>
+          <div style="font-size:17px;font-weight:800;font-family:var(--font-display);color:${balance > 0 ? 'hsl(38,80%,40%)' : 'hsl(142,50%,35%)'};">${fmt$(balance)}</div>
+        </div>
+      </div>
+      ${inv.sent_at ? `<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-bottom:8px;">Sent ${fmtDate(inv.sent_at)}</div>` : ''}
+      ${inv.provider_ref ? `<div style="font-size:11px;color:hsl(var(--muted-foreground));margin-bottom:8px;">Ref: ${esc(inv.provider_ref)}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        ${canSend ? invActionBtn('send', status === 'sent' ? 'Resend Invoice' : 'Send Invoice', 'primary') : ''}
+        ${canPay ? invActionBtn('deposit', 'Record Deposit', '') : ''}
+        ${canPay ? invActionBtn('pay', 'Mark Paid', '') : ''}
+      </div>
+      <div class="ld-msg" id="ldInvMsg"></div>`;
+
+    const btnSend = el.querySelector('[data-inv-action="send"]');
+    const btnDeposit = el.querySelector('[data-inv-action="deposit"]');
+    const btnPay = el.querySelector('[data-inv-action="pay"]');
+
+    if (btnSend) {
+      btnSend.addEventListener('click', async () => {
+        btnSend.disabled = true; btnSend.textContent = 'Sending…';
+        try {
+          const r = await window.Api.fetchJson(`/api/invoices/${encodeURIComponent(inv.id)}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          if (!r.ok) throw new Error(r.error || r.message || 'Send failed');
+          showMsg('ldInvMsg', 'Invoice marked as sent.', 'ok');
+          setTimeout(() => loadLeadInvoice(lid, lead), 600);
+        } catch (e) {
+          btnSend.disabled = false; btnSend.textContent = status === 'sent' ? 'Resend Invoice' : 'Send Invoice';
+          showMsg('ldInvMsg', 'Error: ' + e.message, 'err');
+        }
+      });
+    }
+
+    if (btnDeposit) {
+      btnDeposit.addEventListener('click', () => {
+        openPaymentModal(inv, lid, lead, 'deposit');
+      });
+    }
+
+    if (btnPay) {
+      btnPay.addEventListener('click', () => {
+        openPaymentModal(inv, lid, lead, 'full');
+      });
+    }
+  }
+
+  /* =============================================
+     PAYMENT MODAL
+  ============================================= */
+  function ensurePaymentModal() {
+    if (document.getElementById('ldPayModal')) return;
+    const div = document.createElement('div');
+    div.id = 'ldPayModal';
+    div.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;';
+    div.innerHTML = `
+      <div id="ldPayBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);"></div>
+      <div style="position:relative;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:24px 28px;width:340px;max-width:calc(100vw - 32px);box-shadow:0 8px 40px rgba(0,0,0,.25);">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;margin-bottom:16px;" id="ldPayTitle">Record Payment</div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Amount ($)</label>
+          <input id="ldPayAmount" type="number" min="0.01" step="0.01" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:14px;background:hsl(var(--background));color:hsl(var(--foreground));" />
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Method</label>
+          <select id="ldPayMethod" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:14px;background:hsl(var(--background));color:hsl(var(--foreground));">
+            <option value="check">Check</option>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="zelle">Zelle</option>
+            <option value="deposit">Deposit</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Reference / Check # (optional)</label>
+          <input id="ldPayReference" type="text" placeholder="e.g. #1042" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:14px;background:hsl(var(--background));color:hsl(var(--foreground));" />
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Payment Date</label>
+          <input id="ldPayDate" type="date" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:14px;background:hsl(var(--background));color:hsl(var(--foreground));" />
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Note (optional)</label>
+          <input id="ldPayNote" type="text" placeholder="" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:14px;background:hsl(var(--background));color:hsl(var(--foreground));" />
+        </div>
+        <div id="ldPayErr" style="color:hsl(0,70%,50%);font-size:13px;margin-bottom:8px;display:none;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="ld-btn" id="ldPayCancel">Cancel</button>
+          <button class="ld-btn ld-btn-primary" id="ldPaySubmit">Save Payment</button>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
+  }
+
+  function openPaymentModal(inv, lid, lead, mode) {
+    ensurePaymentModal();
+    const modal = document.getElementById('ldPayModal');
+    const balance = Number(inv.balance_due || 0);
+    const total = Number(inv.total || 0);
+
+    document.getElementById('ldPayTitle').textContent = mode === 'deposit' ? 'Record Deposit' : 'Record Payment';
+    document.getElementById('ldPayAmount').value = mode === 'deposit' ? '' : balance.toFixed(2);
+    document.getElementById('ldPayMethod').value = mode === 'deposit' ? 'deposit' : 'check';
+    document.getElementById('ldPayReference').value = '';
+    document.getElementById('ldPayDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('ldPayNote').value = mode === 'deposit' ? 'Deposit received' : '';
+    document.getElementById('ldPayErr').style.display = 'none';
+    document.getElementById('ldPaySubmit').disabled = false;
+    document.getElementById('ldPaySubmit').textContent = 'Save Payment';
+
+    modal.style.display = 'flex';
+
+    const close = () => { modal.style.display = 'none'; };
+    document.getElementById('ldPayCancel').onclick = close;
+    document.getElementById('ldPayBackdrop').onclick = close;
+
+    document.getElementById('ldPaySubmit').onclick = async () => {
+      const amount = parseFloat(document.getElementById('ldPayAmount').value);
+      const errEl = document.getElementById('ldPayErr');
+      if (!amount || amount <= 0) {
+        errEl.textContent = 'Enter a valid amount.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const submitBtn = document.getElementById('ldPaySubmit');
+      submitBtn.disabled = true; submitBtn.textContent = 'Saving…';
+      errEl.style.display = 'none';
+      try {
+        const r = await window.Api.fetchJson('/api/payments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            invoice_id: inv.id,
+            amount,
+            method: document.getElementById('ldPayMethod').value,
+            reference: document.getElementById('ldPayReference').value.trim(),
+            payment_date: document.getElementById('ldPayDate').value || '',
+            note: document.getElementById('ldPayNote').value.trim(),
+          }),
+        });
+        if (!r.ok) throw new Error(r.error || r.message || 'Save failed');
+        close();
+        showMsg('ldInvMsg', `Payment of ${fmt$(amount)} recorded. Balance: ${fmt$(r.balance_due)}.`, 'ok');
+        setTimeout(() => loadLeadInvoice(lid, lead), 600);
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+        submitBtn.disabled = false; submitBtn.textContent = 'Save Payment';
+      }
+    };
   }
 
   async function load() {

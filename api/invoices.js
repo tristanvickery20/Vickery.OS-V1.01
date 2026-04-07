@@ -5,6 +5,7 @@ const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { touchClient } = require("../lib/touchClient");
 const { getConfig } = require("../lib/config");
+const provider = require("../lib/accounting");
 
 function json(res, code, data) {
   res.writeHead(code, { "Content-Type": "application/json" });
@@ -39,14 +40,42 @@ function colLetter(c) {
   return String.fromCharCode(64 + Math.floor(c / 26)) + String.fromCharCode(65 + (c % 26));
 }
 
+// Parse sheet row number from Google Sheets updatedRange like "Invoices!A150:Z150"
+function parseInsertedRow(updatedRange) {
+  if (!updatedRange) return -1;
+  const m = updatedRange.match(/!A(\d+)/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+// After appending a row, update provider_ref and provider_name cells in-place
+async function backfillProviderRef(sheets, spreadsheetId, headers, insertedRow, providerRef, providerName) {
+  if (insertedRow < 1 || !providerRef) return;
+  const updates = [];
+  const setField = (field, value) => {
+    const ci = headers.indexOf(field);
+    if (ci >= 0) updates.push({ range: `Invoices!${colLetter(ci)}${insertedRow}`, values: [[String(value)]] });
+  };
+  setField("provider_ref", providerRef);
+  setField("provider_name", providerName || "");
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: { valueInputOption: "RAW", data: updates },
+    }).catch(err => console.error("[invoice] provider_ref backfill failed:", err.message));
+  }
+}
+
 /* =========================
    GET LIST
+   Supports ?status=, ?q=, ?client_id=, ?lead_id=
 ========================= */
 async function handleGetInvoices(req, res) {
   try {
     const parsed = url.parse(req.url, true);
-    const status = normalize(parsed.query.status);
-    const q = normalize(parsed.query.q);
+    const status    = normalize(parsed.query.status);
+    const q         = normalize(parsed.query.q);
+    const clientId  = normalize(parsed.query.client_id);
+    const leadId    = normalize(parsed.query.lead_id);
 
     const [invoices, clients, properties] = await Promise.all([
       readTab("Invoices"),
@@ -76,16 +105,35 @@ async function handleGetInvoices(req, res) {
         id: inv.id,
         invoice_number: inv.invoice_number,
         status_code: inv.status_code,
+        client_id: inv.client_id || "",
+        lead_id: inv.lead_id || "",
         client_name: client.name || "",
         property_address: prop.address_line1 || "",
         total: inv.total || "0",
+        paid_amount: inv.paid_amount || "0",
         balance_due: inv.balance_due || "0",
+        deposit_applied: inv.deposit_applied || "0",
         issued_at: inv.issued_at || inv.created_at || "",
+        sent_at: inv.sent_at || "",
+        paid_at: inv.paid_at || "",
         due_at: inv.due_at || "",
+        notes: inv.notes || "",
+        provider_ref: inv.provider_ref || "",
+        provider_name: inv.provider_name || "",
+        subtotal: inv.subtotal || "0",
+        tax_rate: inv.tax_rate || "0",
+        tax_amount: inv.tax_amount || "0",
         overdue,
       };
     });
 
+    // Filters
+    if (clientId) {
+      rows = rows.filter((r) => normalize(r.client_id) === clientId);
+    }
+    if (leadId) {
+      rows = rows.filter((r) => normalize(r.lead_id) === leadId);
+    }
     if (status && status !== "all") {
       if (status === "overdue") {
         rows = rows.filter((r) => r.overdue);
@@ -93,7 +141,6 @@ async function handleGetInvoices(req, res) {
         rows = rows.filter((r) => normalize(r.status_code) === status);
       }
     }
-
     if (q) {
       rows = rows.filter((r) =>
         [r.invoice_number, r.client_name, r.property_address]
@@ -112,7 +159,8 @@ async function handleGetInvoices(req, res) {
 }
 
 /* =========================
-   CREATE
+   CREATE (from Request/client model)
+   Order: validate → write CRM row → call provider → backfill provider_ref
 ========================= */
 async function handleCreateInvoice(req, res) {
   try {
@@ -159,15 +207,12 @@ async function handleCreateInvoice(req, res) {
         ? round2(num(body.deposit_applied, 0))
         : Math.min(deposit_received, total);
 
-    const paid_amount = 0;
     const balance_due = round2(total - deposit_applied);
 
-    const invoice_number =
-      "INV-" +
-      String(new Date().getTime()).slice(-6);
-
+    const invoice_number = "INV-" + String(new Date().getTime()).slice(-6);
     const id = "INV-" + Date.now();
 
+    // Step 1: Write CRM row first (provider_ref blank — will be backfilled)
     const rowObj = {
       id,
       created_at: now,
@@ -178,13 +223,14 @@ async function handleCreateInvoice(req, res) {
       property_id: reqRow.property_id,
       request_id,
       job_id: "",
+      lead_id: "",
       issued_at: now,
       due_at: body.due_at || "",
       subtotal: String(subtotal),
       tax_rate: String(tax_rate),
       tax_amount: String(tax_amount),
       total: String(total),
-      paid_amount: String(paid_amount),
+      paid_amount: "0",
       balance_due: String(balance_due),
       deposit_applied: String(deposit_applied),
       notes: String(body.notes || ""),
@@ -195,6 +241,8 @@ async function handleCreateInvoice(req, res) {
       sent_at: "",
       paid_at: "",
       void_at: "",
+      provider_ref: "",
+      provider_name: "",
     };
 
     const sheets = await getSheetsClient();
@@ -205,22 +253,42 @@ async function handleCreateInvoice(req, res) {
       range: "Invoices!1:1",
     });
     const headers = headersResp.data.values[0];
+    const row = headers.map((h) => rowObj[h] != null ? rowObj[h] : "");
 
-    const row = headers.map((h) => rowObj[h] || "");
-
-    await sheets.spreadsheets.values.append({
+    const appendResult = await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: "Invoices!A:A",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: [row] },
     });
+    const insertedRow = parseInsertedRow(
+      appendResult.data.updates && appendResult.data.updates.updatedRange
+    );
+
+    // Step 2: Call accounting provider
+    const providerResult = await provider.createInvoice({
+      invoice_number,
+      invoice_id: id,
+      customer_name: reqRow.client_id || "",
+      total,
+      subtotal,
+      tax_amount,
+      notes: String(body.notes || ""),
+      line_items: [{ description: reqRow.summary || "Services", amount: subtotal }],
+    }).catch(() => ({ ok: false, provider_ref: "" }));
+
+    // Step 3: Backfill provider_ref into the row we just appended
+    if (providerResult.ok && providerResult.provider_ref && insertedRow > 0) {
+      await backfillProviderRef(sheets, spreadsheetId, headers, insertedRow, providerResult.provider_ref, provider.name);
+    }
 
     logAudit({
       actor: "admin",
       action: "CREATE_INVOICE",
       entity_type: "invoice",
       entity_id: id,
+      note: `provider=${provider.name} ref=${providerResult.provider_ref || "none"}`,
       source: "crm",
       request_id: rid,
     });
@@ -229,7 +297,318 @@ async function handleCreateInvoice(req, res) {
       touchClient(reqRow.client_id).catch(() => {});
     }
 
-    json(res, 201, { ok: true, invoice_id: id });
+    json(res, 201, {
+      ok: true,
+      invoice_id: id,
+      invoice_number,
+      provider_ref: providerResult.provider_ref || "",
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+/* =========================
+   CREATE FROM LEAD (old Leads model — no request_id required)
+   Also works for client-only invoices (pass client_id, omit lead_id)
+   Order: validate → write CRM row → call provider → backfill provider_ref
+========================= */
+async function handleCreateInvoiceFromLead(req, res) {
+  try {
+    const body = await readBody(req);
+    const lead_id  = String(body.lead_id  || "").trim();
+    const client_id = String(body.client_id || "").trim();
+
+    if (!lead_id && !client_id) {
+      return json(res, 400, { ok: false, error: "lead_id or client_id required." });
+    }
+
+    const subtotal = round2(num(body.subtotal, NaN));
+    if (!isFinite(subtotal) || subtotal <= 0) {
+      return json(res, 400, { ok: false, error: "subtotal must be a positive number." });
+    }
+
+    const rid = genRequestId();
+    const now = new Date().toISOString();
+    const tax_rate = round2(num(body.tax_rate, 0));
+    const tax_amount = round2(subtotal * (tax_rate / 100));
+    const total = round2(subtotal + tax_amount);
+    const deposit_applied = round2(Math.min(num(body.deposit_applied, 0), total));
+    const balance_due = round2(Math.max(0, total - deposit_applied));
+
+    const invoice_number = "INV-" + String(new Date().getTime()).slice(-6);
+    const id = "INV-" + Date.now();
+    const customerName = String(body.customer_name || lead_id || client_id);
+
+    // Step 1: Write CRM row first (provider_ref blank — will be backfilled)
+    const rowObj = {
+      id,
+      created_at: now,
+      updated_at: now,
+      invoice_number,
+      status_code: "draft",
+      client_id,
+      property_id: "",
+      request_id: "",
+      job_id: "",
+      lead_id,
+      issued_at: now,
+      due_at: String(body.due_at || ""),
+      subtotal: String(subtotal),
+      tax_rate: String(tax_rate),
+      tax_amount: String(tax_amount),
+      total: String(total),
+      paid_amount: "0",
+      balance_due: String(balance_due),
+      deposit_applied: String(deposit_applied),
+      notes: String(body.notes || ""),
+      snapshot_json: JSON.stringify({
+        lead_id: lead_id || null,
+        customer_name: customerName,
+        created_at: now,
+      }),
+      sent_at: "",
+      paid_at: "",
+      void_at: "",
+      provider_ref: "",
+      provider_name: "",
+    };
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const headersResp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Invoices!1:1",
+    });
+    const headers = headersResp.data.values[0];
+    const row = headers.map((h) => rowObj[h] != null ? rowObj[h] : "");
+
+    const appendResult = await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: "Invoices!A:A",
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: [row] },
+    });
+    const insertedRow = parseInsertedRow(
+      appendResult.data.updates && appendResult.data.updates.updatedRange
+    );
+
+    // Step 2: Call accounting provider
+    const providerResult = await provider.createInvoice({
+      invoice_number,
+      invoice_id: id,
+      customer_name: customerName,
+      total,
+      subtotal,
+      tax_amount,
+      notes: String(body.notes || ""),
+      line_items: [{ description: "Electrical Services", amount: subtotal }],
+    }).catch(() => ({ ok: false, provider_ref: "" }));
+
+    // Step 3: Backfill provider_ref into the appended row
+    if (providerResult.ok && providerResult.provider_ref && insertedRow > 0) {
+      await backfillProviderRef(sheets, spreadsheetId, headers, insertedRow, providerResult.provider_ref, provider.name);
+    }
+
+    logAudit({
+      actor: "admin",
+      action: "CREATE_INVOICE",
+      entity_type: "invoice",
+      entity_id: id,
+      note: `lead_id=${lead_id || "—"} client_id=${client_id || "—"} provider=${provider.name} ref=${providerResult.provider_ref || "none"}`,
+      source: "crm",
+      request_id: rid,
+    });
+
+    if (client_id) touchClient(client_id).catch(() => {});
+
+    json(res, 201, {
+      ok: true,
+      invoice_id: id,
+      invoice_number,
+      provider_ref: providerResult.provider_ref || "",
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+/* =========================
+   SEND INVOICE — POST /api/invoices/:id/send
+========================= */
+async function handleSendInvoice(req, res) {
+  try {
+    const clean = req.url.replace(/\?.*$/, "");
+    const id = decodeURIComponent(
+      clean.replace("/api/invoices/", "").replace("/send", "")
+    );
+    const rid = genRequestId();
+    const now = new Date().toISOString();
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Invoices!A1:Z5000",
+    });
+    const values = resp.data.values || [];
+    if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
+
+    const headers = values[0];
+    const idCol = headers.indexOf("id");
+
+    let rowIndex = -1;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][idCol] || "") === id) { rowIndex = r; break; }
+    }
+    if (rowIndex < 0) return json(res, 404, { ok: false, error: "Invoice not found." });
+
+    const inv = {};
+    for (let i = 0; i < headers.length; i++) {
+      inv[headers[i]] = values[rowIndex][i] != null ? String(values[rowIndex][i]) : "";
+    }
+
+    if (normalize(inv.status_code) === "void") {
+      return json(res, 409, { ok: false, code: "VOID", message: "Cannot send a void invoice." });
+    }
+
+    // Call accounting provider to send the invoice
+    await provider.sendInvoice({
+      provider_ref: inv.provider_ref || "",
+      invoice_number: inv.invoice_number || "",
+      customer_name: "",
+      customer_email: "",
+    }).catch(() => {});
+
+    const sheetRow = rowIndex + 1;
+    const updates = [];
+
+    const setCell = (field, value) => {
+      const ci = headers.indexOf(field);
+      if (ci < 0) return;
+      updates.push({
+        range: `Invoices!${colLetter(ci)}${sheetRow}`,
+        values: [[String(value)]],
+      });
+    };
+
+    setCell("status_code", "sent");
+    setCell("sent_at", now);
+    setCell("updated_at", now);
+
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: "RAW", data: updates },
+      });
+    }
+
+    logAudit({
+      actor: "admin",
+      action: "SEND_INVOICE",
+      entity_type: "invoice",
+      entity_id: id,
+      source: "crm",
+      request_id: rid,
+    });
+
+    json(res, 200, { ok: true, sent_at: now });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+/* =========================
+   SYNC INVOICE STATUS — POST /api/invoices/:id/sync-status
+   Calls provider.getInvoiceStatus and updates local status if changed.
+========================= */
+async function handleSyncInvoiceStatus(req, res) {
+  try {
+    const clean = req.url.replace(/\?.*$/, "");
+    const id = decodeURIComponent(
+      clean.replace("/api/invoices/", "").replace("/sync-status", "")
+    );
+    const rid = genRequestId();
+    const now = new Date().toISOString();
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Invoices!A1:Z5000",
+    });
+    const values = resp.data.values || [];
+    if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
+
+    const headers = values[0];
+    const idCol = headers.indexOf("id");
+
+    let rowIndex = -1;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][idCol] || "") === id) { rowIndex = r; break; }
+    }
+    if (rowIndex < 0) return json(res, 404, { ok: false, error: "Invoice not found." });
+
+    const inv = {};
+    for (let i = 0; i < headers.length; i++) {
+      inv[headers[i]] = values[rowIndex][i] != null ? String(values[rowIndex][i]) : "";
+    }
+
+    const providerResult = await provider.getInvoiceStatus({
+      provider_ref: inv.provider_ref || "",
+    }).catch(() => ({ ok: false }));
+
+    if (!providerResult.ok) {
+      return json(res, 200, { ok: true, synced: false, reason: "provider_unavailable", local_status: inv.status_code });
+    }
+
+    const providerStatus = normalize(providerResult.status);
+    const localStatus = normalize(inv.status_code);
+
+    // Map provider status to our internal statuses
+    const STATUS_MAP = { draft: "draft", sent: "sent", paid: "paid", void: "void" };
+    const mappedStatus = STATUS_MAP[providerStatus] || localStatus;
+
+    if (mappedStatus === localStatus) {
+      return json(res, 200, { ok: true, synced: true, status_code: localStatus, changed: false });
+    }
+
+    const sheetRow = rowIndex + 1;
+    const updates = [];
+    const setCell = (field, value) => {
+      const ci = headers.indexOf(field);
+      if (ci >= 0) updates.push({ range: `Invoices!${colLetter(ci)}${sheetRow}`, values: [[String(value)]] });
+    };
+
+    setCell("status_code", mappedStatus);
+    setCell("updated_at", now);
+    if (mappedStatus === "paid" && !inv.paid_at) setCell("paid_at", now);
+
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: "RAW", data: updates },
+      });
+    }
+
+    logAudit({
+      actor: "system",
+      action: "SYNC_INVOICE_STATUS",
+      entity_type: "invoice",
+      entity_id: id,
+      field: "status_code",
+      old_value: localStatus,
+      new_value: mappedStatus,
+      note: `provider=${provider.name}`,
+      source: "crm",
+      request_id: rid,
+    });
+
+    json(res, 200, { ok: true, synced: true, status_code: mappedStatus, changed: true });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -256,7 +635,7 @@ async function handleGetInvoiceById(req, res) {
 }
 
 /* =========================
-   UPDATE (Draft/Sent/Void)
+   UPDATE (notes / status_code only)
 ========================= */
 async function handleUpdateInvoice(req, res) {
   try {
@@ -337,6 +716,9 @@ async function handleUpdateInvoice(req, res) {
 module.exports = {
   handleGetInvoices,
   handleCreateInvoice,
+  handleCreateInvoiceFromLead,
+  handleSendInvoice,
+  handleSyncInvoiceStatus,
   handleGetInvoiceById,
   handleUpdateInvoice,
 };
