@@ -161,6 +161,8 @@ async function handleGetTodayJobs(req, res) {
         // Resolve human-readable job type name (handles both assembly IDs like "A001" and service IDs)
         const jobTypeName = resolveJobTypeName(snap.job_type_id || jobTypeId);
 
+        const latRaw = get("lat");
+        const lngRaw = get("lng");
         return {
           booking_id:         get("booking_id"),
           quote_id:           qid,
@@ -176,6 +178,8 @@ async function handleGetTodayJobs(req, res) {
           final_price:        get("final_price"),
           job_type_id:        jobTypeId,
           job_type_name:      jobTypeName,
+          lat:                latRaw ? parseFloat(latRaw) : null,
+          lng:                lngRaw ? parseFloat(lngRaw) : null,
           // Structured scope (from quote answers)
           scope_items:        scopeResult.items,
           scope_qty:          scopeResult.qty,

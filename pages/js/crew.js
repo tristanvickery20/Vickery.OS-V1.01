@@ -7,6 +7,13 @@ let amountRaw      = "";
 let timeCategory   = "On-site";
 let expCategory    = "Materials";
 
+// Map state
+let _todayJobs    = [];
+let _crewMap      = null;
+let _crewMarkers  = [];
+let _crewTokenP   = null;
+let _mapLoaded    = false;
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   // Verify session (server already blocks unauthenticated page loads,
@@ -27,6 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindJobDetailOverlay();
   bindManualButtons();
   bindLogout();
+  bindViewTabs();
 });
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -66,6 +74,7 @@ async function loadTodayJobs() {
     const res  = await fetch("/api/crew/today");
     const data = await res.json();
     const jobs = data.jobs || [];
+    _todayJobs = jobs; // cache for map tab
     if (!jobs.length) {
       list.innerHTML = "";
       if (noJobs) noJobs.hidden = false;
@@ -479,6 +488,181 @@ async function submitExpense() {
     showToast("Error: " + err.message, true);
   }
   if (btn) btn.disabled = false;
+}
+
+// ── View tabs (Jobs / Map) ─────────────────────────────────────────────────────
+function bindViewTabs() {
+  document.querySelectorAll(".view-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
+      document.getElementById("listView").style.display = tab === "list" ? "" : "none";
+      document.getElementById("mapView").style.display  = tab === "map"  ? "" : "none";
+      if (tab === "map" && !_mapLoaded) {
+        _mapLoaded = true;
+        renderCrewMap();
+      }
+    });
+  });
+}
+
+// ── Crew Map ──────────────────────────────────────────────────────────────────
+function crewMapToken() {
+  if (!_crewTokenP) {
+    _crewTokenP = fetch("/api/config/mapbox").then(r => r.json()).then(d => {
+      if (!d.ok) { _crewTokenP = null; throw new Error(d.error || "Map not configured"); }
+      return d.token;
+    }).catch(e => { _crewTokenP = null; throw e; });
+  }
+  return _crewTokenP;
+}
+
+function loadCrewMapboxSDK(token) {
+  return new Promise((resolve, reject) => {
+    if (window.mapboxgl) { mapboxgl.accessToken = token; return resolve(); }
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css";
+    document.head.appendChild(link);
+    const script = document.createElement("script");
+    script.src = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js";
+    script.onload  = () => { mapboxgl.accessToken = token; resolve(); };
+    script.onerror = () => reject(new Error("Failed to load map library"));
+    document.head.appendChild(script);
+  });
+}
+
+async function renderCrewMap() {
+  const mapEl  = document.getElementById("crewMapEl");
+  const status = document.getElementById("crewMapStatus");
+  if (!mapEl) return;
+
+  const withCoords = _todayJobs.filter(j => j.lat && j.lng);
+
+  if (!withCoords.length) {
+    if (status) status.textContent = _todayJobs.length
+      ? "No addresses geocoded yet — check back after the office saves coordinates."
+      : "No jobs scheduled today.";
+    return;
+  }
+
+  try {
+    const token = await crewMapToken();
+    await loadCrewMapboxSDK(token);
+
+    if (_crewMap) { _crewMap.remove(); _crewMap = null; }
+    _crewMarkers.forEach(m => m.remove()); _crewMarkers = [];
+
+    const sorted = [...withCoords].sort((a, b) => {
+      if (!a.scheduled_datetime) return 1;
+      if (!b.scheduled_datetime) return -1;
+      return new Date(a.scheduled_datetime) - new Date(b.scheduled_datetime);
+    });
+
+    _crewMap = new mapboxgl.Map({
+      container: mapEl,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [sorted[0].lng, sorted[0].lat],
+      zoom: 11,
+    });
+    _crewMap.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+    _crewMap.on("load", () => {
+      // Route line
+      if (sorted.length > 1) {
+        const coords = sorted.map(j => [j.lng, j.lat]);
+        _crewMap.addSource("crew-route", {
+          type: "geojson",
+          data: { type: "Feature", geometry: { type: "LineString", coordinates: coords } },
+        });
+        _crewMap.addLayer({
+          id: "crew-route-lyr", type: "line", source: "crew-route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: { "line-color": "#2d6ae0", "line-width": 2, "line-opacity": 0.65, "line-dasharray": [2, 2] },
+        });
+      }
+
+      // Pins
+      sorted.forEach((job, idx) => {
+        const el = document.createElement("div");
+        el.style.cssText = [
+          "width:30px;height:30px;border-radius:50%;",
+          "background:#2d6ae0;color:#fff;",
+          "display:flex;align-items:center;justify-content:center;",
+          "font-size:12px;font-weight:800;border:2px solid rgba(255,255,255,.7);",
+          "cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);",
+        ].join("");
+        el.textContent = String(idx + 1);
+
+        const addr = job.address || "";
+        const navUrl = addr ? `https://maps.google.com/maps?q=${encodeURIComponent(addr)}` : "";
+
+        const popup = new mapboxgl.Popup({ offset: 18, maxWidth: "260px", closeButton: true })
+          .setHTML(`<div>
+            <div class="cpop-name">${esc(job.customer_name || "—")}</div>
+            <div class="cpop-addr">${esc(addr || "No address")}</div>
+            <div class="cpop-btns">
+              ${navUrl ? `<a class="cpop-btn cpop-nav" href="${navUrl}" target="_blank" rel="noopener">Navigate &#10132;</a>` : ""}
+              ${job.phone ? `<button class="cpop-btn cpop-way" data-bid="${esc(job.booking_id)}" data-action="on_the_way">On the way</button>` : ""}
+              ${job.phone ? `<button class="cpop-btn cpop-here" data-bid="${esc(job.booking_id)}" data-action="we_are_here">We're here</button>` : ""}
+            </div>
+          </div>`);
+
+        popup.on("open", () => {
+          const pEl = popup.getElement();
+          if (!pEl) return;
+          pEl.querySelectorAll("[data-action]").forEach(btn => {
+            btn.addEventListener("click", () => {
+              const j = _todayJobs.find(x => x.booking_id === btn.dataset.bid);
+              if (j) crewMapNotify(btn.dataset.action, j, btn);
+            });
+          });
+        });
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([job.lng, job.lat])
+          .setPopup(popup)
+          .addTo(_crewMap);
+
+        el.addEventListener("click", () => marker.togglePopup());
+        _crewMarkers.push(marker);
+      });
+
+      // Fit bounds
+      if (sorted.length > 1) {
+        const bounds = new mapboxgl.LngLatBounds();
+        sorted.forEach(j => bounds.extend([j.lng, j.lat]));
+        _crewMap.fitBounds(bounds, { padding: 50, maxZoom: 13 });
+      }
+
+      if (status) status.textContent = `${sorted.length} job${sorted.length !== 1 ? "s" : ""} on map · Tap a pin to navigate or notify`;
+    });
+  } catch (err) {
+    if (status) status.textContent = "Map unavailable: " + err.message;
+  }
+}
+
+async function crewMapNotify(action, job, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res  = await fetch("/api/crew/notify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, phone: job.phone, customer_name: job.customer_name, booking_id: job.booking_id }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = "✓ Sent!";
+      btn.style.background = "#15803d";
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ""; btn.disabled = false; }, 3000);
+    } else {
+      showToast(data.error || "Send failed", true);
+      btn.textContent = orig; btn.disabled = false;
+    }
+  } catch {
+    showToast("Network error", true);
+    btn.textContent = orig; btn.disabled = false;
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────

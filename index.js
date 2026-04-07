@@ -58,6 +58,9 @@ const {
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
 const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
+const { handleGeocode } = require("./api/schedule-geocode");
+const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
+const { handleMapboxConfig } = require("./api/config-mapbox");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
@@ -356,6 +359,11 @@ const server = http.createServer(async (req, res) => {
     return handleReferralSubmit(req, res);
   }
 
+  // Mapbox token — accessible by CRM or crew session (handler checks both)
+  if (_epath === "/api/config/mapbox" && req.method === "GET") {
+    return handleMapboxConfig(req, res);
+  }
+
   // AUTH GUARD: protected pages + remaining /api/*
   if (
     req.url === "/clients" ||
@@ -375,6 +383,19 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/schedule/bookings/") && req.method === "PATCH") {
     return handlePatchBooking(req, res);
+  }
+
+  // Geocode bookings (CRM only)
+  if (_epath === "/api/schedule/geocode" && req.method === "POST") {
+    return handleGeocode(req, res);
+  }
+
+  // Route optimization (CRM only)
+  if (_epath === "/api/schedule/optimize/save" && req.method === "POST") {
+    return handleOptimizeSave(req, res);
+  }
+  if (_epath === "/api/schedule/optimize" && req.method === "POST") {
+    return handleOptimize(req, res);
   }
 
   // CLIENTS PAGE

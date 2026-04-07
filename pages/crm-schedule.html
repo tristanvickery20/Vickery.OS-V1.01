@@ -375,6 +375,50 @@
       .cal-error {
         color: #f87171; padding: 20px; font-size: 13px;
       }
+
+      /* ── MAP VIEW ────────────────────────────────────────────── */
+      .map-view-wrap { position: relative; width: 100%; height: 100%; min-height: 400px; }
+      .map-ctrl-panel {
+        position: absolute; top: 12px; left: 12px; z-index: 10;
+        display: flex; flex-direction: column; gap: 6px; pointer-events: all;
+      }
+      .map-status {
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--text);
+        max-width: 200px;
+      }
+      .map-btn {
+        padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line);
+        background: var(--panel); color: var(--text);
+        font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+        transition: background 0.15s; white-space: nowrap;
+      }
+      .map-btn:hover:not(:disabled) { background: rgba(100,150,255,0.18); }
+      .map-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .map-btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+      .map-btn-primary:hover:not(:disabled) { background: #2460c8; }
+      .map-btn-success { background: #16a34a; border-color: #16a34a; color: #fff; }
+      .map-btn-success:hover:not(:disabled) { background: #15803d; }
+      .map-pin {
+        width: 30px; height: 30px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 800; border: 2px solid rgba(255,255,255,0.7);
+        cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        transition: transform 0.15s; user-select: none;
+      }
+      .map-pin:hover { transform: scale(1.18); }
+      .mapboxgl-popup-content { background: #fff; padding: 12px 14px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+      .map-popup-name { font-size: 14px; font-weight: 800; color: #111827; margin-bottom: 3px; }
+      .map-popup-addr { font-size: 12px; color: #6b7280; margin-bottom: 4px; line-height: 1.4; }
+      .map-popup-time { font-size: 11px; color: #9ca3af; margin-bottom: 8px; }
+      .map-popup-row { display: flex; gap: 6px; flex-wrap: wrap; }
+      .map-popup-btn {
+        padding: 5px 11px; border-radius: 7px; border: none;
+        font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+        display: inline-flex; align-items: center; font-family: inherit;
+      }
+      .map-popup-nav  { background: #2d6ae0; color: #fff; }
+      .map-popup-open { background: #e5e7eb; color: #111827; }
     </style>
   </head>
   <body>
@@ -413,6 +457,7 @@
                 <button class="view-btn active" data-view="month">Month</button>
                 <button class="view-btn" data-view="week">Week</button>
                 <button class="view-btn" data-view="day">Day</button>
+                <button class="view-btn" data-view="map">Map</button>
               </div>
             </div>
           </div>
@@ -737,11 +782,14 @@
       // ── Render all ────────────────────────────────────────────────
       function renderAll() {
         updateTitle();
+        // Drawer hidden in map view
+        calDrawer.style.display = S.view === "map" ? "none" : "";
         updateUnschedBadge();
         renderDrawer();
         updateBulkBar();
         if (S.view === "month") renderMonth();
         else if (S.view === "week") renderWeek();
+        else if (S.view === "map") renderMap().catch(e => console.error("renderMap:", e));
         else renderDay();
       }
 
@@ -750,6 +798,11 @@
         const m  = S.cursor.getMonth();
         if (S.view === "month") {
           calTitle.textContent = `${MONTHS[m]} ${y}`;
+        } else if (S.view === "map") {
+          const d = new Intl.DateTimeFormat("en-US", {
+            timeZone: S.tz, weekday: "long", month: "long", day: "numeric", year: "numeric",
+          }).format(S.cursor);
+          calTitle.textContent = `Map · ${d}`;
         } else if (S.view === "week") {
           const ws = weekStart(S.cursor);
           const we = new Date(ws); we.setDate(we.getDate() + 6);
@@ -1497,6 +1550,7 @@
 
         detailBody.innerHTML = body;
         detailFooter.innerHTML = `
+          ${b.address ? `<a class="detail-btn" href="https://maps.google.com/maps?q=${encodeURIComponent(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/leads?q=${esc(b.quote_id)}" target="_blank">Open Full Record &#8599;</a>` : ""}
           ${S.staff.length > 0 ? `<button class="detail-btn" id="detailSaveTech">Save Assignment</button>` : ""}
         `;
@@ -1519,6 +1573,251 @@
       function closeDetail() {
         detailPanel.classList.remove("open");
         detailBackdrop.classList.remove("show");
+      }
+
+      // ── MAP VIEW ──────────────────────────────────────────────────
+      let _map          = null;
+      let _mapMarkers   = [];
+      let _optOrder     = null; // booking_ids in optimized order
+      let _mapTokenP    = null; // cached token promise
+      const MAP_DEPOT   = [-93.7363, 30.0930]; // Orange, TX
+
+      const MAP_STATUS_COLORS = {
+        confirmed: "#4ade80", scheduled: "#4ade80",
+        pending: "#fbbf24", flagged: "#fb923c",
+        cancelled: "#f87171",
+      };
+
+      function mapToken() {
+        if (!_mapTokenP) {
+          _mapTokenP = fetch("/api/config/mapbox").then(r => r.json()).then(d => {
+            if (!d.ok) { _mapTokenP = null; throw new Error(d.error || "Mapbox not configured. Add MAPBOX_TOKEN secret."); }
+            return d.token;
+          }).catch(e => { _mapTokenP = null; throw e; });
+        }
+        return _mapTokenP;
+      }
+
+      function loadMapboxSDK(token) {
+        return new Promise((resolve, reject) => {
+          if (window.mapboxgl) { mapboxgl.accessToken = token; return resolve(); }
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css";
+          document.head.appendChild(link);
+          const script = document.createElement("script");
+          script.src = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js";
+          script.onload  = () => { mapboxgl.accessToken = token; resolve(); };
+          script.onerror = () => reject(new Error("Failed to load Mapbox GL JS"));
+          document.head.appendChild(script);
+        });
+      }
+
+      function destroyMap() {
+        _mapMarkers.forEach(m => m.remove());
+        _mapMarkers = [];
+        if (_map) { try { _map.remove(); } catch {} _map = null; }
+      }
+
+      async function renderMap() {
+        const dateStr     = new Intl.DateTimeFormat("en-CA", { timeZone: S.tz }).format(S.cursor);
+        const dayBookings = filteredBookings().filter(b => b.local_date === dateStr);
+        const withCoords  = dayBookings.filter(b => b.lat && b.lng);
+        const needCoords  = dayBookings.filter(b => !b.lat || !b.lng);
+
+        calMain.innerHTML = `
+          <div class="map-view-wrap">
+            <div id="mapEl" style="position:absolute;inset:0;"></div>
+            <div class="map-ctrl-panel">
+              <div class="map-status" id="mapStatus">Loading map…</div>
+              ${needCoords.length ? `<button class="map-btn" id="mapGeocode">Geocode ${needCoords.length} address${needCoords.length > 1 ? "es" : ""}</button>` : ""}
+              <button class="map-btn map-btn-primary" id="mapOptimize" ${withCoords.length < 2 ? "disabled" : ""}>Optimize Route</button>
+              <button class="map-btn map-btn-success" id="mapSave" style="display:none">Save Order</button>
+            </div>
+          </div>`;
+
+        try {
+          const token = await mapToken();
+          await loadMapboxSDK(token);
+
+          const mapEl = document.getElementById("mapEl");
+          if (!mapEl) return;
+          destroyMap();
+
+          const center = withCoords.length > 0
+            ? [withCoords[0].lng, withCoords[0].lat]
+            : MAP_DEPOT;
+
+          _map = new mapboxgl.Map({
+            container: mapEl,
+            style: "mapbox://styles/mapbox/dark-v11",
+            center, zoom: withCoords.length > 0 ? 11 : 9,
+          });
+          _map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+          _optOrder = null;
+
+          _map.on("load", () => {
+            const sorted = sortByTime(withCoords);
+            mapRenderPins(sorted);
+            mapDrawRoute(sorted);
+            mapFitBounds(sorted);
+            mapUpdateStatus(withCoords, needCoords);
+          });
+
+          document.getElementById("mapOptimize")?.addEventListener("click", () => mapOptimize(withCoords, dayBookings));
+          document.getElementById("mapGeocode")?.addEventListener("click",  () => mapGeocode(needCoords));
+          document.getElementById("mapSave")?.addEventListener("click",     () => mapSaveOrder(dayBookings));
+
+        } catch (err) {
+          const el = document.getElementById("mapStatus");
+          if (el) { el.textContent = "Map error: " + err.message; el.style.color = "#f87171"; }
+        }
+      }
+
+      function sortByTime(bookings) {
+        return [...bookings].sort((a, b) => {
+          if (!a.scheduled_datetime) return 1;
+          if (!b.scheduled_datetime) return -1;
+          return new Date(a.scheduled_datetime) - new Date(b.scheduled_datetime);
+        });
+      }
+
+      function mapRenderPins(orderedBookings) {
+        _mapMarkers.forEach(m => m.remove());
+        _mapMarkers = [];
+        orderedBookings.forEach((b, idx) => {
+          const color = MAP_STATUS_COLORS[b.status] || "#60a5fa";
+          const el = document.createElement("div");
+          el.className = "map-pin";
+          el.style.cssText = `background:${color};color:#0c1535;`;
+          el.textContent = String(idx + 1);
+
+          const addr = b.address || "";
+          const popup = new mapboxgl.Popup({ offset: 18, maxWidth: "220px", closeButton: true })
+            .setHTML(`<div>
+              <div class="map-popup-name">${esc(b.customer_name || "—")}</div>
+              <div class="map-popup-addr">${esc(addr)}</div>
+              <div class="map-popup-time">${esc(fmtTime(b.scheduled_datetime) || "No time set")}</div>
+              <div class="map-popup-row">
+                ${addr ? `<a class="map-popup-btn map-popup-nav" href="https://maps.google.com/maps?q=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Navigate</a>` : ""}
+                <button class="map-popup-btn map-popup-open" data-bid="${esc(b.booking_id)}">Details</button>
+              </div>
+            </div>`);
+
+          popup.on("open", () => {
+            popup.getElement().querySelector("[data-bid]")?.addEventListener("click", e => {
+              openDetail(e.currentTarget.dataset.bid);
+            });
+          });
+
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat([b.lng, b.lat])
+            .setPopup(popup)
+            .addTo(_map);
+
+          el.addEventListener("click", () => marker.togglePopup());
+          _mapMarkers.push(marker);
+        });
+      }
+
+      function mapDrawRoute(orderedBookings) {
+        if (!_map || orderedBookings.length < 2) return;
+        const coords = orderedBookings.map(b => [b.lng, b.lat]);
+        const src = "map-route-src", lyr = "map-route-lyr";
+        const geojson = { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
+        if (_map.getSource(src)) {
+          _map.getSource(src).setData(geojson);
+        } else {
+          _map.addSource(src, { type: "geojson", data: geojson });
+          _map.addLayer({ id: lyr, type: "line", source: src,
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#2d6ae0", "line-width": 2.5, "line-opacity": 0.7, "line-dasharray": [2, 2] },
+          });
+        }
+      }
+
+      function mapFitBounds(bookings) {
+        if (!_map || !bookings.length) return;
+        if (bookings.length === 1) { _map.flyTo({ center: [bookings[0].lng, bookings[0].lat], zoom: 13 }); return; }
+        const bounds = new mapboxgl.LngLatBounds();
+        bookings.forEach(b => bounds.extend([b.lng, b.lat]));
+        _map.fitBounds(bounds, { padding: 70, maxZoom: 14 });
+      }
+
+      function mapUpdateStatus(withCoords, needCoords) {
+        const el = document.getElementById("mapStatus"); if (!el) return;
+        const total = withCoords.length + needCoords.length;
+        if (!total) { el.textContent = "No jobs today"; return; }
+        if (!needCoords.length) {
+          el.textContent = `${total} job${total !== 1 ? "s" : ""} on map`;
+        } else {
+          el.textContent = `${withCoords.length}/${total} geocoded`;
+          el.style.color = "#fbbf24";
+        }
+      }
+
+      async function mapOptimize(withCoords, dayBookings) {
+        const btn = document.getElementById("mapOptimize");
+        if (btn) { btn.disabled = true; btn.textContent = "Optimizing…"; }
+        try {
+          const r = await fetch("/api/schedule/optimize", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookings: withCoords.map(b => ({ booking_id: b.booking_id, lat: b.lat, lng: b.lng })) }),
+          });
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "Optimization failed");
+          _optOrder = d.order;
+          const orderedBookings = d.order.map(id => withCoords.find(b => b.booking_id === id)).filter(Boolean);
+          mapRenderPins(orderedBookings);
+          mapDrawRoute(orderedBookings);
+          mapFitBounds(orderedBookings);
+          const saveBtn = document.getElementById("mapSave");
+          if (saveBtn) saveBtn.style.display = "block";
+          const st = document.getElementById("mapStatus");
+          if (st) { st.textContent = `Optimized (${d.method})`; st.style.color = ""; }
+          if (btn) btn.textContent = "Re-optimize";
+        } catch (err) {
+          alert("Optimization error: " + err.message);
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      }
+
+      async function mapGeocode(needCoords) {
+        const btn = document.getElementById("mapGeocode");
+        if (btn) { btn.disabled = true; btn.textContent = "Geocoding…"; }
+        try {
+          const r = await fetch("/api/schedule/geocode", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_ids: needCoords.map(b => b.booking_id) }),
+          });
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "Geocoding failed");
+          await loadData(); // reload to get updated coords
+        } catch (err) {
+          alert("Geocoding error: " + err.message);
+          if (btn) { btn.disabled = false; btn.textContent = `Geocode ${needCoords.length} address${needCoords.length > 1 ? "es" : ""}`; }
+        }
+      }
+
+      async function mapSaveOrder(dayBookings) {
+        if (!_optOrder?.length) return;
+        const saveBtn = document.getElementById("mapSave");
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Saving…"; }
+        try {
+          // Collect existing times in scheduled order
+          const times = sortByTime(dayBookings.filter(b => b.scheduled_datetime))
+            .map(b => b.scheduled_datetime);
+          const order = _optOrder.slice(0, times.length);
+          for (let i = 0; i < order.length; i++) {
+            await patchBooking(order[i], { scheduled_datetime: times[i] });
+          }
+          _optOrder = null;
+          await loadData();
+        } catch (err) {
+          alert("Save failed: " + err.message);
+          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save Order"; }
+        }
       }
 
       // ── Navigation ────────────────────────────────────────────────

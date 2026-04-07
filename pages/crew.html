@@ -73,6 +73,48 @@
     }
     .btn-logout:active { opacity: .75; }
 
+    /* ── View tabs ── */
+    .view-tabs {
+      display: flex; gap: 0;
+      border: 1px solid hsl(220 10% 22%);
+      border-radius: 10px; overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .view-tab {
+      flex: 1; padding: 11px 8px;
+      background: transparent; border: none;
+      color: hsl(220 15% 55%); font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .view-tab.active { background: hsl(217 60% 40%); color: #fff; }
+    .view-tab:not(:last-child) { border-right: 1px solid hsl(220 10% 22%); }
+
+    /* ── Map view ── */
+    #mapView { padding-top: 4px; }
+    #crewMapEl {
+      height: 62dvh; width: 100%;
+      border-radius: 16px; overflow: hidden;
+      background: hsl(220 10% 13%);
+    }
+    .crew-map-status {
+      margin-top: 8px; font-size: 12px;
+      color: hsl(220 15% 45%); text-align: center;
+    }
+    .mapboxgl-popup-content { background: #fff; padding: 12px 14px; border-radius: 10px; }
+    .cpop-name { font-size: 15px; font-weight: 800; color: #111827; margin-bottom: 3px; }
+    .cpop-addr { font-size: 13px; color: #6b7280; margin-bottom: 8px; line-height: 1.4; }
+    .cpop-btns { display: flex; flex-direction: column; gap: 7px; }
+    .cpop-btn {
+      padding: 9px 14px; border-radius: 9px; border: none;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: inherit; text-decoration: none; text-align: center;
+      display: block; transition: opacity .15s;
+    }
+    .cpop-btn:active { opacity: .75; }
+    .cpop-nav  { background: #2d6ae0; color: #fff; }
+    .cpop-way  { background: #1e40af; color: #fff; }
+    .cpop-here { background: #16a34a; color: #fff; }
+
     /* ── Section label ── */
     .section-label {
       font-size: 11px;
@@ -490,11 +532,26 @@
     </div>
   </div>
 
-  <div class="section-label">Today's Jobs</div>
-  <div id="jobList"></div>
-  <div id="noJobs" class="no-jobs" hidden>
-    <strong>No jobs scheduled today</strong>
-    You can still log time or expenses below.
+  <!-- Tab bar -->
+  <div class="view-tabs">
+    <button class="view-tab active" data-tab="list">Jobs</button>
+    <button class="view-tab" data-tab="map">Map</button>
+  </div>
+
+  <!-- Job list tab -->
+  <div id="listView">
+    <div class="section-label" style="margin-top:4px;">Today's Jobs</div>
+    <div id="jobList"></div>
+    <div id="noJobs" class="no-jobs" hidden>
+      <strong>No jobs scheduled today</strong>
+      You can still log time or expenses below.
+    </div>
+  </div>
+
+  <!-- Map tab -->
+  <div id="mapView" style="display:none;">
+    <div id="crewMapEl"></div>
+    <div class="crew-map-status" id="crewMapStatus">Tap a pin to navigate or send a notification.</div>
   </div>
 
   <div class="section-label" style="margin-top:24px;">Log Without a Job</div>

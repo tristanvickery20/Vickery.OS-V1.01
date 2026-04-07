@@ -75,6 +75,8 @@ function shapeBooking(b, tz) {
     is_continuation:      String(b.is_continuation || "").toLowerCase() === "true",
     assigned_tech_id:     b.assigned_tech_id || "",
     assigned_tech_name:   "",
+    lat:                  b.lat ? parseFloat(b.lat) : null,
+    lng:                  b.lng ? parseFloat(b.lng) : null,
     local_date:           localDate,
     local_hour:           localHour,
     local_min:            localMin,
