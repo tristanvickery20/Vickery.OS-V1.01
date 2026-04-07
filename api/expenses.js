@@ -17,7 +17,7 @@ function mapRowToExpense(row) {
   };
 }
 
-async function handleGetExpenses(req, res) {
+async function handleGetExpenses(req, res, opts = {}) {
   try {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
@@ -33,12 +33,18 @@ async function handleGetExpenses(req, res) {
       return res.end(JSON.stringify({ ok: true, entries: [] }));
     }
 
-    const entries = values
+    let entries = values
       .slice(1)
       .filter((r) => r && r.length && String(r[0] || "").trim() !== "")
-      .map(mapRowToExpense)
+      .map(mapRowToExpense);
+
+    if (opts.filterDate) {
+      entries = entries.filter((e) => e.date === opts.filterDate);
+    }
+
+    entries = entries
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-      .slice(0, 100);
+      .slice(0, 500);
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, entries }));

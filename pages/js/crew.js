@@ -167,7 +167,7 @@ async function startTimer(job) {
   saveTimerState(timerState);
   renderJobCards();
   startTimerTick();
-  showToast("Clock started" + (geo ? "" : " (GPS unavailable)"));
+  showToast(geo ? "Clock started" : "Clock started — GPS unavailable, location not recorded");
 }
 
 // ── Timer — pause / resume ────────────────────────────────────────────────────
@@ -212,13 +212,22 @@ async function stopTimer() {
     ? `${currentSession.firstName} ${currentSession.lastName}`
     : "Crew";
 
+  const gpsNote = (() => {
+    const inOk  = snapshot.lat_in  != null;
+    const outOk = geo != null;
+    if (inOk && outOk)  return "GPS clock-in/out via crew app";
+    if (inOk && !outOk) return "GPS clock-in via crew app; clock-out GPS unavailable";
+    if (!inOk && outOk) return "GPS clock-in unavailable; clock-out GPS via crew app";
+    return "GPS unavailable for both clock-in and clock-out";
+  })();
+
   const body = {
     date:     snapshot.date,
     tech_id:  techId,
     lead_id:  snapshot.quoteId || snapshot.bookingId || "",
     minutes,
     category: "On-site",
-    notes:    `GPS clock-in/out via crew app`,
+    notes:    gpsNote,
     lat_in:   snapshot.lat_in,
     lng_in:   snapshot.lng_in,
     lat_out:  geo ? geo.lat : null,
@@ -246,23 +255,20 @@ async function stopTimer() {
 
 // ── Load today's time and expense entries ─────────────────────────────────────
 async function loadTodayEntries() {
-  const today = new Date().toISOString().slice(0, 10);
   try {
     const [timeRes, expRes] = await Promise.all([
-      fetch("/api/time").then(r => r.json()),
-      fetch("/api/expenses").then(r => r.json()),
+      fetch("/api/crew/time-today").then(r => r.json()).catch(() => ({ entries: [] })),
+      fetch("/api/crew/expenses-today").then(r => r.json()).catch(() => ({ entries: [] })),
     ]);
 
     todayTimeMap = {};
     for (const e of (timeRes.entries || [])) {
-      if (e.date !== today) continue;
       const key = e.lead_id || "";
       if (key) todayTimeMap[key] = (todayTimeMap[key] || 0) + (e.minutes || 0);
     }
 
     todayExpMap = {};
     for (const e of (expRes.entries || [])) {
-      if (e.date !== today) continue;
       const key = e.lead_id || "";
       if (key) {
         if (!todayExpMap[key]) todayExpMap[key] = [];

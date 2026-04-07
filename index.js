@@ -209,6 +209,23 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/api/expenses" && req.method === "POST") {
     return handleCreateExpense(req, res);
   }
+  // Crew-session-gated GETs for today's time + expenses (filtered to today only)
+  if (req.url === "/api/crew/time-today" && req.method === "GET") {
+    if (!getCrewSession(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    return handleGetTime(req, res, { filterDate: today });
+  }
+  if (req.url === "/api/crew/expenses-today" && req.method === "GET") {
+    if (!getCrewSession(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    return handleGetExpenses(req, res, { filterDate: today });
+  }
 
   if (req.url === "/crm") {
     const target = isAuthed(req) ? "/clients" : "/login";
