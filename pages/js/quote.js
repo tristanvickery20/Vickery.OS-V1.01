@@ -570,7 +570,7 @@ function renderConfirm() {
       </div>
       <div class="q-field">
         <label class="q-label">How did you find us?</label>
-        <select id="ld_source" class="q-input" style="background:var(--q-surface,#1e2435);color:inherit;border:1px solid var(--q-border,#2d3348);">
+        <select id="ld_source" class="q-input" style="color:inherit;border:1px solid var(--q-border,#2d3348);">
           <option value="">-- Select one (optional) --</option>
           <option value="GBP">Google Search / Google Maps</option>
           <option value="LSA">Google Local Services Ad</option>
