@@ -421,9 +421,18 @@ async function handleDashboardFinancials(req, res) {
       provider.getCashSnapshot().catch(err => ({ ok: false, error: err.message })),
     ]);
 
+    const arOk = arResult.ok !== false;
+    const cashOk = cashResult.ok !== false;
+    const partial = !arOk || !cashOk;
+    const errors = [];
+    if (!arOk) errors.push("ar: " + (arResult.error || "unknown"));
+    if (!cashOk) errors.push("cash: " + (cashResult.error || "unknown"));
+
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({
-      ok: true,
+      ok: !partial,
+      partial: partial,
+      errors: errors.length ? errors : undefined,
       provider: provider.name,
       open_ar:             arResult.open_ar            || 0,
       invoiced_this_month: arResult.invoiced_this_month || 0,

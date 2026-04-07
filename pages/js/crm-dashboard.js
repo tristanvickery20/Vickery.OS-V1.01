@@ -213,7 +213,13 @@
 
       if (finResp) {
         const finData = await finResp.json().catch(() => ({ ok: false }));
-        if (finData.ok) renderFinancials(finData);
+        if (finData.ok || finData.partial) {
+          renderFinancials(finData);
+          if (finData.partial) {
+            const el = document.getElementById("finProvider");
+            if (el) el.textContent += " (partial data)";
+          }
+        }
       }
 
       setText("statusText", "Updated " + new Date().toLocaleTimeString());
