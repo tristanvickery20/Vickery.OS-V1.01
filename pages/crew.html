@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>Crew Portal — Vickery Electric</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1e45c0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VE Crew" />
+  <link rel="apple-touch-icon" href="/pages/img/pwa-icon-192.png" />
+
   <link rel="stylesheet" href="/pages/css/brand.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -517,6 +526,106 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.error { background: hsl(0 60% 36%); }
+
+    /* ── Timer ── */
+    .btn-start-clock {
+      flex: 2;
+      padding: 13px 8px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      background: hsl(217 91% 60%);
+      color: #fff;
+      transition: opacity .15s, background .2s;
+    }
+    .btn-start-clock:active { opacity: .75; }
+    .btn-start-clock:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-stop-clock {
+      flex: 2;
+      padding: 13px 8px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      background: hsl(0 70% 48%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity .15s;
+    }
+    .btn-stop-clock:active { opacity: .75; }
+
+    .btn-pause-clock {
+      padding: 13px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(220 10% 28%);
+      font-family: inherit;
+      background: hsl(220 10% 20%);
+      color: hsl(220 15% 75%);
+      transition: opacity .15s;
+    }
+    .btn-pause-clock:active { opacity: .75; }
+    .btn-pause-clock.paused {
+      background: hsl(38 80% 20%);
+      border-color: hsl(38 80% 35%);
+      color: hsl(38 90% 70%);
+    }
+
+    .timer-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      background: hsl(0 50% 12%);
+      border: 1px solid hsl(0 60% 22%);
+      border-radius: 10px;
+    }
+    .timer-elapsed {
+      font-size: 22px;
+      font-weight: 800;
+      color: hsl(0 80% 70%);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+      flex: 1;
+    }
+    .timer-paused-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: hsl(38 90% 60%);
+    }
+
+    .job-logged-bar {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .logged-chip {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 99px;
+      background: hsl(220 10% 18%);
+      border: 1px solid hsl(220 10% 26%);
+      color: hsl(220 15% 65%);
+      letter-spacing: .03em;
+    }
+    .logged-chip.time { border-color: hsl(217 70% 35%); color: hsl(217 80% 70%); background: hsl(217 40% 13%); }
+    .logged-chip.expense { border-color: hsl(142 50% 28%); color: hsl(142 60% 60%); background: hsl(142 40% 10%); }
   </style>
 </head>
 <body>
@@ -706,5 +815,10 @@
 
 <div class="toast" id="toast"></div>
 <script src="/pages/js/crew.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  }
+</script>
 </body>
 </html>

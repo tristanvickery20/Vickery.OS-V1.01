@@ -164,6 +164,16 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
   }
 
+  // PWA files — public, no auth
+  if (req.url === "/manifest.json") {
+    return serveFile(res, path.join(__dirname, "pages/pwa/manifest.json"), "application/manifest+json");
+  }
+  if (req.url === "/sw.js") {
+    res.writeHead(200, { "Content-Type": "application/javascript", "Service-Worker-Allowed": "/" });
+    fs.createReadStream(path.join(__dirname, "pages/pwa/sw.js")).pipe(res);
+    return;
+  }
+
   // Crew portal pages and auth endpoints (public — no CRM auth required)
   if (req.url === "/crew/login") {
     res.writeHead(302, { Location: "/login" });

@@ -2,7 +2,8 @@ const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 
 function mapRowToEntry(row) {
-  const [id, created_at, date, tech_id, lead_id, minutes, category, notes] = row;
+  const [id, created_at, date, tech_id, lead_id, minutes, category, notes,
+         lat_in, lng_in, lat_out, lng_out] = row;
   return {
     id: id || "",
     created_at: created_at || "",
@@ -12,6 +13,10 @@ function mapRowToEntry(row) {
     minutes: Number(minutes || 0),
     category: category || "",
     notes: notes || "",
+    lat_in: lat_in || "",
+    lng_in: lng_in || "",
+    lat_out: lat_out || "",
+    lng_out: lng_out || "",
   };
 }
 
@@ -22,7 +27,7 @@ async function handleGetTime(req, res) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Time!A1:H2000",
+      range: "Time!A1:L2000",
     });
 
     const values = resp.data.values || [];
@@ -36,7 +41,7 @@ async function handleGetTime(req, res) {
       .filter((r) => r && r.length && String(r[0] || "").trim() !== "")
       .map(mapRowToEntry)
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-      .slice(0, 100);
+      .slice(0, 200);
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, entries }));
@@ -62,6 +67,10 @@ async function handleCreateTime(req, res) {
         minutes: Number(data.minutes || 0),
         category: data.category || "",
         notes: data.notes || "",
+        lat_in: data.lat_in != null ? String(data.lat_in) : "",
+        lng_in: data.lng_in != null ? String(data.lng_in) : "",
+        lat_out: data.lat_out != null ? String(data.lat_out) : "",
+        lng_out: data.lng_out != null ? String(data.lng_out) : "",
       };
 
       const row = [
@@ -73,6 +82,10 @@ async function handleCreateTime(req, res) {
         String(entry.minutes),
         entry.category,
         entry.notes,
+        entry.lat_in,
+        entry.lng_in,
+        entry.lat_out,
+        entry.lng_out,
       ];
 
       const sheets = await getSheetsClient();
@@ -94,8 +107,12 @@ async function handleCreateTime(req, res) {
         entity_type: "time",
         entity_id: entry.id,
         field: "*",
-        new_value: JSON.stringify({ tech_id: entry.tech_id, lead_id: entry.lead_id, minutes: entry.minutes, category: entry.category }),
-        source: "crm-time",
+        new_value: JSON.stringify({
+          tech_id: entry.tech_id, lead_id: entry.lead_id,
+          minutes: entry.minutes, category: entry.category,
+          lat_in: entry.lat_in, lng_in: entry.lng_in,
+        }),
+        source: "crew-portal",
         request_id: genRequestId(),
       }).catch(() => {});
     } catch (err) {

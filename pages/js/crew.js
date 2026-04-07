@@ -1,4 +1,4 @@
-// Crew Portal JS — uses real crew session from /api/crew/me
+// Crew Portal JS — live timer, geolocation, expenses, PWA
 
 let currentSession = null; // { staffId, firstName, lastName, phone, permissions }
 let activeJob      = null;
@@ -14,10 +14,18 @@ let _crewMarkers  = [];
 let _crewTokenP   = null;
 let _mapLoaded    = false;
 
+// ── Timer state ───────────────────────────────────────────────────────────────
+// Persisted in localStorage so it survives page refresh
+const TIMER_KEY = "ve_crew_timer_v2";
+let timerState    = null; // { date, bookingId, quoteId, startTime, pausedMs, lat_in, lng_in, isPaused }
+let timerInterval = null;
+
+// Today's logged time + expenses, keyed by booking_id or quote_id
+let todayTimeMap = {}; // key → total minutes
+let todayExpMap  = {}; // key → [{ type, amount }]
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
-  // Verify session (server already blocks unauthenticated page loads,
-  // but this double-checks and populates the greeting)
   try {
     const res  = await fetch("/api/crew/me");
     const data = await res.json();
@@ -28,13 +36,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  timerState = loadTimerState();
+
   setupHeader();
-  loadTodayJobs();
+  await loadTodayEntries();
+  await loadTodayJobs();
   bindOverlayControls();
   bindJobDetailOverlay();
   bindManualButtons();
   bindLogout();
   bindViewTabs();
+
+  if (timerState) startTimerTick();
 });
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -64,6 +77,201 @@ function bindLogout() {
   });
 }
 
+// ── Geolocation ───────────────────────────────────────────────────────────────
+function getGeo() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      ()    => resolve(null),
+      { timeout: 8000, maximumAge: 30000, enableHighAccuracy: false }
+    );
+  });
+}
+
+// ── Timer — localStorage persistence ─────────────────────────────────────────
+function saveTimerState(state) {
+  try { localStorage.setItem(TIMER_KEY, JSON.stringify(state)); } catch {}
+}
+function loadTimerState() {
+  try {
+    const raw = localStorage.getItem(TIMER_KEY);
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    const today = new Date().toISOString().slice(0, 10);
+    if (state.date !== today) { localStorage.removeItem(TIMER_KEY); return null; }
+    return state;
+  } catch { return null; }
+}
+function clearTimerState() {
+  try { localStorage.removeItem(TIMER_KEY); } catch {}
+}
+
+// ── Timer — elapsed calculation ───────────────────────────────────────────────
+function getElapsedMs() {
+  if (!timerState) return 0;
+  if (timerState.isPaused) return timerState.pausedMs || 0;
+  const now   = Date.now();
+  const start = new Date(timerState.startTime).getTime();
+  return (now - start) + (timerState.pausedMs || 0);
+}
+
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+function formatMinutes(mins) {
+  if (mins < 60) return `${Math.round(mins)}m`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+// ── Timer — tick ──────────────────────────────────────────────────────────────
+function startTimerTick() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(tickTimer, 1000);
+  tickTimer();
+}
+
+function tickTimer() {
+  if (!timerState) { clearInterval(timerInterval); return; }
+  const bid = timerState.bookingId;
+  const el  = document.getElementById("elapsed-" + bid);
+  if (el) el.textContent = formatElapsed(getElapsedMs());
+}
+
+// ── Timer — start ─────────────────────────────────────────────────────────────
+async function startTimer(job) {
+  if (timerState) {
+    const other = _todayJobs.find(j => j.booking_id === timerState.bookingId);
+    const name  = other ? other.customer_name : "another job";
+    showToast(`Stop the current timer (${name}) first`, true);
+    return;
+  }
+  const geo = await getGeo();
+  timerState = {
+    date:      new Date().toISOString().slice(0, 10),
+    bookingId: job.booking_id,
+    quoteId:   job.quote_id || "",
+    startTime: new Date().toISOString(),
+    pausedMs:  0,
+    isPaused:  false,
+    lat_in:    geo ? geo.lat : null,
+    lng_in:    geo ? geo.lng : null,
+  };
+  saveTimerState(timerState);
+  renderJobCards();
+  startTimerTick();
+  showToast("Clock started" + (geo ? "" : " (GPS unavailable)"));
+}
+
+// ── Timer — pause / resume ────────────────────────────────────────────────────
+function pauseTimer() {
+  if (!timerState || timerState.isPaused) return;
+  timerState.pausedMs  = getElapsedMs();
+  timerState.isPaused  = true;
+  timerState.pausedAt  = new Date().toISOString();
+  saveTimerState(timerState);
+  renderJobCards();
+  showToast("Clock paused");
+}
+
+function resumeTimer() {
+  if (!timerState || !timerState.isPaused) return;
+  timerState.startTime = new Date().toISOString();
+  timerState.isPaused  = false;
+  delete timerState.pausedAt;
+  saveTimerState(timerState);
+  renderJobCards();
+  startTimerTick();
+  showToast("Clock resumed");
+}
+
+// ── Timer — stop & log ────────────────────────────────────────────────────────
+async function stopTimer() {
+  if (!timerState) return;
+
+  const elapsedMs = getElapsedMs();
+  const minutes   = Math.max(1, Math.round(elapsedMs / 60000));
+  const snapshot  = { ...timerState };
+
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerState    = null;
+  clearTimerState();
+  renderJobCards();
+
+  const geo = await getGeo();
+
+  const techId = currentSession
+    ? `${currentSession.firstName} ${currentSession.lastName}`
+    : "Crew";
+
+  const body = {
+    date:     snapshot.date,
+    tech_id:  techId,
+    lead_id:  snapshot.quoteId || snapshot.bookingId || "",
+    minutes,
+    category: "On-site",
+    notes:    `GPS clock-in/out via crew app`,
+    lat_in:   snapshot.lat_in,
+    lng_in:   snapshot.lng_in,
+    lat_out:  geo ? geo.lat : null,
+    lng_out:  geo ? geo.lng : null,
+  };
+
+  try {
+    const res  = await fetch("/api/time", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Server error");
+
+    const key = snapshot.quoteId || snapshot.bookingId;
+    todayTimeMap[key] = (todayTimeMap[key] || 0) + minutes;
+
+    showToast(`✓ ${formatMinutes(minutes)} logged`);
+    renderJobCards();
+  } catch (err) {
+    showToast("Failed to save time: " + err.message, true);
+  }
+}
+
+// ── Load today's time and expense entries ─────────────────────────────────────
+async function loadTodayEntries() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const [timeRes, expRes] = await Promise.all([
+      fetch("/api/time").then(r => r.json()),
+      fetch("/api/expenses").then(r => r.json()),
+    ]);
+
+    todayTimeMap = {};
+    for (const e of (timeRes.entries || [])) {
+      if (e.date !== today) continue;
+      const key = e.lead_id || "";
+      if (key) todayTimeMap[key] = (todayTimeMap[key] || 0) + (e.minutes || 0);
+    }
+
+    todayExpMap = {};
+    for (const e of (expRes.entries || [])) {
+      if (e.date !== today) continue;
+      const key = e.lead_id || "";
+      if (key) {
+        if (!todayExpMap[key]) todayExpMap[key] = [];
+        todayExpMap[key].push({ type: e.type, amount: e.amount });
+      }
+    }
+  } catch {}
+}
+
 // ── Today's jobs ──────────────────────────────────────────────────────────────
 async function loadTodayJobs() {
   const list   = document.getElementById("jobList");
@@ -74,51 +282,111 @@ async function loadTodayJobs() {
     const res  = await fetch("/api/crew/today");
     const data = await res.json();
     const jobs = data.jobs || [];
-    _todayJobs = jobs; // cache for map tab
+    _todayJobs = jobs;
     if (!jobs.length) {
       list.innerHTML = "";
       if (noJobs) noJobs.hidden = false;
       return;
     }
     if (noJobs) noJobs.hidden = true;
-    list.innerHTML = jobs.map(jobCard).join("");
-    list.querySelectorAll(".btn-time").forEach(btn =>
-      btn.addEventListener("click", () => openTimeOverlay(JSON.parse(btn.dataset.job)))
-    );
-    list.querySelectorAll(".btn-expense").forEach(btn =>
-      btn.addEventListener("click", () => openExpenseOverlay(JSON.parse(btn.dataset.job)))
-    );
-    list.querySelectorAll(".btn-review-ask").forEach(btn =>
-      btn.addEventListener("click", () => sendReviewAsk(JSON.parse(btn.dataset.job), btn))
-    );
-    list.querySelectorAll(".job-card-top").forEach(el =>
-      el.addEventListener("click", () => openJobDetail(JSON.parse(el.dataset.job)))
-    );
+    renderJobCards();
   } catch {
     list.innerHTML = `<div style="color:hsl(0 60% 55%);padding:16px;">Could not load today's jobs.</div>`;
   }
 }
 
+function renderJobCards() {
+  const list = document.getElementById("jobList");
+  if (!list || !_todayJobs.length) return;
+  list.innerHTML = _todayJobs.map(jobCard).join("");
+
+  list.querySelectorAll(".btn-start-clock").forEach(btn =>
+    btn.addEventListener("click", () => startTimer(JSON.parse(btn.dataset.job)))
+  );
+  list.querySelectorAll(".btn-stop-clock").forEach(btn =>
+    btn.addEventListener("click", stopTimer)
+  );
+  list.querySelectorAll(".btn-pause-clock").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (timerState?.isPaused) resumeTimer(); else pauseTimer();
+    });
+  });
+  list.querySelectorAll(".btn-expense").forEach(btn =>
+    btn.addEventListener("click", () => openExpenseOverlay(JSON.parse(btn.dataset.job)))
+  );
+  list.querySelectorAll(".btn-review-ask").forEach(btn =>
+    btn.addEventListener("click", () => sendReviewAsk(JSON.parse(btn.dataset.job), btn))
+  );
+  list.querySelectorAll(".job-card-top").forEach(el =>
+    el.addEventListener("click", () => openJobDetail(JSON.parse(el.dataset.job)))
+  );
+
+  // Kick off display update immediately for active timer
+  if (timerState) tickTimer();
+}
+
 function jobCard(j) {
+  const bid     = j.booking_id;
   const block   = j.schedule_block ? `${j.schedule_block} · ` : "";
   const dur     = j.duration_minutes ? `${j.duration_minutes} min` : "";
   const jobData = esc(JSON.stringify(j));
+
+  // Timer state for this job
+  const isActive  = timerState && timerState.bookingId === bid;
+  const anyActive = !!timerState;
+
+  // Today's logged summary
+  const jobKey   = j.quote_id || bid;
+  const logMins  = todayTimeMap[jobKey] || 0;
+  const logExps  = todayExpMap[jobKey]  || [];
+  let loggedHtml = "";
+  if (logMins || logExps.length) {
+    const chips = [];
+    if (logMins) chips.push(`<span class="logged-chip time">⏱ ${formatMinutes(logMins)} logged</span>`);
+    for (const exp of logExps) {
+      chips.push(`<span class="logged-chip expense">$${Number(exp.amount).toFixed(2)} ${esc(exp.type)}</span>`);
+    }
+    loggedHtml = `<div class="job-logged-bar">${chips.join("")}</div>`;
+  }
+
+  // Timer display row (shown when this job is active)
+  const timerHtml = isActive ? `
+    <div class="timer-row">
+      <div class="timer-elapsed" id="elapsed-${esc(bid)}">${formatElapsed(getElapsedMs())}</div>
+      ${timerState.isPaused ? `<span class="timer-paused-label">Paused</span>` : ""}
+      <button class="btn-pause-clock${timerState.isPaused ? " paused" : ""}" style="font-size:13px;padding:8px 12px;">
+        ${timerState.isPaused ? "▶ Resume" : "⏸ Pause"}
+      </button>
+    </div>` : "";
+
+  // Clock button
+  let clockBtn;
+  if (isActive) {
+    clockBtn = `<button class="btn-stop-clock">■ Stop &amp; Log</button>`;
+  } else {
+    const disabled = anyActive ? 'disabled title="Stop the current timer first"' : "";
+    clockBtn = `<button class="btn-start-clock" data-job='${jobData}' ${disabled}>▶ Start Clock</button>`;
+  }
+
   const reviewBtn = j.phone
-    ? `<button class="btn-review-ask" data-job='${jobData}'>Review Ask</button>`
+    ? `<button class="btn-review-ask" data-job='${jobData}'>★ Review</button>`
     : "";
+
   return `
-    <div class="job-card">
+    <div class="job-card" id="card-${esc(bid)}">
       <div class="job-card-top" data-job='${jobData}'>
         <div class="job-block">${block}${dur}</div>
         <div class="job-customer">${esc(j.customer_name || "Customer")}</div>
         <div class="job-address">${esc(j.address || "—")}</div>
         <div class="job-tap-hint">Tap to view details</div>
       </div>
+      ${timerHtml}
       <div class="job-actions">
-        <button class="btn-time"    data-job='${jobData}'>Log Time</button>
-        <button class="btn-expense" data-job='${jobData}'>Expense</button>
+        ${clockBtn}
+        <button class="btn-expense" data-job='${jobData}'>+ Expense</button>
         ${reviewBtn}
       </div>
+      ${loggedHtml}
     </div>`;
 }
 
@@ -158,7 +426,7 @@ async function sendReviewAsk(job, btn) {
 }
 
 // ── Job Detail Overlay ────────────────────────────────────────────────────────
-let _detailJob = null; // currently-open job, used by notify buttons
+let _detailJob = null;
 
 function closeJobDetail() {
   _detailJob = null;
@@ -229,7 +497,6 @@ function classificationLabel(s) {
 }
 
 function openJobDetail(j) {
-  // Customer + price
   document.getElementById("jdCustomer").textContent = j.customer_name || "Customer";
   const priceEl = document.getElementById("jdPrice");
   priceEl.textContent = j.final_price
@@ -237,7 +504,6 @@ function openJobDetail(j) {
     : "";
   priceEl.style.display = j.final_price ? "block" : "none";
 
-  // Reference IDs — always show so crew has a paper trail
   const refEl = document.getElementById("jdRef");
   const refs = [];
   if (j.booking_id) refs.push(j.booking_id);
@@ -245,10 +511,9 @@ function openJobDetail(j) {
   refEl.textContent = refs.join("  ·  ");
   refEl.style.display = refs.length ? "block" : "none";
 
-  // Scheduled time
   const timeEl = document.getElementById("jdTime");
   if (j.scheduled_datetime) {
-    const d = new Date(j.scheduled_datetime);
+    const d    = new Date(j.scheduled_datetime);
     const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const dur  = j.duration_minutes ? ` · ${j.duration_minutes} min` : "";
     const blk  = j.schedule_block   ? ` (${j.schedule_block})` : "";
@@ -257,7 +522,6 @@ function openJobDetail(j) {
     timeEl.textContent = j.schedule_block || "—";
   }
 
-  // Address + navigate link
   const addr = j.address || "";
   document.getElementById("jdAddress").textContent = addr || "—";
   const navLink = document.getElementById("jdNavigate");
@@ -268,7 +532,6 @@ function openJobDetail(j) {
     navLink.style.display = "none";
   }
 
-  // Scope / notes — always show
   const scopeSection = document.getElementById("jdScopeSection");
   const scopeEl = document.getElementById("jdScope");
   scopeSection.style.display = "block";
@@ -280,45 +543,30 @@ function openJobDetail(j) {
   const hasDetails = items.length > 0 || addons.length > 0 || qty > 1 || j.scope_of_work;
 
   let html = "";
-
   if (hasDetails) {
-    // Status notice — only show alongside real detail rows, not alone
     if (clsLabel) {
       const isBlocked = (j.scope_status || "").includes("blocked");
       html += `<div class="scope-status ${isBlocked ? "scope-status--alert" : ""}">${esc(clsLabel)}</div>`;
     }
-
-    // Quantity — always show when we have structured scope
-    if (qty != null) {
-      html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
-    }
-
-    // Q&A rows from quote answers
+    if (qty != null) html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
     items.forEach(item => {
       html += `<div class="scope-row"><span class="scope-row-label">${esc(item.label)}</span><span class="scope-row-val">${esc(item.value)}</span></div>`;
     });
-
-    // Add-ons
     addons.forEach(name => {
       html += `<div class="scope-row"><span class="scope-row-label">Add-on</span><span class="scope-row-val">${esc(name)}</span></div>`;
     });
-
-    // Plain-text notes (manually-created bookings with no quote answers)
     if (items.length === 0 && j.scope_of_work) {
       html += `<div class="scope-plain">${esc(j.scope_of_work)}</div>`;
     }
   } else {
-    // No detail data at all
     const notice = clsLabel ? `<div class="scope-status">${esc(clsLabel)}</div>` : "";
     html = notice + `<span class="scope-empty">No quote details on file — this job was booked manually. Check with the office for scope.</span>`;
   }
-
   scopeEl.innerHTML = html;
 
-  // Job type — show if available, hide only when truly nothing
   const typeSection = document.getElementById("jdTypeSection");
-  const typeEl = document.getElementById("jdType");
-  const typeName = j.job_type_name || "";
+  const typeEl      = document.getElementById("jdType");
+  const typeName    = j.job_type_name || "";
   if (typeName) {
     typeEl.textContent = typeName;
     typeSection.style.display = "block";
@@ -326,10 +574,8 @@ function openJobDetail(j) {
     typeSection.style.display = "none";
   }
 
-  // Notify Customer section — show only when job has a phone number
   const notifySection = document.getElementById("jdNotifySection");
   if (notifySection) notifySection.style.display = j.phone ? "block" : "none";
-  // Reset any previously-sent button states
   document.querySelectorAll(".btn-notify").forEach(b => {
     b.textContent = b.id === "notifyOnTheWay" ? "On the way"
       : b.id === "notifyWeAreHere" ? "We're here"
@@ -345,7 +591,7 @@ function openJobDetail(j) {
 
 // ── Overlay controls ──────────────────────────────────────────────────────────
 function bindOverlayControls() {
-  // Time
+  // Manual time entry (Log Without a Job section only)
   document.getElementById("closeTime")?.addEventListener("click", () => closeOverlay("timeOverlay"));
   document.getElementById("timeOverlay")?.addEventListener("click", e => {
     if (e.target === e.currentTarget) closeOverlay("timeOverlay");
@@ -363,7 +609,7 @@ function bindOverlayControls() {
   });
   document.getElementById("submitTime")?.addEventListener("click", submitTime);
 
-  // Expense
+  // Expense overlay
   document.getElementById("closeExpense")?.addEventListener("click", () => closeOverlay("expenseOverlay"));
   document.getElementById("expenseOverlay")?.addEventListener("click", e => {
     if (e.target === e.currentTarget) closeOverlay("expenseOverlay");
@@ -457,6 +703,10 @@ async function submitTime() {
     if (!data.ok) throw new Error(data.error || "Server error");
     closeOverlay("timeOverlay");
     showToast(`✓ ${hoursValue} hr${hoursValue !== 1 ? "s" : ""} logged`);
+    if (body.lead_id) {
+      todayTimeMap[body.lead_id] = (todayTimeMap[body.lead_id] || 0) + body.minutes;
+      renderJobCards();
+    }
   } catch (err) {
     showToast("Error: " + err.message, true);
   }
@@ -469,10 +719,11 @@ async function submitExpense() {
   const btn = document.getElementById("submitExpense");
   if (btn) btn.disabled = true;
   const techId = currentSession ? `${currentSession.firstName} ${currentSession.lastName}` : "Crew";
+  const leadId = activeJob ? (activeJob.quote_id || activeJob.booking_id || "") : "";
   const body = {
     date:    new Date().toISOString().slice(0, 10),
     tech_id: techId,
-    lead_id: activeJob ? (activeJob.quote_id || activeJob.booking_id || "") : "",
+    lead_id: leadId,
     type:    expCategory,
     vendor:  document.getElementById("expenseVendor")?.value.trim() || "",
     amount:  amount,
@@ -484,6 +735,11 @@ async function submitExpense() {
     if (!data.ok) throw new Error(data.error || "Server error");
     closeOverlay("expenseOverlay");
     showToast(`✓ $${amount.toFixed(2)} ${expCategory} logged`);
+    if (leadId) {
+      if (!todayExpMap[leadId]) todayExpMap[leadId] = [];
+      todayExpMap[leadId].push({ type: expCategory, amount });
+      renderJobCards();
+    }
   } catch (err) {
     showToast("Error: " + err.message, true);
   }
@@ -576,7 +832,6 @@ async function renderCrewMap() {
     _crewMap.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
     _crewMap.on("load", () => {
-      // Route line
       if (sorted.length > 1) {
         const coords = sorted.map(j => [j.lng, j.lat]);
         _crewMap.addSource("crew-route", {
@@ -590,7 +845,6 @@ async function renderCrewMap() {
         });
       }
 
-      // Pins
       sorted.forEach((job, idx) => {
         const el = document.createElement("div");
         el.style.cssText = [
@@ -637,7 +891,6 @@ async function renderCrewMap() {
         _crewMarkers.push(marker);
       });
 
-      // Fit bounds
       if (sorted.length > 1) {
         const bounds = new mapboxgl.LngLatBounds();
         sorted.forEach(j => bounds.extend([j.lng, j.lat]));
