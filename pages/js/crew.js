@@ -255,11 +255,13 @@ async function stopTimer() {
   const minutes   = Math.max(1, Math.round(elapsedMs / 60000));
   const snapshot  = { ...timerState };
 
+  // Freeze the tick interval but keep timerState until server confirms success
   clearInterval(timerInterval);
   timerInterval = null;
-  timerState    = null;
-  clearTimerState();
-  renderJobCards();
+
+  // Disable the Stop button to prevent double-submit while saving
+  const stopBtn = document.querySelector(".btn-stop-clock");
+  if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = "Saving…"; }
 
   const geo = await getGeo();
 
@@ -324,13 +326,25 @@ async function stopTimer() {
       if (!ok) throw new Error(data.error || "Server error");
     }
 
+    // Server confirmed — now clear local timer state
+    timerState = null;
+    clearTimerState();
+
     const key = snapshot.quoteId || snapshot.bookingId;
     todayTimeMap[key] = (todayTimeMap[key] || 0) + minutes;
 
     showToast(`✓ ${formatMinutes(minutes)} logged`);
     renderJobCards();
   } catch (err) {
-    showToast("Failed to save time: " + err.message, true);
+    // Server failed — restore timer so user can retry; resume tick from frozen elapsed
+    timerState = snapshot;
+    timerState.isPaused  = true;
+    timerState.pausedMs  = elapsedMs;
+    timerState.pausedAt  = new Date().toISOString();
+    saveTimerState(timerState);
+    renderJobCards();
+    startTimerTick(); // Resume display so elapsed stays visible
+    showToast("Failed to save time: " + err.message + " — clock paused, tap Resume when ready", true);
   }
 }
 
