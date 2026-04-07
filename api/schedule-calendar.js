@@ -74,7 +74,9 @@ function shapeBooking(b, tz) {
     booking_group_id:     b.booking_group_id || "",
     is_continuation:      String(b.is_continuation || "").toLowerCase() === "true",
     assigned_tech_id:     b.assigned_tech_id || "",
+    assigned_tech_ids:    b.assigned_tech_ids || "",
     assigned_tech_name:   "",
+    assigned_tech_names:  [],
     lat:                  b.lat ? parseFloat(b.lat) : null,
     lng:                  b.lng ? parseFloat(b.lng) : null,
     local_date:           localDate,
@@ -123,11 +125,18 @@ async function handleGetCalendar(req, res) {
     const shaped = rawBookings
       .filter(b => b.booking_id)
       .map(b => {
-        const shaped = shapeBooking(b, tz);
-        if (shaped.assigned_tech_id && techMap[shaped.assigned_tech_id]) {
-          shaped.assigned_tech_name = techMap[shaped.assigned_tech_id];
+        const sh = shapeBooking(b, tz);
+        // Primary single tech name
+        if (sh.assigned_tech_id && techMap[sh.assigned_tech_id]) {
+          sh.assigned_tech_name = techMap[sh.assigned_tech_id];
         }
-        return shaped;
+        // Multi-tech names from assigned_tech_ids (comma-separated)
+        if (sh.assigned_tech_ids) {
+          sh.assigned_tech_names = sh.assigned_tech_ids
+            .split(",").map(id => id.trim()).filter(Boolean)
+            .map(id => techMap[id] || id);
+        }
+        return sh;
       });
 
     // Filter by date range if provided

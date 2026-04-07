@@ -91,11 +91,12 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, quotesData, config] = await Promise.all([
+    const [leadsData, timeData, expData, quotesData, snapshotsData, config] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       fetchTabRows(sheets, spreadsheetId, "Quotes!A1:G2000"),
+      fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A1:Z"),
       getConfig(),
     ]);
 
@@ -144,9 +145,29 @@ async function handleDashboard(req, res) {
     const qCreatedIdx = quotesHeaders.indexOf("created_at");
     const qPriceIdx = quotesHeaders.indexOf("quoted_price");
     let quoted_7d = 0;
+    // Old quote system (Quotes tab)
     for (const row of quotesData.rows) {
       const d = parseDateStr(row[qCreatedIdx]);
       if (d && d >= ago7) quoted_7d += num(row[qPriceIdx]);
+    }
+    // New quote engine (QuoteSnapshots tab) — count only "locked" events, deduplicate by quote_id
+    {
+      const sh = snapshotsData.headers;
+      const sEventTypeIdx  = sh.indexOf("event_type");
+      const sCreatedIdx    = sh.indexOf("created_at");
+      const sFinalPriceIdx = sh.indexOf("final_price");
+      const sQuoteIdIdx    = sh.indexOf("quote_id");
+      const seenQuoteIds   = new Set();
+      for (const row of snapshotsData.rows) {
+        if (sEventTypeIdx >= 0 && String(row[sEventTypeIdx] || "").trim() !== "locked") continue;
+        const qid = String(row[sQuoteIdIdx] || "").trim();
+        if (!qid || seenQuoteIds.has(qid)) continue;
+        const d = parseDateStr(row[sCreatedIdx]);
+        if (d && d >= ago7) {
+          seenQuoteIds.add(qid);
+          quoted_7d += num(row[sFinalPriceIdx]);
+        }
+      }
     }
 
     let invoiced_7d = 0;
@@ -214,9 +235,33 @@ async function handleDashboard(req, res) {
         address: l.address || "",
       }));
 
+    // ── Build QuoteSnapshot name lookup (quote_id → customer_name) ──
+    const snapshotNameByQuoteId = {};
+    {
+      const sh = snapshotsData.headers;
+      const sQid   = sh.indexOf("quote_id");
+      const sName  = sh.indexOf("customer_name");
+      for (const row of snapshotsData.rows) {
+        const qid = String(row[sQid] || "").trim();
+        const nm  = String(row[sName] || "").trim();
+        if (qid && nm && !snapshotNameByQuoteId[qid]) snapshotNameByQuoteId[qid] = nm;
+      }
+    }
+
+    function resolveName(l) {
+      if (l.name) return l.name;
+      // Try last_quote_id → QuoteSnapshots customer_name
+      if (l.last_quote_id && snapshotNameByQuoteId[l.last_quote_id]) return snapshotNameByQuoteId[l.last_quote_id];
+      // Try quote_snapshot_json embedded name (old quote engine format)
+      try {
+        const snap = JSON.parse(l.quote_snapshot_json || "{}");
+        return snap?.lead?.name || snap?.customer_name || "";
+      } catch { return ""; }
+    }
+
     // ── Recent Activity ──
     const recent_activity = leads
-      .filter((l) => l.last_activity_at || l.updated_at || l.created_at)
+      .filter((l) => l.created_at)
       .sort((a, b) => {
         const da = parseDateStr(a.last_activity_at) || parseDateStr(a.updated_at) || parseDateStr(a.created_at) || new Date(0);
         const db = parseDateStr(b.last_activity_at) || parseDateStr(b.updated_at) || parseDateStr(b.created_at) || new Date(0);
@@ -225,7 +270,7 @@ async function handleDashboard(req, res) {
       .slice(0, 10)
       .map((l) => ({
         id: l.id || "",
-        name: l.name || "",
+        name: resolveName(l),
         status: l.status || "",
         last_activity_at: l.last_activity_at || l.updated_at || l.created_at || "",
       }));

@@ -713,10 +713,19 @@
       }
 
       // ── Filter & booking helpers ──────────────────────────────────
+      function bookingHasTech(b, techId) {
+        if (!techId) return true;
+        if (b.assigned_tech_id === techId) return true;
+        if (b.assigned_tech_ids) {
+          return b.assigned_tech_ids.split(",").map(s => s.trim()).includes(techId);
+        }
+        return false;
+      }
+
       function filteredBookings() {
         let list = S.bookings;
         if (S.filterTech) {
-          list = list.filter(b => b.assigned_tech_id === S.filterTech);
+          list = list.filter(b => bookingHasTech(b, S.filterTech));
         }
         if (S.filterStatus) {
           list = list.filter(b => b.status.toLowerCase() === S.filterStatus);
@@ -1279,15 +1288,26 @@
           // No staff data yet — just show unassigned
         }
 
-        // Group bookings by tech
+        // Group bookings by tech — a booking appears under each tech in assigned_tech_ids
         const byTech = {};
         for (const b of bookings) {
-          const key = b.assigned_tech_id || "";
-          (byTech[key] = byTech[key] || []).push(b);
+          const techList = [];
+          if (b.assigned_tech_id) techList.push(b.assigned_tech_id);
+          if (b.assigned_tech_ids) {
+            b.assigned_tech_ids.split(",").map(s => s.trim()).filter(Boolean).forEach(id => {
+              if (!techList.includes(id)) techList.push(id);
+            });
+          }
+          if (techList.length === 0) techList.push(""); // unassigned bucket
+          for (const key of techList) {
+            (byTech[key] = byTech[key] || []).push(b);
+          }
         }
 
-        // Also get block/all-day bookings
-        const blockBookings = filteredBookings().filter(b => b.local_date === curDate && b.schedule_block && !b.assigned_tech_id);
+        // Also get block/all-day bookings (unassigned to any tech)
+        const blockBookings = filteredBookings().filter(b =>
+          b.local_date === curDate && b.schedule_block && !b.assigned_tech_id && !b.assigned_tech_ids
+        );
 
         const totalW = TECH_COL_PX + hours.length * HOUR_COL_PX;
 
@@ -1540,7 +1560,14 @@
           ["Duration",     fmtDuration(b.duration_minutes) || "—"],
           ["Job Type",     esc(b.job_type_id || "—")],
           ["Price",        b.final_price ? `$${Number(b.final_price).toLocaleString()}` : "—"],
-          ["Assigned Tech",b.assigned_tech_name ? esc(b.assigned_tech_name) : (b.assigned_tech_id ? esc(b.assigned_tech_id) : "Unassigned")],
+          ["Assigned Crew", (() => {
+            const names = [];
+            if (b.assigned_tech_name) names.push(esc(b.assigned_tech_name));
+            if (b.assigned_tech_names && b.assigned_tech_names.length) {
+              b.assigned_tech_names.forEach(n => { if (n && !names.includes(esc(n))) names.push(esc(n)); });
+            }
+            return names.length ? names.join(", ") : "Unassigned";
+          })()],
           ["Booking ID",   `<span style="font-size:11px;color:var(--muted);">${esc(b.booking_id)}</span>`],
         ];
 
@@ -1553,14 +1580,23 @@
           }
         }
 
-        // Tech assignment (quick reassign)
+        // Multi-tech assignment (checkboxes)
         if (S.staff.length > 0) {
-          body += `<div class="detail-row">
-            <div class="detail-label">Reassign Tech</div>
-            <select class="cal-select" id="detailTechSelect" style="width:100%;margin-top:4px;">
-              <option value="">Unassigned</option>
-              ${S.staff.map(s => `<option value="${esc(s.staff_id)}"${b.assigned_tech_id === s.staff_id ? " selected" : ""}>${esc(s.name)}</option>`).join("")}
-            </select>
+          // Build set of currently assigned IDs (from both fields)
+          const currentTechIds = new Set();
+          if (b.assigned_tech_id) currentTechIds.add(b.assigned_tech_id);
+          if (b.assigned_tech_ids) b.assigned_tech_ids.split(",").map(s => s.trim()).filter(Boolean).forEach(id => currentTechIds.add(id));
+
+          body += `<div class="detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+            <div class="detail-label" style="margin-bottom:4px;">Assign Crew (select all that apply)</div>
+            <div id="detailTechChecks" style="display:flex;flex-direction:column;gap:6px;width:100%;">
+              ${S.staff.map(s => `
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;border-radius:8px;border:1px solid var(--line2);background:rgba(255,255,255,0.02);">
+                  <input type="checkbox" data-tech-id="${esc(s.staff_id)}" ${currentTechIds.has(s.staff_id) ? "checked" : ""} style="width:16px;height:16px;accent-color:var(--blue);">
+                  <span>${esc(s.name)}</span>
+                </label>`).join("")}
+            </div>
+            <button class="detail-btn" id="detailClearCrew" style="margin-top:2px;opacity:0.6;font-size:12px;">Clear All</button>
           </div>`;
         }
 
@@ -1568,13 +1604,25 @@
         detailFooter.innerHTML = `
           ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/leads?q=${esc(b.quote_id)}" target="_blank">Open Full Record &#8599;</a>` : ""}
-          ${S.staff.length > 0 ? `<button class="detail-btn" id="detailSaveTech">Save Assignment</button>` : ""}
+          ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
         `;
 
+        document.getElementById("detailClearCrew")?.addEventListener("click", () => {
+          document.querySelectorAll("#detailTechChecks input[type=checkbox]").forEach(cb => { cb.checked = false; });
+        });
+
         document.getElementById("detailSaveTech")?.addEventListener("click", async () => {
-          const techId = document.getElementById("detailTechSelect")?.value || "";
+          const checkedIds = Array.from(
+            document.querySelectorAll("#detailTechChecks input[type=checkbox]:checked")
+          ).map(cb => cb.dataset.techId).filter(Boolean);
+
+          const primaryId = checkedIds[0] || "";
+          const allIds    = checkedIds.join(",");
           try {
-            await patchBooking(b.booking_id, { assigned_tech_id: techId });
+            await patchBooking(b.booking_id, {
+              assigned_tech_id:  primaryId,
+              assigned_tech_ids: allIds,
+            });
             closeDetail();
             await loadData();
           } catch (err) {
@@ -2033,7 +2081,7 @@
         const ids = [...S.selected];
         const failed = [];
         for (const id of ids) {
-          try { await patchBooking(id, { assigned_tech_id: techId }); }
+          try { await patchBooking(id, { assigned_tech_id: techId, assigned_tech_ids: techId }); }
           catch { failed.push(id); }
         }
         S.selected.clear();

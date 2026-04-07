@@ -15,7 +15,7 @@ const { ensureTabHeaders } = require("../lib/sheetsSchema");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 const ALLOWED_FIELDS  = new Set([
-  "scheduled_datetime", "duration_minutes", "assigned_tech_id", "status",
+  "scheduled_datetime", "duration_minutes", "assigned_tech_id", "assigned_tech_ids", "status",
 ]);
 
 function json(res, status, payload) {

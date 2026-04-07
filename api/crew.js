@@ -187,6 +187,9 @@ async function handleGetTodayJobs(req, res) {
           scope_addons:       scopeResult.addons,
           // Plain-text fallback (manually-created bookings)
           scope_of_work:      plainScope,
+          // Tech assignment (single and multi)
+          assigned_tech_id:   get("assigned_tech_id"),
+          assigned_tech_ids:  get("assigned_tech_ids"),
         };
       })
       .filter(j => j.date === today && j.status !== "cancelled")
