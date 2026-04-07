@@ -34,7 +34,7 @@ function mapboxOptimize(bookings) {
     ...bookings.map(b => `${b.lng},${b.lat}`),
   ].join(";");
 
-  const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coords}?access_token=${token}&source=first&destination=last&roundtrip=false&overview=simplified`;
+  const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coords}?access_token=${token}&source=first&destination=any&roundtrip=false&overview=simplified`;
 
   return new Promise((resolve, reject) => {
     https.get(url, (r) => {

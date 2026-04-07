@@ -228,6 +228,15 @@
       .wv-chip.selected { outline: 2px solid #fff; outline-offset: 1px; }
       .wv-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .wv-chip .chip-time { font-size: 10px; opacity: 0.75; }
+      .chip-nav-link {
+        position: absolute; top: 2px; right: 18px;
+        font-size: 11px; color: rgba(255,255,255,0.6); text-decoration: none;
+        z-index: 4; padding: 2px 4px; border-radius: 4px; line-height: 1;
+        display: none; background: rgba(0,0,0,0.2);
+      }
+      .wv-chip:hover .chip-nav-link,
+      .dv-chip:hover .chip-nav-link { display: block; }
+      .chip-nav-link:hover { color: #fff; background: rgba(0,0,0,0.4); }
       .chip-resize-handle {
         position: absolute; bottom: 0; left: 0; right: 0; height: 7px;
         cursor: ns-resize; background: transparent; z-index: 4; border-radius: 0 0 6px 6px;
@@ -557,8 +566,11 @@
       const MAX_CHIPS_MONTH = 3; // max chips to show before "+N more"
 
       // ── State ──────────────────────────────────────────────────────
+      // Hydrate view from URL query param (?view=map|day|week|month)
+      const _qv = new URLSearchParams(window.location.search).get("view");
+      const _VALID_VIEWS = new Set(["month", "week", "day", "map"]);
       const S = {
-        view:        "month",
+        view:        _VALID_VIEWS.has(_qv) ? _qv : "month",
         cursor:      new Date(),
         bookings:    [],
         unscheduled: [],
@@ -782,8 +794,6 @@
       // ── Render all ────────────────────────────────────────────────
       function renderAll() {
         updateTitle();
-        // Drawer hidden in map view
-        calDrawer.style.display = S.view === "map" ? "none" : "";
         updateUnschedBadge();
         renderDrawer();
         updateBulkBar();
@@ -1102,9 +1112,10 @@
             const selected = S.selected.has(b.booking_id) ? " selected" : "";
             html += `<div class="wv-chip ${chipClass(b.status)}${selected}"
               draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
-              style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;">
+              style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;position:relative;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
               <span class="chip-time">${fmtTime(b.scheduled_datetime)}</span>
+              ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
               <div class="chip-resize-handle" title="Drag to resize"></div>
             </div>`;
           }
@@ -1319,9 +1330,10 @@
               const selected = S.selected.has(b.booking_id) ? " selected" : "";
               html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
                 draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
-                style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;">
+                style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;position:relative;">
                 <span class="chip-name">${esc(b.customer_name || "—")}</span>
                 <span class="chip-time" style="font-size:10px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+                ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
                 <div class="chip-resize-handle-right" title="Drag to resize"></div>
               </div>`;
             }
@@ -1786,6 +1798,20 @@
           const st = document.getElementById("mapStatus");
           if (st) { st.textContent = `Optimized (${d.method})`; st.style.color = ""; }
           if (btn) btn.textContent = "Re-optimize";
+          // Show ordered stop list in control panel
+          let seqEl = document.getElementById("mapRouteSeq");
+          if (!seqEl) {
+            seqEl = document.createElement("div");
+            seqEl.id = "mapRouteSeq";
+            seqEl.style.cssText = "background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11px;max-width:200px;max-height:160px;overflow-y:auto;";
+            document.querySelector(".map-ctrl-panel").appendChild(seqEl);
+          }
+          seqEl.innerHTML = orderedBookings.map((b, i) =>
+            `<div style="padding:3px 0;border-bottom:1px solid var(--line);color:var(--text);display:flex;gap:6px;align-items:center;">
+              <span style="width:18px;height:18px;border-radius:50%;background:#2d6ae0;color:#fff;font-weight:800;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(b.customer_name || "—")}</span>
+            </div>`
+          ).join("");
         } catch (err) {
           alert("Optimization error: " + err.message);
         } finally {
@@ -1872,10 +1898,15 @@
       document.getElementById("detailClose").addEventListener("click", closeDetail);
       detailBackdrop.addEventListener("click", closeDetail);
 
+      // Set initial active button from hydrated view
+      document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === S.view));
+
       document.querySelectorAll(".view-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           if (S.view === btn.dataset.view) return;
           S.view = btn.dataset.view;
+          // Keep URL in sync so ?view=map is shareable/refreshable
+          history.replaceState(null, "", `?view=${S.view}`);
           document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b === btn));
           loadData();
         });
