@@ -61,6 +61,7 @@ const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, hand
 const { handleGeocode } = require("./api/schedule-geocode");
 const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
 const { handleMapboxConfig } = require("./api/config-mapbox");
+const { handleGetPositions, startPolling: startTraccarPolling } = require("./api/traccar");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
@@ -716,6 +717,11 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateTemplate(req, res, templateId);
   }
 
+  // Traccar fleet positions (CRM only — behind auth guard above)
+  if (_epath === "/api/traccar/positions" && req.method === "GET") {
+    return handleGetPositions(req, res);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -736,6 +742,9 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())
     .catch((err) => console.error("[Startup]", err.message));
+
+  // Start Traccar fleet tracking polls (no-op if env vars absent)
+  startTraccarPolling();
 
   // Nightly actuals → Config job (runs once per day at midnight server time)
   function scheduleNightlyActuals() {

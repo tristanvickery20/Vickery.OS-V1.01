@@ -417,6 +417,21 @@
         transition: transform 0.15s; user-select: none;
       }
       .map-pin:hover { transform: scale(1.18); }
+      .map-truck-pin {
+        width: 34px; height: 34px; border-radius: 7px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px; border: 2px solid rgba(255,255,255,0.85);
+        cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.55);
+        background: #2563eb; transition: transform 0.15s; user-select: none;
+      }
+      .map-truck-pin:hover { transform: scale(1.18); }
+      .map-gps-badge {
+        background: rgba(30,30,40,0.92); border: 1px solid rgba(239,68,68,0.55);
+        color: #f87171; border-radius: 8px; padding: 5px 10px;
+        font-size: 11px; font-weight: 700; max-width: 200px;
+        display: flex; align-items: center; gap: 5px;
+      }
+      .map-gps-badge.online { border-color: rgba(74,222,128,0.45); color: #4ade80; }
       .mapboxgl-popup-content { background: #fff; padding: 12px 14px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
       .map-popup-name { font-size: 14px; font-weight: 800; color: #111827; margin-bottom: 3px; }
       .map-popup-addr { font-size: 12px; color: #6b7280; margin-bottom: 4px; line-height: 1.4; }
@@ -1649,6 +1664,8 @@
 
       let _map                = null;
       let _mapMarkers         = [];
+      let _mapTruckMarkers    = [];           // separate array for Traccar truck pins
+      let _truckPollInterval  = null;         // 60s interval handle for fleet positions
       let _optOrder           = null; // booking_ids in optimized order
       let _mapTokenP          = null; // cached token promise
       let _mapGeocodedDate    = ""; // guard: track which date was auto-geocoded
@@ -1688,6 +1705,9 @@
       function destroyMap() {
         _mapMarkers.forEach(m => m.remove());
         _mapMarkers = [];
+        _mapTruckMarkers.forEach(m => m.remove());
+        _mapTruckMarkers = [];
+        if (_truckPollInterval) { clearInterval(_truckPollInterval); _truckPollInterval = null; }
         if (_map) { try { _map.remove(); } catch {} _map = null; }
       }
 
@@ -1702,6 +1722,7 @@
             <div id="mapEl" style="position:absolute;inset:0;"></div>
             <div class="map-ctrl-panel">
               <div class="map-status" id="mapStatus">Loading map…</div>
+              <div class="map-gps-badge" id="gpsStatus" style="display:none">⚠ GPS offline</div>
               ${needCoords.length ? `<button class="map-btn" id="mapGeocode">Geocode ${needCoords.length} address${needCoords.length > 1 ? "es" : ""}</button>` : ""}
               <button class="map-btn map-btn-primary" id="mapOptimize" ${withCoords.length < 2 ? "disabled" : ""}>Optimize Route</button>
               <button class="map-btn map-btn-success" id="mapSave" style="display:none">Save Order</button>
@@ -1740,6 +1761,10 @@
               _mapGeocodedDate = dateStr;
               mapGeocode(needCoords, true);
             }
+            // Start Traccar truck overlay (immediate fetch + 60s poll)
+            truckPollOnce();
+            if (_truckPollInterval) clearInterval(_truckPollInterval);
+            _truckPollInterval = setInterval(truckPollOnce, 60_000);
           });
 
           document.getElementById("mapOptimize")?.addEventListener("click", () => mapOptimize(withCoords, dayBookings));
@@ -1834,6 +1859,77 @@
           el.style.color = "#fbbf24";
         }
       }
+
+      // ── Traccar truck overlay ───────────────────────────────────────────
+      function fmtLastSeen(fixTime) {
+        if (!fixTime) return "unknown";
+        const diff = Math.round((Date.now() - new Date(fixTime)) / 60000);
+        if (diff < 1)   return "just now";
+        if (diff === 1) return "1 min ago";
+        if (diff < 60)  return `${diff} min ago`;
+        return `${Math.round(diff / 60)}h ago`;
+      }
+
+      function mapRenderTrucks(positions) {
+        if (!_map) return;
+        _mapTruckMarkers.forEach(m => m.remove());
+        _mapTruckMarkers = [];
+        for (const p of positions) {
+          if (p.lat == null || p.lng == null) continue;
+          const el = document.createElement("div");
+          el.className = "map-truck-pin";
+          el.textContent = "🚛";
+          el.title = p.deviceName;
+
+          const speedStr = p.speed > 0 ? ` · ${p.speed} mph` : " · stopped";
+          const popup = new mapboxgl.Popup({ offset: 20, maxWidth: "200px", closeButton: true })
+            .setHTML(`<div>
+              <div class="map-popup-name">${esc(p.deviceName)}</div>
+              <div class="map-popup-time">Last seen: ${esc(fmtLastSeen(p.fixTime))}${esc(speedStr)}</div>
+            </div>`);
+
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat([p.lng, p.lat])
+            .setPopup(popup)
+            .addTo(_map);
+
+          el.addEventListener("click", () => marker.togglePopup());
+          _mapTruckMarkers.push(marker);
+        }
+      }
+
+      async function truckPollOnce() {
+        if (!_map) return;
+        try {
+          const d = await fetch("/api/traccar/positions").then(r => r.json());
+          const badge = document.getElementById("gpsStatus");
+          if (!badge) return;
+
+          if (!d.ok || !d.online) {
+            // offline — show badge if Traccar is configured (lastPoll !== null means it tried)
+            if (d.lastPoll !== null) {
+              badge.style.display = "flex";
+              badge.className = "map-gps-badge";
+              badge.textContent = "⚠ GPS offline";
+            }
+            return;
+          }
+
+          // online
+          mapRenderTrucks(d.positions);
+          const n = d.positions.length;
+          if (n > 0) {
+            badge.style.display = "flex";
+            badge.className = "map-gps-badge online";
+            badge.textContent = `● ${n} truck${n !== 1 ? "s" : ""} live`;
+          } else {
+            badge.style.display = "none";
+          }
+        } catch {
+          // silent — never crash the map over a Traccar fetch failure
+        }
+      }
+      // ── End Traccar overlay ─────────────────────────────────────────────
 
       async function mapOptimize(withCoords, dayBookings) {
         const btn = document.getElementById("mapOptimize");
