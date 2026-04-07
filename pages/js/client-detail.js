@@ -201,6 +201,7 @@
   const TIMELINE_ICON = {
     request: { emoji: "📋", color: "hsl(217,91%,60%)" },
     quote:   { emoji: "💲", color: "hsl(38,80%,50%)" },
+    booking: { emoji: "📅", color: "hsl(270,50%,55%)" },
     job:     { emoji: "🔧", color: "hsl(142,50%,45%)" },
     invoice: { emoji: "🧾", color: "hsl(270,50%,55%)" },
     payment: { emoji: "💰", color: "hsl(142,70%,40%)" },
@@ -258,51 +259,57 @@
     html += '<div class="cd-list">';
 
     for (const ev of events) {
-      const icon = TIMELINE_ICON[ev.type] || { emoji: "•", color: "hsl(215,16%,47%)" };
-      const date = ev.date ? fmtDate(ev.date) : "—";
+      const icon = TIMELINE_ICON[ev.type] || { emoji: "\u2022", color: "hsl(215,16%,47%)" };
+      const date = ev.date ? fmtDate(ev.date) : "\u2014";
       const amount = ev.amount ? fmtMoney(ev.amount) : "";
 
-      // Build clickable link for jobs (schedule) and invoices
-      let rowTag = "div";
-      let rowAttr = "";
-      if (ev.type === "invoice" && ev.event_id) {
-        // Future: link to invoice detail modal or page
-        rowAttr = ' style="cursor:default;"';
-      }
-
-      // Sync badge for invoices
+      // Tri-state sync badge for invoices (Synced / Pending / Error)
       let syncBadge = "";
       if (ev.type === "invoice") {
-        const hasPRef = ev.provider_ref && ev.provider_ref !== "";
-        syncBadge = hasPRef
-          ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Synced</span>'
-          : '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Pending</span>';
+        const ss = ev.sync_state || (ev.provider_ref ? "synced" : "pending");
+        if (ss === "synced") {
+          syncBadge = '<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Synced</span>';
+        } else if (ss === "error") {
+          syncBadge = '<span style="font-size:10px;background:#fee2e2;color:#991b1b;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Error</span>';
+        } else {
+          syncBadge = '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Pending</span>';
+        }
       }
 
-      // Extra detail line
+      // Extra sub-line detail
       let detail = "";
       if (ev.type === "invoice" && Number(ev.balance_due || 0) > 0) {
-        detail = " · Bal: " + fmtMoney(ev.balance_due);
+        detail = " \u00b7 Bal: " + fmtMoney(ev.balance_due);
       }
       if (ev.type === "payment" && ev.reference) {
-        detail = " · Ref: " + esc(ev.reference);
+        detail = " \u00b7 Ref: " + ev.reference;
       }
       if (ev.type === "job" && ev.completed_at) {
-        detail = " · Done " + fmtShortDate(ev.completed_at);
+        detail = " \u00b7 Done " + fmtShortDate(ev.completed_at);
+      }
+      if (ev.type === "booking" && ev.assigned_to) {
+        detail = " \u00b7 Tech: " + ev.assigned_to;
       }
 
+      // Wrap in anchor tag if the event has a navigable link
+      const isLink = ev.link && ev.link !== "null";
+      const wrapOpen = isLink
+        ? '<a href="' + esc(ev.link) + '" class="cd-list-item" style="align-items:flex-start;gap:12px;text-decoration:none;color:inherit;display:flex;">'
+        : '<div class="cd-list-item" style="align-items:flex-start;gap:12px;">';
+      const wrapClose = isLink ? '</a>' : '</div>';
+
       html +=
-        '<div class="cd-list-item" style="align-items:flex-start;gap:12px;">' +
+        wrapOpen +
           '<div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:' + icon.color + '18;border:1.5px solid ' + icon.color + '44;display:flex;align-items:center;justify-content:center;font-size:15px;margin-top:2px;">' + icon.emoji + '</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:13px;font-weight:600;">' + esc(ev.label) + syncBadge + '</div>' +
-            '<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:2px;">' + date + (detail ? esc(detail) : "") + '</div>' +
+            '<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:2px;">' + esc(date) + (detail ? esc(detail) : "") + '</div>' +
           '</div>' +
           '<div style="text-align:right;flex-shrink:0;">' +
             (amount ? '<div style="font-size:13px;font-weight:700;">' + amount + '</div>' : '') +
             '<div style="margin-top:3px;">' + tlStatusBadge(ev.status) + '</div>' +
           '</div>' +
-        '</div>';
+        wrapClose;
     }
 
     html += '</div>';

@@ -322,17 +322,18 @@ async function handleGetClientTimeline(req, res) {
   try {
     const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/timeline")[0]);
 
-    const [requests, quotes, jobs, invoices, payments] = await Promise.all([
+    const [requests, quotes, jobs, bookings, invoices, payments] = await Promise.all([
       readTab("Requests").catch(() => []),
       readTab("Quotes").catch(() => []),
       readTab("Jobs").catch(() => []),
+      readTab("Bookings").catch(() => []),
       readTab("Invoices").catch(() => []),
       readTab("Payments").catch(() => []),
     ]);
 
     const events = [];
 
-    // Requests
+    // Requests (Lead stage)
     for (const r of requests.filter(x => x.client_id === clientId)) {
       events.push({
         type: "request",
@@ -345,7 +346,7 @@ async function handleGetClientTimeline(req, res) {
       });
     }
 
-    // Quotes — link by client_id or lead_id
+    // Quotes
     for (const q of quotes.filter(x => (x.client_id || x.lead_id || "") === clientId)) {
       events.push({
         type: "quote",
@@ -355,6 +356,21 @@ async function handleGetClientTimeline(req, res) {
         status: q.status_code || "",
         amount: q.quoted_price || "",
         link: null,
+      });
+    }
+
+    // Bookings (scheduled appointments)
+    for (const b of bookings.filter(x => x.client_id === clientId || x.phone === (clientId))) {
+      const bookingId = b.booking_id || b.id || "";
+      events.push({
+        type: "booking",
+        event_id: bookingId,
+        date: b.scheduled_datetime || b.created_at || "",
+        label: "Booking" + (b.address ? " \u00b7 " + b.address : ""),
+        status: b.status || "scheduled",
+        amount: b.final_price || "",
+        link: bookingId ? "/crm/schedule?booking=" + encodeURIComponent(bookingId) : null,
+        assigned_to: b.assigned_tech_id || "",
       });
     }
 
@@ -377,6 +393,11 @@ async function handleGetClientTimeline(req, res) {
     const invoiceIds = new Set(clientInvoices.map(x => x.id));
 
     for (const inv of clientInvoices) {
+      // Determine sync state: synced if provider_ref present, error if void with no ref after being sent
+      const sc = String(inv.status_code || "").toLowerCase();
+      const hasRef = inv.provider_ref && inv.provider_ref.trim() !== "";
+      const syncState = hasRef ? "synced" : (sc === "void" ? "error" : "pending");
+
       events.push({
         type: "invoice",
         event_id: inv.id,
@@ -387,7 +408,8 @@ async function handleGetClientTimeline(req, res) {
         balance_due: inv.balance_due || "0",
         paid_amount: inv.paid_amount || "0",
         provider_ref: inv.provider_ref || "",
-        link: null,
+        sync_state: syncState,
+        link: "/invoices/" + encodeURIComponent(inv.id),
       });
     }
 
