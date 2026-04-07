@@ -507,7 +507,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith("/invoices/") && req.method === "GET") {
-    return serveFile(res, path.join(__dirname, "pages/invoice-detail.html"), "text/html");
+    return serveFile(res, path.join(__dirname, "pages/invoices-detail.html"), "text/html");
   }
 
   // PROTECTED CRM PAGES
