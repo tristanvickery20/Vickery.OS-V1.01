@@ -586,8 +586,35 @@ function renderConfirm() {
           <option value="Other">Other</option>
         </select>
       </div>
+      <div class="q-field" style="margin-top:20px;border:1px solid var(--q-border,#2d3348);border-radius:10px;padding:14px 16px;background:rgba(45,106,224,0.06);">
+        <div style="font-size:13px;font-weight:700;color:var(--q-accent,#2d6ae0);margin-bottom:10px;letter-spacing:.03em;">
+          &#128241; Text Message Preferences
+        </div>
+        <label class="q-sms-opt" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:10px;">
+          <input type="checkbox" id="sms_ops_consent" checked
+            style="margin-top:3px;width:18px;height:18px;accent-color:var(--q-accent,#2d6ae0);flex-shrink:0;">
+          <span style="font-size:13px;line-height:1.5;color:inherit;">
+            <strong>Yes — keep me in the loop on my job.</strong>
+            Text me when my tech is on the way, when we arrive, and when the job wraps up.
+            <span style="display:block;margin-top:4px;font-size:11px;color:var(--q-muted,#8899bb);">
+              Transactional messages only &bull; Msg &amp; data rates may apply &bull; Reply STOP to opt out
+            </span>
+          </span>
+        </label>
+        <label class="q-sms-opt" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="sms_mkt_consent"
+            style="margin-top:3px;width:18px;height:18px;accent-color:var(--q-accent,#2d6ae0);flex-shrink:0;">
+          <span style="font-size:13px;line-height:1.5;color:inherit;">
+            <strong>Also text me exclusive deals &amp; seasonal discounts.</strong>
+            Be first to know about specials, limited-time offers, and tips for Orange County homeowners.
+            <span style="display:block;margin-top:4px;font-size:11px;color:var(--q-muted,#8899bb);">
+              Approx. 2&ndash;4 msgs/mo &bull; Reply STOP anytime to opt out
+            </span>
+          </span>
+        </label>
+      </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
-      <div class="q-nav-row" style="margin-top:8px;">
+      <div class="q-nav-row" style="margin-top:16px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
         <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book">
           <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
@@ -1286,6 +1313,8 @@ async function submitLock() {
   const zip     = val("ld_zip");
   const source  = val("ld_source");
   S.lead_source = source || "";
+  const smsOps  = document.getElementById("sms_ops_consent")?.checked ? "true" : "false";
+  const smsMkt  = document.getElementById("sms_mkt_consent")?.checked  ? "true" : "false";
 
   const errEl = document.getElementById("leadErr");
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
@@ -1302,7 +1331,7 @@ async function submitLock() {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");

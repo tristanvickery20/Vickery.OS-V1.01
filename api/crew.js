@@ -126,6 +126,7 @@ async function handleGetTodayJobs(req, res) {
           selected_options_json: String(r[qi["selected_options_json"] ?? -1] ?? "").trim(),
           selected_addons_json:  String(r[qi["selected_addons_json"]  ?? -1] ?? "").trim(),
           job_type_id:           String(r[qi["job_type_id"]           ?? -1] ?? "").trim(),
+          notes:                 String(r[qi["notes"]                 ?? -1] ?? "").trim(),
         };
         // Prefer the "locked" snapshot (same preference as Lead Detail)
         if (!snapshotMap[qid] || evtType === "locked") snapshotMap[qid] = entry;
@@ -155,7 +156,7 @@ async function handleGetTodayJobs(req, res) {
         const bookingNotes = get("notes");
         const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
         const plainScope   = scopeResult.items.length === 0
-          ? ([scopeRaw, bookingNotes].find(v => v && !isInternalId(v)) || "")
+          ? ([scopeRaw, bookingNotes, snap.notes].find(v => v && !isInternalId(v)) || "")
           : "";
 
         // Resolve human-readable job type name (handles both assembly IDs like "A001" and service IDs)
