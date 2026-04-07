@@ -229,22 +229,63 @@ const server = http.createServer(async (req, res) => {
       return handleUpdateTime(req, res, timeId, crewSess);
     }
   }
-  // Crew-session-gated GETs for today's time + expenses (filtered to today only)
+  // Crew-session-gated GETs for today's own time + expenses (sanitized, user-scoped)
+  // Returns only minimal fields needed by job-card UI; strips lat/lng, notes, IDs.
   if (req.url === "/api/crew/time-today" && req.method === "GET") {
-    if (!getCrewSession(req)) {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
-    const today = new Date().toISOString().slice(0, 10);
-    return handleGetTime(req, res, { filterDate: today });
+    try {
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const resp   = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: "Time!A1:L2000",
+      });
+      const today    = new Date().toISOString().slice(0, 10);
+      const techId   = `${crewSess.firstName} ${crewSess.lastName}`;
+      const values   = resp.data.values || [];
+      const entries  = values.slice(1)
+        .filter(r => r && r.length && String(r[0]||"").trim() !== "" &&
+                     String(r[2]||"").trim() === today &&
+                     String(r[3]||"").trim() === techId)
+        .map(r => ({ lead_id: r[4]||"", minutes: Number(r[5]||0) }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true, entries }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
   }
   if (req.url === "/api/crew/expenses-today" && req.method === "GET") {
-    if (!getCrewSession(req)) {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
-    const today = new Date().toISOString().slice(0, 10);
-    return handleGetExpenses(req, res, { filterDate: today });
+    try {
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const resp   = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: "Expenses!A1:J2000",
+      });
+      const today   = new Date().toISOString().slice(0, 10);
+      const techId  = `${crewSess.firstName} ${crewSess.lastName}`;
+      const values  = resp.data.values || [];
+      const entries = values.slice(1)
+        .filter(r => r && r.length && String(r[0]||"").trim() !== "" &&
+                     String(r[2]||"").trim() === today &&
+                     String(r[3]||"").trim() === techId)
+        .map(r => ({ lead_id: r[4]||"", type: r[5]||"", vendor: r[6]||"", amount: Number(r[7]||0) }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true, entries }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
   }
 
   if (req.url === "/crm") {
