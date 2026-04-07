@@ -22,7 +22,10 @@ let timerInterval = null;
 
 // Today's logged time + expenses, keyed by booking_id or quote_id
 let todayTimeMap = {}; // key → total minutes
-let todayExpMap  = {}; // key → [{ type, amount }]
+let todayExpMap  = {}; // key → [{ type, amount, vendor }]
+
+// Inline expense panel state (only one job's panel open at a time)
+let expandedExpJobId = null; // booking_id whose expense panel is open
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -272,7 +275,7 @@ async function loadTodayEntries() {
       const key = e.lead_id || "";
       if (key) {
         if (!todayExpMap[key]) todayExpMap[key] = [];
-        todayExpMap[key].push({ type: e.type, amount: e.amount });
+        todayExpMap[key].push({ type: e.type, amount: e.amount, vendor: e.vendor || "" });
       }
     }
   } catch {}
@@ -306,6 +309,14 @@ function renderJobCards() {
   if (!list || !_todayJobs.length) return;
   list.innerHTML = _todayJobs.map(jobCard).join("");
 
+  // Restore expanded expense panel if one was open
+  if (expandedExpJobId) {
+    const panel = document.getElementById("exp-panel-" + expandedExpJobId);
+    const toggle = document.getElementById("exp-toggle-" + expandedExpJobId);
+    if (panel) { panel.classList.add("open"); }
+    if (toggle) { toggle.classList.add("open"); toggle.textContent = "▲ Close"; }
+  }
+
   list.querySelectorAll(".btn-start-clock").forEach(btn =>
     btn.addEventListener("click", () => startTimer(JSON.parse(btn.dataset.job)))
   );
@@ -317,9 +328,19 @@ function renderJobCards() {
       if (timerState?.isPaused) resumeTimer(); else pauseTimer();
     });
   });
-  list.querySelectorAll(".btn-expense").forEach(btn =>
-    btn.addEventListener("click", () => openExpenseOverlay(JSON.parse(btn.dataset.job)))
-  );
+  list.querySelectorAll(".btn-expense-toggle").forEach(btn => {
+    btn.addEventListener("click", () => toggleExpensePanel(btn.dataset.bid, btn));
+  });
+  list.querySelectorAll(".exp-cat-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const row = chip.closest(".exp-category-row");
+      row.querySelectorAll(".exp-cat-chip").forEach(c => c.classList.remove("sel"));
+      chip.classList.add("sel");
+    });
+  });
+  list.querySelectorAll(".btn-expense-submit").forEach(btn => {
+    btn.addEventListener("click", () => submitInlineExpense(btn.dataset.bid, btn));
+  });
   list.querySelectorAll(".btn-review-ask").forEach(btn =>
     btn.addEventListener("click", () => sendReviewAsk(JSON.parse(btn.dataset.job), btn))
   );
@@ -331,6 +352,108 @@ function renderJobCards() {
   if (timerState) tickTimer();
 }
 
+function toggleExpensePanel(bid, toggleBtn) {
+  const panel = document.getElementById("exp-panel-" + bid);
+  if (!panel) return;
+  const isOpen = panel.classList.contains("open");
+  if (isOpen) {
+    panel.classList.remove("open");
+    toggleBtn.classList.remove("open");
+    toggleBtn.textContent = "+ Expense";
+    expandedExpJobId = null;
+  } else {
+    // Close any other open panel
+    if (expandedExpJobId && expandedExpJobId !== bid) {
+      const oldPanel  = document.getElementById("exp-panel-" + expandedExpJobId);
+      const oldToggle = document.getElementById("exp-toggle-" + expandedExpJobId);
+      if (oldPanel)  oldPanel.classList.remove("open");
+      if (oldToggle) { oldToggle.classList.remove("open"); oldToggle.textContent = "+ Expense"; }
+    }
+    panel.classList.add("open");
+    toggleBtn.classList.add("open");
+    toggleBtn.textContent = "▲ Close";
+    expandedExpJobId = bid;
+    panel.querySelector(".exp-amount-input")?.focus();
+  }
+}
+
+async function submitInlineExpense(bid, btn) {
+  const panel  = document.getElementById("exp-panel-" + bid);
+  if (!panel) return;
+
+  const amountInput = panel.querySelector(".exp-amount-input");
+  const amount = parseFloat(amountInput?.value || "") || 0;
+  if (amount <= 0) { showToast("Enter an amount first", true); return; }
+
+  const selCat    = panel.querySelector(".exp-cat-chip.sel");
+  const category  = selCat ? selCat.textContent.trim() : "Materials";
+  const vendor    = panel.querySelector(".exp-vendor-input")?.value.trim() || "";
+  const note      = panel.querySelector(".exp-note-input")?.value.trim() || "";
+
+  const job = _todayJobs.find(j => j.booking_id === bid);
+  const leadId = job ? (job.quote_id || job.booking_id || "") : "";
+
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+
+  const techId = currentSession ? `${currentSession.firstName} ${currentSession.lastName}` : "Crew";
+  const body = {
+    date:    new Date().toISOString().slice(0, 10),
+    tech_id: techId,
+    lead_id: leadId,
+    type:    category,
+    vendor,
+    amount,
+    notes:   note,
+  };
+
+  try {
+    const res  = await fetch("/api/expenses", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Server error");
+
+    // Update local state
+    if (!todayExpMap[leadId]) todayExpMap[leadId] = [];
+    todayExpMap[leadId].push({ type: category, amount, vendor });
+
+    // Reset form
+    if (amountInput) amountInput.value = "";
+    panel.querySelector(".exp-vendor-input") && (panel.querySelector(".exp-vendor-input").value = "");
+    panel.querySelector(".exp-note-input")   && (panel.querySelector(".exp-note-input").value   = "");
+
+    showToast(`✓ $${amount.toFixed(2)} ${category} logged`);
+
+    // Re-render expense list within the panel (don't close it)
+    const listEl = panel.querySelector(".job-expense-list");
+    if (listEl && leadId) {
+      listEl.innerHTML = renderExpenseList(leadId);
+    }
+  } catch (err) {
+    showToast("Error: " + err.message, true);
+  }
+
+  btn.textContent = origText;
+  btn.disabled = false;
+}
+
+function renderExpenseList(jobKey) {
+  const exps = todayExpMap[jobKey] || [];
+  if (!exps.length) return "";
+  return exps.map(e => `
+    <div class="exp-list-row">
+      <span class="exp-list-amount">$${Number(e.amount).toFixed(2)}</span>
+      <span class="exp-list-type">${esc(e.type)}</span>
+      <span class="exp-list-vendor">${esc(e.vendor || "")}</span>
+    </div>`).join("");
+}
+
+const EXP_CATEGORIES = ["Materials", "Gas", "Tools", "Permits", "Other"];
+
 function jobCard(j) {
   const bid     = j.booking_id;
   const block   = j.schedule_block ? `${j.schedule_block} · ` : "";
@@ -341,19 +464,12 @@ function jobCard(j) {
   const isActive  = timerState && timerState.bookingId === bid;
   const anyActive = !!timerState;
 
-  // Today's logged summary
-  const jobKey   = j.quote_id || bid;
-  const logMins  = todayTimeMap[jobKey] || 0;
-  const logExps  = todayExpMap[jobKey]  || [];
-  let loggedHtml = "";
-  if (logMins || logExps.length) {
-    const chips = [];
-    if (logMins) chips.push(`<span class="logged-chip time">⏱ ${formatMinutes(logMins)} logged</span>`);
-    for (const exp of logExps) {
-      chips.push(`<span class="logged-chip expense">$${Number(exp.amount).toFixed(2)} ${esc(exp.type)}</span>`);
-    }
-    loggedHtml = `<div class="job-logged-bar">${chips.join("")}</div>`;
-  }
+  // Today's logged summary (time chip only — expenses shown inline below panel)
+  const jobKey  = j.quote_id || bid;
+  const logMins = todayTimeMap[jobKey] || 0;
+  const timeChip = logMins
+    ? `<div class="job-logged-bar"><span class="logged-chip time">⏱ ${formatMinutes(logMins)} logged today</span></div>`
+    : "";
 
   // Timer display row (shown when this job is active)
   const timerHtml = isActive ? `
@@ -378,6 +494,38 @@ function jobCard(j) {
     ? `<button class="btn-review-ask" data-job='${jobData}'>★ Review</button>`
     : "";
 
+  // Inline expense form panel
+  const catChips = EXP_CATEGORIES.map((cat, i) =>
+    `<button class="exp-cat-chip${i === 0 ? " sel" : ""}">${esc(cat)}</button>`
+  ).join("");
+
+  const expList = renderExpenseList(jobKey);
+
+  const expPanel = `
+    <div class="job-expense-panel" id="exp-panel-${esc(bid)}">
+      <div>
+        <label>Category</label>
+        <div class="exp-category-row">${catChips}</div>
+      </div>
+      <div>
+        <label>Amount</label>
+        <div class="exp-amount-row">
+          <span class="exp-amount-prefix">$</span>
+          <input class="exp-amount-input" type="number" min="0.01" step="0.01" placeholder="0.00" inputmode="decimal" />
+        </div>
+      </div>
+      <div>
+        <label>Vendor <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+        <input class="exp-text-input exp-vendor-input" type="text" placeholder="e.g. Home Depot" />
+      </div>
+      <div>
+        <label>Note <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+        <input class="exp-text-input exp-note-input" type="text" placeholder="Brief description" />
+      </div>
+      <button class="btn-expense-submit" data-bid="${esc(bid)}">Log Expense</button>
+      ${expList ? `<div class="job-expense-list">${expList}</div>` : `<div class="job-expense-list"></div>`}
+    </div>`;
+
   return `
     <div class="job-card" id="card-${esc(bid)}">
       <div class="job-card-top" data-job='${jobData}'>
@@ -389,10 +537,11 @@ function jobCard(j) {
       ${timerHtml}
       <div class="job-actions">
         ${clockBtn}
-        <button class="btn-expense" data-job='${jobData}'>+ Expense</button>
+        <button class="btn-expense-toggle" id="exp-toggle-${esc(bid)}" data-bid="${esc(bid)}">+ Expense</button>
         ${reviewBtn}
       </div>
-      ${loggedHtml}
+      ${timeChip}
+      ${expPanel}
     </div>`;
 }
 

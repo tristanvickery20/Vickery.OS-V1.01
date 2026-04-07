@@ -626,6 +626,154 @@
     }
     .logged-chip.time { border-color: hsl(217 70% 35%); color: hsl(217 80% 70%); background: hsl(217 40% 13%); }
     .logged-chip.expense { border-color: hsl(142 50% 28%); color: hsl(142 60% 60%); background: hsl(142 40% 10%); }
+
+    /* ── Inline expense form on job card ── */
+    .btn-expense-toggle {
+      padding: 13px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(220 10% 28%);
+      font-family: inherit;
+      background: hsl(220 10% 20%);
+      color: hsl(220 15% 80%);
+      transition: opacity .15s, background .2s;
+    }
+    .btn-expense-toggle:active { opacity: .75; }
+    .btn-expense-toggle.open {
+      background: hsl(142 40% 14%);
+      border-color: hsl(142 50% 28%);
+      color: hsl(142 60% 70%);
+    }
+
+    .job-expense-panel {
+      margin-top: 10px;
+      padding: 14px;
+      background: hsl(220 10% 10%);
+      border: 1px solid hsl(220 10% 22%);
+      border-radius: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .job-expense-panel.open { display: flex; }
+    .job-expense-panel label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: hsl(220 15% 50%);
+      margin-bottom: 4px;
+      display: block;
+    }
+    .exp-category-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .exp-cat-chip {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 99px;
+      border: 1px solid hsl(220 10% 26%);
+      background: hsl(220 10% 16%);
+      color: hsl(220 15% 65%);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .exp-cat-chip.sel {
+      background: hsl(217 55% 22%);
+      border-color: hsl(217 70% 42%);
+      color: hsl(217 80% 78%);
+    }
+    .exp-amount-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .exp-amount-prefix {
+      font-size: 18px;
+      font-weight: 800;
+      color: hsl(220 15% 60%);
+    }
+    .exp-amount-input {
+      flex: 1;
+      background: hsl(220 10% 16%);
+      border: 1px solid hsl(220 10% 28%);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      font-family: inherit;
+      padding: 10px 12px;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .exp-amount-input::-webkit-outer-spin-button,
+    .exp-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .exp-text-input {
+      width: 100%;
+      background: hsl(220 10% 16%);
+      border: 1px solid hsl(220 10% 28%);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      padding: 10px 12px;
+      outline: none;
+    }
+    .exp-text-input::placeholder { color: hsl(220 10% 40%); }
+    .btn-expense-submit {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      background: hsl(142 55% 32%);
+      color: #fff;
+      transition: opacity .15s;
+    }
+    .btn-expense-submit:active { opacity: .75; }
+    .btn-expense-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+    .job-expense-list {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .exp-list-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      padding: 5px 0;
+      border-bottom: 1px solid hsl(220 10% 16%);
+      color: hsl(220 15% 65%);
+    }
+    .exp-list-row:last-child { border-bottom: none; }
+    .exp-list-amount {
+      font-weight: 700;
+      color: hsl(142 55% 60%);
+    }
+    .exp-list-type {
+      font-weight: 600;
+      color: hsl(220 15% 75%);
+    }
+    .exp-list-vendor {
+      font-size: 11px;
+      color: hsl(220 15% 48%);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100px;
+    }
   </style>
 </head>
 <body>
