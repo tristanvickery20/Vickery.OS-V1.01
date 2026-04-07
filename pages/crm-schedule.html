@@ -7,144 +7,1416 @@
     <link rel="stylesheet" href="/pages/css/brand.css" />
     <link rel="stylesheet" href="/pages/css/shell.css" />
     <style>
-      .sched-date-card {
-        background: white;
-        border: 1.5px solid hsl(var(--border));
-        border-radius: 14px;
-        margin-bottom: 24px;
-        overflow: hidden;
+      /* ── Layout ─────────────────────────────────────────────────── */
+      .main-area { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+      .cal-wrap  { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+      /* ── Header bar ─────────────────────────────────────────────── */
+      .cal-hdr {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        padding: 10px 16px; border-bottom: 1px solid var(--line);
+        background: var(--panel); flex-shrink: 0;
       }
-      .sched-date-heading {
-        font-family: var(--font-display, sans-serif);
-        font-size: 16px;
-        font-weight: 800;
-        padding: 14px 20px;
-        border-bottom: 1px solid hsl(var(--border));
-        background: hsl(var(--muted, 220 14% 96%));
-        letter-spacing: -0.01em;
+      .cal-hdr-nav { display: flex; align-items: center; gap: 4px; }
+      .cal-btn {
+        background: rgba(100,150,255,0.08); border: 1px solid var(--line);
+        color: var(--text); border-radius: 8px; padding: 5px 12px;
+        cursor: pointer; font-size: 13px; font-weight: 600;
+        transition: background 0.15s;
       }
-      .sched-block-section {
-        border-bottom: 1px solid hsl(var(--border));
-        padding: 0;
+      .cal-btn:hover { background: rgba(100,150,255,0.18); }
+      .cal-btn.today { background: var(--blue); border-color: var(--blue); color: #fff; }
+      .cal-btn.today:hover { background: #2460c8; }
+      .cal-title {
+        font-size: 16px; font-weight: 800; color: var(--text);
+        min-width: 160px; text-align: center; font-family: var(--font-display);
       }
-      .sched-block-section:last-child { border-bottom: none; }
-      .sched-block-heading {
-        font-size: 13px;
-        font-weight: 700;
-        color: #444;
-        padding: 10px 20px 8px;
-        background: hsl(var(--muted, 220 14% 96%) / 0.4);
-        border-bottom: 1px solid hsl(var(--border));
-        display: flex;
-        align-items: center;
-        gap: 6px;
+      .cal-hdr-mid { flex: 1; }
+      .cal-hdr-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .cal-select {
+        background: rgba(100,150,255,0.08); border: 1px solid var(--line);
+        color: var(--text); border-radius: 8px; padding: 5px 10px;
+        font-size: 13px; cursor: pointer;
       }
-      .sched-block-window {
-        font-size: 12px;
-        font-weight: 500;
-        color: #888;
-        margin-left: 2px;
+      .cal-select option { background: #0c1535; }
+      .view-toggle { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .view-btn {
+        background: transparent; border: none; color: var(--muted);
+        padding: 5px 14px; cursor: pointer; font-size: 13px; font-weight: 600;
+        transition: background 0.15s, color 0.15s;
       }
-      .sched-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-      }
-      .sched-table th {
-        text-align: left;
-        padding: 8px 12px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #888;
-        letter-spacing: 0.04em;
-        border-bottom: 1px solid hsl(var(--border));
-      }
-      .sched-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid hsl(var(--border) / 0.5);
-        vertical-align: middle;
-      }
-      .sched-table tbody tr:last-child td { border-bottom: none; }
-      .sched-table tbody tr:hover { background: hsl(var(--muted, 220 14% 96%) / 0.5); }
-      #status { color: #888; font-size: 13px; margin: 8px 0 16px; }
-      /* Crew-hours load bar */
-      .sched-hours-bar {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-left: 10px;
-        vertical-align: middle;
-      }
-      .sched-hours-track {
-        display: inline-block;
-        width: 80px;
-        height: 8px;
-        background: hsl(var(--border, 220 13% 91%));
-        border-radius: 99px;
-        overflow: hidden;
-        position: relative;
-      }
-      .sched-hours-fill {
-        display: block;
-        height: 100%;
-        border-radius: 99px;
-        transition: width 0.3s;
-      }
-      .sched-hours-label {
-        font-size: 11px;
-        font-weight: 700;
-        white-space: nowrap;
+      .view-btn.active { background: var(--blue); color: #fff; }
+      .view-btn:hover:not(.active) { background: rgba(100,150,255,0.12); color: var(--text); }
+      .toggle-lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; }
+      .toggle-lbl input { accent-color: var(--blue); width: 14px; height: 14px; }
+      .unsched-badge {
+        background: #e53e3e; color: #fff; border-radius: 99px;
+        font-size: 11px; font-weight: 800; padding: 1px 6px; min-width: 18px; text-align: center;
       }
 
-      /* ── Dark mode overrides ── */
-      html.dark .sched-date-card {
-        background: hsl(220 10% 14%);
-        border-color: hsl(220 10% 22%);
+      /* ── Body split ────────────────────────────────────────────── */
+      .cal-body {
+        flex: 1; display: flex; min-height: 0; overflow: hidden;
       }
-      html.dark .sched-date-heading {
-        background: hsl(220 10% 18%);
-        color: hsl(215 20% 85%);
-        border-color: hsl(220 10% 22%);
+      .cal-main { flex: 1; min-width: 0; overflow: auto; }
+
+      /* ── Unscheduled drawer ─────────────────────────────────────── */
+      .cal-drawer {
+        width: 240px; flex-shrink: 0; border-left: 1px solid var(--line);
+        background: var(--panel2); display: flex; flex-direction: column;
+        overflow: hidden; transition: width 0.2s;
       }
-      html.dark .sched-block-heading {
-        background: hsl(220 10% 16%);
-        color: hsl(215 20% 75%);
-        border-color: hsl(220 10% 22%);
+      .cal-drawer.collapsed { width: 36px; }
+      .drawer-toggle {
+        display: flex; align-items: center; gap: 6px; padding: 10px 12px;
+        border-bottom: 1px solid var(--line); cursor: pointer;
+        font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0;
+        user-select: none;
       }
-      html.dark .sched-block-window { color: hsl(215 15% 55%); }
-      html.dark .sched-table th { color: hsl(215 15% 55%); border-color: hsl(220 10% 22%); }
-      html.dark .sched-table td { border-color: hsl(220 10% 20%); color: hsl(215 20% 80%); }
-      html.dark .sched-table tbody tr:hover { background: hsl(220 10% 18%); }
-      html.dark .sched-table tbody tr.is-continuation { background: hsl(220 10% 16%); }
-      html.dark .sched-hours-track { background: hsl(220 10% 24%); }
+      .drawer-toggle-icon { font-size: 14px; transition: transform 0.2s; }
+      .cal-drawer.collapsed .drawer-toggle-icon { transform: rotate(180deg); }
+      .drawer-title { white-space: nowrap; overflow: hidden; }
+      .cal-drawer.collapsed .drawer-title { display: none; }
+      .drawer-list { flex: 1; overflow-y: auto; padding: 6px; }
+      .cal-drawer.collapsed .drawer-list { display: none; }
+      .drawer-chip {
+        background: rgba(100,150,255,0.08); border: 1px solid var(--line);
+        border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer;
+        transition: background 0.15s; font-size: 12px;
+      }
+      .drawer-chip:hover { background: rgba(100,150,255,0.18); }
+      .drawer-chip-name { font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .drawer-chip-meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .drawer-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 20px 10px; }
+
+      /* ── Status chip colors ─────────────────────────────────────── */
+      .chip-confirmed { background: rgba(22,163,74,0.18); border-color: rgba(22,163,74,0.5); }
+      .chip-confirmed .chip-name { color: #4ade80; }
+      .chip-pending   { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.5); }
+      .chip-pending   .chip-name { color: #fbbf24; }
+      .chip-flagged   { background: rgba(249,115,22,0.18); border-color: rgba(249,115,22,0.5); }
+      .chip-flagged   .chip-name { color: #fb923c; }
+      .chip-cancelled { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.45); }
+      .chip-cancelled .chip-name { color: #f87171; }
+      .chip-scheduled { background: rgba(22,163,74,0.18); border-color: rgba(22,163,74,0.5); }
+      .chip-scheduled .chip-name { color: #4ade80; }
+
+      /* ── MONTH VIEW ─────────────────────────────────────────────── */
+      .mv-wrap { min-width: 560px; }
+      .mv-dow-row {
+        display: grid; grid-template-columns: repeat(7,1fr);
+        border-bottom: 1px solid var(--line);
+      }
+      .mv-dow {
+        padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+      }
+      .mv-grid { display: grid; grid-template-columns: repeat(7,1fr); }
+      .mv-cell {
+        min-height: 110px; border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line); padding: 4px;
+        position: relative; cursor: pointer; transition: background 0.12s;
+      }
+      .mv-cell:nth-child(7n) { border-right: none; }
+      .mv-cell:hover { background: rgba(100,150,255,0.06); }
+      .mv-cell.other-month { opacity: 0.4; }
+      .mv-cell.today { background: rgba(45,106,224,0.12); }
+      .mv-cell.today .mv-day-num { background: var(--blue); color: #fff; }
+      .mv-cell.weekend { background: rgba(0,0,0,0.12); }
+      .mv-cell.drop-over { background: rgba(45,106,224,0.25) !important; outline: 2px solid var(--blue); }
+      .mv-day-num {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 50%;
+        font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 3px;
+      }
+      .mv-visit-badge {
+        font-size: 10px; font-weight: 800; color: var(--muted); margin-bottom: 2px;
+      }
+      .mv-chip {
+        display: block; width: 100%; text-align: left;
+        border: 1px solid var(--line); border-radius: 5px;
+        padding: 3px 6px; margin-bottom: 2px; cursor: grab;
+        font-size: 11px; font-weight: 600; position: relative;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        transition: opacity 0.15s;
+      }
+      .mv-chip:active { cursor: grabbing; }
+      .mv-chip.dragging { opacity: 0.4; }
+      .mv-chip.selected { outline: 2px solid var(--blue); outline-offset: 1px; }
+      .mv-chip .chip-name { display: block; overflow: hidden; text-overflow: ellipsis; }
+      .mv-chip .chip-time { font-size: 10px; opacity: 0.75; }
+      .mv-more {
+        font-size: 11px; color: var(--muted); font-weight: 600;
+        padding: 2px 6px; cursor: pointer;
+      }
+      .mv-more:hover { color: var(--text); }
+
+      /* ── WEEK VIEW ──────────────────────────────────────────────── */
+      .wv-wrap { display: flex; flex-direction: column; min-width: 560px; }
+      .wv-head {
+        display: flex; flex-shrink: 0; border-bottom: 1px solid var(--line);
+        position: sticky; top: 0; z-index: 10; background: var(--panel);
+      }
+      .wv-time-gutter { width: 56px; flex-shrink: 0; border-right: 1px solid var(--line); }
+      .wv-day-heads { flex: 1; display: flex; }
+      .wv-day-head {
+        flex: 1; padding: 8px 4px; text-align: center; border-right: 1px solid var(--line);
+        font-size: 12px; cursor: pointer;
+      }
+      .wv-day-head:last-child { border-right: none; }
+      .wv-day-head.today .wv-day-num { background: var(--blue); color: #fff; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
+      .wv-day-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
+      .wv-day-num { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1; }
+      .wv-allday-row {
+        display: flex; flex-shrink: 0; border-bottom: 1px solid var(--line);
+        min-height: 32px;
+      }
+      .wv-allday-label {
+        width: 56px; flex-shrink: 0; font-size: 10px; color: var(--muted);
+        display: flex; align-items: center; justify-content: center;
+        border-right: 1px solid var(--line);
+      }
+      .wv-allday-cols { flex: 1; display: flex; }
+      .wv-allday-col {
+        flex: 1; border-right: 1px solid var(--line); padding: 3px;
+        min-height: 28px;
+      }
+      .wv-allday-col:last-child { border-right: none; }
+      .wv-grid-body { display: flex; }
+      .wv-time-col {
+        width: 56px; flex-shrink: 0; border-right: 1px solid var(--line);
+        position: relative;
+      }
+      .wv-time-slot {
+        height: 64px; border-bottom: 1px solid var(--line2);
+        display: flex; align-items: flex-start; padding: 2px 6px 0;
+        font-size: 10px; color: rgba(220,232,255,0.40); font-weight: 600;
+        white-space: nowrap;
+      }
+      .wv-day-cols { flex: 1; display: flex; }
+      .wv-day-col {
+        flex: 1; border-right: 1px solid var(--line); position: relative;
+        cursor: pointer;
+      }
+      .wv-day-col:last-child { border-right: none; }
+      .wv-day-col.today-col { background: rgba(45,106,224,0.05); }
+      .wv-day-col.weekend-col { background: rgba(0,0,0,0.10); }
+      .wv-hour-line {
+        position: absolute; left: 0; right: 0;
+        border-top: 1px solid var(--line2); pointer-events: none;
+      }
+      .wv-hour-line.business { border-color: rgba(100,150,255,0.10); }
+      .wv-now-line {
+        position: absolute; left: 0; right: 0; height: 2px;
+        background: #e53e3e; z-index: 5; pointer-events: none;
+      }
+      .wv-now-line::before {
+        content: ""; position: absolute; left: -4px; top: -4px;
+        width: 10px; height: 10px; border-radius: 50%; background: #e53e3e;
+      }
+      .wv-chip {
+        position: absolute; left: 3px; right: 3px; min-height: 20px;
+        border-radius: 6px; border: 1px solid var(--line);
+        padding: 4px 6px; font-size: 11px; font-weight: 600;
+        cursor: grab; overflow: hidden; z-index: 2;
+        transition: opacity 0.15s, box-shadow 0.15s;
+        display: flex; flex-direction: column; gap: 1px;
+      }
+      .wv-chip:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 3; }
+      .wv-chip:active { cursor: grabbing; }
+      .wv-chip.dragging { opacity: 0.4; }
+      .wv-chip.selected { outline: 2px solid #fff; outline-offset: 1px; }
+      .wv-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .wv-chip .chip-time { font-size: 10px; opacity: 0.75; }
+      .wv-drop-zone { position: absolute; inset: 0; z-index: 1; }
+      .wv-drop-indicator {
+        position: absolute; left: 0; right: 0; height: 2px;
+        background: var(--blue); z-index: 10; display: none; pointer-events: none;
+      }
+      .wv-day-col.drop-over .wv-drop-zone { background: rgba(45,106,224,0.15); }
+      .off-hours { background: rgba(0,0,0,0.18); }
+
+      /* ── DAY / DISPATCH VIEW ──────────────────────────────────────── */
+      .dv-wrap { overflow: auto; min-width: 600px; }
+      .dv-table {
+        display: grid; min-width: max-content;
+      }
+      .dv-head-row {
+        display: contents;
+      }
+      .dv-corner {
+        background: var(--panel); border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line); padding: 8px 10px;
+        font-size: 11px; font-weight: 700; color: var(--muted); position: sticky; left: 0; z-index: 5;
+        display: flex; align-items: center;
+      }
+      .dv-hour-head {
+        border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        padding: 6px 4px; text-align: center; font-size: 11px; font-weight: 700;
+        color: var(--muted); background: var(--panel); position: sticky; top: 0; z-index: 4;
+      }
+      .dv-tech-name {
+        border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        padding: 8px 10px; font-size: 12px; font-weight: 700; color: var(--text);
+        background: var(--panel2); position: sticky; left: 0; z-index: 3;
+        display: flex; align-items: center; min-width: 110px; white-space: nowrap;
+      }
+      .dv-tech-name.unassigned { color: var(--muted); font-style: italic; }
+      .dv-tech-cell {
+        border-right: 1px solid var(--line2); border-bottom: 1px solid var(--line);
+        position: relative; height: 64px;
+      }
+      .dv-tech-cell:last-child { border-right: none; }
+      .dv-tech-cell.drop-over { background: rgba(45,106,224,0.2); }
+      .dv-chip {
+        position: absolute; top: 4px; bottom: 4px;
+        border-radius: 6px; border: 1px solid var(--line);
+        padding: 3px 5px; font-size: 11px; font-weight: 600;
+        cursor: grab; overflow: hidden; z-index: 2;
+        display: flex; flex-direction: column; gap: 1px;
+        min-width: 40px;
+      }
+      .dv-chip:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 3; }
+      .dv-chip.dragging { opacity: 0.4; }
+      .dv-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* ── Detail panel ──────────────────────────────────────────── */
+      .detail-panel {
+        position: fixed; top: 0; right: 0; bottom: 0; width: 360px;
+        background: var(--panel); border-left: 1px solid var(--line);
+        z-index: 200; transform: translateX(100%); transition: transform 0.25s ease;
+        display: flex; flex-direction: column; overflow: hidden;
+      }
+      .detail-panel.open { transform: translateX(0); }
+      .detail-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        z-index: 199; display: none;
+      }
+      .detail-backdrop.show { display: block; }
+      .detail-hdr {
+        display: flex; align-items: center; gap: 8px;
+        padding: 14px 16px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+      }
+      .detail-close {
+        background: transparent; border: none; color: var(--muted);
+        font-size: 20px; cursor: pointer; line-height: 1; padding: 0;
+      }
+      .detail-close:hover { color: var(--text); }
+      .detail-title { font-size: 15px; font-weight: 800; color: var(--text); flex: 1; }
+      .detail-body { flex: 1; overflow-y: auto; padding: 16px; }
+      .detail-row { margin-bottom: 12px; }
+      .detail-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+      .detail-value { font-size: 13px; color: var(--text); word-break: break-word; }
+      .detail-status-badge {
+        display: inline-block; padding: 3px 10px; border-radius: 20px;
+        font-size: 12px; font-weight: 700; text-transform: capitalize;
+      }
+      .detail-footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+      .detail-btn {
+        display: block; width: 100%; padding: 8px 12px; border-radius: 8px;
+        border: 1px solid var(--line); background: rgba(100,150,255,0.08);
+        color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+        text-align: center; text-decoration: none; transition: background 0.15s;
+      }
+      .detail-btn:hover { background: rgba(100,150,255,0.18); }
+      .detail-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+      .detail-btn.primary:hover { background: #2460c8; }
+
+      /* ── Bulk action bar ──────────────────────────────────────── */
+      .bulk-bar {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 12px; padding: 10px 16px;
+        display: flex; align-items: center; gap: 10px;
+        z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        font-size: 13px; color: var(--text);
+      }
+      .bulk-bar.hidden { display: none; }
+      .bulk-bar-count { font-weight: 700; }
+      .bulk-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(100,150,255,0.1); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600; }
+      .bulk-btn:hover { background: rgba(100,150,255,0.22); }
+      .bulk-btn.danger { color: #f87171; border-color: rgba(239,68,68,0.4); }
+
+      /* ── Loading / error ──────────────────────────────────────── */
+      .cal-loading {
+        display: flex; align-items: center; justify-content: center;
+        height: 200px; color: var(--muted); font-size: 14px;
+      }
+      .cal-error {
+        color: #f87171; padding: 20px; font-size: 13px;
+      }
     </style>
   </head>
   <body>
     <div class="app-shell">
       <div class="sidebar" id="sidebarMount"></div>
       <main class="main-area">
-        <button id="refreshBtn" style="display:none;" type="button">Refresh</button>
-        <div class="main-content">
-          <div class="date-filter" style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
-            <label style="font-size:13px;font-weight:600;">Filter by date:</label>
-            <input id="date" type="date" style="width:auto;" />
-            <button id="clearDate" class="btn-outline" type="button" style="font-size:12px;padding:4px 10px;">Show all</button>
+        <div class="cal-wrap">
+
+          <!-- ── Header ───────────────────────────────────────── -->
+          <div class="cal-hdr">
+            <div class="cal-hdr-nav">
+              <button class="cal-btn today" id="calToday">Today</button>
+              <button class="cal-btn" id="calPrev">&#8249;</button>
+              <button class="cal-btn" id="calNext">&#8250;</button>
+              <span class="cal-title" id="calTitle">Loading…</span>
+            </div>
+            <div class="cal-hdr-mid"></div>
+            <div class="cal-hdr-controls">
+              <select class="cal-select" id="filterTech">
+                <option value="">All Techs</option>
+              </select>
+              <select class="cal-select" id="filterStatus">
+                <option value="">All Statuses</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="pending">Pending</option>
+                <option value="flagged">Flagged</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <label class="toggle-lbl"><input type="checkbox" id="hideWeekends"> Hide weekends</label>
+              <button class="cal-btn" id="drawerToggle" style="display:flex;align-items:center;gap:5px;">
+                Unscheduled <span class="unsched-badge" id="unschedBadge">0</span>
+              </button>
+              <div class="view-toggle">
+                <button class="view-btn active" data-view="month">Month</button>
+                <button class="view-btn" data-view="week">Week</button>
+                <button class="view-btn" data-view="day">Day</button>
+              </div>
+            </div>
           </div>
-          <p id="status"></p>
-          <div id="schedContainer"></div>
+
+          <!-- ── Body ─────────────────────────────────────────── -->
+          <div class="cal-body">
+            <div class="cal-main" id="calMain">
+              <div class="cal-loading">Loading schedule…</div>
+            </div>
+            <aside class="cal-drawer" id="calDrawer">
+              <div class="drawer-toggle" id="drawerToggleInner">
+                <span class="drawer-toggle-icon">&#8249;</span>
+                <span class="drawer-title">Unscheduled jobs</span>
+              </div>
+              <div class="drawer-list" id="drawerList"></div>
+            </aside>
+          </div>
         </div>
       </main>
     </div>
 
+    <!-- ── Job detail panel ─────────────────────────────────── -->
+    <div class="detail-backdrop" id="detailBackdrop"></div>
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-hdr">
+        <button class="detail-close" id="detailClose">&times;</button>
+        <div class="detail-title" id="detailTitle">Job Details</div>
+      </div>
+      <div class="detail-body" id="detailBody"></div>
+      <div class="detail-footer" id="detailFooter"></div>
+    </div>
+
+    <!-- ── Bulk action bar ──────────────────────────────────── -->
+    <div class="bulk-bar hidden" id="bulkBar">
+      <span class="bulk-bar-count" id="bulkCount">0 selected</span>
+      <button class="bulk-btn" id="bulkDeselect">Clear</button>
+      <button class="bulk-btn" id="bulkCancel" style="display:none;">Cancel Selected</button>
+    </div>
+
     <script src="/pages/js/api.js"></script>
-    <script src="/pages/js/crm-schedule.js"></script>
     <script src="/pages/js/shell.js"></script>
     <script>
-      document.getElementById("clearDate")?.addEventListener("click", () => {
-        document.getElementById("date").value = "";
-        document.getElementById("date").dispatchEvent(new Event("change"));
+    (function () {
+      "use strict";
+
+      // ── Constants ──────────────────────────────────────────────────
+      const HOUR_PX     = 64;
+      const START_HOUR  = 7;
+      const END_HOUR    = 20;  // exclusive
+      const BIZ_START   = 8;
+      const BIZ_END     = 18;
+      const DAYS_SHORT  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const DAYS_LONG   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const MONTHS      = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const MAX_CHIPS_MONTH = 3; // max chips to show before "+N more"
+
+      // ── State ──────────────────────────────────────────────────────
+      const S = {
+        view:        "month",
+        cursor:      new Date(),
+        bookings:    [],
+        unscheduled: [],
+        staff:       [],
+        tz:          "America/Chicago",
+        filterTech:  "",
+        filterStatus:"",
+        hideWeekends:false,
+        drawerOpen:  true,
+        selected:    new Set(),
+        loading:     false,
+        dragging:    null,
+        dragTargetDate: null,
+        dragTargetHour: null,
+        dragTargetTech: null,
+      };
+
+      // ── DOM refs ───────────────────────────────────────────────────
+      const calMain     = document.getElementById("calMain");
+      const calTitle    = document.getElementById("calTitle");
+      const calDrawer   = document.getElementById("calDrawer");
+      const drawerList  = document.getElementById("drawerList");
+      const unschedBadge= document.getElementById("unschedBadge");
+      const detailPanel = document.getElementById("detailPanel");
+      const detailBackdrop = document.getElementById("detailBackdrop");
+      const detailBody  = document.getElementById("detailBody");
+      const detailFooter= document.getElementById("detailFooter");
+      const detailTitle = document.getElementById("detailTitle");
+      const filterTech  = document.getElementById("filterTech");
+      const filterStatus= document.getElementById("filterStatus");
+      const bulkBar     = document.getElementById("bulkBar");
+      const bulkCount   = document.getElementById("bulkCount");
+      const hideWkInput = document.getElementById("hideWeekends");
+
+      // ── Helpers ────────────────────────────────────────────────────
+      function esc(s) {
+        return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      }
+
+      function chipClass(status) {
+        const s = String(status || "").toLowerCase().replace(/\s+/g,"");
+        if (s === "confirmed" || s === "booked") return "chip-confirmed";
+        if (s === "pending")   return "chip-pending";
+        if (s === "flagged")   return "chip-flagged";
+        if (s === "cancelled") return "chip-cancelled";
+        if (s === "scheduled") return "chip-scheduled";
+        return "chip-pending";
+      }
+
+      function fmtTime(iso) {
+        if (!iso) return "";
+        try {
+          return new Intl.DateTimeFormat("en-US", {
+            timeZone: S.tz, hour: "numeric", minute: "2-digit", hour12: true,
+          }).format(new Date(iso));
+        } catch { return ""; }
+      }
+
+      function fmtShortDate(dateStr) {
+        if (!dateStr) return "";
+        try {
+          const d = new Date(dateStr + "T12:00:00");
+          return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+        } catch { return dateStr; }
+      }
+
+      function fmtDuration(mins) {
+        const m = Number(mins) || 0;
+        if (!m) return "";
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        if (h && r) return `${h}h ${r}m`;
+        if (h)      return `${h}h`;
+        return `${r}m`;
+      }
+
+      function todayStr() {
+        return new Intl.DateTimeFormat("en-CA", { timeZone: S.tz }).format(new Date());
+      }
+
+      function dateStr(y, m, d) {
+        return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      }
+
+      function addDays(dateS, n) {
+        const d = new Date(dateS + "T12:00:00");
+        d.setDate(d.getDate() + n);
+        return d.toISOString().slice(0, 10);
+      }
+
+      function diffDays(a, b) {
+        return Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 86400000);
+      }
+
+      function weekStart(date) {
+        const d = new Date(date);
+        const dow = d.getDay();
+        d.setDate(d.getDate() - dow);
+        return d;
+      }
+
+      // ── Status badge HTML ─────────────────────────────────────────
+      function statusBadgeHtml(status) {
+        const cls = chipClass(status);
+        const colorMap = {
+          "chip-confirmed": "#4ade80",
+          "chip-scheduled": "#4ade80",
+          "chip-pending":   "#fbbf24",
+          "chip-flagged":   "#fb923c",
+          "chip-cancelled": "#f87171",
+        };
+        const c = colorMap[cls] || "#60a5fa";
+        return `<span class="detail-status-badge" style="background:${c}20;color:${c};border:1px solid ${c}50;">${esc(status)}</span>`;
+      }
+
+      // ── Filter & booking helpers ──────────────────────────────────
+      function filteredBookings() {
+        let list = S.bookings;
+        if (S.filterTech) {
+          list = list.filter(b => b.assigned_tech_id === S.filterTech);
+        }
+        if (S.filterStatus) {
+          list = list.filter(b => b.status.toLowerCase() === S.filterStatus);
+        }
+        return list;
+      }
+
+      // ── API ───────────────────────────────────────────────────────
+      async function loadData() {
+        S.loading = true;
+        calMain.innerHTML = '<div class="cal-loading">Loading schedule…</div>';
+
+        const [y, m] = [S.cursor.getFullYear(), S.cursor.getMonth()];
+        let start, end;
+        if (S.view === "month") {
+          // Load 3 months around current for smoother nav
+          start = dateStr(y, m, 1);
+          end   = dateStr(y, m + 2, 0);   // last day of next month
+          // Clamp start back to beginning of the month grid (may need prev month days)
+          const firstDow = new Date(start + "T12:00:00").getDay();
+          if (firstDow > 0) start = addDays(start, -firstDow);
+          end = addDays(end, 7); // buffer
+        } else if (S.view === "week") {
+          const ws = weekStart(S.cursor);
+          start = ws.toISOString().slice(0, 10);
+          end   = addDays(start, 6);
+        } else {
+          start = end = new Intl.DateTimeFormat("en-CA", { timeZone: S.tz }).format(S.cursor);
+        }
+
+        try {
+          const r = await fetch(`/api/schedule/calendar?start=${start}&end=${end}`);
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "API error");
+          S.bookings    = d.bookings    || [];
+          S.unscheduled = d.unscheduled || [];
+          S.staff       = d.staff       || [];
+          S.tz          = d.timezone    || S.tz;
+          populateTechFilter();
+          renderAll();
+        } catch (err) {
+          calMain.innerHTML = `<div class="cal-error">Error loading schedule: ${esc(err.message)}</div>`;
+        } finally {
+          S.loading = false;
+        }
+      }
+
+      async function patchBooking(bookingId, updates) {
+        const r = await fetch(`/api/schedule/bookings/${bookingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || "Patch failed");
+        return d.booking;
+      }
+
+      // ── Populate filters ─────────────────────────────────────────
+      function populateTechFilter() {
+        const current = filterTech.value;
+        filterTech.innerHTML = '<option value="">All Techs</option>';
+        for (const s of S.staff) {
+          const opt = document.createElement("option");
+          opt.value = s.staff_id;
+          opt.textContent = s.name || `${s.first_name} ${s.last_name}`.trim();
+          filterTech.appendChild(opt);
+        }
+        filterTech.value = current;
+      }
+
+      // ── Render all ────────────────────────────────────────────────
+      function renderAll() {
+        updateTitle();
+        updateUnschedBadge();
+        renderDrawer();
+        updateBulkBar();
+        if (S.view === "month") renderMonth();
+        else if (S.view === "week") renderWeek();
+        else renderDay();
+      }
+
+      function updateTitle() {
+        const y  = S.cursor.getFullYear();
+        const m  = S.cursor.getMonth();
+        if (S.view === "month") {
+          calTitle.textContent = `${MONTHS[m]} ${y}`;
+        } else if (S.view === "week") {
+          const ws = weekStart(S.cursor);
+          const we = new Date(ws); we.setDate(we.getDate() + 6);
+          const ms = MONTHS[ws.getMonth()]; const me = MONTHS[we.getMonth()];
+          if (ms === me) {
+            calTitle.textContent = `${ms} ${ws.getDate()}–${we.getDate()}, ${y}`;
+          } else {
+            calTitle.textContent = `${ms} ${ws.getDate()} – ${me} ${we.getDate()}, ${y}`;
+          }
+        } else {
+          const d = new Intl.DateTimeFormat("en-US", {
+            timeZone: S.tz, weekday: "long", month: "long", day: "numeric", year: "numeric",
+          }).format(S.cursor);
+          calTitle.textContent = d;
+        }
+      }
+
+      function updateUnschedBadge() {
+        const n = S.unscheduled.length;
+        unschedBadge.textContent = n;
+        unschedBadge.style.display = n ? "inline-block" : "none";
+      }
+
+      function updateBulkBar() {
+        if (S.selected.size === 0) {
+          bulkBar.classList.add("hidden");
+        } else {
+          bulkBar.classList.remove("hidden");
+          bulkCount.textContent = `${S.selected.size} selected`;
+        }
+      }
+
+      // ── MONTH VIEW ────────────────────────────────────────────────
+      function renderMonth() {
+        const y = S.cursor.getFullYear();
+        const m = S.cursor.getMonth();
+        const today = todayStr();
+        const bookings = filteredBookings();
+
+        // Group bookings by local_date
+        const byDate = {};
+        for (const b of bookings) {
+          if (!b.local_date) continue;
+          (byDate[b.local_date] = byDate[b.local_date] || []).push(b);
+        }
+
+        // Build 6-week grid starting from Sunday before month start
+        const firstDay = new Date(y, m, 1);
+        const gridStart = new Date(firstDay);
+        gridStart.setDate(gridStart.getDate() - firstDay.getDay());
+
+        const DOWS = S.hideWeekends ? ["Mon","Tue","Wed","Thu","Fri"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const COLS = DOWS.length;
+
+        let html = `<div class="mv-wrap"><div class="mv-dow-row" style="grid-template-columns:repeat(${COLS},1fr);">`;
+        for (const d of DOWS) html += `<div class="mv-dow">${d}</div>`;
+        html += `</div><div class="mv-grid" style="grid-template-columns:repeat(${COLS},1fr);">`;
+
+        const totalCells = COLS * 6;
+        let cursor = new Date(gridStart);
+        // Adjust for weekend hiding: start on Monday if hiding weekends
+        if (S.hideWeekends && cursor.getDay() === 0) cursor.setDate(cursor.getDate() + 1);
+
+        for (let i = 0; i < totalCells; i++) {
+          const dow = cursor.getDay();
+          if (S.hideWeekends && (dow === 0 || dow === 6)) {
+            cursor.setDate(cursor.getDate() + 1);
+            i--;
+            continue;
+          }
+          const ds        = cursor.toISOString().slice(0, 10);
+          const isToday   = ds === today;
+          const otherMonth= cursor.getMonth() !== m;
+          const isWeekend = dow === 0 || dow === 6;
+          const dayJobs   = byDate[ds] || [];
+          const dayNum    = cursor.getDate();
+
+          let cls = "mv-cell";
+          if (isToday)    cls += " today";
+          if (otherMonth) cls += " other-month";
+          if (isWeekend && !S.hideWeekends) cls += " weekend";
+
+          html += `<div class="${cls}" data-date="${ds}" data-droptarget="true">`;
+          html += `<div class="mv-day-num">${dayNum}</div>`;
+          if (dayJobs.length > 1) {
+            html += `<div class="mv-visit-badge">${dayJobs.length} visits</div>`;
+          }
+
+          const showJobs = dayJobs.slice(0, MAX_CHIPS_MONTH);
+          for (const b of showJobs) {
+            const selected = S.selected.has(b.booking_id) ? " selected" : "";
+            html += `<div class="mv-chip ${chipClass(b.status)}${selected}" draggable="true"
+              data-id="${esc(b.booking_id)}" data-date="${ds}">
+              <span class="chip-name">${esc(b.customer_name || "—")}</span>
+              <span class="chip-time">${b.schedule_block || fmtTime(b.scheduled_datetime) || "Block"}</span>
+            </div>`;
+          }
+          if (dayJobs.length > MAX_CHIPS_MONTH) {
+            html += `<div class="mv-more" data-date="${ds}">+${dayJobs.length - MAX_CHIPS_MONTH} more</div>`;
+          }
+          html += `</div>`;
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        html += `</div></div>`;
+        calMain.innerHTML = html;
+        setupMonthEvents();
+      }
+
+      function setupMonthEvents() {
+        // Chip click / drag
+        calMain.querySelectorAll(".mv-chip").forEach(chip => {
+          chip.addEventListener("click", e => {
+            e.stopPropagation();
+            const id = chip.dataset.id;
+            if (e.shiftKey) {
+              // Multi-select
+              if (S.selected.has(id)) S.selected.delete(id);
+              else S.selected.add(id);
+              chip.classList.toggle("selected", S.selected.has(id));
+              updateBulkBar();
+            } else {
+              openDetail(id);
+            }
+          });
+          chip.addEventListener("dragstart", e => {
+            S.dragging = chip.dataset.id;
+            chip.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+          chip.addEventListener("dragend", () => {
+            chip.classList.remove("dragging");
+            S.dragging = null;
+            calMain.querySelectorAll(".mv-cell.drop-over").forEach(c => c.classList.remove("drop-over"));
+          });
+        });
+
+        // Cell drop targets
+        calMain.querySelectorAll(".mv-cell[data-droptarget]").forEach(cell => {
+          cell.addEventListener("click", () => {
+            if (S.selected.size > 0) return; // bulk mode – ignore cell clicks
+          });
+          cell.addEventListener("dragover", e => {
+            if (!S.dragging) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            cell.classList.add("drop-over");
+          });
+          cell.addEventListener("dragleave", () => cell.classList.remove("drop-over"));
+          cell.addEventListener("drop", async e => {
+            e.preventDefault();
+            cell.classList.remove("drop-over");
+            if (!S.dragging) return;
+            const newDate = cell.dataset.date;
+            const booking = S.bookings.find(b => b.booking_id === S.dragging);
+            if (!booking || !newDate) return;
+
+            // Build new ISO datetime preserving original time, just changing date
+            const oldDt = booking.scheduled_datetime;
+            let newDt;
+            if (oldDt) {
+              // Keep same time, change date
+              const oldDate = booking.local_date;
+              newDt = oldDt.replace(oldDate, newDate);
+            } else {
+              newDt = newDate + "T08:00:00.000Z";
+            }
+
+            try {
+              await patchBooking(S.dragging, { scheduled_datetime: newDt });
+              await loadData();
+            } catch (err) {
+              alert("Failed to reschedule: " + err.message);
+            }
+          });
+        });
+
+        // "+N more" shows all for that day
+        calMain.querySelectorAll(".mv-more").forEach(el => {
+          el.addEventListener("click", e => {
+            e.stopPropagation();
+            const ds = el.dataset.date;
+            showDayBookings(ds);
+          });
+        });
+      }
+
+      function showDayBookings(dateStr) {
+        // Switch to day view for that date
+        S.cursor = new Date(dateStr + "T12:00:00");
+        S.view = "day";
+        document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "day"));
+        loadData();
+      }
+
+      // ── WEEK VIEW ─────────────────────────────────────────────────
+      function renderWeek() {
+        const ws = weekStart(S.cursor);
+        const today = todayStr();
+        const bookings = filteredBookings();
+        const totalHours = END_HOUR - START_HOUR;
+        const totalPx = totalHours * HOUR_PX;
+
+        // Build 7 days
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(ws); d.setDate(d.getDate() + i);
+          days.push({ date: d.toISOString().slice(0, 10), dow: d.getDay(), d });
+        }
+        const visibleDays = S.hideWeekends ? days.filter(d => d.dow !== 0 && d.dow !== 6) : days;
+
+        // Group bookings by date
+        const byDate = {};
+        const allDay  = {};
+        for (const b of bookings) {
+          if (!b.local_date) continue;
+          const hasTime = b.scheduled_datetime && !b.schedule_block;
+          const isBlock = !!b.schedule_block;
+          if (isBlock || !b.scheduled_datetime) {
+            (allDay[b.local_date] = allDay[b.local_date] || []).push(b);
+          } else {
+            (byDate[b.local_date] = byDate[b.local_date] || []).push(b);
+          }
+        }
+
+        let html = `<div class="wv-wrap">`;
+
+        // Day headers
+        html += `<div class="wv-head"><div class="wv-time-gutter"></div><div class="wv-day-heads">`;
+        for (const day of visibleDays) {
+          const isToday = day.date === today;
+          html += `<div class="wv-day-head${isToday ? " today" : ""}" data-date="${day.date}">
+            <div class="wv-day-label">${DAYS_SHORT[day.dow]}</div>
+            <div class="wv-day-num">${day.d.getDate()}</div>
+          </div>`;
+        }
+        html += `</div></div>`;
+
+        // All-day row
+        html += `<div class="wv-allday-row"><div class="wv-allday-label">All day</div><div class="wv-allday-cols">`;
+        for (const day of visibleDays) {
+          const chips = (allDay[day.date] || []);
+          html += `<div class="wv-allday-col">`;
+          for (const b of chips) {
+            html += `<div class="mv-chip ${chipClass(b.status)}" draggable="true" data-id="${esc(b.booking_id)}" style="margin-bottom:2px;">
+              <span class="chip-name">${esc(b.customer_name || "—")}</span>
+            </div>`;
+          }
+          html += `</div>`;
+        }
+        html += `</div></div>`;
+
+        // Time grid
+        html += `<div class="wv-grid-body"><div class="wv-time-col">`;
+        for (let h = START_HOUR; h < END_HOUR; h++) {
+          const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+          html += `<div class="wv-time-slot">${label}</div>`;
+        }
+        html += `</div><div class="wv-day-cols">`;
+
+        for (const day of visibleDays) {
+          const isToday = day.date === today;
+          const isWknd  = day.dow === 0 || day.dow === 6;
+          let colCls = "wv-day-col";
+          if (isToday) colCls += " today-col";
+          if (isWknd)  colCls += " weekend-col";
+          html += `<div class="${colCls}" data-date="${day.date}" style="height:${totalPx}px;" data-droptarget="true">`;
+
+          // Hour dividers
+          for (let h = START_HOUR; h < END_HOUR; h++) {
+            const topPx = (h - START_HOUR) * HOUR_PX;
+            const isBiz = h >= BIZ_START && h < BIZ_END;
+            html += `<div class="wv-hour-line${isBiz ? " business" : ""}" style="top:${topPx}px;"></div>`;
+          }
+          // Off-hours overlay
+          if (BIZ_START > START_HOUR) {
+            html += `<div class="off-hours" style="position:absolute;top:0;left:0;right:0;height:${(BIZ_START-START_HOUR)*HOUR_PX}px;pointer-events:none;"></div>`;
+          }
+          if (BIZ_END < END_HOUR) {
+            const offTop = (BIZ_END - START_HOUR) * HOUR_PX;
+            html += `<div class="off-hours" style="position:absolute;top:${offTop}px;left:0;right:0;bottom:0;pointer-events:none;"></div>`;
+          }
+
+          // Now line
+          if (isToday) {
+            const now = new Date();
+            const nowH = now.getHours() + now.getMinutes() / 60;
+            if (nowH >= START_HOUR && nowH < END_HOUR) {
+              const nowTop = (nowH - START_HOUR) * HOUR_PX;
+              html += `<div class="wv-now-line" style="top:${nowTop}px;"></div>`;
+            }
+          }
+
+          // Job chips
+          const dayBookings = byDate[day.date] || [];
+          // Layout: detect overlapping chips and offset them
+          const positioned = layoutBookings(dayBookings);
+          for (const { b, left, width } of positioned) {
+            const startH = b.local_hour + b.local_min / 60;
+            const endH   = startH + (b.duration_minutes / 60);
+            const topPx  = Math.max(0, (startH - START_HOUR) * HOUR_PX);
+            const hPx    = Math.max(22, (endH - startH) * HOUR_PX - 2);
+            const selected = S.selected.has(b.booking_id) ? " selected" : "";
+            html += `<div class="wv-chip ${chipClass(b.status)}${selected}"
+              draggable="true" data-id="${esc(b.booking_id)}"
+              style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;">
+              <span class="chip-name">${esc(b.customer_name || "—")}</span>
+              <span class="chip-time">${fmtTime(b.scheduled_datetime)}</span>
+            </div>`;
+          }
+          html += `</div>`;
+        }
+        html += `</div></div></div>`;
+        calMain.innerHTML = html;
+        setupWeekDayEvents();
+      }
+
+      // Simple layout: detect overlapping bookings and assign columns
+      function layoutBookings(bookings) {
+        if (!bookings.length) return [];
+        const sorted = [...bookings].sort((a, b) => a.local_hour - b.local_hour || a.local_min - b.local_min);
+        const columns = [];
+        const result  = [];
+
+        for (const b of sorted) {
+          const startH = b.local_hour + b.local_min / 60;
+          const endH   = startH + (b.duration_minutes / 60 || 1);
+
+          let col = 0;
+          while (columns[col] && columns[col] > startH) col++;
+          columns[col] = endH;
+
+          result.push({ b, col });
+        }
+
+        const maxCol = columns.length || 1;
+        return result.map(({ b, col }) => ({
+          b, left: 3 + col * (94 / maxCol), width: 94 / maxCol - 2,
+        }));
+      }
+
+      function setupWeekDayEvents() {
+        setupChipEvents(".wv-chip", "week");
+        setupColumnDropEvents(".wv-day-col[data-droptarget]", "week");
+
+        // Header day click → switch to day view
+        calMain.querySelectorAll(".wv-day-head").forEach(head => {
+          head.addEventListener("click", () => {
+            S.cursor = new Date(head.dataset.date + "T12:00:00");
+            S.view   = "day";
+            document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "day"));
+            loadData();
+          });
+        });
+      }
+
+      function setupChipEvents(selector, viewType) {
+        calMain.querySelectorAll(selector).forEach(chip => {
+          chip.addEventListener("click", e => {
+            e.stopPropagation();
+            const id = chip.dataset.id;
+            if (e.shiftKey) {
+              if (S.selected.has(id)) S.selected.delete(id);
+              else S.selected.add(id);
+              chip.classList.toggle("selected", S.selected.has(id));
+              updateBulkBar();
+            } else {
+              openDetail(id);
+            }
+          });
+          chip.addEventListener("dragstart", e => {
+            S.dragging = chip.dataset.id;
+            chip.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+          chip.addEventListener("dragend", () => {
+            chip.classList.remove("dragging");
+            S.dragging = null;
+            calMain.querySelectorAll(".drop-over").forEach(c => c.classList.remove("drop-over"));
+          });
+        });
+      }
+
+      function setupColumnDropEvents(selector, viewType) {
+        calMain.querySelectorAll(selector).forEach(col => {
+          col.addEventListener("dragover", e => {
+            if (!S.dragging) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            col.classList.add("drop-over");
+            // Show time indicator for week/day views
+          });
+          col.addEventListener("dragleave", e => {
+            if (!col.contains(e.relatedTarget)) col.classList.remove("drop-over");
+          });
+          col.addEventListener("drop", async e => {
+            e.preventDefault();
+            col.classList.remove("drop-over");
+            if (!S.dragging) return;
+            const booking = S.bookings.find(b => b.booking_id === S.dragging);
+            if (!booking) return;
+
+            const newDate = col.dataset.date || col.dataset.techDate || booking.local_date;
+            const techId  = col.dataset.techId || null;
+
+            // Calculate drop time from Y position
+            const rect   = col.getBoundingClientRect();
+            const relY   = e.clientY - rect.top;
+            const dropH  = START_HOUR + relY / HOUR_PX;
+            const snapH  = Math.floor(dropH * 2) / 2; // snap to 30-min
+            const hour   = Math.min(Math.max(Math.floor(snapH), START_HOUR), END_HOUR - 1);
+            const min    = snapH % 1 >= 0.5 ? 30 : 0;
+
+            // Build new ISO datetime
+            let newDt = newDate + `T${String(hour).padStart(2,"0")}:${String(min).padStart(2,"0")}:00.000Z`;
+
+            const updates = { scheduled_datetime: newDt };
+            if (techId !== null) updates.assigned_tech_id = techId;
+
+            try {
+              await patchBooking(S.dragging, updates);
+              await loadData();
+            } catch (err) {
+              alert("Failed to reschedule: " + err.message);
+            }
+          });
+        });
+      }
+
+      // ── DAY / DISPATCH VIEW ──────────────────────────────────────
+      function renderDay() {
+        const today = todayStr();
+        const curDate = new Intl.DateTimeFormat("en-CA", { timeZone: S.tz }).format(S.cursor);
+        const bookings = filteredBookings().filter(b => b.local_date === curDate);
+
+        const hours = [];
+        for (let h = BIZ_START; h <= BIZ_END; h++) {
+          hours.push(h);
+        }
+        const HOUR_COL_PX = 80;
+        const TECH_COL_PX = 120;
+        const ROW_PX      = 72;
+        const COLS = hours.length + 1; // +1 for tech name col
+
+        // Build tech rows
+        const techRows = [{ id: "", name: "Unassigned" }];
+        for (const s of S.staff) {
+          techRows.push({ id: s.staff_id, name: s.name || `${s.first_name} ${s.last_name}`.trim() });
+        }
+        if (techRows.length === 1 && S.staff.length === 0) {
+          // No staff data yet — just show unassigned
+        }
+
+        // Group bookings by tech
+        const byTech = {};
+        for (const b of bookings) {
+          const key = b.assigned_tech_id || "";
+          (byTech[key] = byTech[key] || []).push(b);
+        }
+
+        // Also get block/all-day bookings
+        const blockBookings = filteredBookings().filter(b => b.local_date === curDate && b.schedule_block && !b.assigned_tech_id);
+
+        const totalW = TECH_COL_PX + hours.length * HOUR_COL_PX;
+
+        let html = `<div class="dv-wrap"><div class="dv-table" style="grid-template-columns:${TECH_COL_PX}px repeat(${hours.length},${HOUR_COL_PX}px);">`;
+
+        // Header row: corner + hour labels
+        html += `<div class="dv-corner">Technician</div>`;
+        for (const h of hours) {
+          const label = h === 12 ? "12 PM" : h < 12 ? `${h} AM` : `${h-12} PM`;
+          html += `<div class="dv-hour-head">${label}</div>`;
+        }
+
+        // Tech rows
+        for (const tech of techRows) {
+          const techBookings = byTech[tech.id] || [];
+
+          // Tech name cell
+          const cls = tech.id ? "dv-tech-name" : "dv-tech-name unassigned";
+          html += `<div class="${cls}">${esc(tech.name)}<br><span style="font-size:10px;font-weight:400;color:var(--muted);">${techBookings.length} job${techBookings.length !== 1 ? "s" : ""}</span></div>`;
+
+          // Hour cells
+          for (const h of hours) {
+            html += `<div class="dv-tech-cell" data-tech-id="${esc(tech.id)}" data-hour="${h}" data-date="${curDate}" data-droptarget="true" style="position:relative;">`;
+
+            // Jobs in this hour
+            const hBookings = techBookings.filter(b => {
+              const bh = b.local_hour;
+              const bEnd = bh + (b.duration_minutes / 60 || 1);
+              return bh <= h && bEnd > h;
+            });
+
+            for (const b of hBookings) {
+              // Only render chip at the starting hour to avoid duplicates
+              if (b.local_hour !== h) continue;
+              const durH = (b.duration_minutes || 60) / 60;
+              const widthPct = Math.min(100, durH * 100);
+              const endHourOffset = b.local_hour - h;
+              const leftPx = (b.local_hour + b.local_min / 60 - h) * HOUR_COL_PX;
+              const chipW  = Math.min(
+                HOUR_COL_PX * Math.ceil(durH) - 6,
+                HOUR_COL_PX * (durH)
+              );
+              const selected = S.selected.has(b.booking_id) ? " selected" : "";
+              html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
+                draggable="true" data-id="${esc(b.booking_id)}"
+                style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;">
+                <span class="chip-name">${esc(b.customer_name || "—")}</span>
+                <span class="chip-time" style="font-size:10px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+              </div>`;
+            }
+            html += `</div>`;
+          }
+        }
+
+        // Block bookings section (below the grid)
+        if (blockBookings.length) {
+          html += `<div class="dv-tech-name" style="grid-column:1/-1;border-top:2px solid var(--line);padding:10px 12px;color:var(--muted);">Block / All-Day Jobs</div>`;
+          html += `<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);">`;
+          for (const b of blockBookings) {
+            html += `<div class="mv-chip ${chipClass(b.status)}" data-id="${esc(b.booking_id)}" style="width:auto;display:inline-flex;gap:6px;cursor:pointer;">
+              <span class="chip-name">${esc(b.customer_name || "—")}</span>
+              <span class="chip-time">${esc(b.schedule_block || "Block")}</span>
+            </div>`;
+          }
+          html += `</div>`;
+        }
+
+        html += `</div></div>`;
+        calMain.innerHTML = html;
+        setupDayEvents(curDate);
+      }
+
+      function setupDayEvents(curDate) {
+        setupChipEvents(".dv-chip", "day");
+        setupChipEvents(".mv-chip[data-id]", "day");
+
+        // Drop into tech/hour cells
+        calMain.querySelectorAll(".dv-tech-cell[data-droptarget]").forEach(cell => {
+          cell.addEventListener("dragover", e => {
+            if (!S.dragging) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            cell.classList.add("drop-over");
+          });
+          cell.addEventListener("dragleave", e => {
+            if (!cell.contains(e.relatedTarget)) cell.classList.remove("drop-over");
+          });
+          cell.addEventListener("drop", async e => {
+            e.preventDefault();
+            cell.classList.remove("drop-over");
+            if (!S.dragging) return;
+            const booking = S.bookings.find(b => b.booking_id === S.dragging);
+            if (!booking) return;
+
+            const techId = cell.dataset.techId || "";
+            const hour   = Number(cell.dataset.hour);
+            const newDt  = curDate + `T${String(hour).padStart(2,"0")}:00:00.000Z`;
+
+            const updates = {
+              scheduled_datetime: newDt,
+              assigned_tech_id: techId,
+            };
+
+            try {
+              await patchBooking(S.dragging, updates);
+              await loadData();
+            } catch (err) {
+              alert("Failed to assign: " + err.message);
+            }
+          });
+        });
+      }
+
+      // ── Unscheduled drawer ────────────────────────────────────────
+      function renderDrawer() {
+        const list = S.filterTech
+          ? S.unscheduled.filter(b => b.assigned_tech_id === S.filterTech)
+          : S.unscheduled;
+
+        if (!list.length) {
+          drawerList.innerHTML = `<div class="drawer-empty">No unscheduled jobs</div>`;
+          return;
+        }
+        let html = "";
+        for (const b of list) {
+          html += `<div class="drawer-chip" data-id="${esc(b.booking_id)}">
+            <div class="drawer-chip-name">${esc(b.customer_name || "—")}</div>
+            <div class="drawer-chip-meta">${esc(b.address || b.job_type_id || "No address")} · ${esc(b.status)}</div>
+          </div>`;
+        }
+        drawerList.innerHTML = html;
+
+        drawerList.querySelectorAll(".drawer-chip").forEach(c => {
+          c.addEventListener("click", () => openDetail(c.dataset.id));
+        });
+      }
+
+      // ── Detail panel ──────────────────────────────────────────────
+      function openDetail(bookingId) {
+        const b = [...S.bookings, ...S.unscheduled].find(x => x.booking_id === bookingId);
+        if (!b) return;
+
+        detailTitle.textContent = b.customer_name || "Job Details";
+        let body = "";
+
+        const rows = [
+          ["Status",       statusBadgeHtml(b.status)],
+          ["Customer",     esc(b.customer_name)],
+          ["Address",      esc(b.address)],
+          ["Phone",        b.phone ? `<a href="tel:${esc(b.phone)}" style="color:var(--blue);">${esc(b.phone)}</a>` : "—"],
+          ["Scheduled",    b.scheduled_datetime ? `${esc(fmtShortDate(b.local_date))} ${esc(fmtTime(b.scheduled_datetime))}` : "Not scheduled"],
+          ["Block",        b.schedule_block || "—"],
+          ["Duration",     fmtDuration(b.duration_minutes) || "—"],
+          ["Job Type",     esc(b.job_type_id || "—")],
+          ["Price",        b.final_price ? `$${Number(b.final_price).toLocaleString()}` : "—"],
+          ["Assigned Tech",b.assigned_tech_name ? esc(b.assigned_tech_name) : (b.assigned_tech_id ? esc(b.assigned_tech_id) : "Unassigned")],
+          ["Booking ID",   `<span style="font-size:11px;color:var(--muted);">${esc(b.booking_id)}</span>`],
+        ];
+
+        for (const [label, value] of rows) {
+          if (value && value !== "—" && value !== "—") {
+            body += `<div class="detail-row">
+              <div class="detail-label">${label}</div>
+              <div class="detail-value">${value}</div>
+            </div>`;
+          }
+        }
+
+        // Tech assignment (quick reassign)
+        if (S.staff.length > 0) {
+          body += `<div class="detail-row">
+            <div class="detail-label">Reassign Tech</div>
+            <select class="cal-select" id="detailTechSelect" style="width:100%;margin-top:4px;">
+              <option value="">Unassigned</option>
+              ${S.staff.map(s => `<option value="${esc(s.staff_id)}"${b.assigned_tech_id === s.staff_id ? " selected" : ""}>${esc(s.name)}</option>`).join("")}
+            </select>
+          </div>`;
+        }
+
+        detailBody.innerHTML = body;
+        detailFooter.innerHTML = `
+          ${b.quote_id ? `<a class="detail-btn primary" href="/crm/leads?q=${esc(b.quote_id)}" target="_blank">Open Full Record &#8599;</a>` : ""}
+          ${S.staff.length > 0 ? `<button class="detail-btn" id="detailSaveTech">Save Assignment</button>` : ""}
+        `;
+
+        document.getElementById("detailSaveTech")?.addEventListener("click", async () => {
+          const techId = document.getElementById("detailTechSelect")?.value || "";
+          try {
+            await patchBooking(b.booking_id, { assigned_tech_id: techId });
+            closeDetail();
+            await loadData();
+          } catch (err) {
+            alert("Failed to save: " + err.message);
+          }
+        });
+
+        detailPanel.classList.add("open");
+        detailBackdrop.classList.add("show");
+      }
+
+      function closeDetail() {
+        detailPanel.classList.remove("open");
+        detailBackdrop.classList.remove("show");
+      }
+
+      // ── Navigation ────────────────────────────────────────────────
+      function navPrev() {
+        if (S.view === "month") {
+          S.cursor.setMonth(S.cursor.getMonth() - 1);
+        } else if (S.view === "week") {
+          S.cursor.setDate(S.cursor.getDate() - 7);
+        } else {
+          S.cursor.setDate(S.cursor.getDate() - 1);
+        }
+        loadData();
+      }
+
+      function navNext() {
+        if (S.view === "month") {
+          S.cursor.setMonth(S.cursor.getMonth() + 1);
+        } else if (S.view === "week") {
+          S.cursor.setDate(S.cursor.getDate() + 7);
+        } else {
+          S.cursor.setDate(S.cursor.getDate() + 1);
+        }
+        loadData();
+      }
+
+      function navToday() {
+        S.cursor = new Date();
+        loadData();
+      }
+
+      // ── Event wiring ──────────────────────────────────────────────
+      document.getElementById("calPrev").addEventListener("click", navPrev);
+      document.getElementById("calNext").addEventListener("click", navNext);
+      document.getElementById("calToday").addEventListener("click", navToday);
+      document.getElementById("detailClose").addEventListener("click", closeDetail);
+      detailBackdrop.addEventListener("click", closeDetail);
+
+      document.querySelectorAll(".view-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (S.view === btn.dataset.view) return;
+          S.view = btn.dataset.view;
+          document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b === btn));
+          loadData();
+        });
       });
+
+      filterTech.addEventListener("change", () => {
+        S.filterTech = filterTech.value;
+        renderAll();
+      });
+
+      filterStatus.addEventListener("change", () => {
+        S.filterStatus = filterStatus.value;
+        renderAll();
+      });
+
+      hideWkInput.addEventListener("change", () => {
+        S.hideWeekends = hideWkInput.checked;
+        renderAll();
+      });
+
+      // Drawer toggle
+      document.getElementById("drawerToggle").addEventListener("click", () => {
+        S.drawerOpen = !S.drawerOpen;
+        calDrawer.classList.toggle("collapsed", !S.drawerOpen);
+      });
+
+      document.getElementById("drawerToggleInner").addEventListener("click", () => {
+        S.drawerOpen = !S.drawerOpen;
+        calDrawer.classList.toggle("collapsed", !S.drawerOpen);
+      });
+
+      // Bulk bar
+      document.getElementById("bulkDeselect").addEventListener("click", () => {
+        S.selected.clear();
+        renderAll();
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener("keydown", e => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+        if (e.key === "ArrowLeft")  { navPrev(); return; }
+        if (e.key === "ArrowRight") { navNext(); return; }
+        if (e.key === "t" || e.key === "T") { navToday(); return; }
+        if (e.key === "m" || e.key === "M") {
+          S.view = "month";
+          document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "month"));
+          loadData();
+        }
+        if (e.key === "w" || e.key === "W") {
+          S.view = "week";
+          document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "week"));
+          loadData();
+        }
+        if (e.key === "d" || e.key === "D") {
+          S.view = "day";
+          document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "day"));
+          loadData();
+        }
+        if (e.key === "Escape") { closeDetail(); S.selected.clear(); updateBulkBar(); }
+      });
+
+      // ── Init ──────────────────────────────────────────────────────
+      loadData();
+
+      // Refresh every 5 minutes
+      setInterval(loadData, 300000);
+    })();
     </script>
   </body>
 </html>
