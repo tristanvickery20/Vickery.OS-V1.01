@@ -228,6 +228,30 @@
       .wv-chip.selected { outline: 2px solid #fff; outline-offset: 1px; }
       .wv-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .wv-chip .chip-time { font-size: 10px; opacity: 0.75; }
+      .chip-resize-handle {
+        position: absolute; bottom: 0; left: 0; right: 0; height: 7px;
+        cursor: ns-resize; background: transparent; z-index: 4; border-radius: 0 0 6px 6px;
+      }
+      .chip-resize-handle:hover { background: rgba(255,255,255,0.15); }
+      /* Confirmation modal */
+      .cal-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: none; align-items: center; justify-content: center;
+      }
+      .cal-modal-backdrop.show { display: flex; }
+      .cal-modal {
+        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+        padding: 24px; width: 320px; max-width: 90vw; display: flex; flex-direction: column; gap: 14px;
+      }
+      .cal-modal-title { font-size: 15px; font-weight: 800; color: var(--text); }
+      .cal-modal-body { display: flex; flex-direction: column; gap: 10px; }
+      .cal-modal-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+      .cal-modal input, .cal-modal select {
+        width: 100%; padding: 8px 10px; background: rgba(100,150,255,0.08);
+        border: 1px solid var(--line); color: var(--text); border-radius: 8px; font-size: 13px;
+      }
+      .cal-modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+      .cal-modal-cancel { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
+      .cal-modal-confirm { padding: 7px 14px; border-radius: 8px; border: none; background: var(--blue); color: #fff; cursor: pointer; font-size: 13px; font-weight: 700; }
       .wv-drop-zone { position: absolute; inset: 0; z-index: 1; }
       .wv-drop-indicator {
         position: absolute; left: 0; right: 0; height: 2px;
@@ -417,7 +441,49 @@
     <div class="bulk-bar hidden" id="bulkBar">
       <span class="bulk-bar-count" id="bulkCount">0 selected</span>
       <button class="bulk-btn" id="bulkDeselect">Clear</button>
-      <button class="bulk-btn" id="bulkCancel" style="display:none;">Cancel Selected</button>
+      <button class="bulk-btn" id="bulkReschedule">Reschedule All</button>
+      <button class="bulk-btn" id="bulkReassign">Reassign All</button>
+      <button class="bulk-btn danger" id="bulkCancel" style="display:none;">Cancel Selected</button>
+    </div>
+
+    <!-- Reschedule modal -->
+    <div class="cal-modal-backdrop" id="rescheduleModal">
+      <div class="cal-modal">
+        <div class="cal-modal-title" id="rescheduleModalTitle">Reschedule Jobs</div>
+        <div class="cal-modal-body">
+          <div>
+            <div class="cal-modal-label">New Date</div>
+            <input type="date" id="rescheduleDate">
+          </div>
+          <div>
+            <div class="cal-modal-label">New Time (optional)</div>
+            <input type="time" id="rescheduleTime" placeholder="Leave blank to keep existing">
+          </div>
+        </div>
+        <div class="cal-modal-footer">
+          <button class="cal-modal-cancel" id="rescheduleCancel">Cancel</button>
+          <button class="cal-modal-confirm" id="rescheduleConfirm">Reschedule All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reassign modal -->
+    <div class="cal-modal-backdrop" id="reassignModal">
+      <div class="cal-modal">
+        <div class="cal-modal-title" id="reassignModalTitle">Reassign Jobs</div>
+        <div class="cal-modal-body">
+          <div>
+            <div class="cal-modal-label">Assign To</div>
+            <select id="reassignTech">
+              <option value="">— Unassigned —</option>
+            </select>
+          </div>
+        </div>
+        <div class="cal-modal-footer">
+          <button class="cal-modal-cancel" id="reassignCancel">Cancel</button>
+          <button class="cal-modal-confirm" id="reassignConfirm">Reassign All</button>
+        </div>
+      </div>
     </div>
 
     <script src="/pages/js/api.js"></script>
@@ -518,6 +584,31 @@
 
       function todayStr() {
         return new Intl.DateTimeFormat("en-CA", { timeZone: S.tz }).format(new Date());
+      }
+
+      // Convert a local date + hour + minute in the scheduler's timezone to UTC ISO.
+      // Uses the Intl offset-probing trick from the server-side code.
+      function localToUtcIso(dateStr, hour, minute) {
+        const tz = S.tz;
+        // Build a "naïve UTC" guess at the requested date+time
+        const guessUtc = new Date(`${dateStr}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00Z`);
+        // Find what local time the guess maps to
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+        }).formatToParts(guessUtc);
+        const lh = Number(parts.find(p => p.type === "hour")?.value   || hour);
+        const lm = Number(parts.find(p => p.type === "minute")?.value || minute);
+        // Compute offset and adjust
+        const diffMs = ((hour - lh) * 60 + (minute - lm)) * 60000;
+        return new Date(guessUtc.getTime() + diffMs).toISOString();
+      }
+
+      // Keep same UTC time, change just the date portion (for month-view reschedule)
+      function changeDate(isoStr, newDateStr) {
+        if (!isoStr) return newDateStr + "T13:00:00.000Z"; // default to 8 AM Central
+        // isoStr e.g. "2026-04-06T18:00:00.000Z"
+        const timePart = isoStr.slice(10); // "T18:00:00.000Z"
+        return newDateStr + timePart;
       }
 
       function dateStr(y, m, d) {
@@ -790,8 +881,11 @@
 
         // Cell drop targets
         calMain.querySelectorAll(".mv-cell[data-droptarget]").forEach(cell => {
-          cell.addEventListener("click", () => {
+          cell.addEventListener("click", e => {
+            if (e.target.closest(".mv-chip")) return; // chip handled by chip listener
             if (S.selected.size > 0) return; // bulk mode – ignore cell clicks
+            const ds = cell.dataset.date;
+            if (ds) window.location.href = `/crm/new?date=${ds}`;
           });
           cell.addEventListener("dragover", e => {
             if (!S.dragging) return;
@@ -807,16 +901,8 @@
             const booking = S.bookings.find(b => b.booking_id === S.dragging);
             if (!booking || !newDate) return;
 
-            // Build new ISO datetime preserving original time, just changing date
-            const oldDt = booking.scheduled_datetime;
-            let newDt;
-            if (oldDt) {
-              // Keep same time, change date
-              const oldDate = booking.local_date;
-              newDt = oldDt.replace(oldDate, newDate);
-            } else {
-              newDt = newDate + "T08:00:00.000Z";
-            }
+            // Keep the same time-of-day (UTC), just change the calendar date
+            const newDt = changeDate(booking.scheduled_datetime, newDate);
 
             try {
               await patchBooking(S.dragging, { scheduled_datetime: newDt });
@@ -954,10 +1040,11 @@
             const hPx    = Math.max(22, (endH - startH) * HOUR_PX - 2);
             const selected = S.selected.has(b.booking_id) ? " selected" : "";
             html += `<div class="wv-chip ${chipClass(b.status)}${selected}"
-              draggable="true" data-id="${esc(b.booking_id)}"
+              draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
               style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
               <span class="chip-time">${fmtTime(b.scheduled_datetime)}</span>
+              <div class="chip-resize-handle" title="Drag to resize"></div>
             </div>`;
           }
           html += `</div>`;
@@ -994,6 +1081,7 @@
       function setupWeekDayEvents() {
         setupChipEvents(".wv-chip", "week");
         setupColumnDropEvents(".wv-day-col[data-droptarget]", "week");
+        setupResizeDrag(".wv-chip");
 
         // Header day click → switch to day view
         calMain.querySelectorAll(".wv-day-head").forEach(head => {
@@ -1002,6 +1090,19 @@
             S.view   = "day";
             document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "day"));
             loadData();
+          });
+        });
+
+        // Empty column click → new booking
+        calMain.querySelectorAll(".wv-day-col[data-droptarget]").forEach(col => {
+          col.addEventListener("click", e => {
+            if (e.target.closest(".wv-chip")) return;
+            const dateS = col.dataset.date;
+            if (!dateS) return;
+            const relY = e.offsetY - col.querySelector(".wv-drop-zone").offsetTop;
+            const dropH = START_HOUR + relY / HOUR_PX;
+            const hour  = Math.min(Math.max(Math.floor(dropH), START_HOUR), END_HOUR - 1);
+            window.location.href = `/crm/new?date=${dateS}&hour=${hour}`;
           });
         });
       }
@@ -1062,8 +1163,8 @@
             const hour   = Math.min(Math.max(Math.floor(snapH), START_HOUR), END_HOUR - 1);
             const min    = snapH % 1 >= 0.5 ? 30 : 0;
 
-            // Build new ISO datetime
-            let newDt = newDate + `T${String(hour).padStart(2,"0")}:${String(min).padStart(2,"0")}:00.000Z`;
+            // Build new ISO datetime in local timezone, then convert to UTC
+            const newDt = localToUtcIso(newDate, hour, min);
 
             const updates = { scheduled_datetime: newDt };
             if (techId !== null) updates.assigned_tech_id = techId;
@@ -1206,7 +1307,7 @@
 
             const techId = cell.dataset.techId || "";
             const hour   = Number(cell.dataset.hour);
-            const newDt  = curDate + `T${String(hour).padStart(2,"0")}:00:00.000Z`;
+            const newDt  = localToUtcIso(curDate, hour, 0);
 
             const updates = {
               scheduled_datetime: newDt,
@@ -1219,6 +1320,59 @@
             } catch (err) {
               alert("Failed to assign: " + err.message);
             }
+          });
+        });
+
+        // Empty cell click → new booking
+        calMain.querySelectorAll(".dv-tech-cell[data-droptarget]").forEach(cell => {
+          cell.addEventListener("click", e => {
+            if (e.target.closest(".dv-chip")) return;
+            const techId = cell.dataset.techId || "";
+            const hour   = cell.dataset.hour;
+            const params = new URLSearchParams({ date: curDate, hour });
+            if (techId) params.set("tech_id", techId);
+            window.location.href = `/crm/new?${params}`;
+          });
+        });
+      }
+
+      // ── Resize drag (week/day chip bottom-edge → adjust duration) ─
+      function setupResizeDrag(chipSelector) {
+        calMain.querySelectorAll(chipSelector).forEach(chip => {
+          const handle = chip.querySelector(".chip-resize-handle");
+          if (!handle) return;
+          handle.addEventListener("mousedown", e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const bookingId = chip.dataset.id;
+            if (!bookingId) return;
+            const startY  = e.clientY;
+            const startH  = chip.getBoundingClientRect().height;
+
+            function onMove(ev) {
+              const delta  = ev.clientY - startY;
+              const newH   = Math.max(HOUR_PX / 4, startH + delta);
+              chip.style.height = newH + "px";
+              const mins = Math.round((newH / HOUR_PX) * 60 / 15) * 15;
+              const timeEl = chip.querySelector(".chip-time");
+              if (timeEl) timeEl.textContent = fmtDuration(mins);
+            }
+
+            async function onUp(ev) {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              const finalH  = chip.getBoundingClientRect().height;
+              const newMins = Math.max(15, Math.round((finalH / HOUR_PX) * 60 / 15) * 15);
+              try {
+                await patchBooking(bookingId, { duration_minutes: newMins });
+                await loadData();
+              } catch (err) {
+                alert("Failed to resize: " + err.message);
+              }
+            }
+
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
           });
         });
       }
@@ -1389,6 +1543,75 @@
       document.getElementById("bulkDeselect").addEventListener("click", () => {
         S.selected.clear();
         renderAll();
+      });
+
+      // Bulk Reschedule
+      const rescheduleModal = document.getElementById("rescheduleModal");
+      document.getElementById("bulkReschedule").addEventListener("click", () => {
+        if (!S.selected.size) return;
+        document.getElementById("rescheduleModalTitle").textContent = `Reschedule ${S.selected.size} job${S.selected.size > 1 ? "s" : ""}`;
+        document.getElementById("rescheduleDate").value = todayStr();
+        document.getElementById("rescheduleTime").value = "";
+        rescheduleModal.classList.add("show");
+      });
+      document.getElementById("rescheduleCancel").addEventListener("click", () => rescheduleModal.classList.remove("show"));
+      document.getElementById("rescheduleConfirm").addEventListener("click", async () => {
+        const newDate = document.getElementById("rescheduleDate").value;
+        const newTime = document.getElementById("rescheduleTime").value; // "HH:MM" or ""
+        if (!newDate) { alert("Please choose a date."); return; }
+        rescheduleModal.classList.remove("show");
+        const ids = [...S.selected];
+        const failed = [];
+        for (const id of ids) {
+          try {
+            const booking = [...S.bookings, ...S.unscheduled].find(b => b.booking_id === id);
+            let newDt;
+            if (newTime) {
+              const [h, m] = newTime.split(":").map(Number);
+              newDt = localToUtcIso(newDate, h, m);
+            } else {
+              newDt = changeDate(booking?.scheduled_datetime, newDate);
+            }
+            await patchBooking(id, { scheduled_datetime: newDt });
+          } catch { failed.push(id); }
+        }
+        S.selected.clear();
+        await loadData();
+        if (failed.length) alert(`${failed.length} job(s) failed to reschedule.`);
+      });
+
+      // Bulk Reassign
+      const reassignModal = document.getElementById("reassignModal");
+      document.getElementById("bulkReassign").addEventListener("click", () => {
+        if (!S.selected.size) return;
+        document.getElementById("reassignModalTitle").textContent = `Reassign ${S.selected.size} job${S.selected.size > 1 ? "s" : ""}`;
+        // Populate tech dropdown from staff
+        const sel = document.getElementById("reassignTech");
+        sel.innerHTML = `<option value="">— Unassigned —</option>`;
+        (S.staff || []).forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t.staff_id; opt.textContent = t.name;
+          sel.appendChild(opt);
+        });
+        reassignModal.classList.add("show");
+      });
+      document.getElementById("reassignCancel").addEventListener("click", () => reassignModal.classList.remove("show"));
+      document.getElementById("reassignConfirm").addEventListener("click", async () => {
+        const techId = document.getElementById("reassignTech").value;
+        reassignModal.classList.remove("show");
+        const ids = [...S.selected];
+        const failed = [];
+        for (const id of ids) {
+          try { await patchBooking(id, { assigned_tech_id: techId }); }
+          catch { failed.push(id); }
+        }
+        S.selected.clear();
+        await loadData();
+        if (failed.length) alert(`${failed.length} job(s) failed to reassign.`);
+      });
+      // Close modals on backdrop click
+      [rescheduleModal, reassignModal].forEach(modal => {
+        modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("show"); });
       });
 
       // Keyboard shortcuts

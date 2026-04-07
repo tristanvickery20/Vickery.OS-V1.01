@@ -273,14 +273,6 @@ const server = http.createServer(async (req, res) => {
     return handleGetBookings(req, res);
   }
 
-  if (req.url.startsWith("/api/schedule/calendar") && req.method === "GET") {
-    return handleGetCalendar(req, res);
-  }
-
-  if (req.url.startsWith("/api/schedule/bookings/") && req.method === "PATCH") {
-    return handlePatchBooking(req, res);
-  }
-
   if (req.url.startsWith("/api/quote") && req.method === "GET") {
     return handleQuoteApi(req, res);
   }
@@ -374,6 +366,15 @@ const server = http.createServer(async (req, res) => {
     req.url.startsWith("/api/")
   ) {
     if (!requireAuth(req, res)) return;
+  }
+
+  // Schedule calendar (protected — CRM only)
+  if (req.url.startsWith("/api/schedule/calendar") && req.method === "GET") {
+    return handleGetCalendar(req, res);
+  }
+
+  if (req.url.startsWith("/api/schedule/bookings/") && req.method === "PATCH") {
+    return handlePatchBooking(req, res);
   }
 
   // CLIENTS PAGE
