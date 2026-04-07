@@ -390,6 +390,8 @@
               <button class="cal-btn" id="calPrev">&#8249;</button>
               <button class="cal-btn" id="calNext">&#8250;</button>
               <span class="cal-title" id="calTitle">Loading…</span>
+              <input type="date" id="calDateJump" class="cal-select" title="Jump to date"
+                style="padding:4px 8px;font-size:12px;cursor:pointer;" />
             </div>
             <div class="cal-hdr-mid"></div>
             <div class="cal-hdr-controls">
@@ -552,12 +554,12 @@
       }
 
       function chipClass(status) {
-        const s = String(status || "").toLowerCase().replace(/\s+/g,"");
-        if (s === "confirmed" || s === "booked") return "chip-confirmed";
-        if (s === "pending")   return "chip-pending";
-        if (s === "flagged")   return "chip-flagged";
-        if (s === "cancelled") return "chip-cancelled";
-        if (s === "scheduled") return "chip-scheduled";
+        const s = String(status || "").toLowerCase().replace(/[\s-_]+/g,"");
+        if (s === "confirmed" || s === "booked")   return "chip-confirmed";
+        if (s === "pending")                        return "chip-pending";
+        if (s === "flagged")                        return "chip-flagged";
+        if (s === "cancelled" || s === "noshow")   return "chip-cancelled";
+        if (s === "scheduled")                      return "chip-scheduled";
         return "chip-pending";
       }
 
@@ -1086,6 +1088,7 @@
 
       function setupWeekDayEvents() {
         setupChipEvents(".wv-chip", "week");
+        setupChipEvents(".mv-chip[data-id]", "week");   // all-day/block chips in week header row
         setupColumnDropEvents(".wv-day-col[data-droptarget]", "week");
         setupResizeDrag(".wv-chip");
 
@@ -1586,6 +1589,15 @@
       document.getElementById("drawerToggleInner").addEventListener("click", () => {
         S.drawerOpen = !S.drawerOpen;
         calDrawer.classList.toggle("collapsed", !S.drawerOpen);
+      });
+
+      // Date jump picker
+      document.getElementById("calDateJump").addEventListener("change", e => {
+        const v = e.target.value; // "YYYY-MM-DD"
+        if (!v) return;
+        S.cursor = new Date(v + "T12:00:00");
+        e.target.value = ""; // reset so same date can be re-entered
+        loadData();
       });
 
       // Bulk bar

@@ -153,10 +153,18 @@ async function handleGetCalendar(req, res) {
         phone:      s.phone       || "",
       }));
 
+    // Group scheduled bookings by local date for task-contract compliance
+    const byDate = {};
+    for (const b of scheduled) {
+      if (!byDate[b.local_date]) byDate[b.local_date] = [];
+      byDate[b.local_date].push(b);
+    }
+
     json(res, 200, {
       ok:          true,
       timezone:    tz,
-      bookings:    scheduled,
+      bookings:    scheduled,    // flat list (frontend convenience)
+      by_date:     byDate,       // grouped by local date (API contract)
       unscheduled: unscheduled,
       staff:       staffOut,
     });
