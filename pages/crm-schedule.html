@@ -235,7 +235,8 @@
         display: none; background: rgba(0,0,0,0.2);
       }
       .wv-chip:hover .chip-nav-link,
-      .dv-chip:hover .chip-nav-link { display: block; }
+      .dv-chip:hover .chip-nav-link,
+      .mv-chip:hover .chip-nav-link { display: block; }
       .chip-nav-link:hover { color: #fff; background: rgba(0,0,0,0.4); }
       .chip-resize-handle {
         position: absolute; bottom: 0; left: 0; right: 0; height: 7px;
@@ -905,9 +906,10 @@
           for (const b of showJobs) {
             const selected = S.selected.has(b.booking_id) ? " selected" : "";
             html += `<div class="mv-chip ${chipClass(b.status)}${selected}" draggable="true"
-              data-id="${esc(b.booking_id)}" data-date="${ds}">
+              data-id="${esc(b.booking_id)}" data-date="${ds}" style="position:relative;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
               <span class="chip-time">${b.schedule_block || fmtTime(b.scheduled_datetime) || "Block"}</span>
+              ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
             </div>`;
           }
           if (dayJobs.length > MAX_CHIPS_MONTH) {
@@ -1051,8 +1053,9 @@
           const chips = (allDay[day.date] || []);
           html += `<div class="wv-allday-col">`;
           for (const b of chips) {
-            html += `<div class="mv-chip ${chipClass(b.status)}" draggable="true" data-id="${esc(b.booking_id)}" style="margin-bottom:2px;">
+            html += `<div class="mv-chip ${chipClass(b.status)}" draggable="true" data-id="${esc(b.booking_id)}" style="margin-bottom:2px;position:relative;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
+              ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
             </div>`;
           }
           html += `</div>`;
@@ -1346,9 +1349,10 @@
           html += `<div class="dv-tech-name" style="grid-column:1/-1;border-top:2px solid var(--line);padding:10px 12px;color:var(--muted);">Block / All-Day Jobs</div>`;
           html += `<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);">`;
           for (const b of blockBookings) {
-            html += `<div class="mv-chip ${chipClass(b.status)}" data-id="${esc(b.booking_id)}" style="width:auto;display:inline-flex;gap:6px;cursor:pointer;">
+            html += `<div class="mv-chip ${chipClass(b.status)}" data-id="${esc(b.booking_id)}" style="width:auto;display:inline-flex;gap:6px;cursor:pointer;position:relative;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
               <span class="chip-time">${esc(b.schedule_block || "Block")}</span>
+              ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
             </div>`;
           }
           html += `</div>`;
