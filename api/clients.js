@@ -315,6 +315,124 @@ async function handleGetClientAttachments(req, res) {
   }
 }
 
+// GET /api/clients/:id/timeline
+// Returns a unified, chronologically-sorted timeline of all client events:
+// requests, quotes, jobs, invoices, and payments — each with a type, date, amount, and status.
+async function handleGetClientTimeline(req, res) {
+  try {
+    const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/timeline")[0]);
+
+    const [requests, quotes, jobs, invoices, payments] = await Promise.all([
+      readTab("Requests").catch(() => []),
+      readTab("Quotes").catch(() => []),
+      readTab("Jobs").catch(() => []),
+      readTab("Invoices").catch(() => []),
+      readTab("Payments").catch(() => []),
+    ]);
+
+    const events = [];
+
+    // Requests
+    for (const r of requests.filter(x => x.client_id === clientId)) {
+      events.push({
+        type: "request",
+        event_id: r.id,
+        date: r.created_at || "",
+        label: r.summary || "Service Request",
+        status: r.status_code || "",
+        amount: r.estimated_value || "",
+        link: null,
+      });
+    }
+
+    // Quotes — link by client_id or lead_id
+    for (const q of quotes.filter(x => (x.client_id || x.lead_id || "") === clientId)) {
+      events.push({
+        type: "quote",
+        event_id: q.quote_id || q.id || "",
+        date: q.created_at || "",
+        label: "Quote" + (q.service_key ? " \u00b7 " + q.service_key : ""),
+        status: q.status_code || "",
+        amount: q.quoted_price || "",
+        link: null,
+      });
+    }
+
+    // Jobs
+    for (const j of jobs.filter(x => x.client_id === clientId)) {
+      events.push({
+        type: "job",
+        event_id: j.id,
+        date: j.created_at || "",
+        label: j.description || "Job",
+        status: j.status_code || "",
+        amount: "",
+        link: null,
+        completed_at: j.completed_at || "",
+      });
+    }
+
+    // Invoices
+    const clientInvoices = invoices.filter(x => x.client_id === clientId);
+    const invoiceIds = new Set(clientInvoices.map(x => x.id));
+
+    for (const inv of clientInvoices) {
+      events.push({
+        type: "invoice",
+        event_id: inv.id,
+        date: inv.issued_at || inv.created_at || "",
+        label: inv.invoice_number || "Invoice",
+        status: inv.status_code || "",
+        amount: inv.total || "",
+        balance_due: inv.balance_due || "0",
+        paid_amount: inv.paid_amount || "0",
+        provider_ref: inv.provider_ref || "",
+        link: null,
+      });
+    }
+
+    // Payments (for invoices belonging to this client)
+    for (const pay of payments.filter(x => invoiceIds.has(x.invoice_id))) {
+      events.push({
+        type: "payment",
+        event_id: pay.id,
+        date: pay.payment_date || pay.created_at || "",
+        label: "Payment" + (pay.method ? " \u00b7 " + pay.method : ""),
+        status: "recorded",
+        amount: pay.amount || "",
+        method: pay.method || "",
+        reference: pay.reference || "",
+        invoice_id: pay.invoice_id || "",
+        link: null,
+      });
+    }
+
+    // Sort chronologically, newest first
+    events.sort((a, b) => {
+      const da = a.date ? new Date(a.date) : new Date(0);
+      const db = b.date ? new Date(b.date) : new Date(0);
+      return db - da;
+    });
+
+    // Balance summary
+    const totalInvoiced = clientInvoices.reduce((s, i) => s + Number(i.total || 0), 0);
+    const totalPaid     = clientInvoices.reduce((s, i) => s + Number(i.paid_amount || 0), 0);
+    const openBalance   = Math.max(0, Math.round((totalInvoiced - totalPaid) * 100) / 100);
+
+    json(res, 200, {
+      ok: true,
+      timeline: events,
+      summary: {
+        total_invoiced: Math.round(totalInvoiced * 100) / 100,
+        total_paid:     Math.round(totalPaid * 100) / 100,
+        open_balance:   openBalance,
+      },
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGetClients,
   handleGetClientById,
@@ -323,4 +441,5 @@ module.exports = {
   handleGetClientJobs,
   handleGetClientNotes,
   handleGetClientAttachments,
+  handleGetClientTimeline,
 };

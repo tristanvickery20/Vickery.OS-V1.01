@@ -296,6 +296,68 @@
           </div>
         </div>
 
+        <!-- Section: Financials -->
+        <div class="dash-section" id="financialsSection">
+          <div class="section-title">Financials</div>
+          <div class="kpi-cards" id="financialCards">
+            <div class="kpi-card2">
+              <div class="card-title">Accounts Receivable</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Open AR</span>
+                <span class="kpi-row-val big" id="finOpenAR">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Invoiced this month</span>
+                <span class="kpi-row-val" id="finInvoicedMonth">&mdash;</span>
+              </div>
+              <a class="card-view-link" href="/invoices">View invoices &rarr;</a>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Cash Collected</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">This month</span>
+                <span class="kpi-row-val big" id="finCollectedMonth">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Year to date</span>
+                <span class="kpi-row-val" id="finCollectedYTD">&mdash;</span>
+              </div>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Aging (Open AR)</div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Current (0–29 days)</span>
+                <span class="kpi-row-val" id="finAge0">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">30–59 days</span>
+                <span class="kpi-row-val" id="finAge30">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">60–89 days</span>
+                <span class="kpi-row-val" id="finAge60">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">90+ days</span>
+                <span class="kpi-row-val" id="finAge90" style="color:#fda4af;">&mdash;</span>
+              </div>
+            </div>
+
+            <div class="kpi-card2">
+              <div class="card-title">Data Source</div>
+              <div class="kpi-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+                <span class="kpi-row-label">Provider</span>
+                <span id="finProvider" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#60a5fa;">&mdash;</span>
+              </div>
+              <div style="margin-top:12px;font-size:11px;opacity:.45;line-height:1.5;">
+                Financials computed from the active accounting provider. Connect QuickBooks to pull live data.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Section 3 + 4: two columns -->
         <div class="dash-two-col">
 

@@ -180,10 +180,26 @@
     }).join("");
   }
 
+  function renderFinancials(f) {
+    set("finOpenAR",         escH(fmt$(f.open_ar)));
+    set("finInvoicedMonth",  escH(fmt$(f.invoiced_this_month)));
+    set("finCollectedMonth", escH(fmt$(f.collected_this_month)));
+    set("finCollectedYTD",   escH(fmt$(f.collected_ytd)));
+    const ag = f.aging || {};
+    set("finAge0",  escH(fmt$(ag.current)));
+    set("finAge30", escH(fmt$(ag.days_30)));
+    set("finAge60", escH(fmt$(ag.days_60)));
+    set("finAge90", escH(fmt$(ag.days_90_plus)));
+    set("finProvider", escH(String(f.provider || "mock").toUpperCase()));
+  }
+
   async function load() {
     setText("statusText", "Loading\u2026");
     try {
-      const resp = await fetch("/api/dashboard", { cache: "no-store" });
+      const [resp, finResp] = await Promise.all([
+        fetch("/api/dashboard", { cache: "no-store" }),
+        fetch("/api/dashboard/financials", { cache: "no-store" }).catch(() => null),
+      ]);
       const data = await resp.json();
       if (!data.ok) throw new Error(data.error || "API error");
 
@@ -194,6 +210,11 @@
       renderCloseout(data.closeout_card || {});
       renderSchedule(data.today_schedule || []);
       renderActivity(data.recent_activity || []);
+
+      if (finResp) {
+        const finData = await finResp.json().catch(() => ({ ok: false }));
+        if (finData.ok) renderFinancials(finData);
+      }
 
       setText("statusText", "Updated " + new Date().toLocaleTimeString());
     } catch (e) {

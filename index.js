@@ -17,7 +17,7 @@ const { handleCreateLead, handleGetLeads, handleGetLeadSnapshot } = require("./a
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
-const { handleDashboard } = require("./api/dashboard");
+const { handleDashboard, handleDashboardFinancials } = require("./api/dashboard");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
 const { handleScheduleLead } = require("./api/leads-schedule");
 const { handleGetTime, handleCreateTime, handleUpdateTime } = require("./api/time");
@@ -45,6 +45,7 @@ const {
   handleGetClientJobs,
   handleGetClientNotes,
   handleGetClientAttachments,
+  handleGetClientTimeline,
 } = require("./api/clients");
 const { handleCreateNote } = require("./api/notes");
 const { handleCreateAttachment } = require("./api/attachments");
@@ -632,6 +633,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith("/api/dashboard") && req.method === "GET") {
+    if (_epath === "/api/dashboard/financials") return handleDashboardFinancials(req, res);
     return handleDashboard(req, res);
   }
 
@@ -642,6 +644,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/clients") && req.method === "GET") {
     const cpath = req.url.replace(/\?.*$/, "");
     if (cpath === "/api/clients") return handleGetClients(req, res);
+    if (cpath.endsWith("/timeline")) return handleGetClientTimeline(req, res);
     if (cpath.endsWith("/requests")) return handleGetClientRequests(req, res);
     if (cpath.endsWith("/quotes")) return handleGetClientQuotes(req, res);
     if (cpath.endsWith("/jobs")) return handleGetClientJobs(req, res);

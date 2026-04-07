@@ -9,7 +9,7 @@
     overdue: { label: "Overdue", dot: "hsl(0,84%,60%)" },
   };
 
-  const TABS = ["Overview", "Requests", "Quotes", "Jobs", "Invoices", "Notes", "Photos"];
+  const TABS = ["Timeline", "Overview", "Requests", "Quotes", "Jobs", "Invoices", "Notes", "Photos"];
 
   const pathParts = window.location.pathname.split("/clients/");
   const clientId = pathParts[1] ? decodeURIComponent(pathParts[1]) : "";
@@ -21,7 +21,8 @@
   let notesData = [];
   let attachmentsData = [];
   let invoicesData = [];
-  let activeTab = "Overview";
+  let timelineData = null;
+  let activeTab = "Timeline";
 
   function esc(s) {
     return String(s || "")
@@ -163,6 +164,9 @@
   function renderTabContent() {
     const el = document.getElementById("tabContent");
     switch (activeTab) {
+      case "Timeline":
+        el.innerHTML = renderTimeline();
+        break;
       case "Overview":
         el.innerHTML = renderOverview();
         break;
@@ -192,6 +196,117 @@
 
   function stat(val, label) {
     return '<div class="cd-stat"><div class="cd-stat-val">' + val + '</div><div class="cd-stat-label">' + esc(label) + "</div></div>";
+  }
+
+  const TIMELINE_ICON = {
+    request: { emoji: "📋", color: "hsl(217,91%,60%)" },
+    quote:   { emoji: "💲", color: "hsl(38,80%,50%)" },
+    job:     { emoji: "🔧", color: "hsl(142,50%,45%)" },
+    invoice: { emoji: "🧾", color: "hsl(270,50%,55%)" },
+    payment: { emoji: "💰", color: "hsl(142,70%,40%)" },
+  };
+
+  const TIMELINE_STATUS_LABEL = {
+    draft: "Draft", sent: "Sent", deposit_received: "Deposit Received",
+    partial: "Partial", paid: "Paid", void: "Void", recorded: "Recorded",
+    complete: "Complete", complete_invoiced: "Invoiced", active: "Active",
+    in_progress: "In Progress", scheduled: "Scheduled",
+  };
+
+  function tlStatusBadge(status) {
+    const label = TIMELINE_STATUS_LABEL[String(status || "").toLowerCase()] || (status || "");
+    const colors = {
+      paid: "background:#d1fae5;color:#065f46;",
+      recorded: "background:#d1fae5;color:#065f46;",
+      draft: "background:#e5e7eb;color:#374151;",
+      sent: "background:#dbeafe;color:#1d4ed8;",
+      partial: "background:#fef3c7;color:#92400e;",
+      deposit_received: "background:#ede9fe;color:#5b21b6;",
+      void: "background:#fee2e2;color:#991b1b;",
+      complete: "background:#d1fae5;color:#065f46;",
+      active: "background:#dbeafe;color:#1d4ed8;",
+      in_progress: "background:#dbeafe;color:#1d4ed8;",
+      scheduled: "background:#dbeafe;color:#1d4ed8;",
+    };
+    const style = colors[String(status || "").toLowerCase()] || "background:#e5e7eb;color:#374151;";
+    return '<span style="' + style + 'display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + esc(label) + '</span>';
+  }
+
+  function renderTimeline() {
+    if (!timelineData) {
+      return '<div class="cd-empty">Loading timeline…</div>';
+    }
+
+    const { events, summary } = timelineData;
+
+    // Balance summary bar
+    const totalInv = Number(summary.total_invoiced || 0);
+    const totalPaid = Number(summary.total_paid || 0);
+    const openBal = Number(summary.open_balance || 0);
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">' +
+      stat(fmtMoney(totalInv), "Total Invoiced") +
+      stat(fmtMoney(totalPaid), "Total Paid") +
+      stat('<span style="color:' + (openBal > 0 ? "hsl(38,80%,40%)" : "inherit") + '">' + fmtMoney(openBal) + '</span>', "Open Balance") +
+    '</div>';
+
+    if (!events || events.length === 0) {
+      html += '<div class="cd-empty">No activity yet.</div>';
+      return html;
+    }
+
+    html += '<div class="cd-list">';
+
+    for (const ev of events) {
+      const icon = TIMELINE_ICON[ev.type] || { emoji: "•", color: "hsl(215,16%,47%)" };
+      const date = ev.date ? fmtDate(ev.date) : "—";
+      const amount = ev.amount ? fmtMoney(ev.amount) : "";
+
+      // Build clickable link for jobs (schedule) and invoices
+      let rowTag = "div";
+      let rowAttr = "";
+      if (ev.type === "invoice" && ev.event_id) {
+        // Future: link to invoice detail modal or page
+        rowAttr = ' style="cursor:default;"';
+      }
+
+      // Sync badge for invoices
+      let syncBadge = "";
+      if (ev.type === "invoice") {
+        const hasPRef = ev.provider_ref && ev.provider_ref !== "";
+        syncBadge = hasPRef
+          ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Synced</span>'
+          : '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:6px;">Pending</span>';
+      }
+
+      // Extra detail line
+      let detail = "";
+      if (ev.type === "invoice" && Number(ev.balance_due || 0) > 0) {
+        detail = " · Bal: " + fmtMoney(ev.balance_due);
+      }
+      if (ev.type === "payment" && ev.reference) {
+        detail = " · Ref: " + esc(ev.reference);
+      }
+      if (ev.type === "job" && ev.completed_at) {
+        detail = " · Done " + fmtShortDate(ev.completed_at);
+      }
+
+      html +=
+        '<div class="cd-list-item" style="align-items:flex-start;gap:12px;">' +
+          '<div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:' + icon.color + '18;border:1.5px solid ' + icon.color + '44;display:flex;align-items:center;justify-content:center;font-size:15px;margin-top:2px;">' + icon.emoji + '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:600;">' + esc(ev.label) + syncBadge + '</div>' +
+            '<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:2px;">' + date + (detail ? esc(detail) : "") + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0;">' +
+            (amount ? '<div style="font-size:13px;font-weight:700;">' + amount + '</div>' : '') +
+            '<div style="margin-top:3px;">' + tlStatusBadge(ev.status) + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   function renderOverview() {
@@ -393,8 +508,15 @@
 
   async function reloadInvoices() {
     try {
-      const r = await fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId));
-      invoicesData = r.ok ? r.invoices : [];
+      const base = "/api/clients/" + encodeURIComponent(clientId);
+      const [invR, tlR] = await Promise.all([
+        fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
+        fetchJSON(base + "/timeline").catch(() => ({ ok: false })),
+      ]);
+      invoicesData = invR.ok ? invR.invoices : [];
+      if (tlR.ok) {
+        timelineData = { events: tlR.timeline, summary: tlR.summary };
+      }
       renderTabContent();
       attachInvoiceTabHandlers();
     } catch {}
@@ -684,7 +806,7 @@
 
     try {
       const base = "/api/clients/" + encodeURIComponent(clientId);
-      const [cRes, rRes, qRes, jRes, nRes, aRes, invRes] = await Promise.all([
+      const [cRes, rRes, qRes, jRes, nRes, aRes, invRes, tlRes] = await Promise.all([
         fetchJSON(base),
         fetchJSON(base + "/requests"),
         fetchJSON(base + "/quotes"),
@@ -692,6 +814,7 @@
         fetchJSON(base + "/notes"),
         fetchJSON(base + "/attachments"),
         fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
+        fetchJSON(base + "/timeline").catch(() => ({ ok: false })),
       ]);
 
       if (!cRes.ok) return showError("Client not found.");
@@ -703,6 +826,9 @@
       notesData = nRes.ok ? nRes.notes : [];
       attachmentsData = aRes.ok ? aRes.attachments : [];
       invoicesData = invRes.ok ? invRes.invoices : [];
+      timelineData = tlRes.ok
+        ? { events: tlRes.timeline, summary: tlRes.summary }
+        : { events: [], summary: { total_invoiced: 0, total_paid: 0, open_balance: 0 } };
 
       document.getElementById("loadingMsg").style.display = "none";
       document.getElementById("clientContent").style.display = "block";

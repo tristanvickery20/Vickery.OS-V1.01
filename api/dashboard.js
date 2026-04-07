@@ -1,5 +1,6 @@
 const { getSheetsClient } = require("../lib/sheets");
 const { getConfig } = require("../lib/config");
+const provider = require("../lib/accounting");
 
 function num(x) {
   const n = Number(x);
@@ -409,4 +410,31 @@ async function handleDashboard(req, res) {
   }
 }
 
-module.exports = { handleDashboard };
+// GET /api/dashboard/financials
+// Returns AR summary and cash snapshot from the accounting provider.
+// Uses mock-computed totals from Invoices/Payments sheets by default.
+// When QuickBooks is connected, the same endpoint returns live QB data.
+async function handleDashboardFinancials(req, res) {
+  try {
+    const [arResult, cashResult] = await Promise.all([
+      provider.getARSummary().catch(err => ({ ok: false, error: err.message })),
+      provider.getCashSnapshot().catch(err => ({ ok: false, error: err.message })),
+    ]);
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({
+      ok: true,
+      provider: provider.name,
+      open_ar:             arResult.open_ar            || 0,
+      invoiced_this_month: arResult.invoiced_this_month || 0,
+      aging:               arResult.aging              || { current: 0, days_30: 0, days_60: 0, days_90_plus: 0 },
+      collected_this_month: cashResult.collected_this_month || 0,
+      collected_ytd:        cashResult.collected_ytd        || 0,
+    }));
+  } catch (e) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ ok: false, error: e.message }));
+  }
+}
+
+module.exports = { handleDashboard, handleDashboardFinancials };
