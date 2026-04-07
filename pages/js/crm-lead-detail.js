@@ -1,8 +1,9 @@
 (() => {
   'use strict';
 
-  const params = new URLSearchParams(window.location.search);
-  const leadId = params.get('id');
+  const params  = new URLSearchParams(window.location.search);
+  const leadId  = params.get('id');
+  const quoteId = params.get('quote_id');
   const root   = document.getElementById('ldRoot');
 
   const STATUS_LABELS = {
@@ -382,19 +383,28 @@
   }
 
   async function load() {
-    if (!leadId) {
+    if (!leadId && !quoteId) {
       root.innerHTML = '<div class="ld-loading">No lead ID in URL.</div>';
       return;
     }
     try {
       const data = await window.Api.fetchJson('/api/leads');
       const leads = data.leads || [];
-      const lead  = leads.find(l =>
-        String(l.id)      === String(leadId) ||
-        String(l.lead_id) === String(leadId)
-      );
+      let lead;
+      if (leadId) {
+        lead = leads.find(l =>
+          String(l.id)      === String(leadId) ||
+          String(l.lead_id) === String(leadId)
+        );
+      } else {
+        lead = leads.find(l =>
+          String(l.last_quote_id) === String(quoteId) ||
+          String(l.quote_id)      === String(quoteId)
+        );
+      }
       if (!lead) {
-        root.innerHTML = `<div class="ld-loading">Lead not found.<br><small style="opacity:.6;">Looking for: ${esc(leadId)}<br>Available: ${leads.slice(0,8).map(l=>`${esc(l.id)}${l.lead_id ? ' / '+esc(l.lead_id) : ''}`).join(', ')}</small></div>`;
+        const lookingFor = leadId || quoteId;
+        root.innerHTML = `<div class="ld-loading">Lead not found.<br><small style="opacity:.6;">Looking for: ${esc(lookingFor)}</small></div>`;
         return;
       }
       render(lead);

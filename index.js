@@ -422,7 +422,7 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-new.html"), "text/html");
   }
 
-  if (req.url === "/crm/leads") {
+  if (req.url === "/crm/leads" || req.url.startsWith("/crm/leads?")) {
     return serveFile(res, path.join(__dirname, "pages/crm-leads.html"), "text/html");
   }
 

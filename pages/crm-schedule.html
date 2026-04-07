@@ -1603,7 +1603,7 @@
         detailBody.innerHTML = body;
         detailFooter.innerHTML = `
           ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
-          ${b.quote_id ? `<a class="detail-btn primary" href="/crm/leads?q=${esc(b.quote_id)}" target="_blank">Open Full Record &#8599;</a>` : ""}
+          ${b.quote_id ? `<a class="detail-btn primary" href="/crm/lead?quote_id=${esc(b.quote_id)}" target="_blank">&#9889; Open Full Report</a>` : ""}
           ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
         `;
 
