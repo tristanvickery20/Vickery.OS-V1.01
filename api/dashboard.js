@@ -143,21 +143,31 @@ async function handleDashboard(req, res) {
     // ── Money card ──
     const quotesHeaders = quotesData.headers;
     const qCreatedIdx = quotesHeaders.indexOf("created_at");
-    const qPriceIdx = quotesHeaders.indexOf("quoted_price");
+    const qPriceIdx   = quotesHeaders.indexOf("quoted_price");
+    const qIdIdx      = quotesHeaders.indexOf("quote_id");
     let quoted_7d = 0;
+    // Shared deduplication set spans BOTH sources to prevent double-counting
+    // (old api/quotes.js writes to Quotes tab; new quote-engine writes to QuoteSnapshots)
+    const seenQuoteIds = new Set();
+
     // Old quote system (Quotes tab)
     for (const row of quotesData.rows) {
+      const qid = qIdIdx >= 0 ? String(row[qIdIdx] || "").trim() : "";
+      if (qid && seenQuoteIds.has(qid)) continue;
       const d = parseDateStr(row[qCreatedIdx]);
-      if (d && d >= ago7) quoted_7d += num(row[qPriceIdx]);
+      if (d && d >= ago7) {
+        if (qid) seenQuoteIds.add(qid);
+        quoted_7d += num(row[qPriceIdx]);
+      }
     }
-    // New quote engine (QuoteSnapshots tab) — count only "locked" events, deduplicate by quote_id
+
+    // New quote engine (QuoteSnapshots tab) — count only "locked" events
     {
       const sh = snapshotsData.headers;
       const sEventTypeIdx  = sh.indexOf("event_type");
       const sCreatedIdx    = sh.indexOf("created_at");
       const sFinalPriceIdx = sh.indexOf("final_price");
       const sQuoteIdIdx    = sh.indexOf("quote_id");
-      const seenQuoteIds   = new Set();
       for (const row of snapshotsData.rows) {
         if (sEventTypeIdx >= 0 && String(row[sEventTypeIdx] || "").trim() !== "locked") continue;
         const qid = String(row[sQuoteIdIdx] || "").trim();

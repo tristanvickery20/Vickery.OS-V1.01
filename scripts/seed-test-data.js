@@ -222,13 +222,10 @@ async function main() {
   await appendRows(sheets, "Leads", leadsRows);
   console.log(`  Inserted ${leadsRows.length} test leads ✓`);
 
-  // 3. Seed Quotes
-  console.log("\n3. Seeding Quotes...");
-  await appendRows(sheets, "Quotes", TEST_QUOTES);
-  console.log(`  Inserted ${TEST_QUOTES.length} test quotes ✓`);
-
-  // 4. Seed QuoteSnapshots (locked event for each quote — so money widget sees them)
-  console.log("\n4. Seeding QuoteSnapshots...");
+  // 3. Seed QuoteSnapshots (locked event for each quote — so money widget sees them)
+  // NOTE: We do NOT seed the Quotes tab. The new quote engine writes to QuoteSnapshots
+  // only. Seeding both tabs with the same quote_ids would cause double-counting.
+  console.log("\n3. Seeding QuoteSnapshots...");
   const snapHeaders = await getTabHeaders(sheets, "QuoteSnapshots");
   const snapRows = TEST_LEADS.map((lead, i) => {
     const qid = `QS-TEST-00${i + 1}`;
