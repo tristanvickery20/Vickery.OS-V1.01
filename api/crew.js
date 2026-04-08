@@ -434,8 +434,8 @@ async function handleGenerateInvoice(req, res) {
         const rawTotal    = rawLaborAmt + ma;
         if (rawTotal > 0 && refPrice > 0) {
           const scale = refPrice / rawTotal;
-          laborCost  = Math.round(rawLaborAmt * scale * 100) / 100;
-          materials  = Math.round(ma          * scale * 100) / 100;
+          materials  = Math.round(ma * scale);            // whole dollars
+          laborCost  = Math.round((refPrice - materials) * 100) / 100; // absorbs remainder
           totalHours = bh;
           console.log(`[crew/generate-invoice] CRM breakdown for ${normalizedSnap} (mapped from "${snapJobType}"): labor=${laborCost} mat=${materials} hours=${bh}`);
         } else {
@@ -524,8 +524,8 @@ async function handleGenerateInvoice(req, res) {
 
       if (rawTotal > 0) {
         const laborFrac   = rawLaborTotal / rawTotal;
-        const scaledLabor = Math.round(subtotal * laborFrac * 100) / 100;
-        const scaledMat   = Math.round((subtotal - scaledLabor) * 100) / 100;
+        const scaledMat   = Math.round(subtotal * (1 - laborFrac));   // whole dollars
+        const scaledLabor = Math.round((subtotal - scaledMat) * 100) / 100; // absorbs remainder
 
         if (scaledLabor > 0) {
           lineItems.push({
