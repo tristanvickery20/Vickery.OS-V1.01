@@ -199,12 +199,12 @@
   }
 
   const TIMELINE_ICON = {
-    request: { emoji: "📋", color: "hsl(217,91%,60%)" },
-    quote:   { emoji: "💲", color: "hsl(38,80%,50%)" },
-    booking: { emoji: "📅", color: "hsl(270,50%,55%)" },
-    job:     { emoji: "🔧", color: "hsl(142,50%,45%)" },
-    invoice: { emoji: "🧾", color: "hsl(270,50%,55%)" },
-    payment: { emoji: "💰", color: "hsl(142,70%,40%)" },
+    request: { emoji: "R",  color: "hsl(217,91%,60%)" },
+    quote:   { emoji: "$",  color: "hsl(38,80%,50%)" },
+    booking: { emoji: "B",  color: "hsl(270,50%,55%)" },
+    job:     { emoji: "J",  color: "hsl(142,50%,45%)" },
+    invoice: { emoji: "I",  color: "hsl(270,50%,55%)" },
+    payment: { emoji: "P",  color: "hsl(142,70%,40%)" },
   };
 
   const TIMELINE_STATUS_LABEL = {

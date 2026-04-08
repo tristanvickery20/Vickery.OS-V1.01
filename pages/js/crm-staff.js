@@ -111,7 +111,7 @@ function buildCard(s) {
   let actionsHtml = "";
   if (s.status === "pending") {
     actionsHtml = `
-      <button class="btn-action btn-approve" data-id="${s.staff_id}" data-phone="${esc(s.phone)}">✓ Approve</button>
+      <button class="btn-action btn-approve" data-id="${s.staff_id}" data-phone="${esc(s.phone)}">Approve</button>
       <button class="btn-action btn-deny"    data-id="${s.staff_id}" data-phone="${esc(s.phone)}">✕ Deny</button>`;
   } else if (s.status === "active") {
     actionsHtml = `

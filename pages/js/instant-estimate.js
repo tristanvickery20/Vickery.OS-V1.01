@@ -66,7 +66,7 @@ function renderDebug() {
   const selMods  = S.service?.modules ?? [];
   return `
   <details class="debug-box" style="margin-top:28px">
-    <summary class="debug-toggle">🔧 Debug info</summary>
+    <summary class="debug-toggle">Debug info</summary>
     <div class="debug-body">
       <div class="debug-row"><span>Config loaded</span><span>${esc(cfg?.updatedAt ?? "—")}</span></div>
       <div class="debug-row"><span>Services</span><span>${svcCount}</span></div>

@@ -333,7 +333,7 @@ async function stopTimer() {
     const key = snapshot.quoteId || snapshot.bookingId;
     todayTimeMap[key] = (todayTimeMap[key] || 0) + minutes;
 
-    showToast(`✓ ${formatMinutes(minutes)} logged`);
+    showToast(`${formatMinutes(minutes)} logged`);
     renderJobCards();
   } catch (err) {
     // Server failed — restore timer so user can retry; resume tick from frozen elapsed
@@ -518,7 +518,7 @@ async function submitInlineExpense(bid, btn) {
     panel.querySelector(".exp-vendor-input") && (panel.querySelector(".exp-vendor-input").value = "");
     panel.querySelector(".exp-note-input")   && (panel.querySelector(".exp-note-input").value   = "");
 
-    showToast(`✓ $${amount.toFixed(2)} ${category} logged`);
+    showToast(`$${amount.toFixed(2)} ${category} logged`);
 
     // Re-render expense list within the panel (don't close it)
     const listEl = panel.querySelector(".job-expense-list");
@@ -560,7 +560,7 @@ function jobCard(j) {
   const jobKey  = j.quote_id || bid;
   const logMins = todayTimeMap[jobKey] || 0;
   const timeChip = logMins
-    ? `<div class="job-logged-bar"><span class="logged-chip time">⚡ ${formatMinutes(logMins)} logged today</span></div>`
+    ? `<div class="job-logged-bar"><span class="logged-chip time">${formatMinutes(logMins)} logged today</span></div>`
     : "";
 
   // Timer display row (shown when this job is active)
@@ -569,7 +569,7 @@ function jobCard(j) {
       <div class="timer-elapsed" id="elapsed-${esc(bid)}">${formatElapsed(getElapsedMs())}</div>
       ${timerState.isPaused ? `<span class="timer-paused-label">Paused</span>` : ""}
       <button class="btn-pause-clock${timerState.isPaused ? " paused" : ""}" style="font-size:13px;padding:8px 12px;">
-        ${timerState.isPaused ? "⚡ Resume" : "⏸ Pause"}
+        ${timerState.isPaused ? "Resume" : "Pause"}
       </button>
     </div>` : "";
 
@@ -579,7 +579,7 @@ function jobCard(j) {
     clockBtn = `<button class="btn-stop-clock">■ Stop &amp; Log</button>`;
   } else {
     const disabled = anyActive ? 'disabled title="Stop the current timer first"' : "";
-    clockBtn = `<button class="btn-start-clock" data-job='${jobData}' ${disabled}>⚡ Start Clock</button>`;
+    clockBtn = `<button class="btn-start-clock" data-job='${jobData}' ${disabled}>Start Clock</button>`;
   }
 
   const reviewBtn = j.phone
@@ -620,7 +620,7 @@ function jobCard(j) {
 
   const isJobComplete = String(j.status || "").toLowerCase() === "complete";
   const invoiceBadge  = isJobComplete
-    ? `<span class="badge-ready-invoice">⚡ Ready to Invoice</span>`
+    ? `<span class="badge-ready-invoice">Ready to Invoice</span>`
     : "";
 
   return `
@@ -658,7 +658,7 @@ async function sendReviewAsk(job, btn) {
     });
     const data = await res.json();
     if (data.ok) {
-      btn.textContent = "✓ Sent!";
+      btn.textContent = "Sent!";
       btn.style.background = "hsl(142 55% 35%)";
       setTimeout(() => {
         btn.textContent = origText;
@@ -704,7 +704,7 @@ async function sendCrewNotify(action, btn) {
     });
     const data = await res.json();
     if (data.ok) {
-      btn.textContent = "✓ Sent!";
+      btn.textContent = "Sent!";
       btn.classList.add("sent");
       setTimeout(() => {
         btn.textContent = orig;
@@ -944,11 +944,11 @@ async function sendInvoiceBySms() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Send failed");
 
-    sendBtn.textContent = "✓ Sent by text!";
+    sendBtn.textContent = "Sent by text!";
     sendBtn.style.background = "hsl(142 55% 28%)";
     showToast("Invoice sent by text!");
     setTimeout(() => {
-      sendBtn.textContent = "📱 Send by Text to Customer";
+      sendBtn.textContent = "Send by Text to Customer";
       sendBtn.style.background = "";
       sendBtn.disabled = false;
     }, 4000);
@@ -1236,7 +1236,7 @@ async function submitTime() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Server error");
     closeOverlay("timeOverlay");
-    showToast(`✓ ${hoursValue} hr${hoursValue !== 1 ? "s" : ""} logged`);
+    showToast(`${hoursValue} hr${hoursValue !== 1 ? "s" : ""} logged`);
     if (body.lead_id) {
       todayTimeMap[body.lead_id] = (todayTimeMap[body.lead_id] || 0) + body.minutes;
       renderJobCards();
@@ -1268,7 +1268,7 @@ async function submitExpense() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Server error");
     closeOverlay("expenseOverlay");
-    showToast(`✓ $${amount.toFixed(2)} ${expCategory} logged`);
+    showToast(`$${amount.toFixed(2)} ${expCategory} logged`);
     if (leadId) {
       if (!todayExpMap[leadId]) todayExpMap[leadId] = [];
       todayExpMap[leadId].push({ type: expCategory, amount });
@@ -1448,7 +1448,7 @@ async function crewMapNotify(action, job, btn) {
     });
     const data = await res.json();
     if (data.ok) {
-      btn.textContent = "✓ Sent!";
+      btn.textContent = "Sent!";
       btn.style.background = "#15803d";
       setTimeout(() => { btn.textContent = orig; btn.style.background = ""; btn.disabled = false; }, 3000);
     } else {

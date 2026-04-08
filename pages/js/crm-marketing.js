@@ -535,7 +535,7 @@
       });
       if (d.ok) {
         toast(d.sms_sent ? "Follow-up sent!" : "Logged (SMS not configured).", "success");
-        if (btn) { btn.textContent = "Sent ✓"; btn.style.background = "hsl(145 60% 38%)"; }
+        if (btn) { btn.textContent = "Sent"; btn.style.background = "hsl(145 60% 38%)"; }
       } else {
         toast("Error: " + (d.error || "unknown"), "error");
         if (btn) { btn.disabled = false; btn.textContent = "Send Text"; }
@@ -653,7 +653,7 @@
               body: JSON.stringify({ lead_id: leadId, name, phone }),
             });
           }
-          btn.textContent = "Sent ✓";
+          btn.textContent = "Sent";
         } catch (e) {
           btn.disabled = false;
           btn.textContent = "Send";

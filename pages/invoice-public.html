@@ -392,7 +392,7 @@ body {
   <div class="invoice-card">
     <!-- Loading state (replaced by renderInvoice) -->
     <div class="state-screen" id="loadState">
-      <div class="state-icon">⚡</div>
+      <div class="state-icon"><img src="/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
       <div class="state-title">Loading invoice…</div>
       <div class="state-body">Please wait.</div>
     </div>
@@ -469,7 +469,7 @@ function renderChangeOrders(cos) {
     </div>`;
   }).join("");
   return `<div class="change-orders-section">
-    <div class="section-title">⚡ Change Orders</div>
+    <div class="section-title">Change Orders</div>
     ${rows}
   </div>`;
 }
@@ -618,7 +618,7 @@ function renderInvoice(inv) {
 // ── Error screen ──────────────────────────────────────────────────────────────
 function renderError(msg) {
   document.getElementById("root").innerHTML = `<div class="invoice-card"><div class="state-screen">
-    <div class="state-icon">⚡</div>
+    <div class="state-icon"><img src="/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
     <div class="state-title">Invoice Not Found</div>
     <div class="state-body">${esc(msg || "This invoice link may have expired or been removed. Contact Vickery Electric for help.")}</div>
     <div style="margin-top:12px;font-size:13px;color:#64748b">(409) 554-3392</div>

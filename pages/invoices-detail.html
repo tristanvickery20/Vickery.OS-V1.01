@@ -588,7 +588,7 @@ document.getElementById("addCoBtn").addEventListener("click", async()=>{
   });
   btn.disabled = false;
   if (!r?.ok) { coMsg.textContent = r?.error||"Failed."; return; }
-  coMsg.textContent = `✓ Change order added — new total: ${money(r.new_total)}`;
+  coMsg.textContent = `Change order added — new total: ${money(r.new_total)}`;
   document.getElementById("coDesc").value = "";
   document.getElementById("coAmount").value = "";
   load();

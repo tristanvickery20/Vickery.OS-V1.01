@@ -108,7 +108,7 @@
               if (result.ok) {
                 lead.status = "Scheduled";
                 statusSelect.value = "Scheduled";
-                msg.textContent = "Scheduled ✅";
+                msg.textContent = "Scheduled";
               }
             } else {
               const resp = await fetch("/api/leads/update", {
@@ -128,7 +128,7 @@
               result = await resp.json();
               if (result.ok) {
                 lead.status = statusSelect.value;
-                msg.textContent = "Saved ✅";
+                msg.textContent = "Saved";
               }
             }
             if (!result.ok) {
