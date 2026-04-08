@@ -560,7 +560,7 @@ function jobCard(j) {
   const jobKey  = j.quote_id || bid;
   const logMins = todayTimeMap[jobKey] || 0;
   const timeChip = logMins
-    ? `<div class="job-logged-bar"><span class="logged-chip time">⏱ ${formatMinutes(logMins)} logged today</span></div>`
+    ? `<div class="job-logged-bar"><span class="logged-chip time">⚡ ${formatMinutes(logMins)} logged today</span></div>`
     : "";
 
   // Timer display row (shown when this job is active)
@@ -569,7 +569,7 @@ function jobCard(j) {
       <div class="timer-elapsed" id="elapsed-${esc(bid)}">${formatElapsed(getElapsedMs())}</div>
       ${timerState.isPaused ? `<span class="timer-paused-label">Paused</span>` : ""}
       <button class="btn-pause-clock${timerState.isPaused ? " paused" : ""}" style="font-size:13px;padding:8px 12px;">
-        ${timerState.isPaused ? "▶ Resume" : "⏸ Pause"}
+        ${timerState.isPaused ? "⚡ Resume" : "⏸ Pause"}
       </button>
     </div>` : "";
 
@@ -579,7 +579,7 @@ function jobCard(j) {
     clockBtn = `<button class="btn-stop-clock">■ Stop &amp; Log</button>`;
   } else {
     const disabled = anyActive ? 'disabled title="Stop the current timer first"' : "";
-    clockBtn = `<button class="btn-start-clock" data-job='${jobData}' ${disabled}>▶ Start Clock</button>`;
+    clockBtn = `<button class="btn-start-clock" data-job='${jobData}' ${disabled}>⚡ Start Clock</button>`;
   }
 
   const reviewBtn = j.phone

@@ -5,12 +5,52 @@
 const { getSheetsClient }    = require("../lib/sheets");
 const { getConfig }          = require("../lib/config");
 const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
+const { getCrewSession }     = require("../lib/staff");
 
 let ASSEMBLY_TO_SERVICE = {};
 try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
 
 // Modules to skip — photos and internal-only fields
 const SKIP_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
+
+// Short plain-English labels for scope item fields shown to crew.
+// Falls back to title-casing the moduleId (e.g. CEILING_HEIGHT → "Ceiling Height").
+function shortLabel(moduleId) {
+  const MAP = {
+    PROPERTY_TYPE:        "Property",
+    HOME_AGE:             "Building Age",
+    BUILDING_AGE:         "Building Age",
+    CEILING_HEIGHT:       "Ceiling Height",
+    ATTIC_ACCESS:         "Attic Access",
+    PANEL_BRAND:          "Panel Brand",
+    PANEL_LOCATION:       "Panel Location",
+    SERVICE_SIZE:         "Service Size",
+    SERVICE_AMPS:         "Service Amps",
+    WIRING_TYPE:          "Wiring Type",
+    GROUNDING:            "Grounding",
+    SWITCH_TYPE:          "Switch Type",
+    SWITCH_LOCATION:      "Switch Location",
+    OUTLET_TYPE:          "Outlet Type",
+    FIXTURE_TYPE:         "Fixture Type",
+    FAN_MOTOR_AMPS:       "Fan Motor Amps",
+    CIRCUIT_AMPERAGE:     "Circuit Amps",
+    WIRE_GAUGE:           "Wire Gauge",
+    CONDUIT_TYPE:         "Conduit",
+    JUNCTION_BOX:         "Junction Box",
+    BREAKER_BRAND:        "Breaker Brand",
+    BREAKER_AMPS:         "Breaker Amps",
+    GFCI_REQUIRED:        "GFCI Required",
+    PERMIT_REQUIRED:      "Permit Required",
+    HOME_TYPE:            "Home Type",
+    PROPERTY_CONDITION:   "Condition",
+  };
+  if (MAP[moduleId]) return MAP[moduleId];
+  // Fallback: convert SOME_MODULE_ID → "Some Module Id" and clean up
+  return moduleId
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -44,15 +84,12 @@ function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
       for (const [moduleId, value] of Object.entries(answers)) {
         if (!value || value === "_unsure" || value === "" || SKIP_MODULES.has(moduleId)) continue;
         const mod = modulesById[moduleId];
-        const question = mod
-          ? mod.question
-          : moduleId.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
         let answer = String(value);
         if (mod && mod.options && mod.options.length) {
           const opt = mod.options.find(o => o.value === value || o.option_id === value);
           if (opt) answer = opt.label || String(value);
         }
-        items.push({ label: question, value: answer });
+        items.push({ label: shortLabel(moduleId), value: answer });
       }
     }
   } catch (_) { /* malformed JSON — skip */ }
@@ -135,6 +172,12 @@ async function handleGetTodayJobs(req, res) {
 
     const today = todayLocalStr();
 
+    // Get the logged-in crew member's session so we can filter to their assigned jobs.
+    // Owners see all jobs; regular crew only see jobs assigned to them.
+    const session = getCrewSession(req);
+    const staffId = session ? session.staffId : null;
+    const isOwner = session ? session.role === "owner" : false;
+
     const jobs = data
       .map(r => {
         const get = col => String(r[idx[col] ?? -1] ?? "").trim();
@@ -193,7 +236,22 @@ async function handleGetTodayJobs(req, res) {
           assigned_tech_ids:  get("assigned_tech_ids"),
         };
       })
-      .filter(j => j.date === today && j.status !== "cancelled")
+      .filter(j => {
+        if (j.date !== today || j.status === "cancelled") return false;
+        // Owners see all jobs
+        if (isOwner) return true;
+        // No session — fall back to showing all (shouldn't normally happen)
+        if (!staffId) return true;
+        // Unassigned jobs: show to everyone so they can be picked up
+        const hasAnyAssignment = j.assigned_tech_id || j.assigned_tech_ids;
+        if (!hasAnyAssignment) return true;
+        // Only show jobs where this tech is assigned
+        if (j.assigned_tech_id === staffId) return true;
+        if (j.assigned_tech_ids) {
+          return j.assigned_tech_ids.split(",").map(s => s.trim()).includes(staffId);
+        }
+        return false;
+      })
       .sort((a, b) => a.scheduled_datetime.localeCompare(b.scheduled_datetime));
 
     json(res, 200, { ok: true, jobs, today });
