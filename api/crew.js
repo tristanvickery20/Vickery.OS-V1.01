@@ -443,41 +443,32 @@ async function handleGenerateInvoice(req, res) {
         }
       }
 
-      if (laborCost > 0 || materials > 0) {
-        const laborTotal = laborCost + overhead;
-        if (laborTotal > 0) {
-          lineItems.push({
-            id: "LI-labor", title: "Labor",
-            description: totalHours > 0
-              ? `${serviceName} — approx. ${totalHours.toFixed(1)} hrs`
-              : serviceName,
-            quantity: 1, unit_price: laborTotal, taxable: false, line_total: laborTotal,
-          });
-        }
-        if (materials > 0) {
-          lineItems.push({
-            id: "LI-materials", title: "Materials & Supplies",
-            description: "Electrical materials and supplies",
-            quantity: 1, unit_price: materials, taxable: false, line_total: materials,
-          });
-        }
-        if (travelFee > 0) {
-          lineItems.push({
-            id: "LI-travel", title: "Travel",
-            description: address ? `Travel to ${address}` : "Travel / mobilization",
-            quantity: 1, unit_price: travelFee, taxable: false, line_total: travelFee,
-          });
-        }
-        addons.forEach((addon, i) => {
-          const fee = parseFloat(addon.add_fee ?? addon.fee ?? "0") || 0;
-          if (fee > 0) {
-            lineItems.push({
-              id: `LI-addon-${i}`, title: addon.name_public || addon.name || "Add-on",
-              description: "", quantity: 1, unit_price: fee, taxable: false, line_total: fee,
-            });
-          }
+      // Flat-rate service line — shows the agreed price, not a labor/materials breakdown.
+      // Travel and add-ons are listed separately since those are discrete charges.
+      const serviceTotal = subtotal - travelFee - addons.reduce((s, a) => s + (parseFloat(a.add_fee ?? a.fee ?? "0") || 0), 0);
+      if (serviceTotal > 0) {
+        lineItems.push({
+          id: "LI-service", title: serviceName,
+          description: address || "",
+          quantity: 1, unit_price: serviceTotal, taxable: false, line_total: serviceTotal,
         });
       }
+      if (travelFee > 0) {
+        lineItems.push({
+          id: "LI-travel", title: "Travel",
+          description: address ? `Travel to ${address}` : "Travel / mobilization",
+          quantity: 1, unit_price: travelFee, taxable: false, line_total: travelFee,
+        });
+      }
+      addons.forEach((addon, i) => {
+        const fee = parseFloat(addon.add_fee ?? addon.fee ?? "0") || 0;
+        if (fee > 0) {
+          lineItems.push({
+            id: `LI-addon-${i}`, title: addon.name_public || addon.name || "Add-on",
+            description: "", quantity: 1, unit_price: fee, taxable: false, line_total: fee,
+          });
+        }
+      });
     }
 
     // If the tech submitted line items from the form (includes pre-populated + any additions), use those
@@ -519,38 +510,19 @@ async function handleGenerateInvoice(req, res) {
         }
       }
 
-      const rawLaborTotal = baseHours * (laborRate + overheadRate);
-      const rawTotal      = rawLaborTotal + matAllowance;
-
-      if (rawTotal > 0) {
-        const laborFrac   = rawLaborTotal / rawTotal;
-        const scaledMat   = Math.round(subtotal * (1 - laborFrac));   // whole dollars
-        const scaledLabor = Math.round((subtotal - scaledMat) * 100) / 100; // absorbs remainder
-
-        if (scaledLabor > 0) {
-          lineItems.push({
-            id: "LI-labor", title: "Labor & Overhead",
-            description: baseHours > 0
-              ? `${serviceName} — approx. ${baseHours.toFixed(1)} hrs`
-              : serviceName,
-            quantity: 1, unit_price: scaledLabor, taxable: false, line_total: scaledLabor,
-          });
-        }
-        if (scaledMat > 0) {
-          lineItems.push({
-            id: "LI-materials", title: "Materials & Supplies",
-            description: "Electrical materials and supplies",
-            quantity: 1, unit_price: scaledMat, taxable: false, line_total: scaledMat,
-          });
-        }
-      }
+      // Flat-rate fallback — single service line regardless of cost breakdown
+      lineItems.push({
+        id: "LI-service", title: serviceName,
+        description: address || "",
+        quantity: 1, unit_price: subtotal, taxable: false, line_total: subtotal,
+      });
     }
 
-    // Last resort fallback — single Labor line with the agreed total
+    // Last resort fallback — single service line with the agreed total
     if (!lineItems.length) {
       lineItems = [{
-        id: "LI-1", title: "Labor",
-        description: serviceName + (address ? ` — ${address}` : ""),
+        id: "LI-service", title: serviceName,
+        description: address || "",
         quantity: 1, unit_price: subtotal, taxable: false, line_total: subtotal,
       }];
     }
