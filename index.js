@@ -26,7 +26,7 @@ const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
 const { handleActualsRollup, handleSaveActuals, saveActualsToConfig } = require("./api/actuals-rollup");
-const { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice } = require("./api/crew");
+const { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking } = require("./api/crew");
 const {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
@@ -211,6 +211,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.url.split("?")[0] === "/api/crew/generate-invoice" && req.method === "POST") {
     return handleGenerateInvoice(req, res);
+  }
+  if (req.url.split("?")[0] === "/api/crew/invoice-for-booking" && req.method === "GET") {
+    return handleGetInvoiceForBooking(req, res);
   }
   // Time and expense POSTs — require crew OR CRM session (not fully public)
   if (req.url === "/api/time" && req.method === "POST") {

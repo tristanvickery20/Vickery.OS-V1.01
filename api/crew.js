@@ -291,8 +291,8 @@ async function handleGenerateInvoice(req, res) {
 
     // Fetch bookings, QuoteSnapshots, Estimator config, and Invoices headers in parallel
     const [bookingsResp, quotesResp, estCfg, invHdrResp] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:AZ" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:AZ" }).catch(() => ({ data: { values: [] } })),
       getEstimatorConfig().catch(() => null),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!1:1" }),
     ]);
@@ -497,4 +497,61 @@ async function handleGenerateInvoice(req, res) {
   }
 }
 
-module.exports = { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice };
+/* =========================
+   GET INVOICE FOR BOOKING — GET /api/crew/invoice-for-booking?booking_id=...
+   Returns the most recent invoice linked to a booking_id, so the crew portal
+   can show "View Invoice" without regenerating.
+========================= */
+async function handleGetInvoiceForBooking(req, res) {
+  try {
+    const session = getCrewSession(req);
+    if (!session) return json(res, 401, { ok: false, error: "Not authenticated." });
+
+    const qs         = new URL("http://x" + req.url).searchParams;
+    const booking_id = String(qs.get("booking_id") || "").trim();
+    if (!booking_id) return json(res, 400, { ok: false, error: "booking_id required." });
+
+    const sheets        = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    if (!spreadsheetId) return json(res, 500, { ok: false, error: "CRM_SHEET_ID not configured." });
+
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Invoices!A1:AZ5000",
+    });
+    const rows = resp.data.values || [];
+    if (rows.length < 2) return json(res, 200, { ok: true, found: false });
+
+    const [headers, ...dataRows] = rows;
+    const hi = Object.fromEntries(headers.map((h, i) => [h.trim(), i]));
+    const get = r => col => String(r[hi[col] ?? -1] ?? "").trim();
+
+    // Find the most recent invoice for this booking_id (last matching row wins)
+    let match = null;
+    for (const row of dataRows) {
+      if (get(row)("booking_id") === booking_id) match = row;
+    }
+    if (!match) return json(res, 200, { ok: true, found: false });
+
+    const publicToken = get(match)("public_token");
+    const domain = process.env.REPLIT_DEV_DOMAIN
+      || (process.env.REPLIT_DOMAINS || "").split(",")[0].trim()
+      || "";
+    const publicUrl = publicToken && domain
+      ? `https://${domain}/invoice/${publicToken}`
+      : publicToken ? `/invoice/${publicToken}` : "";
+
+    return json(res, 200, {
+      ok:             true,
+      found:          true,
+      invoice_id:     get(match)("id"),
+      invoice_number: get(match)("invoice_number"),
+      public_token:   publicToken,
+      public_url:     publicUrl,
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+module.exports = { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking };

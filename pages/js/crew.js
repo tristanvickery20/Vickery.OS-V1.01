@@ -990,6 +990,43 @@ function openJobDetail(j) {
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");
   if (typeof _lockBody === "function") _lockBody();
+
+  // If job is already complete, silently look up any existing invoice
+  if (isComplete && j.booking_id) checkExistingInvoice(j);
+}
+
+async function checkExistingInvoice(j) {
+  try {
+    const r    = await fetch(`/api/crew/invoice-for-booking?booking_id=${encodeURIComponent(j.booking_id)}`);
+    const data = await r.json();
+    if (!data.ok || !data.found) return;
+
+    // Populate the invoice section just like after a successful generate
+    _lastInvoice = data;
+
+    const genBtn  = document.getElementById("btnGenerateInvoice");
+    const sendBtn = document.getElementById("btnSendInvoice");
+    const statusEl = document.getElementById("jdInvoiceStatus");
+
+    if (genBtn)    { genBtn.textContent = "Regenerate Invoice"; genBtn.disabled = false; }
+    if (sendBtn)   {
+      sendBtn.style.display = "block";
+      sendBtn.disabled = false;
+      sendBtn.dataset.invoiceId = data.invoice_id;
+      sendBtn.dataset.publicUrl = data.public_url;
+    }
+    if (statusEl && data.public_url) {
+      statusEl.style.display = "block";
+      statusEl.innerHTML = `
+        <div style="color:#4ade80;font-size:13px;font-weight:700;margin-bottom:8px;">
+          ${esc(data.invoice_number)} on file
+        </div>
+        <a href="${esc(data.public_url)}" target="_blank" rel="noopener"
+           style="display:block;width:100%;padding:12px;text-align:center;background:hsl(225 80% 50%);color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;">
+          View Invoice
+        </a>`;
+    }
+  } catch { /* silent — crew still sees Generate button as fallback */ }
 }
 
 // ── Overlay controls ──────────────────────────────────────────────────────────
