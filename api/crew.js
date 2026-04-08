@@ -7,8 +7,6 @@ const crypto                 = require("crypto");
 const { getSheetsClient }    = require("../lib/sheets");
 const { getConfig }          = require("../lib/config");
 const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
-const { getActiveConfig }    = require("../lib/estimatorV2Config");
-const { computePrice, resolveModuleAnswers } = require("./quote-engine");
 const { getCrewSession }     = require("../lib/staff");
 
 let ASSEMBLY_TO_SERVICE = {};
@@ -278,6 +276,23 @@ function parseBody(req) {
   });
 }
 
+// Maps old CRM-style job_type_ids (used in manually-entered test data and legacy bookings)
+// to the current V3 CRM JobTypes IDs so the breakdown lookup always succeeds.
+const LEGACY_JT_MAP = {
+  ceiling_fan:        "INSTALL_FAN",
+  light_fixture:      "REPLACE_FIXTURE",
+  outlet_circuit:     "ADD_OUTLET",
+  outlet_replace:     "REPLACE_DEVICE",
+  gfci_outlet:        "INSTALL_GFCI_BREAKER",
+  panel_upgrade:      "SURGE_PROTECTOR",
+  panel_troubleshoot: "TROUBLESHOOT",
+  ev_charger:         "EV_CHARGER_STD",
+  bath_fan:           "REPLACE_BATH_FAN",
+  switch_replace:     "REPLACE_DEVICE",
+  dimmer_install:     "REPLACE_DEVICE",
+  fixture_replace:    "REPLACE_FIXTURE",
+};
+
 async function handleGenerateInvoice(req, res) {
   try {
     const session = getCrewSession(req);
@@ -320,7 +335,8 @@ async function handleGenerateInvoice(req, res) {
     const address     = get("address");
     const schedDt     = get("scheduled_datetime");
     const serviceDate = schedDt ? schedDt.slice(0, 10) : new Date().toISOString().slice(0, 10);
-    const jobTypeId   = get("job_type_id");
+    const jobTypeId           = get("job_type_id");
+    const normalizedJobTypeId = LEGACY_JT_MAP[jobTypeId] || jobTypeId;
 
     // Resolve service name using estimator config
     const services = estCfg ? estCfg.services : [];
@@ -383,45 +399,47 @@ async function handleGenerateInvoice(req, res) {
       let addons = [];
       try { addons = JSON.parse(sGet("selected_addons_json") || "[]"); } catch {}
 
-      // Snapshot has no breakdown — try recomputing from stored answers
+      // Snapshot has no cost breakdown — derive proportional breakdown from CRM JobTypes + Rates
       if (laborCost === 0 && materials === 0) {
-        let snapParsed = {};
-        try { snapParsed = JSON.parse(sGet("selected_options_json") || "{}"); } catch {}
-        const snapAnswers = snapParsed.answers || {};
-        const snapQty     = snapParsed.qty || 1;
-        const snapJobType = sGet("job_type_id") || jobTypeId;
+        const snapJobType    = sGet("job_type_id") || jobTypeId;
+        const normalizedSnap = LEGACY_JT_MAP[snapJobType] || snapJobType;
+        const refPrice       = snapPrice > 0 ? snapPrice : subtotal;
 
-        if (Object.keys(snapAnswers).length > 0 && snapJobType) {
-          try {
-            const [activeConfig, estRaw] = await Promise.all([
-              getActiveConfig(),
-              getEstimatorConfig().catch(() => ({ modulesById: {} })),
-            ]);
-            const jt = activeConfig.jobTypes.find(j => j.job_type_id === snapJobType);
-            if (jt) {
-              const modulesById = estRaw.modulesById || {};
-              const { selectedDriverOptions: moduleDriverOpts } = resolveModuleAnswers(modulesById, snapAnswers);
-              const rp = computePrice({
-                config:               activeConfig,
-                jobType:              jt,
-                answers:              snapAnswers,
-                addons:               [],
-                qty:                  snapQty,
-                prebuiltDriverOptions: moduleDriverOpts,
-              });
-              // Scale computed breakdown to match the snapshot's recorded final_price
-              const rpTotal = rp.final_price || 0;
-              const scale   = rpTotal > 0 && snapPrice > 0 ? snapPrice / rpTotal : 1;
-              laborCost  = Math.round((rp.labor_cost         || 0) * scale * 100) / 100;
-              overhead   = Math.round((rp.overhead_cost      || 0) * scale * 100) / 100;
-              materials  = Math.round((rp.material_allowance || 0) * scale * 100) / 100;
-              travelFee  = Math.round((rp.travel_fee         || 0) * scale * 100) / 100;
-              totalHours = rp.hours || rp.total_hours || totalHours;
-              console.log(`[crew/generate-invoice] Recomputed breakdown for ${snapJobType}: labor=${laborCost} mat=${materials} travel=${travelFee}`);
-            }
-          } catch (reErr) {
-            console.warn("[crew/generate-invoice] pricing recompute failed:", reErr.message);
+        const jtRowsI = jtResp.data.values   || [];
+        const rRowsI  = rateResp.data.values || [];
+        let bh = 0, ma = 0, lRate = 125, oRate = 25;
+
+        if (jtRowsI.length > 1) {
+          const [jtH2, ...jtData2] = jtRowsI;
+          const jti2 = Object.fromEntries(jtH2.map((h, i) => [h, i]));
+          const jtRow2 = jtData2.find(r =>
+            String(r[jti2["job_type_id"] ?? -1] ?? "").trim() === normalizedSnap
+          );
+          if (jtRow2) {
+            bh = parseFloat(String(jtRow2[jti2["base_hours"]        ?? -1] ?? "0")) || 0;
+            ma = parseFloat(String(jtRow2[jti2["material_allowance"] ?? -1] ?? "0")) || 0;
           }
+        }
+        if (rRowsI.length > 1) {
+          const [rH2, ...rData2] = rRowsI;
+          const ri2  = Object.fromEntries(rH2.map((h, i) => [h, i]));
+          const rRow2 = rData2[0];
+          if (rRow2) {
+            lRate = parseFloat(String(rRow2[ri2["crew_loaded_hourly"] ?? -1] ?? "125")) || 125;
+            oRate = parseFloat(String(rRow2[ri2["overhead_per_hour"]  ?? -1] ?? "25"))  || 25;
+          }
+        }
+
+        const rawLaborAmt = bh * (lRate + oRate);
+        const rawTotal    = rawLaborAmt + ma;
+        if (rawTotal > 0 && refPrice > 0) {
+          const scale = refPrice / rawTotal;
+          laborCost  = Math.round(rawLaborAmt * scale * 100) / 100;
+          materials  = Math.round(ma          * scale * 100) / 100;
+          totalHours = bh;
+          console.log(`[crew/generate-invoice] CRM breakdown for ${normalizedSnap} (mapped from "${snapJobType}"): labor=${laborCost} mat=${materials} hours=${bh}`);
+        } else {
+          console.warn(`[crew/generate-invoice] No CRM JobType found for "${normalizedSnap}" (original: "${snapJobType}") — falling to single Labor line`);
         }
       }
 
@@ -481,10 +499,10 @@ async function handleGenerateInvoice(req, res) {
       const rRows    = rateResp.data.values || [];
       let baseHours = 0, matAllowance = 0, laborRate = 0, overheadRate = 0;
 
-      if (jtRows.length > 1 && jobTypeId) {
+      if (jtRows.length > 1 && normalizedJobTypeId) {
         const [jtH, ...jtData] = jtRows;
         const jti = Object.fromEntries(jtH.map((h, i) => [h, i]));
-        const jtRow = jtData.find(r => String(r[jti["job_type_id"] ?? -1] ?? "").trim() === jobTypeId);
+        const jtRow = jtData.find(r => String(r[jti["job_type_id"] ?? -1] ?? "").trim() === normalizedJobTypeId);
         if (jtRow) {
           baseHours    = parseFloat(String(jtRow[jti["base_hours"]        ?? -1] ?? "0")) || 0;
           matAllowance = parseFloat(String(jtRow[jti["material_allowance"] ?? -1] ?? "0")) || 0;
