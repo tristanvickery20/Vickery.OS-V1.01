@@ -329,20 +329,23 @@ async function handleGenerateInvoice(req, res) {
     // Get best quote snapshot for this booking
     let snapPrice = 0;
     let serviceName = resolveServiceName(jobTypeId);
+    let foundSnap = null;
+    let snapHeaders = [];
     const qRows = quotesResp.data.values || [];
     if (qRows.length > 1 && quoteId) {
       const [qHeaders, ...qData] = qRows;
+      snapHeaders = qHeaders;
       const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
       const qGet = r => col => String(r[qi[col] ?? -1] ?? "").trim();
       // Prefer "locked" snapshot
-      const snapRow = qData.reduce((best, r) => {
+      foundSnap = qData.reduce((best, r) => {
         if (qGet(r)("quote_id") !== quoteId) return best;
         if (!best || qGet(r)("event_type") === "locked") return r;
         return best;
       }, null);
-      if (snapRow) {
-        snapPrice   = parseFloat(qGet(snapRow)("final_price") || "0") || 0;
-        const snId  = qGet(snapRow)("job_type_id") || jobTypeId;
+      if (foundSnap) {
+        snapPrice   = parseFloat(qGet(foundSnap)("final_price") || "0") || 0;
+        const snId  = qGet(foundSnap)("job_type_id") || jobTypeId;
         serviceName = resolveServiceName(snId);
       }
     }
@@ -352,16 +355,65 @@ async function handleGenerateInvoice(req, res) {
       return json(res, 422, { ok: false, error: "No price found for this booking. Set a final_price first." });
     }
 
-    // Build line items from booking data
-    const lineItems = [{
-      id:          "LI-1",
-      title:       serviceName,
-      description: address ? `Service at ${address}` : "",
-      quantity:    1,
-      unit_price:  subtotal,
-      taxable:     false,
-      line_total:  subtotal,
-    }];
+    // Build line items — use detailed snapshot breakdown when available
+    let lineItems = [];
+    if (foundSnap && snapHeaders.length) {
+      const qi2  = Object.fromEntries(snapHeaders.map((h, i) => [h, i]));
+      const sGet = col => String(foundSnap[qi2[col] ?? -1] ?? "").trim();
+
+      const laborCost  = parseFloat(sGet("labor_cost"))         || 0;
+      const overhead   = parseFloat(sGet("overhead_cost"))      || 0;
+      const materials  = parseFloat(sGet("material_allowance")) || 0;
+      const travelFee  = parseFloat(sGet("travel_fee"))         || 0;
+      const totalHours = parseFloat(sGet("total_hours"))        || 0;
+      let addons = [];
+      try { addons = JSON.parse(sGet("selected_addons_json") || "[]"); } catch {}
+
+      if (laborCost > 0 || materials > 0) {
+        const laborTotal = laborCost + overhead;
+        if (laborTotal > 0) {
+          lineItems.push({
+            id: "LI-labor", title: "Labor",
+            description: totalHours > 0
+              ? `${serviceName} — approx. ${totalHours.toFixed(1)} hrs`
+              : serviceName,
+            quantity: 1, unit_price: laborTotal, taxable: false, line_total: laborTotal,
+          });
+        }
+        if (materials > 0) {
+          lineItems.push({
+            id: "LI-materials", title: "Materials & Supplies",
+            description: "Electrical materials and supplies",
+            quantity: 1, unit_price: materials, taxable: false, line_total: materials,
+          });
+        }
+        if (travelFee > 0) {
+          lineItems.push({
+            id: "LI-travel", title: "Travel",
+            description: address ? `Travel to ${address}` : "Travel / mobilization",
+            quantity: 1, unit_price: travelFee, taxable: false, line_total: travelFee,
+          });
+        }
+        addons.forEach((addon, i) => {
+          const fee = parseFloat(addon.add_fee ?? addon.fee ?? "0") || 0;
+          if (fee > 0) {
+            lineItems.push({
+              id: `LI-addon-${i}`, title: addon.name_public || addon.name || "Add-on",
+              description: "", quantity: 1, unit_price: fee, taxable: false, line_total: fee,
+            });
+          }
+        });
+      }
+    }
+
+    // Fallback — single line item with the agreed total
+    if (!lineItems.length) {
+      lineItems = [{
+        id: "LI-1", title: serviceName,
+        description: address ? `Service at ${address}` : "",
+        quantity: 1, unit_price: subtotal, taxable: false, line_total: subtotal,
+      }];
+    }
 
     // Generate invoice
     const now          = new Date().toISOString();

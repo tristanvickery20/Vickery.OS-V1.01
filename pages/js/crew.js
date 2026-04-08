@@ -806,12 +806,18 @@ async function generateCrewInvoice() {
 
     _lastInvoice = data;
 
+    // Auto-open the customer preview immediately
+    if (data.public_url) window.open(data.public_url, "_blank");
+
     if (statusEl) {
       statusEl.style.display = "block";
-      statusEl.innerHTML = `<span style="color:#4ade80;">✓ ${esc(data.invoice_number)} created</span>
+      statusEl.innerHTML = `
+        <div style="color:#4ade80;font-size:13px;font-weight:700;margin-bottom:8px;">
+          ${esc(data.invoice_number)} created
+        </div>
         <a href="${esc(data.public_url)}" target="_blank" rel="noopener"
-           style="display:block;margin-top:4px;color:#93c5fd;font-size:12px;word-break:break-all;">
-          View invoice ↗
+           style="display:block;width:100%;padding:12px;text-align:center;background:hsl(225 80% 50%);color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;">
+          View Invoice
         </a>`;
     }
     if (sendBtn) {
@@ -820,11 +826,11 @@ async function generateCrewInvoice() {
       sendBtn.dataset.invoiceId = data.invoice_id;
       sendBtn.dataset.publicUrl = data.public_url;
     }
-    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "⚡ Regenerate Invoice"; }
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Regenerate Invoice"; }
     showToast("Invoice created: " + data.invoice_number);
   } catch (err) {
     showToast(err.message || "Failed to generate invoice", true);
-    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "⚡ Generate Invoice"; }
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
   }
 }
 

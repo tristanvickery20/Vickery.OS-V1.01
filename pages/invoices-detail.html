@@ -10,7 +10,7 @@
       --bg:#0b0f14; --panel:#0f1621; --panel2:#0c121b;
       --text:#e6eefc; --muted:rgba(230,238,252,0.70);
       --line:rgba(255,255,255,0.10); --line2:rgba(255,255,255,0.08);
-      --blue:#3b82f6; --red:#f87171; --green:#34d399; --amber:#fbbf24;
+      --blue:#3b82f6; --red:#f87171; --green:#34d399;
     }
     html,body{ height:100%; }
     body{ margin:0; background:var(--bg); color:var(--text);
@@ -59,8 +59,6 @@
     .btn:disabled{ opacity:.45; cursor:not-allowed; }
     .btn.secondary{ border-color:var(--line2); background:rgba(255,255,255,0.03); }
     .btn.danger{ border-color:rgba(248,113,113,0.55); background:rgba(248,113,113,0.16); }
-    .btn.success{ border-color:rgba(52,211,153,0.55); background:rgba(52,211,153,0.10); }
-    .btn.amber{ border-color:rgba(251,191,36,0.55); background:rgba(251,191,36,0.10); color:var(--amber); }
 
     .grid{ display:grid; grid-template-columns:1.2fr 0.8fr; gap:14px; }
     .card{ background:rgba(255,255,255,0.03); border:1px solid var(--line2); border-radius:16px; padding:16px; margin-bottom:12px; }
@@ -149,7 +147,7 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Send Invoice
         </button>
-        <button class="btn success" id="resendSmsBtn" style="display:none">
+        <button class="btn secondary" id="resendSmsBtn" style="display:none">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16l.42.92z"/></svg>
           Resend SMS
         </button>
@@ -191,7 +189,7 @@
 
         <!-- Change orders -->
         <div class="card" id="changeOrderCard">
-          <div class="card-title" style="color:var(--amber);">Change Orders</div>
+          <div class="card-title">Change Orders</div>
           <div id="coListSection"></div>
 
           <!-- Add CO form -->
@@ -206,7 +204,7 @@
                   <option value="deduct">Deduct from total (−)</option>
                 </select>
               </div>
-              <button class="btn amber" id="addCoBtn">+ Add Change Order</button>
+              <button class="btn" id="addCoBtn">+ Add Change Order</button>
             </div>
             <div class="status-msg" id="coMsg"></div>
           </div>
@@ -249,12 +247,6 @@
             <button class="btn" type="submit">Record Payment</button>
           </form>
           <div class="status-msg" id="payMsg"></div>
-        </div>
-
-        <!-- Quick change order (also in right panel for mobile) -->
-        <div class="card" id="qcoCard" style="display:none;">
-          <div class="card-title" style="color:var(--amber);">Quick Change Order</div>
-          <p style="font-size:12px;opacity:.6;margin:0 0 8px;">Use the main Change Orders section below for full details.</p>
         </div>
 
         <!-- Summary card -->
@@ -368,7 +360,7 @@ function renderLineItems(inv){
   if (paid>0)    rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
   if (hasCos) {
     rows.push(`<div class="totals-row"><span class="totals-label">Original Total</span><span class="totals-value">${money(origTotal)}</span></div>`);
-    rows.push(`<div class="totals-row"><span class="totals-label">Change Orders</span><span class="totals-value" style="color:var(--amber)">${coTotal>=0?"+":""}${money(coTotal)}</span></div>`);
+    rows.push(`<div class="totals-row"><span class="totals-label">Change Orders</span><span class="totals-value">${coTotal>=0?"+":""}${money(coTotal)}</span></div>`);
   }
   rows.push(`<div class="totals-row totals-grand"><span class="totals-label">${balance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(Math.max(0,balance))}</span></div>`);
   document.getElementById("totalsSection").innerHTML = rows.join("");
