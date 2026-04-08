@@ -7,6 +7,8 @@ const crypto                 = require("crypto");
 const { getSheetsClient }    = require("../lib/sheets");
 const { getConfig }          = require("../lib/config");
 const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
+const { getActiveConfig }    = require("../lib/estimatorV2Config");
+const { computePrice, resolveModuleAnswers } = require("./quote-engine");
 const { getCrewSession }     = require("../lib/staff");
 
 let ASSEMBLY_TO_SERVICE = {};
@@ -373,13 +375,55 @@ async function handleGenerateInvoice(req, res) {
       const qi2  = Object.fromEntries(snapHeaders.map((h, i) => [h, i]));
       const sGet = col => String(foundSnap[qi2[col] ?? -1] ?? "").trim();
 
-      const laborCost  = parseFloat(sGet("labor_cost"))         || 0;
-      const overhead   = parseFloat(sGet("overhead_cost"))      || 0;
-      const materials  = parseFloat(sGet("material_allowance")) || 0;
-      const travelFee  = parseFloat(sGet("travel_fee"))         || 0;
-      const totalHours = parseFloat(sGet("total_hours"))        || 0;
+      let laborCost  = parseFloat(sGet("labor_cost"))         || 0;
+      let overhead   = parseFloat(sGet("overhead_cost"))      || 0;
+      let materials  = parseFloat(sGet("material_allowance")) || 0;
+      let travelFee  = parseFloat(sGet("travel_fee"))         || 0;
+      let totalHours = parseFloat(sGet("total_hours"))        || 0;
       let addons = [];
       try { addons = JSON.parse(sGet("selected_addons_json") || "[]"); } catch {}
+
+      // Snapshot has no breakdown — try recomputing from stored answers
+      if (laborCost === 0 && materials === 0) {
+        let snapParsed = {};
+        try { snapParsed = JSON.parse(sGet("selected_options_json") || "{}"); } catch {}
+        const snapAnswers = snapParsed.answers || {};
+        const snapQty     = snapParsed.qty || 1;
+        const snapJobType = sGet("job_type_id") || jobTypeId;
+
+        if (Object.keys(snapAnswers).length > 0 && snapJobType) {
+          try {
+            const [activeConfig, estRaw] = await Promise.all([
+              getActiveConfig(),
+              getEstimatorConfig().catch(() => ({ modulesById: {} })),
+            ]);
+            const jt = activeConfig.jobTypes.find(j => j.job_type_id === snapJobType);
+            if (jt) {
+              const modulesById = estRaw.modulesById || {};
+              const { selectedDriverOptions: moduleDriverOpts } = resolveModuleAnswers(modulesById, snapAnswers);
+              const rp = computePrice({
+                config:               activeConfig,
+                jobType:              jt,
+                answers:              snapAnswers,
+                addons:               [],
+                qty:                  snapQty,
+                prebuiltDriverOptions: moduleDriverOpts,
+              });
+              // Scale computed breakdown to match the snapshot's recorded final_price
+              const rpTotal = rp.final_price || 0;
+              const scale   = rpTotal > 0 && snapPrice > 0 ? snapPrice / rpTotal : 1;
+              laborCost  = Math.round((rp.labor_cost         || 0) * scale * 100) / 100;
+              overhead   = Math.round((rp.overhead_cost      || 0) * scale * 100) / 100;
+              materials  = Math.round((rp.material_allowance || 0) * scale * 100) / 100;
+              travelFee  = Math.round((rp.travel_fee         || 0) * scale * 100) / 100;
+              totalHours = rp.hours || rp.total_hours || totalHours;
+              console.log(`[crew/generate-invoice] Recomputed breakdown for ${snapJobType}: labor=${laborCost} mat=${materials} travel=${travelFee}`);
+            }
+          } catch (reErr) {
+            console.warn("[crew/generate-invoice] pricing recompute failed:", reErr.message);
+          }
+        }
+      }
 
       if (laborCost > 0 || materials > 0) {
         const laborTotal = laborCost + overhead;

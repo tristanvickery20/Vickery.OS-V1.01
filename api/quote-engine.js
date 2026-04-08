@@ -570,4 +570,4 @@ async function handleQuoteLock(req, res) {
   }
 }
 
-module.exports = { handleQuoteStart, handleQuoteCalc, handleQuoteLock };
+module.exports = { handleQuoteStart, handleQuoteCalc, handleQuoteLock, computePrice, resolveModuleAnswers };
