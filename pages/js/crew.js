@@ -734,11 +734,55 @@ function bindJobDetailOverlay() {
     sendCrewNotify("we_are_here", e.currentTarget));
   document.getElementById("notifyRunningLate")?.addEventListener("click", e =>
     sendCrewNotify("running_late", e.currentTarget));
+  document.getElementById("btnMarkComplete")?.addEventListener("click", markJobComplete);
   document.getElementById("btnGenerateInvoice")?.addEventListener("click", generateCrewInvoice);
   document.getElementById("btnSendInvoice")?.addEventListener("click", sendInvoiceBySms);
 }
 
-// ── Invoice generation from crew ──────────────────────────────────────────────
+// ── Mark job complete ─────────────────────────────────────────────────────────
+async function markJobComplete() {
+  const job = _detailJob;
+  if (!job) return;
+
+  const btn      = document.getElementById("btnMarkComplete");
+  const statusEl = document.getElementById("markCompleteStatus");
+  const bid      = job.booking_id || job.id;
+
+  if (!bid) {
+    if (statusEl) { statusEl.textContent = "No booking ID — contact the office."; statusEl.style.display = "block"; }
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = "Marking complete…";
+  if (statusEl) statusEl.style.display = "none";
+
+  try {
+    const res  = await fetch(`/api/schedule/bookings/${encodeURIComponent(bid)}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ status: "complete" }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      btn.disabled    = false;
+      btn.textContent = "Mark Job Complete";
+      if (statusEl) { statusEl.textContent = data.error || "Failed — try again."; statusEl.style.display = "block"; }
+      return;
+    }
+    // Update the local job object and refresh the overlay
+    _detailJob = Object.assign({}, _detailJob, { status: "complete" });
+    openJobDetail(_detailJob);
+    // Also refresh the job card list in the background
+    if (typeof loadJobs === "function") loadJobs().catch(() => {});
+  } catch {
+    btn.disabled    = false;
+    btn.textContent = "Mark Job Complete";
+    if (statusEl) { statusEl.textContent = "Network error — try again."; statusEl.style.display = "block"; }
+  }
+}
+
+// ── Invoice generation from crew ─────────────────────────────────────────────
 let _lastInvoice = null;
 
 async function generateCrewInvoice() {
@@ -916,19 +960,26 @@ function openJobDetail(j) {
     b.disabled = false;
   });
 
-  // Invoice section — shown only when job is complete
+  // Complete / invoice sections — driven by job status
   const isComplete = String(j.status || "").toLowerCase() === "complete";
+  const compSection  = document.getElementById("jdCompleteSection");
   const invSection   = document.getElementById("jdInvoiceSection");
   const invNaSection = document.getElementById("jdInvoiceNaSection");
+  if (compSection)  compSection.style.display  = isComplete ? "none"  : "block";
   if (invSection)   invSection.style.display   = isComplete ? "block" : "none";
   if (invNaSection) invNaSection.style.display = isComplete ? "none"  : "block";
+  // Reset mark-complete button
+  const mcBtn   = document.getElementById("btnMarkComplete");
+  const mcStatus = document.getElementById("markCompleteStatus");
+  if (mcBtn)    { mcBtn.disabled = false; mcBtn.textContent = "Mark Job Complete"; }
+  if (mcStatus) { mcStatus.style.display = "none"; mcStatus.textContent = ""; }
   // Reset invoice button states
   const invStatus = document.getElementById("jdInvoiceStatus");
   const sendBtn   = document.getElementById("btnSendInvoice");
   const genBtn    = document.getElementById("btnGenerateInvoice");
   if (invStatus) { invStatus.style.display = "none"; invStatus.innerHTML = ""; }
-  if (sendBtn)   { sendBtn.style.display = "none"; sendBtn.removeAttribute("data-invoice-id"); sendBtn.removeAttribute("data-public-url"); sendBtn.style.background = ""; sendBtn.disabled = false; sendBtn.textContent = "📱 Send by Text to Customer"; }
-  if (genBtn)    { genBtn.disabled = false; genBtn.textContent = "⚡ Generate Invoice"; }
+  if (sendBtn)   { sendBtn.style.display = "none"; sendBtn.removeAttribute("data-invoice-id"); sendBtn.removeAttribute("data-public-url"); sendBtn.style.background = ""; sendBtn.disabled = false; sendBtn.textContent = "Send by Text to Customer"; }
+  if (genBtn)    { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
 
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");

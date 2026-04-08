@@ -316,6 +316,29 @@
       text-align: center;
     }
     .btn-send-invoice:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-mark-complete {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(142 55% 38%);
+      background: hsl(142 55% 28%);
+      color: #fff;
+      font-family: inherit;
+      text-align: center;
+      letter-spacing: .01em;
+      transition: background .15s;
+    }
+    .btn-mark-complete:hover    { background: hsl(142 55% 24%); }
+    .btn-mark-complete:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-complete-status {
+      font-size: 12px;
+      color: hsl(220 15% 55%);
+      text-align: center;
+      margin-top: 6px;
+    }
     .badge-ready-invoice {
       display: inline-block;
       font-size: 11px;
@@ -992,15 +1015,22 @@
 
     <hr class="jd-divider">
 
+    <!-- Mark complete — shown while job is NOT complete -->
+    <div id="jdCompleteSection" style="display:none;">
+      <button class="btn-mark-complete" id="btnMarkComplete">Mark Job Complete</button>
+      <div class="btn-complete-status" id="markCompleteStatus" style="display:none;"></div>
+    </div>
+
+    <!-- Invoice actions — shown only once job is complete -->
     <div id="jdInvoiceSection" style="display:none;">
       <div class="jd-label" style="margin-bottom:8px;">Invoice</div>
-      <button class="btn-generate-invoice" id="btnGenerateInvoice">⚡ Generate Invoice</button>
+      <button class="btn-generate-invoice" id="btnGenerateInvoice">Generate Invoice</button>
       <div id="jdInvoiceStatus" style="display:none;font-size:13px;margin-top:8px;"></div>
-      <button class="btn-send-invoice" id="btnSendInvoice" style="display:none;margin-top:8px;">📱 Send by Text to Customer</button>
+      <button class="btn-send-invoice" id="btnSendInvoice" style="display:none;margin-top:8px;">Send by Text to Customer</button>
     </div>
 
     <div id="jdInvoiceNaSection" style="display:none;font-size:13px;color:rgba(230,238,252,0.45);padding:4px 0 8px;">
-      Invoice available after marking job complete.
+      Mark job complete to generate invoice.
     </div>
 
     <button class="btn-payment" disabled>
