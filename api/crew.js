@@ -258,6 +258,10 @@ async function handleGetTodayJobs(req, res) {
           scope_photos:       scopeResult.photos,
           // Plain-text fallback (manually-created bookings)
           scope_of_work:      plainScope,
+          // GPS arrival / departure (auto-stamped by Traccar)
+          arrived_at:         get("arrived_at"),
+          departed_at:        get("departed_at"),
+          job_duration_minutes: get("job_duration_minutes") ? Number(get("job_duration_minutes")) : null,
           // Tech assignment (single and multi)
           assigned_tech_id:   get("assigned_tech_id"),
           assigned_tech_ids:  get("assigned_tech_ids"),

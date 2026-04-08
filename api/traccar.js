@@ -10,21 +10,26 @@
 // Behaviour:
 //   - Polls /api/positions + /api/devices every 60s and caches results in memory.
 //   - Exposes GET /api/traccar/positions to the schedule map frontend.
-//   - On each poll, compares truck coordinates to today's scheduled bookings;
-//     writes an arrived_at timestamp + GPS coords when a truck arrives within
-//     300ft (~91m) of a job site that has not yet been marked as arrived.
+//   - ARRIVAL: when a truck comes within 300ft of a today's job → stamps arrived_at,
+//     arrived_lat, arrived_lng; sends "Your tech is here" SMS to customer.
+//   - DEPARTURE: when NO truck is within 500ft of a job that has arrived_at but no
+//     departed_at, and at least 5 minutes have passed → stamps departed_at and
+//     calculates job_duration_minutes.
 //   - If TRACCAR_URL / TRACCAR_TOKEN are absent, all operations are silent no-ops.
 //   - If the Traccar server is unreachable, _cache.online is set to false and the
 //     frontend shows a "GPS offline" badge — nothing else breaks.
 
 const https  = require("https");
 const http   = require("http");
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient }  = require("../lib/sheets");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
+const { sendSms, buildMessage, CREW_TEMPLATES } = require("../lib/sms");
 
-const ARRIVAL_RADIUS_M  = 91.44;   // 300 feet in metres
-const POLL_INTERVAL_MS  = 60_000;  // 60 seconds
-const FETCH_TIMEOUT_MS  = 10_000;  // abort Traccar requests after 10s
+const ARRIVAL_RADIUS_M   = 91.44;    // 300 feet in metres
+const DEPARTURE_RADIUS_M = 152.4;    // 500 feet — slightly larger to avoid flapping
+const MIN_ON_SITE_MS     = 5 * 60 * 1000;  // 5 minutes before we consider departure
+const POLL_INTERVAL_MS   = 60_000;   // 60 seconds
+const FETCH_TIMEOUT_MS   = 10_000;   // abort Traccar requests after 10s
 
 let _cache = { positions: [], lastPoll: null, online: false };
 let _pollTimer = null;
@@ -33,6 +38,10 @@ let _pollTimer = null;
 // Cleared at midnight to allow next-day arrivals.
 let _arrivedGuard     = new Set();
 let _arrivedGuardDate = "";        // YYYY-MM-DD (local) when guard was last cleared
+
+// Guard: bookingIds already marked as departed today.
+let _departedGuard     = new Set();
+let _departedGuardDate = "";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -50,6 +59,10 @@ function maybeResetGuard() {
     _arrivedGuard     = new Set();
     _arrivedGuardDate = today;
   }
+  if (_departedGuardDate !== today) {
+    _departedGuard     = new Set();
+    _departedGuardDate = today;
+  }
 }
 
 // Haversine distance in metres between two WGS-84 points.
@@ -64,7 +77,6 @@ function distMeters(lat1, lng1, lat2, lng2) {
 }
 
 // Minimal HTTP/HTTPS GET that returns parsed JSON.
-// Rejects on non-2xx status codes so callers can treat them as offline/error.
 function traccarFetch(path) {
   return new Promise((resolve, reject) => {
     const base   = (process.env.TRACCAR_URL || "").replace(/\/$/, "");
@@ -100,41 +112,58 @@ function traccarFetch(path) {
   });
 }
 
-// ── Arrival detection ───────────────────────────────────────────────────────
+// ── Sheet helpers ──────────────────────────────────────────────────────────
 
-async function runArrivalCheck(rawPositions, deviceMap) {
-  if (!rawPositions.length) return;
+async function fetchBookingsRows(sheets) {
   const SPREADSHEET_ID = process.env.CRM_SHEET_ID;
-  if (!SPREADSHEET_ID) return;
+  if (!SPREADSHEET_ID) return null;
 
-  maybeResetGuard();
-
-  const sheets = await getSheetsClient();
   await ensureTabHeaders("Bookings");
 
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range:         "Bookings!A:Z",
+    range:         "Bookings!A:AZ",
   });
   const rows = r.data.values || [];
-  if (rows.length < 2) return;
+  if (rows.length < 2) return null;
 
+  return { rows, spreadsheetId: SPREADSHEET_ID };
+}
+
+function colLetter(i) {
+  if (i < 26) return String.fromCharCode(65 + i);
+  return String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26));
+}
+
+// ── Arrival detection ─────────────────────────────────────────────────────
+
+async function runArrivalCheck(rawPositions, deviceMap) {
+  if (!rawPositions.length) return;
+
+  const sheets = await getSheetsClient();
+  const fetched = await fetchBookingsRows(sheets);
+  if (!fetched) return;
+
+  const { rows, spreadsheetId } = fetched;
   const headers = rows[0];
   const idx     = f => headers.indexOf(f);
 
-  const bookingIdIdx  = idx("booking_id");
-  const schedDtIdx    = idx("scheduled_datetime");
-  const latIdx        = idx("lat");
-  const lngIdx        = idx("lng");
-  const arrivedAtIdx  = idx("arrived_at");
-  const arrivedLatIdx = idx("arrived_lat");
-  const arrivedLngIdx = idx("arrived_lng");
+  const bookingIdIdx       = idx("booking_id");
+  const schedDtIdx         = idx("scheduled_datetime");
+  const latIdx             = idx("lat");
+  const lngIdx             = idx("lng");
+  const arrivedAtIdx       = idx("arrived_at");
+  const arrivedLatIdx      = idx("arrived_lat");
+  const arrivedLngIdx      = idx("arrived_lng");
+  const phoneIdx           = idx("phone");
+  const customerNameIdx    = idx("customer_name");
+  const custSmsSentAtIdx   = idx("customer_sms_sent_at");
 
   if (bookingIdIdx < 0 || latIdx < 0 || lngIdx < 0) return;
 
   const todayStr = todayLocal();
+  maybeResetGuard();
 
-  // Normalise position objects to { deviceId, lat, lon }
   const positions = rawPositions.map(p => ({
     deviceId: p.deviceId,
     lat:      p.latitude  ?? p.lat,
@@ -178,11 +207,25 @@ async function runArrivalCheck(rawPositions, deviceMap) {
         if (arrivedLatIdx >= 0) updRow[arrivedLatIdx] = String(pos.lat);
         if (arrivedLngIdx >= 0) updRow[arrivedLngIdx] = String(pos.lon);
 
+        const techName    = deviceMap[pos.deviceId] || "Your technician";
+        const custPhone   = phoneIdx >= 0 ? String(row[phoneIdx] || "").trim() : "";
+        const custName    = customerNameIdx >= 0 ? String(row[customerNameIdx] || "").trim() : "";
+        const alreadySms  = custSmsSentAtIdx >= 0 ? String(row[custSmsSentAtIdx] || "").trim() : "";
+
+        // Send "Your tech is here" SMS to customer if not already sent
+        let smsSent = false;
+        if (custPhone && !alreadySms) {
+          const body = buildMessage(CREW_TEMPLATES.we_are_here, { tech_name: techName });
+          smsSent = await sendSms(custPhone, body).catch(() => false);
+          if (smsSent && custSmsSentAtIdx >= 0) updRow[custSmsSentAtIdx] = now;
+          console.log(`[traccar] Arrival SMS to ${custPhone} (${custName || bookingId}): ${smsSent ? "sent" : "failed"}`);
+        }
+
         updates.push({
           rowNum:   i + 1,
           row:      updRow.slice(0, headers.length),
           bookingId,
-          techName: deviceMap[pos.deviceId] || `Device ${pos.deviceId}`,
+          techName,
         });
         break; // first truck to arrive wins for this booking
       }
@@ -191,11 +234,11 @@ async function runArrivalCheck(rawPositions, deviceMap) {
 
   if (!updates.length) return;
 
-  const endCol = String.fromCharCode(65 + headers.length - 1);
+  const endCol = colLetter(headers.length - 1);
   for (const upd of updates) {
     try {
       await sheets.spreadsheets.values.update({
-        spreadsheetId:    SPREADSHEET_ID,
+        spreadsheetId,
         range:            `Bookings!A${upd.rowNum}:${endCol}${upd.rowNum}`,
         valueInputOption: "RAW",
         requestBody:      { majorDimension: "ROWS", values: [upd.row] },
@@ -207,7 +250,107 @@ async function runArrivalCheck(rawPositions, deviceMap) {
   }
 }
 
-// ── Poll loop ───────────────────────────────────────────────────────────────
+// ── Departure detection ───────────────────────────────────────────────────
+// For each booking that has arrived_at but no departed_at:
+//   If NO device is within DEPARTURE_RADIUS_M and MIN_ON_SITE_MS has elapsed
+//   since arrived_at → stamp departed_at + compute job_duration_minutes.
+
+async function runDepartureCheck(positions) {
+  if (!positions.length) return;
+
+  const sheets = await getSheetsClient();
+  const fetched = await fetchBookingsRows(sheets);
+  if (!fetched) return;
+
+  const { rows, spreadsheetId } = fetched;
+  const headers = rows[0];
+  const idx     = f => headers.indexOf(f);
+
+  const bookingIdIdx        = idx("booking_id");
+  const schedDtIdx          = idx("scheduled_datetime");
+  const latIdx              = idx("lat");
+  const lngIdx              = idx("lng");
+  const arrivedAtIdx        = idx("arrived_at");
+  const departedAtIdx       = idx("departed_at");
+  const jobDurationIdx      = idx("job_duration_minutes");
+
+  if (bookingIdIdx < 0 || arrivedAtIdx < 0 || latIdx < 0 || lngIdx < 0) return;
+
+  const todayStr = todayLocal();
+  const now      = new Date();
+  const updates  = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row       = rows[i];
+    const bookingId = String(row[bookingIdIdx] || "").trim();
+    if (!bookingId) continue;
+
+    // Must be scheduled today
+    const sdt = String(row[schedDtIdx] || "").trim();
+    if (!sdt) continue;
+    let localDate = "";
+    try { localDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(sdt)); } catch { continue; }
+    if (localDate !== todayStr) continue;
+
+    // Must have arrived but not yet departed
+    const arrivedAt = String(row[arrivedAtIdx] || "").trim();
+    if (!arrivedAt) continue;
+    const departedAt = departedAtIdx >= 0 ? String(row[departedAtIdx] || "").trim() : "";
+    if (departedAt) continue;
+
+    // Already guarded for today
+    if (_departedGuard.has(bookingId)) continue;
+
+    // Must have elapsed enough on-site time
+    let arrivedMs;
+    try { arrivedMs = new Date(arrivedAt).getTime(); } catch { continue; }
+    if (now.getTime() - arrivedMs < MIN_ON_SITE_MS) continue;
+
+    // Must have geocoded coordinates
+    const bLat = parseFloat(row[latIdx]);
+    const bLng = parseFloat(row[lngIdx]);
+    if (isNaN(bLat) || isNaN(bLng)) continue;
+
+    // Check if ANY device is still on site
+    const anyOnSite = positions.some(p =>
+      p.lat != null && p.lon != null &&
+      distMeters(bLat, bLng, p.lat, p.lon) <= DEPARTURE_RADIUS_M
+    );
+    if (anyOnSite) continue;
+
+    // All clear — mark departed
+    _departedGuard.add(bookingId);
+
+    const nowIso         = now.toISOString();
+    const durationMins   = Math.round((now.getTime() - arrivedMs) / 60_000);
+
+    const updRow = [...row];
+    while (updRow.length < headers.length) updRow.push("");
+    if (departedAtIdx  >= 0) updRow[departedAtIdx]  = nowIso;
+    if (jobDurationIdx >= 0) updRow[jobDurationIdx] = String(durationMins);
+
+    updates.push({ rowNum: i + 1, row: updRow.slice(0, headers.length), bookingId, durationMins });
+  }
+
+  if (!updates.length) return;
+
+  const endCol = colLetter(headers.length - 1);
+  for (const upd of updates) {
+    try {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range:            `Bookings!A${upd.rowNum}:${endCol}${upd.rowNum}`,
+        valueInputOption: "RAW",
+        requestBody:      { majorDimension: "ROWS", values: [upd.row] },
+      });
+      console.log(`[traccar] Auto-departure: booking ${upd.bookingId} — ${upd.durationMins} min on site`);
+    } catch (err) {
+      console.error(`[traccar] Failed to write departure for ${upd.bookingId}:`, err.message);
+    }
+  }
+}
+
+// ── Poll loop ─────────────────────────────────────────────────────────────
 
 async function poll() {
   if (!traccarEnabled()) return;
@@ -230,15 +373,20 @@ async function poll() {
       deviceName: deviceMap[p.deviceId] || `Device ${p.deviceId}`,
       lat:        p.latitude,
       lng:        p.longitude,
+      lon:        p.longitude,   // internal alias for distance calcs
       speed:      Math.round((p.speed || 0) * 1.15078), // knots → mph
       fixTime:    p.fixTime || p.deviceTime || null,
     })) : [];
 
     _cache = { positions, lastPoll: new Date().toISOString(), online: true };
 
-    // Run arrival detection asynchronously — errors must not crash poll()
-    runArrivalCheck(rawPositions, deviceMap).catch(err => {
+    // Run arrival + departure detection asynchronously — errors must not crash poll()
+    const arrivalPositions = Array.isArray(rawPositions) ? rawPositions : [];
+    runArrivalCheck(arrivalPositions, deviceMap).catch(err => {
       console.error("[traccar] Arrival check error:", err.message);
+    });
+    runDepartureCheck(positions).catch(err => {
+      console.error("[traccar] Departure check error:", err.message);
     });
 
   } catch (err) {
@@ -247,7 +395,7 @@ async function poll() {
   }
 }
 
-// ── Public API ──────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────
 
 function startPolling() {
   if (!traccarEnabled()) {

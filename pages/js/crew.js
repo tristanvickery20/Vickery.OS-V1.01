@@ -623,11 +623,20 @@ function jobCard(j) {
     ? `<span class="badge-ready-invoice">Ready to Invoice</span>`
     : "";
 
+  const isArrived  = !!j.arrived_at;
+  const isDeparted = !!j.departed_at;
+  let gpsBadge = "";
+  if (isDeparted && j.job_duration_minutes != null) {
+    gpsBadge = `<span class="badge-departed">Left after ${j.job_duration_minutes} min</span>`;
+  } else if (isArrived) {
+    gpsBadge = `<span class="badge-arrived">On site</span>`;
+  }
+
   return `
     <div class="job-card" id="card-${esc(bid)}">
       <div class="job-card-top" data-job='${jobData}'>
         <div class="job-block">${block}${dur}</div>
-        <div class="job-customer">${esc(j.customer_name || "Customer")}${invoiceBadge}</div>
+        <div class="job-customer">${esc(j.customer_name || "Customer")}${invoiceBadge}${gpsBadge}</div>
         <div class="job-address">${esc(j.address || "—")}</div>
         <div class="job-tap-hint">Tap to view details</div>
       </div>
@@ -1122,6 +1131,29 @@ function openJobDetail(j) {
     b.classList.remove("sent");
     b.disabled = false;
   });
+
+  // GPS arrival / departure row in overlay
+  const gpsRow = document.getElementById("jdGpsRow");
+  if (gpsRow) {
+    if (j.arrived_at) {
+      let gpsText = "";
+      const arrivedTime = new Date(j.arrived_at).toLocaleTimeString("en-US", {
+        hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Chicago",
+      });
+      if (j.departed_at && j.job_duration_minutes != null) {
+        const departedTime = new Date(j.departed_at).toLocaleTimeString("en-US", {
+          hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Chicago",
+        });
+        gpsText = `Arrived ${arrivedTime} · Departed ${departedTime} (${j.job_duration_minutes} min on site)`;
+      } else {
+        gpsText = `Arrived ${arrivedTime} · Currently on site`;
+      }
+      gpsRow.textContent = gpsText;
+      gpsRow.style.display = "block";
+    } else {
+      gpsRow.style.display = "none";
+    }
+  }
 
   // Complete / invoice sections — driven by job status
   const isComplete = String(j.status || "").toLowerCase() === "complete";

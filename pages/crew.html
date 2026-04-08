@@ -351,6 +351,40 @@
       vertical-align: middle;
       letter-spacing: .03em;
     }
+    .badge-arrived {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #166534;
+      color: #86efac;
+      border-radius: 99px;
+      padding: 3px 9px;
+      margin-left: 8px;
+      vertical-align: middle;
+      letter-spacing: .03em;
+    }
+    .badge-departed {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #374151;
+      color: #9ca3af;
+      border-radius: 99px;
+      padding: 3px 9px;
+      margin-left: 8px;
+      vertical-align: middle;
+      letter-spacing: .03em;
+    }
+    .jd-gps-row {
+      font-size: 12px;
+      color: #34d399;
+      background: rgba(52,211,153,.08);
+      border: 1px solid rgba(52,211,153,.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 10px 0 6px;
+      font-weight: 500;
+    }
     .btn-payment {
       width: 100%;
       padding: 15px;
@@ -1090,6 +1124,9 @@
         <button class="btn-notify" id="notifyRunningLate">Running late</button>
       </div>
     </div>
+
+    <!-- GPS auto-arrival/departure row -->
+    <div id="jdGpsRow" class="jd-gps-row" style="display:none;"></div>
 
     <hr class="jd-divider">
 
