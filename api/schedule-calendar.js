@@ -23,6 +23,35 @@ function rowsToObjects(rows) {
   return data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
 }
 
+// If a datetime string has no timezone indicator (no Z, no +HH:MM) it was stored
+// as a naive local time in the business timezone (e.g. "2026-04-08 13:00:00" means
+// 1 PM CDT, NOT 1 PM UTC). Convert it to an unambiguous UTC ISO string so that
+// Intl.DateTimeFormat produces the correct local hour everywhere.
+function normalizeToUtc(str, tz) {
+  if (!str) return str;
+  const s = String(str).trim();
+  // Already explicit UTC or has a UTC offset — leave as-is
+  if (s.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(s)) return s;
+  try {
+    // Parse treating the naive time as if it were UTC to get the raw milliseconds
+    const naive = new Date(s.replace(" ", "T") + "Z");
+    if (isNaN(naive.getTime())) return s;
+    // Find what this UTC instant looks like in the target timezone
+    const fmtOpts = {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    };
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", fmtOpts).formatToParts(naive).map(x => [x.type, x.value])
+    );
+    // Build a UTC Date that represents that same moment-in-TZ
+    const tzEquiv = new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`);
+    // Offset = how far the TZ-display is from what we assumed (UTC)
+    const offset = naive.getTime() - tzEquiv.getTime();
+    return new Date(naive.getTime() + offset).toISOString();
+  } catch { return s; }
+}
+
 function toLocalDate(isoStr, tz) {
   if (!isoStr) return "";
   try {
@@ -51,7 +80,8 @@ function toLocalMinute(isoStr, tz) {
 }
 
 function shapeBooking(b, tz) {
-  const dt = b.scheduled_datetime ? String(b.scheduled_datetime).trim() : "";
+  const dtRaw = b.scheduled_datetime ? String(b.scheduled_datetime).trim() : "";
+  const dt    = dtRaw ? normalizeToUtc(dtRaw, tz) : "";   // canonical UTC ISO
   const isScheduled = dt.length > 0;
   const localDate = isScheduled ? toLocalDate(dt, tz) : "";
   const localHour = isScheduled ? toLocalHour(dt, tz) : 0;

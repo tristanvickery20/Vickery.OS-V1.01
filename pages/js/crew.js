@@ -959,6 +959,62 @@ async function sendInvoiceBySms() {
   }
 }
 
+// Maps raw answer option IDs to clean crew-facing display labels.
+// Falls back to title-casing the raw value if not found.
+const SCOPE_VAL_LABELS = {
+  // Property type
+  residential:       "Residential",
+  commercial:        "Commercial",
+  industrial:        "Industrial",
+  // Home / building age
+  pre_1980:          "Pre-1980",
+  "1950s":           "1950s",
+  "1960s":           "1960s",
+  "1970s":           "1970s",
+  "1980_2000":       "1980 – 2000",
+  "1980s":           "1980s",
+  "1990s":           "1990s",
+  "2000plus":        "2000s+",
+  "2000s":           "2000s+",
+  newer:             "2000s+",
+  // Ceiling height
+  standard:          "Standard Height",
+  tall:              "Tall Ceiling",
+  vaulted:           "Vaulted",
+  // Attic access
+  yes:               "Yes",
+  partial:           "Partial",
+  no:                "No",
+  // Panel / breakers
+  yes_open_slots:    "Yes — open slots available",
+  no_full:           "No — panel is full",
+  not_sure:          "Not sure",
+  // Distances / complexity
+  same_room:         "Same room",
+  adjacent:          "Adjacent room",
+  far:               "Other side of house",
+  // EV / trench
+  no_trench:         "No trenching needed",
+  yes_trench:        "Requires trenching",
+};
+
+const SVG_ARROW_UP = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-left:2px;opacity:.7"><polyline points="18 15 12 9 6 15"/></svg>`;
+
+function formatScopeVal(raw) {
+  if (!raw) return esc(raw);
+  const key = String(raw).toLowerCase().trim().replace(/\s+/g, "_");
+  const label = SCOPE_VAL_LABELS[key] || SCOPE_VAL_LABELS[String(raw).toLowerCase()] || null;
+  if (label) {
+    const needsUpArrow = /2000s\+/.test(label) || /newer/i.test(label);
+    return esc(label) + (needsUpArrow ? SVG_ARROW_UP : "");
+  }
+  // Fallback: title-case the raw value (replaces underscores with spaces)
+  const cleaned = String(raw)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, c => c.toUpperCase());
+  return esc(cleaned);
+}
+
 function classificationLabel(s) {
   const key = String(s || "").toLowerCase();
   if (!key || key === "production_ready" || key === "standard") return "";
@@ -1013,9 +1069,10 @@ function openJobDetail(j) {
 
   const items      = j.scope_items  || [];
   const addons     = j.scope_addons || [];
+  const photos     = j.scope_photos || [];
   const qty        = j.scope_qty;
   const clsLabel   = classificationLabel(j.scope_status || "");
-  const hasDetails = items.length > 0 || addons.length > 0 || qty > 1 || j.scope_of_work;
+  const hasDetails = items.length > 0 || addons.length > 0 || qty > 1 || j.scope_of_work || photos.length > 0;
 
   let html = "";
   if (hasDetails) {
@@ -1025,13 +1082,20 @@ function openJobDetail(j) {
     }
     if (qty != null) html += `<div class="scope-qty">Qty: <strong>${qty}</strong></div>`;
     items.forEach(item => {
-      html += `<div class="scope-row"><span class="scope-row-label">${esc(item.label)}</span><span class="scope-row-val">${esc(item.value)}</span></div>`;
+      html += `<div class="scope-row"><span class="scope-row-label">${esc(item.label)}</span><span class="scope-row-val">${formatScopeVal(item.value)}</span></div>`;
     });
     addons.forEach(name => {
       html += `<div class="scope-row"><span class="scope-row-label">Add-on</span><span class="scope-row-val">${esc(name)}</span></div>`;
     });
     if (items.length === 0 && j.scope_of_work) {
       html += `<div class="scope-plain">${esc(j.scope_of_work)}</div>`;
+    }
+    if (photos.length > 0) {
+      html += `<div class="scope-photos-label">Photos</div><div class="scope-photos">`;
+      photos.forEach(url => {
+        html += `<a href="${esc(url)}" target="_blank" rel="noopener" class="scope-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`;
+      });
+      html += `</div>`;
     }
   } else {
     const notice = clsLabel ? `<div class="scope-status">${esc(clsLabel)}</div>` : "";

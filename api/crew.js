@@ -12,8 +12,10 @@ const { getCrewSession }     = require("../lib/staff");
 let ASSEMBLY_TO_SERVICE = {};
 try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
 
-// Modules to skip — photos and internal-only fields
-const SKIP_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
+// Internal-only modules that should not appear as scope rows
+const SKIP_MODULES = new Set(["UNCERTAINTY_BUFFER"]);
+// Modules that contain photo URLs — collected separately and returned as photos[]
+const PHOTO_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "JOB_PHOTOS", "SITE_PHOTO", "BEFORE_PHOTO", "AFTER_PHOTO"]);
 
 // Short plain-English labels for scope item fields shown to crew.
 // Falls back to title-casing the moduleId (e.g. CEILING_HEIGHT → "Ceiling Height").
@@ -69,9 +71,10 @@ function todayLocalStr() {
 
 // Decode a QuoteSnapshot into structured crew-readable items using the estimator module system.
 // This is the same approach as the Lead Detail "Quote Breakdown" section.
-// Returns { items: [{label, value}], qty, classification, addons: [] }
+// Returns { items: [{label, value}], qty, classification, addons: [], photos: [url, ...] }
 function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
   const items = [];
+  const photos = [];
   let qty = 1;
   let classification = "";
   const addons = [];
@@ -85,6 +88,14 @@ function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
 
       for (const [moduleId, value] of Object.entries(answers)) {
         if (!value || value === "_unsure" || value === "" || SKIP_MODULES.has(moduleId)) continue;
+
+        // Photo modules — extract URLs and collect separately
+        if (PHOTO_MODULES.has(moduleId)) {
+          const urls = extractPhotoUrls(value);
+          urls.forEach(u => photos.push(u));
+          continue;
+        }
+
         const mod = modulesById[moduleId];
         let answer = String(value);
         if (mod && mod.options && mod.options.length) {
@@ -103,7 +114,20 @@ function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
     }
   } catch (_) { /* skip */ }
 
-  return { items, qty, classification, addons };
+  return { items, qty, classification, addons, photos };
+}
+
+// Extract photo URLs from a module answer — supports string URL, JSON array, or comma list
+function extractPhotoUrls(value) {
+  if (!value) return [];
+  const s = String(value).trim();
+  // JSON array of URLs
+  try {
+    const arr = JSON.parse(s);
+    if (Array.isArray(arr)) return arr.map(String).filter(u => /^https?:\/\//.test(u));
+  } catch {}
+  // Comma-separated URLs
+  return s.split(",").map(u => u.trim()).filter(u => /^https?:\/\//.test(u));
 }
 
 async function handleGetCrewMembers(req, res) {
@@ -231,6 +255,7 @@ async function handleGetTodayJobs(req, res) {
           scope_qty:          scopeResult.qty,
           scope_status:       scopeResult.classification,
           scope_addons:       scopeResult.addons,
+          scope_photos:       scopeResult.photos,
           // Plain-text fallback (manually-created bookings)
           scope_of_work:      plainScope,
           // Tech assignment (single and multi)
