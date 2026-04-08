@@ -783,26 +783,59 @@ async function markJobComplete() {
   }
 }
 
-// ── Custom line items (tech-entered before generating) ─────────────────────
-let _customLineItems = []; // array of { desc, qty, price }
-
-function addCustomLineItemRow() {
+// ── Custom line items (tech-entered; also pre-populated after generate) ─────
+function addCustomLineItemRow(prefill = null) {
   const list = document.getElementById("customLineItemsList");
   if (!list) return;
-  const idx  = _customLineItems.length;
-  _customLineItems.push({ desc: "", qty: 1, price: "" });
 
   const row = document.createElement("div");
   row.className = "li-row";
-  row.dataset.idx = idx;
-  row.innerHTML = `
-    <input class="li-input li-desc"  type="text"   placeholder="Description" value="" />
-    <input class="li-input li-qty"   type="number" placeholder="1" min="0.01" step="any" value="1" style="text-align:center;" />
-    <input class="li-input li-price" type="number" placeholder="0.00" min="0" step="0.01" value="" style="text-align:right;" />
-    <button class="li-remove" title="Remove">×</button>`;
 
-  row.querySelector(".li-remove").addEventListener("click", () => row.remove());
+  const descVal  = prefill ? String(prefill.title || prefill.description || "") : "";
+  const qtyVal   = prefill ? (prefill.quantity  ?? 1)  : 1;
+  const priceVal = prefill ? (prefill.unit_price ?? "") : "";
+
+  const desc  = document.createElement("input");
+  desc.className = "li-input li-desc";
+  desc.type = "text";
+  desc.placeholder = "Description";
+  desc.value = descVal;
+
+  const qty = document.createElement("input");
+  qty.className = "li-input li-qty";
+  qty.type = "number";
+  qty.placeholder = "1";
+  qty.min = "0.01";
+  qty.step = "any";
+  qty.value = qtyVal;
+  qty.style.textAlign = "center";
+
+  const price = document.createElement("input");
+  price.className = "li-input li-price";
+  price.type = "number";
+  price.placeholder = "0.00";
+  price.min = "0";
+  price.step = "0.01";
+  if (priceVal !== "") price.value = priceVal;
+  price.style.textAlign = "right";
+
+  const rm = document.createElement("button");
+  rm.className = "li-remove";
+  rm.title = "Remove";
+  rm.textContent = "×";
+  rm.addEventListener("click", () => row.remove());
+
+  row.appendChild(desc);
+  row.appendChild(qty);
+  row.appendChild(price);
+  row.appendChild(rm);
   list.appendChild(row);
+}
+
+function populateLineItemsForm(items) {
+  clearCustomLineItems();
+  if (!Array.isArray(items)) return;
+  items.forEach(item => addCustomLineItemRow(item));
 }
 
 function bindLineItemButton() {
@@ -863,6 +896,11 @@ async function generateCrewInvoice() {
 
     // Auto-open the customer preview immediately
     if (data.public_url) window.open(data.public_url, "_blank");
+
+    // Pre-populate line items form so tech can see and edit the breakdown
+    if (Array.isArray(data.line_items) && data.line_items.length) {
+      populateLineItemsForm(data.line_items);
+    }
 
     if (statusEl) {
       statusEl.style.display = "block";

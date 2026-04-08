@@ -290,12 +290,14 @@ async function handleGenerateInvoice(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
     if (!spreadsheetId) return json(res, 500, { ok: false, error: "CRM_SHEET_ID not configured." });
 
-    // Fetch bookings, QuoteSnapshots, Estimator config, and Invoices headers in parallel
-    const [bookingsResp, quotesResp, estCfg, invHdrResp] = await Promise.all([
+    // Fetch bookings, QuoteSnapshots, Estimator config, Invoices headers, JobTypes, Rates in parallel
+    const [bookingsResp, quotesResp, estCfg, invHdrResp, jtResp, rateResp] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:AZ" }),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:AZ" }).catch(() => ({ data: { values: [] } })),
       getEstimatorConfig().catch(() => null),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!1:1" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "JobTypes!A:AZ" }).catch(() => ({ data: { values: [] } })),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Rates!A:AZ" }).catch(() => ({ data: { values: [] } })),
     ]);
 
     // Find booking
@@ -338,10 +340,14 @@ async function handleGenerateInvoice(req, res) {
       snapHeaders = qHeaders;
       const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
       const qGet = r => col => String(r[qi[col] ?? -1] ?? "").trim();
-      // Prefer "locked" snapshot
+      // Prefer snapshot rows that have actual cost data (labor_cost > 0); among those prefer "locked"
       foundSnap = qData.reduce((best, r) => {
         if (qGet(r)("quote_id") !== quoteId) return best;
-        if (!best || qGet(r)("event_type") === "locked") return r;
+        if (!best) return r;
+        const thisLabor = parseFloat(qGet(r)("labor_cost") || "0") || 0;
+        const bestLabor = parseFloat(qGet(best)("labor_cost") || "0") || 0;
+        if (thisLabor > 0 && bestLabor === 0) return r;
+        if (thisLabor > 0 && bestLabor > 0 && qGet(r)("event_type") === "locked") return r;
         return best;
       }, null);
       if (foundSnap) {
@@ -412,7 +418,7 @@ async function handleGenerateInvoice(req, res) {
       }
     }
 
-    // If the tech provided custom line items, use those instead
+    // If the tech submitted line items from the form (includes pre-populated + any additions), use those
     if (customLineItems.length > 0) {
       lineItems = customLineItems.map((li, i) => ({
         id:          li.id || `LI-custom-${i + 1}`,
@@ -425,7 +431,60 @@ async function handleGenerateInvoice(req, res) {
       }));
     }
 
-    // Fallback — single "Labor" line item with the agreed total
+    // Fallback: compute proportional breakdown from JobTypes + Rates when snapshot had no cost data
+    if (!lineItems.length && subtotal > 0) {
+      const jtRows   = jtResp.data.values   || [];
+      const rRows    = rateResp.data.values || [];
+      let baseHours = 0, matAllowance = 0, laborRate = 0, overheadRate = 0;
+
+      if (jtRows.length > 1 && jobTypeId) {
+        const [jtH, ...jtData] = jtRows;
+        const jti = Object.fromEntries(jtH.map((h, i) => [h, i]));
+        const jtRow = jtData.find(r => String(r[jti["job_type_id"] ?? -1] ?? "").trim() === jobTypeId);
+        if (jtRow) {
+          baseHours    = parseFloat(String(jtRow[jti["base_hours"]        ?? -1] ?? "0")) || 0;
+          matAllowance = parseFloat(String(jtRow[jti["material_allowance"] ?? -1] ?? "0")) || 0;
+        }
+      }
+
+      if (rRows.length > 1) {
+        const [rH, ...rData] = rRows;
+        const ri  = Object.fromEntries(rH.map((h, i) => [h, i]));
+        const rRow = rData[0];
+        if (rRow) {
+          laborRate    = parseFloat(String(rRow[ri["crew_loaded_hourly"] ?? -1] ?? "0")) || 0;
+          overheadRate = parseFloat(String(rRow[ri["overhead_per_hour"]  ?? -1] ?? "0")) || 0;
+        }
+      }
+
+      const rawLaborTotal = baseHours * (laborRate + overheadRate);
+      const rawTotal      = rawLaborTotal + matAllowance;
+
+      if (rawTotal > 0) {
+        const laborFrac   = rawLaborTotal / rawTotal;
+        const scaledLabor = Math.round(subtotal * laborFrac * 100) / 100;
+        const scaledMat   = Math.round((subtotal - scaledLabor) * 100) / 100;
+
+        if (scaledLabor > 0) {
+          lineItems.push({
+            id: "LI-labor", title: "Labor & Overhead",
+            description: baseHours > 0
+              ? `${serviceName} — approx. ${baseHours.toFixed(1)} hrs`
+              : serviceName,
+            quantity: 1, unit_price: scaledLabor, taxable: false, line_total: scaledLabor,
+          });
+        }
+        if (scaledMat > 0) {
+          lineItems.push({
+            id: "LI-materials", title: "Materials & Supplies",
+            description: "Electrical materials and supplies",
+            quantity: 1, unit_price: scaledMat, taxable: false, line_total: scaledMat,
+          });
+        }
+      }
+    }
+
+    // Last resort fallback — single Labor line with the agreed total
     if (!lineItems.length) {
       lineItems = [{
         id: "LI-1", title: "Labor",
@@ -509,6 +568,7 @@ async function handleGenerateInvoice(req, res) {
       invoice_number: invoiceNum,
       public_token:   publicToken,
       public_url:     publicUrl,
+      line_items:     lineItems,
     });
   } catch (err) {
     console.error("[crew/generate-invoice]", err.message);
