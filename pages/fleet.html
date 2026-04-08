@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Fleet &bull; Vickery CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f14; --surface: #131920; --border: rgba(255,255,255,0.08);
+      --text: #e2e8f0; --muted: #64748b; --blue: #3b82f6; --green: #34d399;
+      --red: #f87171; --sidebar-w: 240px;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: "Inter", sans-serif; }
+
+    /* ── Layout ── */
+    .app-shell { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: var(--sidebar-w); flex-shrink: 0; }
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    /* ── Header bar ── */
+    .fleet-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    .fleet-header h1 { font-size: 17px; font-weight: 700; }
+    .gps-status-pill {
+      font-size: 11px; font-weight: 700; border-radius: 99px;
+      padding: 3px 10px; border: 1px solid;
+    }
+    .gps-status-pill.online  { background: rgba(52,211,153,.12); color: #34d399; border-color: rgba(52,211,153,.3); }
+    .gps-status-pill.offline { background: rgba(248,113,113,.10); color: #f87171; border-color: rgba(248,113,113,.3); }
+    .gps-status-pill.unknown { background: rgba(100,116,139,.12); color: #94a3b8; border-color: rgba(100,116,139,.3); }
+    .last-update { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+    /* ── Content area: map + panel side-by-side ── */
+    .fleet-body { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Map ── */
+    #fleetMap { flex: 1; min-width: 0; }
+
+    /* ── Side panel ── */
+    .fleet-panel {
+      width: 280px; flex-shrink: 0; border-left: 1px solid var(--border);
+      background: var(--surface); display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .fleet-panel-header {
+      padding: 14px 16px 10px; font-size: 12px; font-weight: 700;
+      color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .fleet-panel-body { flex: 1; overflow-y: auto; padding: 10px 0; }
+
+    /* ── Truck cards ── */
+    .truck-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; cursor: pointer; transition: background .12s;
+    }
+    .truck-card:hover { background: rgba(255,255,255,.04); }
+    .truck-icon {
+      width: 38px; height: 38px; border-radius: 50%; background: #2563eb;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,.2);
+    }
+    .truck-icon svg { width: 18px; height: 18px; }
+    .truck-info { flex: 1; min-width: 0; }
+    .truck-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .truck-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .truck-speed { font-size: 11px; font-weight: 600; }
+    .truck-speed.moving { color: var(--blue); }
+    .truck-speed.stopped { color: var(--muted); }
+
+    /* ── Job pins (matched to today's jobs) ── */
+    .job-section-header {
+      padding: 14px 16px 8px; font-size: 12px; font-weight: 700;
+      color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+      border-top: 1px solid var(--border);
+    }
+    .job-item {
+      padding: 8px 16px; font-size: 12px; display: flex; flex-direction: column; gap: 2px;
+    }
+    .job-item-name { font-weight: 600; color: var(--text); }
+    .job-item-addr { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .job-item-status { font-size: 11px; font-weight: 600; }
+    .job-item-status.on-site  { color: var(--green); }
+    .job-item-status.departed { color: var(--muted); }
+    .job-item-status.pending  { color: var(--blue); }
+
+    /* ── Map markers ── */
+    .ft-truck-pin {
+      width: 38px; height: 38px; border-radius: 50%; background: #2563eb;
+      display: flex; align-items: center; justify-content: center;
+      border: 2.5px solid rgba(255,255,255,.9); cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,.6); transition: transform .15s;
+    }
+    .ft-truck-pin:hover { transform: scale(1.12); }
+    .ft-truck-pin svg { width: 18px; height: 18px; }
+
+    .ft-job-pin {
+      width: 30px; height: 30px; border-radius: 50%; background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--blue); cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.5); font-size: 12px; font-weight: 700;
+      color: var(--blue); transition: transform .15s;
+    }
+    .ft-job-pin:hover { transform: scale(1.1); }
+    .ft-job-pin.on-site  { border-color: var(--green); color: var(--green); background: rgba(52,211,153,.08); }
+    .ft-job-pin.departed { border-color: var(--muted); color: var(--muted); }
+
+    .mapboxgl-popup-content {
+      background: #1e2530; color: var(--text);
+      border-radius: 10px; padding: 12px 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4); font-family: "Inter", sans-serif;
+      font-size: 13px; min-width: 160px;
+    }
+    .mapboxgl-popup-content strong { font-weight: 700; display: block; margin-bottom: 4px; }
+    .mapboxgl-popup-content .pop-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .mapboxgl-popup-tip { display: none; }
+    .mapboxgl-popup-close-button { color: #94a3b8; font-size: 16px; top: 6px; right: 8px; }
+
+    /* ── Empty state ── */
+    .fleet-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 12px; color: var(--muted); text-align: center; padding: 30px;
+    }
+    .fleet-empty svg { opacity: .35; }
+    .fleet-empty p { font-size: 14px; max-width: 200px; line-height: 1.5; }
+
+    @media (max-width: 700px) {
+      .fleet-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main">
+    <div class="fleet-header">
+      <h1>Live Fleet</h1>
+      <span class="gps-status-pill unknown" id="fleetStatusPill">Connecting…</span>
+      <span class="last-update" id="fleetLastUpdate"></span>
+    </div>
+    <div class="fleet-body">
+      <div id="fleetMap"></div>
+      <div class="fleet-panel">
+        <div class="fleet-panel-header">Trucks</div>
+        <div class="fleet-panel-body" id="truckList">
+          <div class="fleet-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <p>No trucks reporting location yet</p>
+          </div>
+        </div>
+        <div id="jobListSection" style="display:none;">
+          <div class="job-section-header">Today's Jobs</div>
+          <div id="jobList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+(async function() {
+  // ── Mapbox init ──────────────────────────────────────────────────────────
+  let _map = null;
+  let _truckMarkers = [];
+  let _jobMarkers   = [];
+  let _pollTimer    = null;
+  let _jobs         = [];
+
+  async function initMap() {
+    try {
+      const cfg = await fetch("/api/config/mapbox").then(r => r.json());
+      if (!cfg.ok || !cfg.token) return;
+
+      const cssLink = document.createElement("link");
+      cssLink.rel = "stylesheet";
+      cssLink.href = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css";
+      document.head.appendChild(cssLink);
+
+      await new Promise((resolve, reject) => {
+        if (window.mapboxgl) return resolve();
+        const s = document.createElement("script");
+        s.src = "https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js";
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+
+      mapboxgl.accessToken = cfg.token;
+      _map = new mapboxgl.Map({
+        container: "fleetMap",
+        style:     "mapbox://styles/mapbox/dark-v11",
+        center:    [-95.3698, 29.7604], // Houston default
+        zoom:      10,
+      });
+      _map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+
+      // Load today's jobs for map pins
+      loadJobs();
+    } catch (e) {
+      console.error("Fleet map init error:", e);
+    }
+  }
+
+  // ── Load today's jobs ────────────────────────────────────────────────────
+  async function loadJobs() {
+    try {
+      const d = await fetch("/api/schedule/bookings").then(r => r.json());
+      if (d.ok && d.bookings) {
+        // Filter to today's non-cancelled jobs that have coordinates
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+        _jobs = d.bookings.filter(j =>
+          j.local_date === todayStr &&
+          j.status !== "cancelled" &&
+          j.lat && j.lng
+        );
+        renderJobPins();
+        renderJobList();
+      }
+    } catch {}
+  }
+
+  function renderJobPins() {
+    _jobMarkers.forEach(m => m.remove());
+    _jobMarkers = [];
+    if (!_map) return;
+
+    _jobs.forEach((j, i) => {
+      const isOnSite  = !!j.arrived_at && !j.departed_at;
+      const isDeparted = !!j.departed_at;
+      const el = document.createElement("div");
+      el.className = "ft-job-pin" + (isOnSite ? " on-site" : isDeparted ? " departed" : "");
+      el.textContent = String(i + 1);
+      el.title = j.customer_name || j.address;
+
+      const timeStr = j.scheduled_datetime
+        ? new Date(j.scheduled_datetime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Chicago" })
+        : "";
+      const statusLine = isOnSite
+        ? `<span style="color:#34d399;font-weight:600;">● On site</span>`
+        : isDeparted
+          ? `<span style="color:#64748b;">Departed${j.job_duration_minutes ? ` · ${j.job_duration_minutes} min` : ""}</span>`
+          : `<span style="color:#3b82f6;">${timeStr}</span>`;
+
+      const popup = new mapboxgl.Popup({ offset: 14, maxWidth: "220px", closeButton: true })
+        .setHTML(`<strong>${j.customer_name || "Job"}</strong>
+          <div class="pop-meta">${j.address || ""}</div>
+          <div class="pop-meta" style="margin-top:4px;">${statusLine}</div>`);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([j.lng, j.lat])
+        .setPopup(popup)
+        .addTo(_map);
+      el.addEventListener("click", () => marker.togglePopup());
+      _jobMarkers.push(marker);
+    });
+  }
+
+  function renderJobList() {
+    const section = document.getElementById("jobListSection");
+    const list    = document.getElementById("jobList");
+    if (!_jobs.length) { section.style.display = "none"; return; }
+    section.style.display = "block";
+    list.innerHTML = _jobs.map(j => {
+      const isOnSite  = !!j.arrived_at && !j.departed_at;
+      const isDeparted = !!j.departed_at;
+      const statusCls = isOnSite ? "on-site" : isDeparted ? "departed" : "pending";
+      const statusTxt = isOnSite
+        ? "● On site"
+        : isDeparted
+          ? `Departed · ${j.job_duration_minutes ?? "?"} min`
+          : j.schedule_block || "Scheduled";
+      return `<div class="job-item">
+        <div class="job-item-name">${esc(j.customer_name || "Customer")}</div>
+        <div class="job-item-addr">${esc(j.address || "—")}</div>
+        <div class="job-item-status ${statusCls}">${statusTxt}</div>
+      </div>`;
+    }).join("");
+  }
+
+  // ── Poll Traccar ─────────────────────────────────────────────────────────
+  async function pollFleet() {
+    try {
+      const d = await fetch("/api/traccar/positions").then(r => r.json());
+      const pill   = document.getElementById("fleetStatusPill");
+      const upd    = document.getElementById("fleetLastUpdate");
+
+      if (d.lastPoll) {
+        const t = new Date(d.lastPoll);
+        upd.textContent = `Updated ${t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+      }
+
+      if (!d.ok || !d.online) {
+        pill.className = "gps-status-pill offline";
+        pill.textContent = "GPS offline";
+        renderTrucks([]);
+        return;
+      }
+
+      const positions = d.positions || [];
+      pill.className  = "gps-status-pill online";
+      pill.textContent = positions.length
+        ? `● ${positions.length} truck${positions.length !== 1 ? "s" : ""} live`
+        : "● Online — no trucks";
+      renderTrucks(positions);
+    } catch {
+      const pill = document.getElementById("fleetStatusPill");
+      pill.className = "gps-status-pill offline";
+      pill.textContent = "GPS offline";
+    }
+  }
+
+  // ── Render truck markers + panel list ────────────────────────────────────
+  function renderTrucks(positions) {
+    // Clear old markers
+    _truckMarkers.forEach(m => m.remove());
+    _truckMarkers = [];
+
+    // Panel list
+    const listEl = document.getElementById("truckList");
+    if (!positions.length) {
+      listEl.innerHTML = `<div class="fleet-empty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <p>No trucks reporting location yet</p></div>`;
+      return;
+    }
+
+    listEl.innerHTML = positions.map(p => {
+      const moving = p.speed > 3;
+      return `<div class="truck-card" data-device="${p.deviceId}">
+        <div class="truck-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="1"/>
+            <path d="M16 8h4l3 5v3h-7V8z"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/>
+            <circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+        </div>
+        <div class="truck-info">
+          <div class="truck-name">${esc(p.deviceName)}</div>
+          <div class="truck-meta">${p.fixTime ? new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }) : "—"}</div>
+        </div>
+        <div class="truck-speed ${moving ? "moving" : "stopped"}">${moving ? p.speed + " mph" : "Stopped"}</div>
+      </div>`;
+    }).join("");
+
+    // Click truck card → fly to truck on map
+    listEl.querySelectorAll(".truck-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const id = card.dataset.device;
+        const p  = positions.find(x => String(x.deviceId) === String(id));
+        if (p && _map) _map.flyTo({ center: [p.lng, p.lat], zoom: 14, speed: 1.4 });
+      });
+    });
+
+    if (!_map) return;
+
+    // Map markers
+    const bounds = new mapboxgl.LngLatBounds();
+    positions.forEach(p => {
+      if (p.lat == null || p.lng == null) return;
+      bounds.extend([p.lng, p.lat]);
+
+      const el = document.createElement("div");
+      el.className = "ft-truck-pin";
+      el.title = p.deviceName;
+      el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="3" width="15" height="13" rx="1"/>
+        <path d="M16 8h4l3 5v3h-7V8z"/>
+        <circle cx="5.5" cy="18.5" r="2.5"/>
+        <circle cx="18.5" cy="18.5" r="2.5"/>
+      </svg>`;
+
+      const speedStr = p.speed > 3 ? `${p.speed} mph` : "Stopped";
+      const popup = new mapboxgl.Popup({ offset: 22, maxWidth: "200px", closeButton: true })
+        .setHTML(`<strong>${esc(p.deviceName)}</strong>
+          <div class="pop-meta">${speedStr}</div>
+          ${p.fixTime ? `<div class="pop-meta">${new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>` : ""}`);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([p.lng, p.lat])
+        .setPopup(popup)
+        .addTo(_map);
+      el.addEventListener("click", () => marker.togglePopup());
+      _truckMarkers.push(marker);
+    });
+
+    // Also include job pins in bounds fit
+    _jobs.forEach(j => { if (j.lat && j.lng) bounds.extend([j.lng, j.lat]); });
+
+    if (!bounds.isEmpty()) {
+      _map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 });
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  await initMap();
+  await pollFleet();
+  _pollTimer = setInterval(pollFleet, 30_000);   // refresh every 30s
+  setInterval(loadJobs, 120_000);                 // refresh job status every 2 min
+})();
+</script>
+</body>
+</html>

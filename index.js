@@ -549,6 +549,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-schedule.html"), "text/html");
   }
 
+  if (req.url === "/crm/fleet") {
+    return serveFile(res, path.join(__dirname, "pages/fleet.html"), "text/html");
+  }
+
   if (req.url.startsWith("/crm/dashboard")) {
     return serveFile(res, path.join(__dirname, "pages/crm-dashboard.html"), "text/html");
   }

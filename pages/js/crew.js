@@ -110,6 +110,17 @@ function geoError(geo) {
   return geo && geo.error ? geo.error : null;
 }
 
+// Haversine distance in metres between two WGS-84 points
+function distMeters(lat1, lng1, lat2, lng2) {
+  const R = 6_371_000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── Timer — localStorage persistence ─────────────────────────────────────────
 function saveTimerState(state) {
   try { localStorage.setItem(TIMER_KEY, JSON.stringify(state)); } catch {}
@@ -180,6 +191,21 @@ async function startTimer(job) {
 
   const geoOk    = geoCoords(geo);
   const geoErrIn = geoError(geo);
+
+  // Location sanity check — warn if tech's GPS is far from the job
+  if (geoOk && job.lat && job.lng) {
+    const distM  = distMeters(geoOk.lat, geoOk.lng, job.lat, job.lng);
+    const distFt = Math.round(distM * 3.28084);
+    if (distM > 152) {  // more than ~500 ft away
+      const display = distM >= 1609
+        ? `${(distM / 1609.34).toFixed(1)} miles`
+        : `${distFt} ft`;
+      const ok = window.confirm(
+        `Your GPS shows you are ${display} away from this job.\n\nYou appear to not be on site yet. Clock in anyway?`
+      );
+      if (!ok) return;
+    }
+  }
 
   // POST clock-in record immediately so it's durable even if browser crashes
   let timeId = null;
