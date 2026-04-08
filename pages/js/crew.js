@@ -737,6 +737,7 @@ function bindJobDetailOverlay() {
   document.getElementById("btnMarkComplete")?.addEventListener("click", markJobComplete);
   document.getElementById("btnGenerateInvoice")?.addEventListener("click", generateCrewInvoice);
   document.getElementById("btnSendInvoice")?.addEventListener("click", sendInvoiceBySms);
+  bindLineItemButton();
 }
 
 // ── Mark job complete ─────────────────────────────────────────────────────────
@@ -782,6 +783,60 @@ async function markJobComplete() {
   }
 }
 
+// ── Custom line items (tech-entered before generating) ─────────────────────
+let _customLineItems = []; // array of { desc, qty, price }
+
+function addCustomLineItemRow() {
+  const list = document.getElementById("customLineItemsList");
+  if (!list) return;
+  const idx  = _customLineItems.length;
+  _customLineItems.push({ desc: "", qty: 1, price: "" });
+
+  const row = document.createElement("div");
+  row.className = "li-row";
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <input class="li-input li-desc"  type="text"   placeholder="Description" value="" />
+    <input class="li-input li-qty"   type="number" placeholder="1" min="0.01" step="any" value="1" style="text-align:center;" />
+    <input class="li-input li-price" type="number" placeholder="0.00" min="0" step="0.01" value="" style="text-align:right;" />
+    <button class="li-remove" title="Remove">×</button>`;
+
+  row.querySelector(".li-remove").addEventListener("click", () => row.remove());
+  list.appendChild(row);
+}
+
+function bindLineItemButton() {
+  document.getElementById("btnAddLineItem")?.addEventListener("click", addCustomLineItemRow);
+}
+
+function readCustomLineItems() {
+  const list = document.getElementById("customLineItemsList");
+  if (!list) return [];
+  const result = [];
+  list.querySelectorAll(".li-row").forEach((row, i) => {
+    const desc  = row.querySelector(".li-desc")?.value.trim()   || "";
+    const qty   = parseFloat(row.querySelector(".li-qty")?.value)  || 1;
+    const price = parseFloat(row.querySelector(".li-price")?.value) || 0;
+    if (desc || price > 0) {
+      result.push({
+        id:          `LI-custom-${i + 1}`,
+        title:       desc || "Service",
+        description: "",
+        quantity:    qty,
+        unit_price:  price,
+        taxable:     false,
+        line_total:  Math.round(qty * price * 100) / 100,
+      });
+    }
+  });
+  return result;
+}
+
+function clearCustomLineItems() {
+  const list = document.getElementById("customLineItemsList");
+  if (list) list.innerHTML = "";
+}
+
 // ── Invoice generation from crew ─────────────────────────────────────────────
 let _lastInvoice = null;
 
@@ -799,7 +854,7 @@ async function generateCrewInvoice() {
     const res  = await fetch("/api/crew/generate-invoice", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ booking_id: j.booking_id }),
+      body:    JSON.stringify({ booking_id: j.booking_id, custom_line_items: readCustomLineItems() }),
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Failed to generate invoice");
@@ -986,6 +1041,7 @@ function openJobDetail(j) {
   if (invStatus) { invStatus.style.display = "none"; invStatus.innerHTML = ""; }
   if (sendBtn)   { sendBtn.style.display = "none"; sendBtn.removeAttribute("data-invoice-id"); sendBtn.removeAttribute("data-public-url"); sendBtn.style.background = ""; sendBtn.disabled = false; sendBtn.textContent = "Send by Text to Customer"; }
   if (genBtn)    { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
+  clearCustomLineItems();
 
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");

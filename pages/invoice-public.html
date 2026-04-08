@@ -59,22 +59,23 @@ body {
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 .invoice-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 28px 32px 24px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 32px 32px 24px;
   border-bottom: 1.5px solid var(--gray-200);
 }
-.header-logo-block { display: flex; flex-direction: column; gap: 6px; }
-.header-logo-block img { height: 56px; width: auto; object-fit: contain; }
+.header-logo-block { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 16px; }
+.header-logo-block img { height: 130px; width: auto; object-fit: contain; }
 .company-name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--navy);
   letter-spacing: -.3px;
 }
 .company-tagline { font-size: 12px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .6px; }
-.header-meta { text-align: right; }
+.header-meta { text-align: center; }
 .invoice-number {
   font-size: 22px;
   font-weight: 800;
@@ -261,21 +262,25 @@ body {
 }
 .payment-note { font-size: 12.5px; color: var(--gray-400); line-height: 1.5; }
 .payment-note strong { color: var(--gray-600); }
-.btn-print {
+.btn-pay-now {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 20px;
-  background: var(--navy);
+  justify-content: center;
+  padding: 14px 28px;
+  background: var(--blue);
   color: #fff;
   border: none;
   border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  min-width: 200px;
 }
-.btn-print:hover { background: var(--charcoal); }
+.btn-pay-now:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 
 /* ── Loading / Error states ─────────────────────────────────────────────────── */
 .state-screen {
@@ -296,8 +301,8 @@ body {
 @media (max-width: 600px) {
   .page-wrap { padding: 0 0 60px; }
   .invoice-card { border-radius: 0; box-shadow: none; }
-  .invoice-header { flex-direction: column; padding: 20px; }
-  .header-meta { text-align: left; }
+  .invoice-header { padding: 20px; }
+  .header-meta { text-align: center; }
   .invoice-info { grid-template-columns: 1fr; }
   .info-col + .info-col { border-left: none; border-top: 1.5px solid var(--gray-200); }
   .info-col { padding: 16px 20px; }
@@ -340,7 +345,7 @@ body {
   .change-orders-section { padding: 10pt 0; background: #fffbeb; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .notes-section { padding: 10pt 0; }
 
-  .btn-print, .invoice-footer .btn-print { display: none !important; }
+  .btn-pay-now { display: none !important; }
   .invoice-footer { padding: 10pt 0 0; }
   .payment-note { font-size: 9pt; }
 
@@ -539,14 +544,12 @@ function renderInvoice(inv) {
   const due    = inv.due_at ? new Date(inv.due_at) : null;
   const overdue = sc === "sent" && due && due < now && Number(inv.balance_due) > 0;
 
-  const logoSrc = "/pages/img/pwa-icon-192.png";
-
   root.innerHTML = `<div class="invoice-card">
     <div class="invoice-accent"></div>
 
     <div class="invoice-header">
       <div class="header-logo-block">
-        <img src="${logoSrc}" alt="Vickery Electric" onerror="this.style.display='none'">
+        <img src="/pages/img/vickery-sword.png" alt="Vickery Electric" onerror="this.style.display='none'">
         <div class="company-name">Vickery Electric</div>
         <div class="company-tagline">Licensed Electrician · Orange, TX</div>
       </div>
@@ -603,9 +606,9 @@ function renderInvoice(inv) {
     <div class="invoice-footer">
       <div class="payment-note">
         <strong>Vickery Electric</strong> · (409) 554-3392 · Orange, TX<br>
-        Checks payable to Vickery Electric · Cash, check, or card accepted
+        Cash, check, or card accepted
       </div>
-      <button class="btn-print" onclick="window.print()">⚡ Print Invoice</button>
+      <button class="btn-pay-now" disabled>Pay Now — Coming Soon</button>
     </div>
 
     ${printCOBox()}
@@ -638,6 +641,10 @@ function renderError(msg) {
     }
     document.title = "Invoice " + (data.invoice.invoice_number || "") + " — Vickery Electric";
     renderInvoice(data.invoice);
+    // Auto-print if ?print=1 (used by admin CRM "Print / Download" button)
+    if (new URLSearchParams(location.search).get("print") === "1") {
+      setTimeout(() => window.print(), 600);
+    }
   } catch (e) {
     renderError("Could not load invoice. Please check your connection and try again.");
   }

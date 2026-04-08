@@ -281,8 +281,9 @@ async function handleGenerateInvoice(req, res) {
     const session = getCrewSession(req);
     if (!session) return json(res, 401, { ok: false, error: "Not authenticated." });
 
-    const body       = await parseBody(req);
-    const booking_id = String(body.booking_id || "").trim();
+    const body            = await parseBody(req);
+    const booking_id      = String(body.booking_id || "").trim();
+    const customLineItems = Array.isArray(body.custom_line_items) ? body.custom_line_items : [];
     if (!booking_id) return json(res, 400, { ok: false, error: "booking_id required." });
 
     const sheets        = await getSheetsClient();
@@ -350,9 +351,14 @@ async function handleGenerateInvoice(req, res) {
       }
     }
 
-    const subtotal = finalPrice > 0 ? finalPrice : snapPrice;
+    // Custom line items total overrides quote price
+    const customTotal = customLineItems.reduce((s, li) => {
+      const tot = Number(li.line_total) || Math.round(Number(li.quantity || 1) * Number(li.unit_price || 0) * 100) / 100;
+      return s + tot;
+    }, 0);
+    const subtotal = customTotal > 0 ? customTotal : (finalPrice > 0 ? finalPrice : snapPrice);
     if (subtotal <= 0) {
-      return json(res, 422, { ok: false, error: "No price found for this booking. Set a final_price first." });
+      return json(res, 422, { ok: false, error: "No price found for this booking. Add line items or set a final_price first." });
     }
 
     // Build line items — use detailed snapshot breakdown when available
@@ -406,11 +412,24 @@ async function handleGenerateInvoice(req, res) {
       }
     }
 
-    // Fallback — single line item with the agreed total
+    // If the tech provided custom line items, use those instead
+    if (customLineItems.length > 0) {
+      lineItems = customLineItems.map((li, i) => ({
+        id:          li.id || `LI-custom-${i + 1}`,
+        title:       String(li.title || li.description || "Service").trim(),
+        description: String(li.description || "").trim(),
+        quantity:    Number(li.quantity) || 1,
+        unit_price:  Number(li.unit_price) || 0,
+        taxable:     Boolean(li.taxable),
+        line_total:  Number(li.line_total) || Math.round(Number(li.quantity || 1) * Number(li.unit_price || 0) * 100) / 100,
+      }));
+    }
+
+    // Fallback — single "Labor" line item with the agreed total
     if (!lineItems.length) {
       lineItems = [{
-        id: "LI-1", title: serviceName,
-        description: address ? `Service at ${address}` : "",
+        id: "LI-1", title: "Labor",
+        description: serviceName + (address ? ` — ${address}` : ""),
         quantity: 1, unit_price: subtotal, taxable: false, line_total: subtotal,
       }];
     }
