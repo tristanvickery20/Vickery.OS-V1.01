@@ -1,0 +1,763 @@
+I need you to design and build a complete invoicing system for Vickery Electric inside my custom CRM.
+
+Do not treat this as “just make a PDF.”
+This needs to be a real invoice system with:
+1. a polished digital customer invoice
+2. a printable field invoice
+3. PDF export from the same source
+4. SMS-first delivery, email second
+5. very simple Crew View workflow
+6. support for change orders made in the field
+7. design system and invoice UI fully aligned with Vickery Electric branding
+
+This needs to feel premium, clean, practical, contractor-friendly, and mobile-first, not like generic accounting software.
+
+==================================================
+CORE BUSINESS CONTEXT
+==================================================
+
+Business name: Vickery Electric
+
+Brand personality:
+- clean
+- strong
+- modern
+- trustworthy
+- contractor-professional
+- fast and easy
+- not cheesy
+- not overdesigned
+- not luxury-fancy
+- not “tech startup”
+- not old-school Word-doc looking
+- should feel like a disciplined modern home service company
+
+Visual direction:
+- dark navy / charcoal / electric blue / white
+- flat, clean, minimal
+- confident without being loud
+- sharp but readable
+- should look good on phone and on paper
+- should feel like “Vickery Electric” and match the logo/theme
+- use strong hierarchy and spacing
+- avoid bubbly UI, pill-button section labels, random floating labels, or web-app looking invoice sections that print poorly
+
+Important:
+I do NOT want the invoice system designed around fillable PDFs.
+I want the source of truth to be HTML/CSS templates that can render:
+- digital invoice page
+- print invoice page
+- PDF export
+
+==================================================
+PRIMARY GOAL
+==================================================
+
+Build an invoice generator that can create matching:
+- digital invoices for customers
+- printable invoices for office/field use
+
+The digital version should be ideal for:
+- SMS sending
+- email sending
+- mobile viewing
+- easy reading
+- payment clarity
+
+The printable version should be ideal for:
+- printing in office before the tech leaves
+- handing to field techs
+- writing notes by hand
+- writing change orders by hand
+- getting signatures if needed
+- still looking branded and professional
+
+The two versions should feel like the same system, not two unrelated documents.
+
+==================================================
+NON-NEGOTIABLE UX RULES
+==================================================
+
+1. Crew members must not have to “build” an invoice manually.
+2. Tech workflow must be extremely simple.
+3. In Crew View, the tech should be able to:
+   - log in
+   - open assigned customer/job
+   - press Generate Invoice
+   - get a ready invoice automatically built from the job snapshot/quote/job data
+   - only edit a small controlled change-order section if needed
+4. Techs are not very tech-savvy, so this must be intuitive and nearly foolproof.
+5. Sending should be SMS first, email second.
+6. Printing should be easy.
+7. Office staff should have more control than field techs.
+8. Original invoice values must be preserved even if a change order happens later.
+9. Change orders must create a revised total without destroying the original total.
+10. Use the same invoice data model for digital, print, and PDF output.
+
+==================================================
+BUILD THIS AS A COMPLETE MINI-SYSTEM
+==================================================
+
+I want you to do all of the following:
+
+A. define the invoice design system
+B. define the invoice data model
+C. define the digital invoice layout
+D. define the printable field invoice layout
+E. define the Crew View workflow
+F. define the office/admin workflow
+G. define change order logic
+H. define SMS/email sending flow
+I. build the templates/components/pages
+J. make it production-minded and maintainable
+
+==================================================
+DESIGN SYSTEM REQUIREMENTS
+==================================================
+
+Create a Vickery Electric invoice design system with the following direction:
+
+COLORS
+- primary dark navy
+- secondary charcoal/dark gray
+- accent electric blue
+- white background
+- very light cool gray for rules/fills where needed
+- keep contrast strong and print-friendly
+- do not overuse large solid color blocks that waste ink
+- design should still look good in grayscale when printed
+
+TYPOGRAPHY
+- clean sans-serif
+- bold clear headings
+- strong but not flashy
+- excellent mobile readability
+- use clear hierarchy:
+  - company header
+  - invoice title/status
+  - customer/job info
+  - line-item table
+  - totals block
+  - notes / terms / change order
+
+SHAPE LANGUAGE
+- subtle radius only where needed
+- mostly clean rectangles/cards
+- no bubbly category tabs
+- no floating labels
+- no weird pills pretending to be buttons
+- print layout should be structured and stable
+
+SPACING
+- consistent spacing scale
+- generous whitespace
+- avoid crowded invoice look
+- make handwriting areas usable on printed version
+
+BORDERS / RULES
+- light clean lines
+- strong enough to print
+- especially for tables and change order boxes
+- no missing dividers
+- no invisible column separators
+
+LOGO USAGE
+- use Vickery Electric logo in header
+- left aligned is fine
+- vertically centered within header area
+- do not place it too low
+- do not add dumb extra labels like “template”
+- logo should feel integrated, not slapped on
+
+TONE OF WORDING
+- direct
+- simple
+- contractor-professional
+- no lorem ipsum
+- no generic fake accounting language
+- no awkward corporate nonsense
+
+==================================================
+TWO INVOICE MODES
+==================================================
+
+Build two invoice render modes using the same source data.
+
+--------------------------------------------------
+1. DIGITAL CUSTOMER INVOICE
+--------------------------------------------------
+
+Purpose:
+- sent by SMS link first
+- email fallback
+- mobile friendly
+- clean, polished, readable
+- easy to understand
+- should help customer see what was done, what changed, and what is owed
+
+Requirements:
+- responsive on phone
+- strong header with VE branding
+- invoice status clearly shown
+- customer info and service address
+- job date and invoice date
+- invoice number
+- tech name if available
+- service summary / line items
+- subtotal
+- tax
+- deposit / paid amount
+- revised total if there was a change order
+- balance due / total due
+- notes/payment instructions
+- optional “Pay Now” button placeholder if payment integration is added later
+- clear display when a change order was added
+- must look better than a generic QuickBooks email invoice
+
+--------------------------------------------------
+2. PRINTABLE FIELD INVOICE
+--------------------------------------------------
+
+Purpose:
+- printed in office
+- handed to tech before work
+- may be used in the field
+- customer may get a paper copy
+- needs room for handwriting
+
+Requirements:
+- still branded and clean
+- more practical than flashy
+- optimized for standard home/office printing
+- strong legibility
+- clear boxes and rules
+- room to handwrite notes
+- room to handwrite change orders
+- room for initials/signatures if needed
+- room for customer approval/signoff if needed
+- should not just be the digital invoice squeezed onto paper
+- should feel like a hybrid of polished invoice + field form
+
+==================================================
+INVOICE DATA MODEL
+==================================================
+
+Design a clean normalized invoice model.
+
+At minimum support these fields:
+
+BUSINESS
+- company_name
+- company_phone
+- company_email
+- company_website
+- company_address_lines
+- company_license_info if desired
+
+CUSTOMER / JOB
+- customer_name
+- billing_name if different
+- customer_phone
+- customer_email
+- billing_address
+- service_address
+- lead_id
+- job_id
+- quote_id
+- snapshot_id
+- tech_id
+- tech_name
+
+INVOICE META
+- invoice_id
+- invoice_number
+- invoice_status
+- created_at
+- updated_at
+- issued_date
+- due_date
+- service_date
+- pricing_version
+- source_snapshot_json reference
+- generated_by_user_id
+
+LINE ITEMS
+Each line item should support:
+- line_id
+- sort_order
+- item_type
+- title
+- description
+- quantity
+- unit
+- unit_price
+- taxable boolean
+- tax_rate
+- line_subtotal
+- line_tax
+- line_total
+- source_type (quote_snapshot/manual/change_order/etc.)
+- locked boolean
+
+TOTALS
+- subtotal
+- tax_total
+- deposit_paid
+- amount_paid
+- original_total
+- change_order_total
+- revised_total
+- balance_due
+
+CHANGE ORDER
+Support one or more change order records, not just one text field.
+Each change order should support:
+- change_order_id
+- invoice_id
+- description
+- amount
+- created_at
+- created_by
+- tech_initials
+- approved_by
+- approval_type (verbal/signed/digital)
+- signed_at if available
+- affects_tax boolean
+- status
+
+NOTES / TERMS
+- internal_notes
+- customer_notes
+- payment_instructions
+- terms_text
+
+DELIVERY
+- sms_sent_at
+- sms_sent_to
+- email_sent_at
+- email_sent_to
+- printed_at
+- viewed_at
+
+FILES / RENDERS
+- html_render_version
+- pdf_url if exported
+- public_invoice_url
+
+==================================================
+INVOICE GENERATION LOGIC
+==================================================
+
+This is critical.
+
+When a tech or office user presses Generate Invoice, the system should auto-build the invoice from the existing job/quote snapshot data.
+
+Preferred logic:
+1. start from approved quote snapshot / job snapshot
+2. convert snapshot services into invoice line items
+3. preserve the original snapshot pricing as the original invoice baseline
+4. calculate subtotal, tax, deposit/paid, and original total
+5. create the invoice record
+6. render both digital and print versions from the same data
+7. allow controlled edits only where appropriate
+
+Important:
+- original invoice numbers and original totals should remain preserved
+- do not allow sloppy overwriting of source data
+- if a field change happens, create a change-order entry and revised total
+- final customer invoice should show the revised total cleanly, but still preserve auditability
+
+==================================================
+CHANGE ORDER LOGIC
+==================================================
+
+This must be handled cleanly.
+
+Real-world context:
+The office may print an invoice before the tech leaves in the morning.
+Later in the field, something may change.
+The tech may need to add labor/material or reduce scope.
+The paper version must have room to write this.
+The digital system must capture it cleanly later.
+
+Implement change orders like this:
+- invoice has original_total
+- change orders are separate records
+- revised_total = original_total + sum(approved change orders)
+- do not overwrite original_total
+- keep audit history
+
+Crew experience:
+- tech opens invoice
+- taps Add Change Order
+- enters brief description
+- enters amount
+- chooses plus or minus
+- optionally indicates taxable or not
+- revised total updates immediately
+- tech can save it with minimal typing
+
+Printable version:
+- dedicated handwritten change-order box
+- fields for description, amount, approved by, initials, date
+- enough room to write legibly
+
+Digital version:
+- clear “Change Order” section
+- show original amount, change amount, revised total
+- do not make it confusing
+
+==================================================
+ROLE-BASED UX
+==================================================
+
+--------------------------------------------------
+CREW VIEW EXPERIENCE
+--------------------------------------------------
+
+Design this for low-friction use by field techs.
+
+Main rule:
+Techs should not need to understand invoice structure.
+
+Crew flow should look like:
+1. login
+2. open Crew View
+3. see assigned jobs
+4. tap a job
+5. see a big obvious action: Generate Invoice
+6. system auto-generates invoice from snapshot/job data
+7. tech sees a simple invoice view
+8. tech can:
+   - review
+   - send by SMS
+   - send by email
+   - print if needed
+   - add change order if needed
+9. if change order added, totals update simply
+10. tech does not have to touch advanced settings
+
+Crew UI requirements:
+- no clutter
+- no accounting jargon
+- obvious button labels
+- large tappable controls
+- mobile-first
+- show short helper text where useful
+- make it feel guided, like “walk me through it”
+- reduce possible mistakes
+
+Good button labels:
+- Generate Invoice
+- Preview Invoice
+- Send by Text
+- Send by Email
+- Print
+- Add Change Order
+- Save Revision
+- Mark as Sent
+
+Avoid making techs edit:
+- invoice number
+- tax rules
+- payment terms
+- advanced formatting
+- company details
+- complicated line-item math
+
+--------------------------------------------------
+OFFICE / ADMIN EXPERIENCE
+--------------------------------------------------
+
+Office/admin can do more.
+
+Admin should be able to:
+- regenerate invoice from snapshot
+- edit line items if needed
+- manage taxes
+- set deposit/paid status
+- resend invoice
+- export PDF
+- view delivery history
+- reconcile field-written change orders into the system
+- view invoice audit trail
+
+==================================================
+DELIVERY FLOW
+==================================================
+
+SMS FIRST
+- primary send action should be text message with secure invoice link
+- message should be short and professional
+- include company name
+- include invoice number or job reference
+- include secure link
+
+EMAIL SECOND
+- email option as secondary delivery
+- clean branded email
+- link to invoice page
+- optional PDF attachment later if needed
+
+PRINT
+- one-click print view
+- print stylesheet optimized for home office printer
+- avoid giant dark backgrounds that destroy ink
+- ensure borders and line-item columns print cleanly
+
+PDF
+- PDF is export/output only
+- not the design source of truth
+- PDF should be generated from HTML print view
+
+==================================================
+PAGES / SCREENS TO BUILD
+==================================================
+
+Build the following:
+
+1. Invoice Design System reference page
+   - colors
+   - typography
+   - spacing
+   - components
+   - sample invoice blocks
+
+2. Crew View job detail with invoice actions
+   - Generate Invoice button
+   - Preview Invoice
+   - Send by Text
+   - Add Change Order
+
+3. Digital customer invoice page
+   - mobile first
+   - polished
+   - branded
+   - easy to read
+
+4. Printable invoice page
+   - print optimized
+   - writable
+   - line-item table
+   - notes area
+   - handwritten change-order area
+
+5. Change Order modal / screen
+   - simple
+   - minimal inputs
+   - clear revised total
+
+6. Admin invoice detail page
+   - invoice summary
+   - delivery history
+   - change-order history
+   - print/PDF actions
+   - resend actions
+
+==================================================
+VISUAL / LAYOUT REQUIREMENTS
+==================================================
+
+Do not repeat these earlier design mistakes:
+- no weird floating labels
+- no text half inside and half outside boxes
+- no broken table dividers
+- no invisible middle lines in quantity/unit price/tax columns
+- no random pill-shaped section labels
+- no “template” text in the design
+- no overly web-app looking invoice cards that print badly
+- no giant saturated header blocks that look like a website hero section
+- no awkward spacing that causes headings to clip or drift
+
+Line item table must be solid and printable.
+Use visible column divisions for:
+- item/service
+- description
+- qty
+- unit price
+- tax %
+- amount
+
+Totals section must be extremely clear.
+For example:
+- subtotal
+- tax
+- deposit/paid
+- original total
+- change orders
+- revised total / total due
+
+Printable layout should include:
+- visible boxes
+- strong rules
+- handwriting space
+- no layout elements that fall apart in PDF or print render
+
+==================================================
+TECHNICAL DIRECTION
+==================================================
+
+Build this in a maintainable way.
+
+Preferred approach:
+- reusable invoice components
+- shared source data
+- shared design tokens
+- one HTML/CSS system that branches into digital and print modes
+- responsive CSS for screen
+- print stylesheet for paper
+- export PDF from print layout
+
+Implementation goals:
+- modular
+- simple to maintain
+- no giant files
+- reusable components for header, customer info, line table, totals, notes, change order block
+- clean separation between data mapping and rendering
+
+Need:
+- invoice mapping layer from quote/job snapshot -> invoice structure
+- renderer for digital page
+- renderer for print page
+- renderer/export for PDF
+- delivery hooks for SMS/email sending
+- role-based controls for crew/admin
+
+==================================================
+DATA SOURCE / SNAPSHOT MAPPING
+==================================================
+
+I want the invoice generator to intelligently pull from the job snapshot.
+
+Assume the CRM already has some combination of:
+- lead
+- quote
+- quote snapshot
+- job
+- customer
+- service address
+- deposit/payment fields
+- tech assignment
+
+Build the invoice mapper so that:
+- invoice line items come from approved quote snapshot or job snapshot
+- descriptions are cleaned up for human readability
+- optional add-ons become separate invoice lines when appropriate
+- final totals match source pricing unless a change order is added
+- invoice remains understandable to the customer
+
+The system should produce intuitive invoices, not raw JSON dumps.
+
+==================================================
+EXAMPLE PRODUCT THINKING
+==================================================
+
+This should feel like:
+- tech presses one button
+- invoice appears basically done
+- tech maybe adds one field change if needed
+- customer gets a clean texted invoice link
+- office can print a paper version
+- everything looks like one coherent Vickery Electric system
+
+Not like:
+- tech manually builds accounting docs
+- ugly generic PDF attachment
+- confusing invoice editor
+- broken print styling
+- accounting software UI dumped into the CRM
+
+==================================================
+DELIVERABLES I WANT FROM YOU
+==================================================
+
+I want you to do the work, not just talk about it.
+
+Produce:
+1. the invoice design system
+2. the invoice UX plan
+3. the invoice data model
+4. the mapping logic from job snapshot to invoice
+5. the digital invoice design
+6. the printable invoice design
+7. the Crew View invoice flow
+8. the change-order flow
+9. the admin flow
+10. the actual implementation structure/files/components
+11. a working first-pass UI
+12. a print stylesheet
+13. sample seeded invoice data for testing
+14. a clear place for SMS and email integration hooks
+
+==================================================
+WORKING STYLE
+==================================================
+
+Do not ask me a hundred design questions.
+Make strong decisions using the brand direction above.
+Only stop and ask me something if it blocks the build.
+
+Do not give me generic suggestions.
+Build a real opinionated system.
+
+Do not start with PDF.
+Start with design system + HTML/CSS invoice system.
+
+Do not make it look like generic SaaS.
+Make it feel like Vickery Electric.
+
+Do not overcomplicate the crew workflow.
+Crew experience should be dead simple.
+
+==================================================
+PHASED EXECUTION PLAN
+==================================================
+
+Build in this order:
+
+PHASE 1
+- define invoice design system
+- define data model
+- define invoice component structure
+- create sample seeded invoice data
+
+PHASE 2
+- build digital customer invoice view
+- build printable field invoice view
+- build shared invoice rendering components
+- build print CSS
+
+PHASE 3
+- build Crew View invoice workflow
+- Generate Invoice action
+- Preview / Send / Print / Add Change Order
+
+PHASE 4
+- build change-order logic and revised total behavior
+- preserve original total
+- render both values clearly
+
+PHASE 5
+- build admin invoice detail and delivery history
+- prepare SMS/email sending hooks
+
+After each phase, show me the actual working result, not just describe it.
+
+==================================================
+FINAL DESIGN GOAL
+==================================================
+
+The finished result should look like a custom-built invoice system for a disciplined modern electrical contractor.
+
+It should be:
+- branded
+- practical
+- mobile friendly
+- print friendly
+- field friendly
+- customer friendly
+- simple for techs
+- clean for office staff
+- ready to grow into a full invoicing workflow
+
+Build it.

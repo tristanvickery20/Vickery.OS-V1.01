@@ -286,6 +286,48 @@
       font-family: inherit;
       text-align: center;
     }
+    .btn-generate-invoice {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(225 80% 60%);
+      background: hsl(225 80% 50%);
+      color: #fff;
+      font-family: inherit;
+      text-align: center;
+      transition: background .15s;
+    }
+    .btn-generate-invoice:hover  { background: hsl(225 80% 45%); }
+    .btn-generate-invoice:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-send-invoice {
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(142 55% 35%);
+      background: hsl(142 55% 28%);
+      color: #fff;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn-send-invoice:disabled { opacity: .55; cursor: not-allowed; }
+    .badge-ready-invoice {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: hsl(225 80% 50%);
+      color: #fff;
+      border-radius: 99px;
+      padding: 3px 9px;
+      margin-left: 8px;
+      vertical-align: middle;
+      letter-spacing: .03em;
+    }
     .btn-payment {
       width: 100%;
       padding: 15px;
@@ -950,10 +992,17 @@
 
     <hr class="jd-divider">
 
-    <button class="btn-invoice" disabled>
-      Send Invoice via QuickBooks
-      <span class="coming-soon-tag">QuickBooks integration — coming soon</span>
-    </button>
+    <div id="jdInvoiceSection" style="display:none;">
+      <div class="jd-label" style="margin-bottom:8px;">Invoice</div>
+      <button class="btn-generate-invoice" id="btnGenerateInvoice">⚡ Generate Invoice</button>
+      <div id="jdInvoiceStatus" style="display:none;font-size:13px;margin-top:8px;"></div>
+      <button class="btn-send-invoice" id="btnSendInvoice" style="display:none;margin-top:8px;">📱 Send by Text to Customer</button>
+    </div>
+
+    <div id="jdInvoiceNaSection" style="display:none;font-size:13px;color:rgba(230,238,252,0.45);padding:4px 0 8px;">
+      Invoice available after marking job complete.
+    </div>
+
     <button class="btn-payment" disabled>
       Accept Payment
       <span class="coming-soon-tag">Payment integration — coming soon</span>

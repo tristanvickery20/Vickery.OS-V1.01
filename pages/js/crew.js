@@ -618,11 +618,16 @@ function jobCard(j) {
       ${expList ? `<div class="job-expense-list">${expList}</div>` : `<div class="job-expense-list"></div>`}
     </div>`;
 
+  const isJobComplete = String(j.status || "").toLowerCase() === "complete";
+  const invoiceBadge  = isJobComplete
+    ? `<span class="badge-ready-invoice">⚡ Ready to Invoice</span>`
+    : "";
+
   return `
     <div class="job-card" id="card-${esc(bid)}">
       <div class="job-card-top" data-job='${jobData}'>
         <div class="job-block">${block}${dur}</div>
-        <div class="job-customer">${esc(j.customer_name || "Customer")}</div>
+        <div class="job-customer">${esc(j.customer_name || "Customer")}${invoiceBadge}</div>
         <div class="job-address">${esc(j.address || "—")}</div>
         <div class="job-tap-hint">Tap to view details</div>
       </div>
@@ -729,6 +734,86 @@ function bindJobDetailOverlay() {
     sendCrewNotify("we_are_here", e.currentTarget));
   document.getElementById("notifyRunningLate")?.addEventListener("click", e =>
     sendCrewNotify("running_late", e.currentTarget));
+  document.getElementById("btnGenerateInvoice")?.addEventListener("click", generateCrewInvoice);
+  document.getElementById("btnSendInvoice")?.addEventListener("click", sendInvoiceBySms);
+}
+
+// ── Invoice generation from crew ──────────────────────────────────────────────
+let _lastInvoice = null;
+
+async function generateCrewInvoice() {
+  const j = _detailJob;
+  if (!j) return;
+  const genBtn  = document.getElementById("btnGenerateInvoice");
+  const statusEl = document.getElementById("jdInvoiceStatus");
+  const sendBtn = document.getElementById("btnSendInvoice");
+
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = "Generating…"; }
+  if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; }
+
+  try {
+    const res  = await fetch("/api/crew/generate-invoice", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ booking_id: j.booking_id }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Failed to generate invoice");
+
+    _lastInvoice = data;
+
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.innerHTML = `<span style="color:#4ade80;">✓ ${esc(data.invoice_number)} created</span>
+        <a href="${esc(data.public_url)}" target="_blank" rel="noopener"
+           style="display:block;margin-top:4px;color:#93c5fd;font-size:12px;word-break:break-all;">
+          View invoice ↗
+        </a>`;
+    }
+    if (sendBtn) {
+      sendBtn.style.display = "block";
+      sendBtn.disabled = false;
+      sendBtn.dataset.invoiceId = data.invoice_id;
+      sendBtn.dataset.publicUrl = data.public_url;
+    }
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "⚡ Regenerate Invoice"; }
+    showToast("Invoice created: " + data.invoice_number);
+  } catch (err) {
+    showToast(err.message || "Failed to generate invoice", true);
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = "⚡ Generate Invoice"; }
+  }
+}
+
+async function sendInvoiceBySms() {
+  const sendBtn = document.getElementById("btnSendInvoice");
+  const invoiceId = sendBtn?.dataset.invoiceId;
+  if (!invoiceId) { showToast("Generate an invoice first", true); return; }
+
+  const orig = sendBtn.textContent;
+  sendBtn.disabled = true;
+  sendBtn.textContent = "Sending…";
+
+  try {
+    const res  = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/send`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Send failed");
+
+    sendBtn.textContent = "✓ Sent by text!";
+    sendBtn.style.background = "hsl(142 55% 28%)";
+    showToast("Invoice sent by text!");
+    setTimeout(() => {
+      sendBtn.textContent = "📱 Send by Text to Customer";
+      sendBtn.style.background = "";
+      sendBtn.disabled = false;
+    }, 4000);
+  } catch (err) {
+    showToast(err.message || "Send failed", true);
+    sendBtn.textContent = orig;
+    sendBtn.disabled = false;
+  }
 }
 
 function classificationLabel(s) {
@@ -830,6 +915,20 @@ function openJobDetail(j) {
     b.classList.remove("sent");
     b.disabled = false;
   });
+
+  // Invoice section — shown only when job is complete
+  const isComplete = String(j.status || "").toLowerCase() === "complete";
+  const invSection   = document.getElementById("jdInvoiceSection");
+  const invNaSection = document.getElementById("jdInvoiceNaSection");
+  if (invSection)   invSection.style.display   = isComplete ? "block" : "none";
+  if (invNaSection) invNaSection.style.display = isComplete ? "none"  : "block";
+  // Reset invoice button states
+  const invStatus = document.getElementById("jdInvoiceStatus");
+  const sendBtn   = document.getElementById("btnSendInvoice");
+  const genBtn    = document.getElementById("btnGenerateInvoice");
+  if (invStatus) { invStatus.style.display = "none"; invStatus.innerHTML = ""; }
+  if (sendBtn)   { sendBtn.style.display = "none"; sendBtn.removeAttribute("data-invoice-id"); sendBtn.removeAttribute("data-public-url"); sendBtn.style.background = ""; sendBtn.disabled = false; sendBtn.textContent = "📱 Send by Text to Customer"; }
+  if (genBtn)    { genBtn.disabled = false; genBtn.textContent = "⚡ Generate Invoice"; }
 
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");

@@ -1,7 +1,9 @@
 // api/crew.js — lightweight helpers for the Crew Portal
 // GET /api/crew/members — returns list of crew member names from Config tab
 // GET /api/crew/today  — returns today's bookings (date-filtered, public endpoint)
+// POST /api/crew/generate-invoice — generate invoice from a completed booking
 
+const crypto                 = require("crypto");
 const { getSheetsClient }    = require("../lib/sheets");
 const { getConfig }          = require("../lib/config");
 const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
@@ -260,4 +262,187 @@ async function handleGetTodayJobs(req, res) {
   }
 }
 
-module.exports = { handleGetCrewMembers, handleGetTodayJobs };
+/* =========================
+   GENERATE INVOICE FROM BOOKING — POST /api/crew/generate-invoice
+   Called by the crew portal after a job is marked complete.
+   Body: { booking_id }
+   Returns: { invoice_id, invoice_number, public_token, public_url }
+========================= */
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let raw = "";
+    req.on("data", c => (raw += c));
+    req.on("end", () => { try { resolve(JSON.parse(raw || "{}")); } catch { resolve({}); } });
+  });
+}
+
+async function handleGenerateInvoice(req, res) {
+  try {
+    const session = getCrewSession(req);
+    if (!session) return json(res, 401, { ok: false, error: "Not authenticated." });
+
+    const body       = await parseBody(req);
+    const booking_id = String(body.booking_id || "").trim();
+    if (!booking_id) return json(res, 400, { ok: false, error: "booking_id required." });
+
+    const sheets        = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    if (!spreadsheetId) return json(res, 500, { ok: false, error: "CRM_SHEET_ID not configured." });
+
+    // Fetch bookings, QuoteSnapshots, Estimator config, and Invoices headers in parallel
+    const [bookingsResp, quotesResp, estCfg, invHdrResp] = await Promise.all([
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
+      getEstimatorConfig().catch(() => null),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!1:1" }),
+    ]);
+
+    // Find booking
+    const bRows = bookingsResp.data.values || [];
+    if (bRows.length < 2) return json(res, 404, { ok: false, error: "Booking not found." });
+    const [bHeaders, ...bData] = bRows;
+    const bi  = Object.fromEntries(bHeaders.map((h, i) => [h, i]));
+    const bGet = row => col => String(row[bi[col] ?? -1] ?? "").trim();
+
+    const bRow = bData.find(r => bGet(r)("booking_id") === booking_id);
+    if (!bRow) return json(res, 404, { ok: false, error: `Booking ${booking_id} not found.` });
+
+    const get         = bGet(bRow);
+    const quoteId     = get("quote_id");
+    const finalPrice  = parseFloat(get("final_price") || "0") || 0;
+    const custName    = get("customer_name");
+    const custPhone   = get("phone");
+    const address     = get("address");
+    const schedDt     = get("scheduled_datetime");
+    const serviceDate = schedDt ? schedDt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const jobTypeId   = get("job_type_id");
+
+    // Resolve service name using estimator config
+    const services = estCfg ? estCfg.services : [];
+    function resolveServiceName(rawId) {
+      if (!rawId) return "Electrical Services";
+      const serviceId = (typeof ASSEMBLY_TO_SERVICE !== "undefined" && ASSEMBLY_TO_SERVICE[rawId]) || rawId;
+      const svc = services.find(s => s.service_id === serviceId);
+      return svc ? svc.service_name : rawId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // Get best quote snapshot for this booking
+    let snapPrice = 0;
+    let serviceName = resolveServiceName(jobTypeId);
+    const qRows = quotesResp.data.values || [];
+    if (qRows.length > 1 && quoteId) {
+      const [qHeaders, ...qData] = qRows;
+      const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
+      const qGet = r => col => String(r[qi[col] ?? -1] ?? "").trim();
+      // Prefer "locked" snapshot
+      const snapRow = qData.reduce((best, r) => {
+        if (qGet(r)("quote_id") !== quoteId) return best;
+        if (!best || qGet(r)("event_type") === "locked") return r;
+        return best;
+      }, null);
+      if (snapRow) {
+        snapPrice   = parseFloat(qGet(snapRow)("final_price") || "0") || 0;
+        const snId  = qGet(snapRow)("job_type_id") || jobTypeId;
+        serviceName = resolveServiceName(snId);
+      }
+    }
+
+    const subtotal = finalPrice > 0 ? finalPrice : snapPrice;
+    if (subtotal <= 0) {
+      return json(res, 422, { ok: false, error: "No price found for this booking. Set a final_price first." });
+    }
+
+    // Build line items from booking data
+    const lineItems = [{
+      id:          "LI-1",
+      title:       serviceName,
+      description: address ? `Service at ${address}` : "",
+      quantity:    1,
+      unit_price:  subtotal,
+      taxable:     false,
+      line_total:  subtotal,
+    }];
+
+    // Generate invoice
+    const now          = new Date().toISOString();
+    const publicToken  = crypto.randomBytes(16).toString("hex");
+    const invoiceNum   = "INV-" + String(Date.now()).slice(-6);
+    const invoiceId    = "INV-" + Date.now();
+    const techName     = `${session.firstName} ${session.lastName}`.trim();
+
+    const rowObj = {
+      id:                 invoiceId,
+      created_at:         now,
+      updated_at:         now,
+      invoice_number:     invoiceNum,
+      status_code:        "draft",
+      client_id:          "",
+      property_id:        "",
+      request_id:         "",
+      job_id:             "",
+      lead_id:            "",
+      issued_at:          now,
+      due_at:             "",
+      subtotal:           String(subtotal),
+      tax_rate:           "0",
+      tax_amount:         "0",
+      total:              String(subtotal),
+      paid_amount:        "0",
+      balance_due:        String(subtotal),
+      deposit_applied:    "0",
+      notes:              "",
+      snapshot_json:      JSON.stringify({ booking_id, quote_id: quoteId, created_at: now }),
+      sent_at:            "",
+      paid_at:            "",
+      void_at:            "",
+      provider_ref:       "",
+      provider_name:      "",
+      public_token:       publicToken,
+      line_items_json:    JSON.stringify(lineItems),
+      change_orders_json: "[]",
+      original_total:     String(subtotal),
+      booking_id,
+      tech_name:          techName,
+      service_date:       serviceDate,
+      customer_name:      custName,
+      customer_phone:     custPhone,
+      sms_sent_at:        "",
+      sms_sent_to:        "",
+      email_sent_at:      "",
+      email_sent_to:      "",
+    };
+
+    const invHeaders = (invHdrResp.data.values && invHdrResp.data.values[0]) || [];
+    const invRow     = invHeaders.map(h => rowObj[h] != null ? rowObj[h] : "");
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range:            "Invoices!A:A",
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody:      { values: [invRow] },
+    });
+
+    const domain = process.env.REPLIT_DEV_DOMAIN
+      || (process.env.REPLIT_DOMAINS || "").split(",")[0].trim()
+      || "";
+    const publicUrl = domain
+      ? `https://${domain}/invoice/${publicToken}`
+      : `/invoice/${publicToken}`;
+
+    console.log(`[crew/generate-invoice] Created ${invoiceNum} for booking ${booking_id} by ${techName}`);
+
+    json(res, 201, {
+      ok:             true,
+      invoice_id:     invoiceId,
+      invoice_number: invoiceNum,
+      public_token:   publicToken,
+      public_url:     publicUrl,
+    });
+  } catch (err) {
+    console.error("[crew/generate-invoice]", err.message);
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+module.exports = { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice };

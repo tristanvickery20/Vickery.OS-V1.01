@@ -4,390 +4,586 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Invoice Detail • Vickery Electric CRM</title>
-
   <link rel="stylesheet" href="/pages/css/brand.css" />
   <style>
     :root{
-      --bg:#0b0f14;
-      --panel:#0f1621;
-      --panel2:#0c121b;
-      --text:#e6eefc;
-      --muted:rgba(230,238,252,0.70);
-      --line:rgba(255,255,255,0.10);
-      --line2:rgba(255,255,255,0.08);
-      --blue:#3b82f6;
-      --red:#f87171;
-      --green:#34d399;
+      --bg:#0b0f14; --panel:#0f1621; --panel2:#0c121b;
+      --text:#e6eefc; --muted:rgba(230,238,252,0.70);
+      --line:rgba(255,255,255,0.10); --line2:rgba(255,255,255,0.08);
+      --blue:#3b82f6; --red:#f87171; --green:#34d399; --amber:#fbbf24;
     }
     html,body{ height:100%; }
-    body{ margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-
+    body{ margin:0; background:var(--bg); color:var(--text);
+          font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
     .shell{ min-height:100vh; display:flex; }
     .sidebar{
       width:260px; flex:0 0 260px;
-      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      background: linear-gradient(180deg,var(--panel),var(--panel2));
       border-right:1px solid var(--line);
-      position: sticky; top:0; height:100vh;
-      overflow:auto;
+      position:sticky; top:0; height:100vh; overflow:auto;
     }
     .main{ flex:1; min-width:0; padding:16px; }
-
-    /* sidebar hardening */
     .sidebar a{ color:var(--text); text-decoration:none; }
     .sidebar .sidebar-header{ padding:14px 14px 8px; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:10px; }
     .sidebar .sidebar-logo{ width:34px; height:34px; border-radius:10px; }
     .sidebar .sidebar-brand{ font-weight:800; line-height:1.1; }
     .sidebar .sidebar-brand small{ display:block; font-weight:600; opacity:0.7; margin-top:2px; }
     .sidebar .create-wrap{ padding:10px 14px 0; }
-    .sidebar .create-btn{
-      width:100%;
-      display:flex; align-items:center; justify-content:space-between;
-      background: rgba(59,130,246,0.18);
-      border:1px solid rgba(59,130,246,0.45);
-      color:white; padding:10px 12px; border-radius:12px; font-weight:800;
-    }
-    .sidebar .create-menu{
-      margin:10px 14px 0;
-      border:1px solid var(--line2);
-      border-radius:12px;
-      overflow:hidden;
-      display:none;
-      background: rgba(255,255,255,0.03);
-    }
+    .sidebar .create-btn{ width:100%; display:flex; align-items:center; justify-content:space-between; background:rgba(59,130,246,0.18); border:1px solid rgba(59,130,246,0.45); color:white; padding:10px 12px; border-radius:12px; font-weight:800; }
+    .sidebar .create-menu{ margin:10px 14px 0; border:1px solid var(--line2); border-radius:12px; overflow:hidden; display:none; background:rgba(255,255,255,0.03); }
     .sidebar .create-menu.open{ display:block; }
     .sidebar .create-menu a{ display:block; padding:10px 12px; border-bottom:1px solid var(--line2); font-size:14px; }
     .sidebar .create-menu a:last-child{ border-bottom:none; }
     .sidebar .sidebar-nav{ padding:10px 8px 16px; }
     .sidebar .sidebar-section-title{ padding:10px 10px 6px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; opacity:.6; }
     .sidebar .sidebar-link{ display:flex; align-items:center; gap:10px; padding:10px 10px; margin:4px 6px; border-radius:12px; border:1px solid transparent; font-weight:700; font-size:14px; }
-    .sidebar .sidebar-link:hover{ background: rgba(255,255,255,0.04); border-color: var(--line2); }
-
-    /* Mobile drawer */
-    .mobile-bar{
-      display:none;
-      position: sticky; top:0;
-      z-index:50;
-      background: rgba(11,15,20,0.85);
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid var(--line2);
-      padding:10px 12px;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .mobile-bar .m-btn{
-      border:1px solid var(--line2);
-      background: rgba(255,255,255,0.03);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:12px;
-      font-weight:900;
-    }
-    .backdrop{ display:none; position:fixed; inset:0; background: rgba(0,0,0,0.55); z-index:60; }
-
-    @media (max-width: 980px){
-      .sidebar{
-        position:fixed; left:0; top:0; bottom:0;
-        transform: translateX(-102%);
-        transition: transform .18s ease;
-        z-index:70;
-        box-shadow: 30px 0 80px rgba(0,0,0,0.55);
-      }
-      .sidebar.open{ transform: translateX(0); }
+    .sidebar .sidebar-link:hover{ background:rgba(255,255,255,0.04); border-color:var(--line2); }
+    .mobile-bar{ display:none; position:sticky; top:0; z-index:50; background:rgba(11,15,20,0.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line2); padding:10px 12px; align-items:center; justify-content:space-between; gap:10px; }
+    .mobile-bar .m-btn{ border:1px solid var(--line2); background:rgba(255,255,255,0.03); color:var(--text); padding:10px 12px; border-radius:12px; font-weight:900; }
+    .backdrop{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:60; }
+    @media (max-width:980px){
+      .sidebar{ position:fixed; left:0; top:0; bottom:0; transform:translateX(-102%); transition:transform .18s ease; z-index:70; box-shadow:30px 0 80px rgba(0,0,0,0.55); }
+      .sidebar.open{ transform:translateX(0); }
       .backdrop.show{ display:block; }
       .mobile-bar{ display:flex; }
       .main{ padding:12px; }
+      .grid{ grid-template-columns:1fr !important; }
     }
 
-    /* Main UI */
-    .top{
-      display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
-      margin-bottom:12px;
-      align-items:flex-start;
-    }
+    /* Layout */
+    .top{ display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; align-items:flex-start; }
     .title{ font-size:22px; font-weight:900; }
     .sub{ font-size:13px; opacity:.75; margin-top:4px; }
-    .actions{ display:flex; gap:10px; flex-wrap:wrap; }
-    .btn{
-      padding:10px 12px; border-radius:12px;
-      border:1px solid rgba(59,130,246,0.45);
-      background: rgba(59,130,246,0.18);
-      color:white; font-weight:900; cursor:pointer;
-    }
-    .btn.secondary{ border-color: var(--line2); background: rgba(255,255,255,0.03); }
-    .btn.danger{ border-color: rgba(248,113,113,0.55); background: rgba(248,113,113,0.16); }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; }
+    .btn{ padding:9px 14px; border-radius:12px; border:1px solid rgba(59,130,246,0.45); background:rgba(59,130,246,0.18); color:white; font-weight:800; cursor:pointer; font-size:13px; font-family:inherit; }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+    .btn.secondary{ border-color:var(--line2); background:rgba(255,255,255,0.03); }
+    .btn.danger{ border-color:rgba(248,113,113,0.55); background:rgba(248,113,113,0.16); }
+    .btn.success{ border-color:rgba(52,211,153,0.55); background:rgba(52,211,153,0.10); }
+    .btn.amber{ border-color:rgba(251,191,36,0.55); background:rgba(251,191,36,0.10); color:var(--amber); }
 
-    .grid{ display:grid; grid-template-columns: 1.2fr 0.8fr; gap:14px; }
-    .card{ background: rgba(255,255,255,0.03); border:1px solid var(--line2); border-radius:16px; padding:14px; }
-    .row{ display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line2); }
+    .grid{ display:grid; grid-template-columns:1.2fr 0.8fr; gap:14px; }
+    .card{ background:rgba(255,255,255,0.03); border:1px solid var(--line2); border-radius:16px; padding:16px; margin-bottom:12px; }
+    .card-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; opacity:.5; margin-bottom:10px; }
+    .row{ display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--line2); }
     .row:last-child{ border-bottom:none; }
-    .k{ font-size:12px; opacity:.65; text-transform:uppercase; letter-spacing:.08em; }
-    .v{ font-weight:800; text-align:right; }
+    .k{ font-size:12px; opacity:.65; text-transform:uppercase; letter-spacing:.06em; flex-shrink:0; }
+    .v{ font-weight:700; text-align:right; word-break:break-word; }
 
-    .badge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid var(--line2); background: rgba(255,255,255,0.03); font-size:12px; font-weight:900; }
+    .badge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid var(--line2); background:rgba(255,255,255,0.03); font-size:12px; font-weight:900; }
     .dot{ width:8px; height:8px; border-radius:50%; background:#94a3b8; }
-    .st-paid .dot{ background: var(--green); }
-    .st-sent .dot{ background: #60a5fa; }
-    .st-overdue .dot{ background: var(--red); }
+    .st-paid .dot{ background:var(--green); }
+    .st-sent .dot{ background:#60a5fa; }
+    .st-overdue .dot{ background:var(--red); }
     .st-void .dot{ background:#a1a1aa; }
 
-    .input, select, textarea{
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid var(--line2);
-      background: rgba(255,255,255,0.03);
-      color:var(--text);
-      outline:none;
-    }
-    textarea{ min-height: 90px; resize: vertical; }
-    .status{ margin-top:10px; font-size:13px; opacity:.8; }
+    /* Line items table */
+    .line-table{ width:100%; border-collapse:collapse; font-size:13px; margin-top:4px; }
+    .line-table th{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; opacity:.5; padding:8px 6px; text-align:left; border-bottom:1px solid var(--line2); }
+    .line-table td{ padding:9px 6px; border-bottom:1px solid rgba(255,255,255,0.05); vertical-align:top; }
+    .line-table .col-r{ text-align:right; }
+    .line-table .item-title{ font-weight:700; }
+    .line-table .item-desc{ font-size:11px; opacity:.5; margin-top:2px; }
+    .no-items{ padding:12px 0; font-size:13px; opacity:.5; font-style:italic; }
 
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
-    }
+    /* Totals */
+    .totals-row{ display:flex; justify-content:space-between; gap:16px; padding:7px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .totals-row:last-child{ border-bottom:none; }
+    .totals-label{ opacity:.65; }
+    .totals-value{ font-weight:700; }
+    .totals-grand{ border-top:1px solid var(--blue); margin-top:6px; padding-top:8px; }
+    .totals-grand .totals-label{ font-weight:800; font-size:14px; opacity:1; }
+    .totals-grand .totals-value{ font-size:16px; color:var(--blue); }
+    .totals-credit .totals-value{ color:var(--green); }
+
+    /* Change orders */
+    .co-row{ display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; align-items:flex-start; }
+    .co-row:last-child{ border-bottom:none; }
+    .co-desc{ flex:1; }
+    .co-title{ font-weight:700; }
+    .co-meta{ font-size:11px; opacity:.5; margin-top:2px; }
+    .co-add{ color:var(--red); font-weight:700; }
+    .co-deduct{ color:var(--green); font-weight:700; }
+
+    /* Delivery history */
+    .delivery-row{ display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .delivery-row:last-child{ border-bottom:none; }
+    .delivery-icon{ font-size:14px; width:20px; text-align:center; }
+    .delivery-label{ opacity:.65; font-size:12px; width:60px; }
+    .delivery-val{ flex:1; font-weight:700; }
+    .delivery-when{ font-size:11px; opacity:.5; text-align:right; }
+
+    .input, select, textarea{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line2); background:rgba(255,255,255,0.03); color:var(--text); outline:none; font-family:inherit; font-size:13px; box-sizing:border-box; }
+    textarea{ min-height:70px; resize:vertical; }
+    .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .status-msg{ font-size:12px; opacity:.75; margin-top:8px; min-height:18px; }
+
+    .pub-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#60a5fa; text-decoration:none; font-weight:700; }
+    .pub-link:hover{ text-decoration:underline; }
   </style>
 </head>
-
 <body>
-  <div class="backdrop" id="backdrop"></div>
+<div class="backdrop" id="backdrop"></div>
 
-  <div class="shell">
-    <aside class="sidebar" id="sidebarMount"></aside>
+<div class="shell">
+  <aside class="sidebar" id="sidebarMount"></aside>
 
-    <main class="main">
-      <div class="mobile-bar">
-        <button class="m-btn" id="menuBtn">Menu</button>
-        <button class="m-btn" onclick="location.href='/invoices'">Back</button>
-        <button class="m-btn" id="refreshBtnMobile">Refresh</button>
+  <main class="main">
+    <div class="mobile-bar">
+      <button class="m-btn" id="menuBtn">Menu</button>
+      <button class="m-btn" onclick="location.href='/invoices'">← Back</button>
+      <button class="m-btn" id="refreshBtnMobile">↻</button>
+    </div>
+
+    <div class="top">
+      <div>
+        <div class="title" id="invTitle">Invoice</div>
+        <div class="sub"><a href="/invoices" style="color:#60a5fa;font-weight:800;text-decoration:none;">← All Invoices</a></div>
       </div>
-
-      <div class="top">
-        <div>
-          <div class="title" id="invTitle">Invoice</div>
-          <div class="sub"><a href="/invoices" style="color:#60a5fa; font-weight:900; text-decoration:none;">← Back to Invoices</a></div>
-        </div>
-        <div class="actions">
-          <button class="btn secondary" id="refreshBtn">Refresh</button>
-          <button class="btn" id="markSentBtn">Mark Sent</button>
-          <button class="btn danger" id="voidBtn">Void</button>
-        </div>
+      <div class="actions" id="actionsBar">
+        <button class="btn secondary" id="refreshBtn">↻ Refresh</button>
+        <button class="btn" id="sendBtn">⚡ Send Invoice</button>
+        <button class="btn success" id="resendSmsBtn" style="display:none">📱 Resend SMS</button>
+        <button class="btn secondary" id="printBtn" style="display:none" target="_blank">🖨 Print</button>
+        <button class="btn danger" id="voidBtn">✕ Void</button>
       </div>
+    </div>
 
-      <div class="grid">
-        <section class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+    <div class="grid">
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- Header card: status + key fields -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
             <div class="badge" id="statusBadge"><span class="dot"></span><span id="statusText">Draft</span></div>
-            <div style="font-size:13px; opacity:.8;" id="hint"></div>
-          </div>
-
-          <div id="detail">
-            <div class="status">Loading…</div>
-          </div>
-
-          <div style="margin-top:14px;">
-            <div class="k" style="margin-bottom:6px;">Internal Notes</div>
-            <textarea id="notes"></textarea>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-              <button class="btn secondary" id="saveNotesBtn">Save Notes</button>
+            <div id="pubLinkWrap" style="display:none;">
+              <a class="pub-link" id="pubLink" href="#" target="_blank" rel="noopener">🔗 View Customer Page</a>
             </div>
-            <div class="status" id="notesMsg"></div>
           </div>
-        </section>
+          <div id="headerFields"></div>
+        </div>
 
-        <aside class="card">
-          <div class="k" style="margin-bottom:8px;">Add Payment</div>
-          <form id="payForm" style="display:grid; gap:10px;">
-            <input id="amount" class="input" inputmode="decimal" placeholder="Amount (e.g. 100.00)" />
+        <!-- Line items -->
+        <div class="card">
+          <div class="card-title">Line Items</div>
+          <div id="lineItemsSection"></div>
+          <!-- Totals -->
+          <div id="totalsSection" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px;"></div>
+        </div>
+
+        <!-- Change orders -->
+        <div class="card" id="changeOrderCard">
+          <div class="card-title" style="color:var(--amber);">⚡ Change Orders</div>
+          <div id="coListSection"></div>
+
+          <!-- Add CO form -->
+          <div style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px;">
+            <div class="card-title">Add Change Order</div>
+            <div style="display:grid;gap:8px;">
+              <input id="coDesc" class="input" placeholder="Description (e.g. Additional circuit)">
+              <div class="form-row">
+                <input id="coAmount" class="input" type="number" step="0.01" min="0.01" placeholder="Amount ($)" inputmode="decimal">
+                <select id="coType" class="input">
+                  <option value="add">Add to total (+)</option>
+                  <option value="deduct">Deduct from total (−)</option>
+                </select>
+              </div>
+              <button class="btn amber" id="addCoBtn">+ Add Change Order</button>
+            </div>
+            <div class="status-msg" id="coMsg"></div>
+          </div>
+        </div>
+
+        <!-- Delivery history -->
+        <div class="card" id="deliveryCard">
+          <div class="card-title">Delivery History</div>
+          <div id="deliverySection"></div>
+        </div>
+
+        <!-- Internal notes -->
+        <div class="card">
+          <div class="card-title">Internal Notes</div>
+          <textarea id="notes" placeholder="Internal notes (not visible to customer)…"></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button class="btn secondary" id="saveNotesBtn">Save Notes</button>
+          </div>
+          <div class="status-msg" id="notesMsg"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <!-- Record Payment -->
+        <div class="card">
+          <div class="card-title">Record Payment</div>
+          <form id="payForm" style="display:grid;gap:8px;">
+            <input id="amount"  class="input" inputmode="decimal" placeholder="Amount (e.g. 350.00)">
             <select id="method" class="input">
               <option value="">Method (optional)</option>
               <option value="cash">Cash</option>
               <option value="check">Check</option>
               <option value="card">Card</option>
-              <option value="ach">ACH</option>
+              <option value="ach">ACH / Bank Transfer</option>
               <option value="other">Other</option>
             </select>
-            <input id="ref" class="input" placeholder="Reference (optional)" />
-            <input id="note" class="input" placeholder="Note (optional)" />
+            <input id="ref"  class="input" placeholder="Reference # (optional)">
+            <input id="note" class="input" placeholder="Note (optional)">
             <button class="btn" type="submit">Record Payment</button>
           </form>
-          <div class="status" id="payMsg"></div>
-        </aside>
+          <div class="status-msg" id="payMsg"></div>
+        </div>
+
+        <!-- Quick change order (also in right panel for mobile) -->
+        <div class="card" id="qcoCard" style="display:none;">
+          <div class="card-title" style="color:var(--amber);">Quick Change Order</div>
+          <p style="font-size:12px;opacity:.6;margin:0 0 8px;">Use the main Change Orders section below for full details.</p>
+        </div>
+
+        <!-- Summary card -->
+        <div class="card" id="summaryCard">
+          <div class="card-title">Invoice Summary</div>
+          <div id="summaryRows"></div>
+        </div>
       </div>
+    </div>
 
-      <div class="status" id="pageMsg"></div>
-    </main>
-  </div>
+    <div class="status-msg" id="pageMsg" style="margin-top:8px;font-size:14px;"></div>
+  </main>
+</div>
 
-  <script>
-    // drawer
-    const backdrop = document.getElementById("backdrop");
-    function openSidebar(){ document.querySelector(".sidebar").classList.add("open"); backdrop.classList.add("show"); }
-    function closeSidebar(){ document.querySelector(".sidebar").classList.remove("open"); backdrop.classList.remove("show"); }
-    backdrop.addEventListener("click", closeSidebar);
-    document.getElementById("menuBtn").addEventListener("click", openSidebar);
+<script>
+"use strict";
+const backdrop = document.getElementById("backdrop");
+function openSidebar(){  document.querySelector(".sidebar").classList.add("open");  backdrop.classList.add("show"); }
+function closeSidebar(){ document.querySelector(".sidebar").classList.remove("open"); backdrop.classList.remove("show"); }
+backdrop.addEventListener("click", closeSidebar);
+document.getElementById("menuBtn").addEventListener("click", openSidebar);
 
-    function norm(s){ return String(s||"").toLowerCase().trim(); }
-    function money(v){ const n = Number(v||0); return isFinite(n) ? n.toLocaleString(undefined,{style:"currency",currency:"USD"}) : "$0.00"; }
-    function fmtDate(val){
-      if (!val || typeof val !== "string") return "";
-      try { const d = new Date(val); if (isNaN(d.getTime())) return ""; return d.toLocaleString(); } catch { return ""; }
-    }
-    function getId(){
-      const parts = location.pathname.split("/").filter(Boolean);
-      return decodeURIComponent(parts[1] || "");
-    }
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function norm(s){ return String(s||"").toLowerCase().trim(); }
+function money(v){ const n=Number(v||0); return isFinite(n)?n.toLocaleString(undefined,{style:"currency",currency:"USD"}):"$0.00"; }
+function fmtTs(val){
+  if (!val) return "—";
+  try { const d=new Date(val); return isNaN(d)?val:d.toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}); } catch { return val; }
+}
+function getId(){ const parts=location.pathname.split("/").filter(Boolean); return decodeURIComponent(parts[1]||""); }
 
-    async function loadSidebar(){
-      try{
-        const resp = await fetch("/pages/partials/sidebar.html", { cache:"no-store" });
-        document.getElementById("sidebarMount").innerHTML = await resp.text();
+async function api(path, opts){
+  const r = await fetch(path, Object.assign({ cache:"no-store" }, opts||{}));
+  let data=null;
+  try { data = await r.json(); } catch { data={ ok:false, error:"Bad JSON" }; }
+  return data;
+}
 
-        // create dropdown behavior
-        const createBtn = document.querySelector(".create-btn");
-        const createMenu = document.querySelector(".create-menu");
-        if (createBtn && createMenu) createBtn.addEventListener("click", (e)=>{ e.preventDefault(); createMenu.classList.toggle("open"); });
-
-        // close drawer on click
-        document.querySelectorAll(".sidebar a").forEach(a => {
-          a.addEventListener("click", () => {
-            if (matchMedia("(max-width: 980px)").matches) closeSidebar();
-          });
-        });
-      } catch {}
-    }
-
-    async function api(path, opts){
-      const r = await fetch(path, Object.assign({ cache:"no-store" }, opts||{}));
-      let data = null;
-      try { data = await r.json(); } catch { data = { ok:false, error:"Bad JSON" }; }
-      return data;
-    }
-
-    function setBadge(status, overdue){
-      const b = document.getElementById("statusBadge");
-      b.classList.remove("st-paid","st-sent","st-overdue","st-void");
-      const s = norm(status);
-      if (overdue) b.classList.add("st-overdue");
-      else if (s === "paid") b.classList.add("st-paid");
-      else if (s === "sent") b.classList.add("st-sent");
-      else if (s === "void") b.classList.add("st-void");
-      document.getElementById("statusText").textContent = overdue ? "Overdue" : (s ? s[0].toUpperCase()+s.slice(1) : "Draft");
-    }
-
-    let CURRENT = null;
-
-    function render(inv){
-      CURRENT = inv;
-      const invNum = inv.invoice_number || inv.id || "Invoice";
-      document.getElementById("invTitle").textContent = invNum;
-
-      setBadge(inv.status_code, !!inv.overdue);
-
-      const bal = Number(inv.balance_due || 0);
-      document.getElementById("hint").textContent =
-        (norm(inv.status_code) === "paid" || bal <= 0) ? "✅ Paid" : "";
-
-      document.getElementById("notes").value = inv.notes || "";
-
-      const rows = [
-        ["Invoice ID", inv.id || ""],
-        ["Invoice #", inv.invoice_number || ""],
-        ["Client", inv.client_name || inv.client_id || ""],
-        ["Address", inv.property_address || ""],
-        ["Request ID", inv.request_id || ""],
-        ["Issued", fmtDate(inv.issued_at || inv.created_at)],
-        ["Due", fmtDate(inv.due_at)],
-        ["Total", money(inv.total)],
-        ["Deposit Applied", money(inv.deposit_applied)],
-        ["Paid", money(inv.paid_amount)],
-        ["Balance Due", money(inv.balance_due)],
-        ["Status", inv.overdue ? "Overdue" : (inv.status_code || "")],
-      ];
-
-      document.getElementById("detail").innerHTML = rows.map(([k,v]) => `
-        <div class="row"><div class="k">${k}</div><div class="v">${String(v||"")}</div></div>
-      `).join("");
-    }
-
-    async function load(){
-      const id = getId();
-      const msg = document.getElementById("pageMsg");
-      msg.textContent = "";
-
-      const data = await api("/api/invoices/" + encodeURIComponent(id));
-      if (!data || !data.ok){ msg.textContent = (data && data.error) ? data.error : "Error loading invoice."; return; }
-      render(data.invoice || {});
-    }
-
-    async function patch(fields){
-      const id = getId();
-      return api("/api/invoices/" + encodeURIComponent(id), {
-        method:"PATCH",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(fields || {})
-      });
-    }
-
-    document.getElementById("refreshBtn").addEventListener("click", load);
-    document.getElementById("refreshBtnMobile").addEventListener("click", load);
-
-    document.getElementById("markSentBtn").addEventListener("click", async ()=>{
-      const msg = document.getElementById("pageMsg");
-      msg.textContent = "Saving…";
-      const r = await patch({ status_code:"sent" });
-      msg.textContent = (r && r.ok) ? "Updated." : ((r && r.error) ? r.error : "Failed.");
-      load();
+async function loadSidebar(){
+  try {
+    const resp = await fetch("/pages/partials/sidebar.html", { cache:"no-store" });
+    document.getElementById("sidebarMount").innerHTML = await resp.text();
+    const cb = document.querySelector(".create-btn");
+    const cm = document.querySelector(".create-menu");
+    if (cb&&cm) cb.addEventListener("click", e=>{ e.preventDefault(); cm.classList.toggle("open"); });
+    document.querySelectorAll(".sidebar a").forEach(a=>{
+      a.addEventListener("click",()=>{ if(matchMedia("(max-width:980px)").matches) closeSidebar(); });
     });
+  } catch {}
+}
 
-    document.getElementById("voidBtn").addEventListener("click", async ()=>{
-      if (!confirm("Void this invoice?")) return;
-      const msg = document.getElementById("pageMsg");
-      msg.textContent = "Voiding…";
-      const r = await patch({ status_code:"void" });
-      msg.textContent = (r && r.ok) ? "Voided." : ((r && r.error) ? r.error : "Failed.");
-      load();
-    });
+function setBadge(status, overdue){
+  const b = document.getElementById("statusBadge");
+  b.className = "badge";
+  const s = norm(status);
+  if (overdue)        b.classList.add("st-overdue");
+  else if (s==="paid") b.classList.add("st-paid");
+  else if (s==="sent") b.classList.add("st-sent");
+  else if (s==="void") b.classList.add("st-void");
+  const lbl = { paid:"Paid", sent:"Sent", draft:"Draft", void:"Void", partial:"Partial", deposit_received:"Deposit Received" };
+  document.getElementById("statusText").textContent = overdue ? "Overdue" : (lbl[s] || s || "Draft");
+}
 
-    document.getElementById("saveNotesBtn").addEventListener("click", async ()=>{
-      const notesMsg = document.getElementById("notesMsg");
-      notesMsg.textContent = "Saving…";
-      const r = await patch({ notes: document.getElementById("notes").value || "" });
-      notesMsg.textContent = (r && r.ok) ? "Saved." : ((r && r.error) ? r.error : "Failed.");
-      load();
-    });
+let CURRENT = null;
 
-    document.getElementById("payForm").addEventListener("submit", async (e)=>{
-      e.preventDefault();
-      const payMsg = document.getElementById("payMsg");
-      payMsg.textContent = "Recording…";
+function renderLineItems(inv){
+  const items = (() => { try { return JSON.parse(inv.line_items_json||"[]"); } catch { return []; } })();
+  const el = document.getElementById("lineItemsSection");
+  if (!items.length) {
+    el.innerHTML = `<div class="no-items">No line items recorded.</div>`;
+  } else {
+    el.innerHTML = `<table class="line-table">
+      <thead><tr>
+        <th>Description</th>
+        <th class="col-r">Qty</th>
+        <th class="col-r">Unit Price</th>
+        <th class="col-r">Amount</th>
+      </tr></thead>
+      <tbody>${items.map(it=>{
+        const qty = Number(it.quantity??1);
+        const price = Number(it.unit_price??it.line_total??0);
+        const amt = Number(it.line_total??(qty*price));
+        return `<tr>
+          <td>
+            <div class="item-title">${esc(it.title||it.description||"Service")}</div>
+            ${it.description&&it.title?`<div class="item-desc">${esc(it.description)}</div>`:""}
+          </td>
+          <td class="col-r">${qty}</td>
+          <td class="col-r">${money(price)}</td>
+          <td class="col-r">${money(amt)}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+  }
+  // Render totals
+  const coList = (() => { try { return JSON.parse(inv.change_orders_json||"[]"); } catch { return []; } })();
+  const subtotal   = Number(inv.subtotal||0);
+  const taxAmt     = Number(inv.tax_amount||0);
+  const taxRate    = Number(inv.tax_rate||0);
+  const deposit    = Number(inv.deposit_applied||0);
+  const paid       = Number(inv.paid_amount||0);
+  const balance    = Number(inv.balance_due||0);
+  const origTotal  = Number(inv.original_total||inv.total||0);
+  const coTotal    = coList.reduce((s,co)=>s+(co.type==="deduct"?-Math.abs(Number(co.amount||0)):Math.abs(Number(co.amount||0))),0);
+  const hasCos     = coList.length > 0;
 
-      const invoice_id = getId();
-      const amount = document.getElementById("amount").value.trim();
-      const method = document.getElementById("method").value;
-      const reference = document.getElementById("ref").value.trim();
-      const note = document.getElementById("note").value.trim();
+  const rows = [];
+  rows.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${money(subtotal)}</span></div>`);
+  if (taxAmt>0) rows.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
+  if (deposit>0) rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
+  if (paid>0)    rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
+  if (hasCos) {
+    rows.push(`<div class="totals-row"><span class="totals-label">Original Total</span><span class="totals-value">${money(origTotal)}</span></div>`);
+    rows.push(`<div class="totals-row"><span class="totals-label">Change Orders</span><span class="totals-value" style="color:var(--amber)">${coTotal>=0?"+":""}${money(coTotal)}</span></div>`);
+  }
+  rows.push(`<div class="totals-row totals-grand"><span class="totals-label">${balance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(Math.max(0,balance))}</span></div>`);
+  document.getElementById("totalsSection").innerHTML = rows.join("");
+}
 
-      const r = await api("/api/payments", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ invoice_id, amount, method, reference, note })
-      });
+function renderChangeOrders(inv){
+  const coList = (() => { try { return JSON.parse(inv.change_orders_json||"[]"); } catch { return []; } })();
+  const el = document.getElementById("coListSection");
+  if (!coList.length) {
+    el.innerHTML = `<div style="font-size:12px;opacity:.5;font-style:italic;padding:4px 0;">No change orders yet.</div>`;
+    return;
+  }
+  el.innerHTML = coList.map(co=>{
+    const isAdd = co.type !== "deduct";
+    const prefix = isAdd ? "+" : "−";
+    const cls    = isAdd ? "co-add" : "co-deduct";
+    const by     = co.created_by ? `By ${esc(co.created_by)}` : "";
+    const at     = co.created_at ? ` · ${fmtTs(co.created_at)}` : "";
+    return `<div class="co-row">
+      <div class="co-desc">
+        <div class="co-title">${esc(co.description)}</div>
+        ${by||at?`<div class="co-meta">${by}${at}</div>`:""}
+      </div>
+      <div class="${cls}">${prefix} ${money(Math.abs(Number(co.amount||0)))}</div>
+    </div>`;
+  }).join("");
+}
 
-      if (!r || !r.ok){
-        payMsg.textContent = (r && (r.error || r.message)) ? (r.error || r.message) : "Payment failed.";
-        return;
-      }
+function renderDelivery(inv){
+  const rows = [];
+  if (inv.sms_sent_at && inv.sms_sent_to) {
+    rows.push(`<div class="delivery-row">
+      <span class="delivery-icon">📱</span>
+      <span class="delivery-label">SMS</span>
+      <span class="delivery-val">${esc(inv.sms_sent_to)}</span>
+      <span class="delivery-when">${fmtTs(inv.sms_sent_at)}</span>
+    </div>`);
+  }
+  if (inv.email_sent_at && inv.email_sent_to) {
+    rows.push(`<div class="delivery-row">
+      <span class="delivery-icon">✉️</span>
+      <span class="delivery-label">Email</span>
+      <span class="delivery-val">${esc(inv.email_sent_to)}</span>
+      <span class="delivery-when">${fmtTs(inv.email_sent_at)}</span>
+    </div>`);
+  }
+  if (inv.sent_at) {
+    rows.push(`<div class="delivery-row">
+      <span class="delivery-icon">✓</span>
+      <span class="delivery-label">Sent</span>
+      <span class="delivery-val" style="opacity:.65">Marked sent</span>
+      <span class="delivery-when">${fmtTs(inv.sent_at)}</span>
+    </div>`);
+  }
+  const el = document.getElementById("deliverySection");
+  el.innerHTML = rows.length
+    ? rows.join("")
+    : `<div style="font-size:12px;opacity:.5;font-style:italic;">No delivery history yet.</div>`;
+}
 
-      payMsg.textContent = "Recorded. Balance: " + money(r.balance_due);
-      document.getElementById("amount").value = "";
-      document.getElementById("ref").value = "";
-      document.getElementById("note").value = "";
-      load();
-    });
+function render(inv){
+  CURRENT = inv;
+  const invNum = inv.invoice_number || inv.id || "Invoice";
+  document.title = invNum + " • Vickery Electric CRM";
+  document.getElementById("invTitle").textContent = invNum;
 
-    loadSidebar();
+  const bal = Number(inv.balance_due||0);
+  const status = norm(inv.status_code);
+  const overdue = status==="sent" && inv.due_at && new Date(inv.due_at)<new Date() && bal>0;
+  setBadge(status, overdue);
+
+  // Public link
+  if (inv.public_token) {
+    const pubLink = document.getElementById("pubLink");
+    pubLink.href = `/invoice/${esc(inv.public_token)}`;
+    document.getElementById("pubLinkWrap").style.display = "block";
+    const printBtn = document.getElementById("printBtn");
+    printBtn.style.display = "inline-flex";
+    printBtn.onclick = ()=> window.open(`/invoice/${inv.public_token}`, "_blank");
+  }
+
+  // Resend SMS button visibility
+  const resendBtn = document.getElementById("resendSmsBtn");
+  resendBtn.style.display = (inv.customer_phone || inv.sms_sent_to) ? "inline-flex" : "none";
+
+  // Header fields
+  const hf = document.getElementById("headerFields");
+  hf.innerHTML = [
+    ["Invoice #",       inv.invoice_number||""],
+    inv.customer_name  ? ["Customer",   inv.customer_name]  : null,
+    inv.customer_phone ? ["Phone",      inv.customer_phone] : null,
+    inv.tech_name      ? ["Technician", inv.tech_name]      : null,
+    inv.service_date   ? ["Service Date", fmtTs(inv.service_date)] : null,
+    ["Issued",         fmtTs(inv.issued_at||inv.created_at)],
+    inv.due_at         ? ["Due",        fmtTs(inv.due_at)]  : null,
+    inv.booking_id     ? ["Booking ID", inv.booking_id]     : null,
+  ].filter(Boolean).map(([k,v])=>
+    `<div class="row"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`
+  ).join("");
+
+  // Summary (right panel)
+  document.getElementById("summaryRows").innerHTML = [
+    ["Total",          money(inv.total)],
+    inv.original_total && inv.original_total!==inv.total ? ["Original Total", money(inv.original_total)] : null,
+    ["Deposit",        money(inv.deposit_applied)],
+    ["Paid",           money(inv.paid_amount)],
+    ["Balance Due",    money(inv.balance_due)],
+  ].filter(Boolean).map(([k,v])=>
+    `<div class="row"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`
+  ).join("");
+
+  document.getElementById("notes").value = inv.notes || "";
+
+  renderLineItems(inv);
+  renderChangeOrders(inv);
+  renderDelivery(inv);
+}
+
+async function load(){
+  const id = getId();
+  document.getElementById("pageMsg").textContent = "";
+  const data = await api("/api/invoices/"+encodeURIComponent(id));
+  if (!data||!data.ok){ document.getElementById("pageMsg").textContent = data?.error||"Error loading invoice."; return; }
+  render(data.invoice||{});
+}
+
+async function patch(fields){
+  return api("/api/invoices/"+encodeURIComponent(getId()), {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fields)
+  });
+}
+
+// ── Action buttons ────────────────────────────────────────────────────────────
+document.getElementById("refreshBtn").addEventListener("click", load);
+document.getElementById("refreshBtnMobile").addEventListener("click", load);
+
+document.getElementById("sendBtn").addEventListener("click", async()=>{
+  const msg = document.getElementById("pageMsg");
+  const btn = document.getElementById("sendBtn");
+  btn.disabled = true;
+  msg.textContent = "Sending…";
+  const r = await api("/api/invoices/"+encodeURIComponent(getId())+"/send", { method:"POST" });
+  btn.disabled = false;
+  if (r?.ok) {
+    msg.textContent = "Sent!" + (r.sms_sent ? " SMS delivered." : " (no customer phone on file — SMS skipped)");
     load();
-  </script>
+  } else {
+    msg.textContent = r?.message||r?.error||"Failed.";
+  }
+});
+
+document.getElementById("resendSmsBtn").addEventListener("click", async()=>{
+  const btn = document.getElementById("resendSmsBtn");
+  const msg = document.getElementById("pageMsg");
+  btn.disabled = true;
+  msg.textContent = "Resending SMS…";
+  const r = await api("/api/invoices/"+encodeURIComponent(getId())+"/send", { method:"POST" });
+  btn.disabled = false;
+  if (r?.ok) {
+    msg.textContent = r.sms_sent ? "SMS resent!" : "SMS skipped (no phone on file).";
+    load();
+  } else {
+    msg.textContent = r?.message||r?.error||"Failed.";
+  }
+});
+
+document.getElementById("voidBtn").addEventListener("click", async()=>{
+  if (!confirm("Void this invoice? This cannot be undone.")) return;
+  const msg = document.getElementById("pageMsg");
+  msg.textContent = "Voiding…";
+  const r = await patch({ status_code:"void" });
+  msg.textContent = r?.ok ? "Voided." : (r?.error||"Failed.");
+  load();
+});
+
+document.getElementById("saveNotesBtn").addEventListener("click", async()=>{
+  const notesMsg = document.getElementById("notesMsg");
+  notesMsg.textContent = "Saving…";
+  const r = await patch({ notes: document.getElementById("notes").value||"" });
+  notesMsg.textContent = r?.ok ? "Saved." : (r?.error||"Failed.");
+  load();
+});
+
+// ── Record Payment ────────────────────────────────────────────────────────────
+document.getElementById("payForm").addEventListener("submit", async(e)=>{
+  e.preventDefault();
+  const payMsg = document.getElementById("payMsg");
+  payMsg.textContent = "Recording…";
+  const invoice_id = getId();
+  const r = await api("/api/payments", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      invoice_id,
+      amount:    document.getElementById("amount").value.trim(),
+      method:    document.getElementById("method").value,
+      reference: document.getElementById("ref").value.trim(),
+      note:      document.getElementById("note").value.trim(),
+    })
+  });
+  if (!r?.ok){ payMsg.textContent=r?.error||r?.message||"Payment failed."; return; }
+  payMsg.textContent = "Recorded. Balance: "+money(r.balance_due);
+  ["amount","ref","note"].forEach(f=>document.getElementById(f).value="");
+  load();
+});
+
+// ── Add Change Order ──────────────────────────────────────────────────────────
+document.getElementById("addCoBtn").addEventListener("click", async()=>{
+  const coMsg = document.getElementById("coMsg");
+  const desc   = document.getElementById("coDesc").value.trim();
+  const amount = document.getElementById("coAmount").value.trim();
+  const type   = document.getElementById("coType").value;
+  if (!desc)     { coMsg.textContent="Description required."; return; }
+  if (!amount||Number(amount)<=0) { coMsg.textContent="Enter a valid amount."; return; }
+
+  const btn = document.getElementById("addCoBtn");
+  btn.disabled = true;
+  coMsg.textContent = "Saving…";
+
+  const r = await api("/api/invoices/"+encodeURIComponent(getId())+"/change-order", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ description:desc, amount:Number(amount), type, created_by:"admin" })
+  });
+  btn.disabled = false;
+  if (!r?.ok) { coMsg.textContent = r?.error||"Failed."; return; }
+  coMsg.textContent = `✓ Change order added — new total: ${money(r.new_total)}`;
+  document.getElementById("coDesc").value = "";
+  document.getElementById("coAmount").value = "";
+  load();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadSidebar();
+load();
+</script>
 </body>
 </html>

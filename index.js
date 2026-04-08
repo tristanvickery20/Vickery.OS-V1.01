@@ -26,7 +26,7 @@ const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
 const { handleActualsRollup, handleSaveActuals, saveActualsToConfig } = require("./api/actuals-rollup");
-const { handleGetCrewMembers, handleGetTodayJobs } = require("./api/crew");
+const { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice } = require("./api/crew");
 const {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
@@ -59,6 +59,8 @@ const {
   handleSyncInvoiceStatus,
   handleGetInvoiceById,
   handleUpdateInvoice,
+  handlePublicInvoice,
+  handleAddChangeOrder,
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
 const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
@@ -206,6 +208,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.url.startsWith("/api/crew/today") && req.method === "GET") {
     return handleGetTodayJobs(req, res);
+  }
+  if (req.url.split("?")[0] === "/api/crew/generate-invoice" && req.method === "POST") {
+    return handleGenerateInvoice(req, res);
   }
   // Time and expense POSTs — require crew OR CRM session (not fully public)
   if (req.url === "/api/time" && req.method === "POST") {
@@ -452,6 +457,16 @@ const server = http.createServer(async (req, res) => {
     return handleReferralSubmit(req, res);
   }
 
+  // ── Public invoice page — no auth ─────────────────────────────────────────
+  // GET /invoice/:token → serve the customer-facing invoice HTML page
+  if (_epath.startsWith("/invoice/") && req.method === "GET" && !_epath.startsWith("/invoices")) {
+    return serveFile(res, path.join(__dirname, "pages/invoice-public.html"), "text/html");
+  }
+  // GET /api/invoice/public/:token → JSON invoice data (no auth)
+  if (_epath.startsWith("/api/invoice/public/") && req.method === "GET") {
+    return handlePublicInvoice(req, res);
+  }
+
   // Mapbox token — accessible by CRM or crew session (handler checks both)
   if (_epath === "/api/config/mapbox" && req.method === "GET") {
     return handleMapboxConfig(req, res);
@@ -674,6 +689,10 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath.startsWith("/api/invoices/") && _epath.endsWith("/sync-status") && req.method === "POST") {
     return handleSyncInvoiceStatus(req, res);
+  }
+
+  if (_epath.startsWith("/api/invoices/") && _epath.endsWith("/change-order") && req.method === "POST") {
+    return handleAddChangeOrder(req, res);
   }
 
   if (req.url.startsWith("/api/invoices/")) {

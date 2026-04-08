@@ -9,9 +9,11 @@
 //   status               — string    (status change)
 //
 // On success returns the updated booking object.
+// Side effect: when status → "complete", SMS the assigned tech with invoice link.
 
-const { getSheetsClient }  = require("../lib/sheets");
-const { ensureTabHeaders } = require("../lib/sheetsSchema");
+const { getSheetsClient }            = require("../lib/sheets");
+const { ensureTabHeaders }           = require("../lib/sheetsSchema");
+const { sendSms, buildMessage, INVOICE_TEMPLATES } = require("../lib/sms");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 const ALLOWED_FIELDS  = new Set([
@@ -101,11 +103,76 @@ async function handlePatchBooking(req, res) {
 
     const updated = Object.fromEntries(headers.map((h, i) => [h, row[i] || ""]));
     console.log(`[schedule-booking-patch] Updated booking ${bookingId}:`, updates);
+
+    // Side effect: when status just changed to "complete", SMS the assigned tech
+    if (updates.status && String(updates.status).toLowerCase() === "complete") {
+      smsTechOnComplete(updated, sheets, id).catch(err =>
+        console.error("[schedule-booking-patch] SMS-on-complete error:", err.message)
+      );
+    }
+
     json(res, 200, { ok: true, booking: updated });
   } catch (err) {
     console.error("[schedule-booking-patch]", err.message);
     json(res, 500, { ok: false, error: err.message });
   }
+}
+
+// ── SMS assigned tech when job is marked complete ─────────────────────────────
+async function smsTechOnComplete(booking, sheets, spreadsheetId) {
+  const techId = booking.assigned_tech_id || "";
+  if (!techId) {
+    console.log("[sms-on-complete] No assigned_tech_id — skipping SMS");
+    return;
+  }
+
+  // Read Staff tab to find the tech's phone and first name
+  let staffRows = [];
+  try {
+    const staffResp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Staff!A:Z",
+    });
+    staffRows = staffResp.data.values || [];
+  } catch (err) {
+    console.warn("[sms-on-complete] Could not read Staff tab:", err.message);
+    return;
+  }
+  if (staffRows.length < 2) return;
+
+  const [sHeaders, ...sData] = staffRows;
+  const si  = Object.fromEntries(sHeaders.map((h, i) => [h, i]));
+  const sGet = r => col => String(r[si[col] ?? -1] ?? "").trim();
+
+  const techRow = sData.find(r => sGet(r)("staff_id") === techId);
+  if (!techRow) {
+    console.log(`[sms-on-complete] Staff ${techId} not found — skipping SMS`);
+    return;
+  }
+
+  const techPhone = sGet(techRow)("phone");
+  const firstName = sGet(techRow)("first_name") || "Crew";
+
+  if (!techPhone) {
+    console.log("[sms-on-complete] Tech has no phone — skipping SMS");
+    return;
+  }
+
+  // Build the crew portal URL for the tech to generate the invoice
+  const domain  = process.env.REPLIT_DEV_DOMAIN
+    || (process.env.REPLIT_DOMAINS || "").split(",")[0].trim()
+    || "";
+  const crewUrl = domain ? `https://${domain}/crew` : "/crew";
+
+  const address = booking.address || booking.booking_id;
+  const msgBody = buildMessage(INVOICE_TEMPLATES.INVOICE_TECH_PROMPT, {
+    tech_first_name: firstName,
+    address,
+    crew_url: crewUrl,
+  });
+
+  const sent = await sendSms(techPhone, msgBody).catch(() => false);
+  console.log(`[sms-on-complete] SMS to ${techPhone} (${firstName}): ${sent ? "sent" : "failed"}`);
 }
 
 module.exports = { handlePatchBooking };

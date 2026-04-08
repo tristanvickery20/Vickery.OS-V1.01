@@ -1,11 +1,23 @@
 // api/invoices.js
 const url = require("url");
+const crypto = require("crypto");
 const { readTab } = require("../lib/readTab");
 const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { touchClient } = require("../lib/touchClient");
 const { getConfig } = require("../lib/config");
 const provider = require("../lib/accounting");
+const { sendSms, buildMessage, INVOICE_TEMPLATES } = require("../lib/sms");
+
+function genPublicToken() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function getPublicBaseUrl() {
+  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
+  if (domain) return `https://${domain}`;
+  return "";
+}
 
 function json(res, code, data) {
   res.writeHead(code, { "Content-Type": "application/json" });
@@ -475,12 +487,22 @@ async function handleSendInvoice(req, res) {
       return json(res, 409, { ok: false, code: "VOID", message: "Cannot send a void invoice." });
     }
 
+    // Ensure public_token exists (generate if missing)
+    let publicToken = inv.public_token || "";
+    if (!publicToken) {
+      publicToken = genPublicToken();
+    }
+    const baseUrl = getPublicBaseUrl();
+    const publicUrl = baseUrl
+      ? `${baseUrl}/invoice/${publicToken}`
+      : `/invoice/${publicToken}`;
+
     // Call accounting provider to send the invoice
     await provider.sendInvoice({
-      provider_ref: inv.provider_ref || "",
-      invoice_number: inv.invoice_number || "",
-      customer_name: "",
-      customer_email: "",
+      provider_ref:   inv.provider_ref    || "",
+      invoice_number: inv.invoice_number  || "",
+      customer_name:  inv.customer_name   || "",
+      customer_email: inv.email_sent_to   || "",
     }).catch(() => {});
 
     const sheetRow = rowIndex + 1;
@@ -496,8 +518,24 @@ async function handleSendInvoice(req, res) {
     };
 
     setCell("status_code", "sent");
-    setCell("sent_at", now);
-    setCell("updated_at", now);
+    setCell("sent_at",     now);
+    setCell("updated_at",  now);
+    setCell("public_token", publicToken);
+
+    // SMS the customer if phone is on file
+    let smsSent = false;
+    const customerPhone = inv.customer_phone || "";
+    if (customerPhone) {
+      const body = buildMessage(INVOICE_TEMPLATES.INVOICE_CUSTOMER, {
+        invoice_number: inv.invoice_number || id,
+        invoice_url:    publicUrl,
+      });
+      smsSent = await sendSms(customerPhone, body).catch(() => false);
+      if (smsSent) {
+        setCell("sms_sent_at", now);
+        setCell("sms_sent_to", customerPhone);
+      }
+    }
 
     if (updates.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
@@ -507,15 +545,16 @@ async function handleSendInvoice(req, res) {
     }
 
     logAudit({
-      actor: "admin",
-      action: "SEND_INVOICE",
+      actor:       "admin",
+      action:      "SEND_INVOICE",
       entity_type: "invoice",
-      entity_id: id,
-      source: "crm",
-      request_id: rid,
+      entity_id:   id,
+      note:        `sms=${smsSent} phone=${customerPhone || "none"} url=${publicUrl}`,
+      source:      "crm",
+      request_id:  rid,
     });
 
-    json(res, 200, { ok: true, sent_at: now });
+    json(res, 200, { ok: true, sent_at: now, public_url: publicUrl, sms_sent: smsSent });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -713,6 +752,167 @@ async function handleUpdateInvoice(req, res) {
   }
 }
 
+/* =========================
+   PUBLIC INVOICE — GET /api/invoice/public/:token
+   No auth required — used by the public /invoice/:token page
+========================= */
+async function handlePublicInvoice(req, res) {
+  try {
+    const token = decodeURIComponent(
+      req.url.replace(/\?.*$/, "").replace("/api/invoice/public/", "")
+    ).trim();
+    if (!token || token.length < 8) {
+      return json(res, 404, { ok: false, error: "Invalid token." });
+    }
+
+    const [invoices, clients, properties] = await Promise.all([
+      readTab("Invoices"),
+      readTab("Clients").catch(() => []),
+      readTab("Properties").catch(() => []),
+    ]);
+
+    const inv = invoices.find(i => i.public_token === token);
+    if (!inv) return json(res, 404, { ok: false, error: "Invoice not found." });
+
+    const client = clients.find(c => c.id === inv.client_id) || {};
+    const prop   = properties.find(p => p.id === inv.property_id) || {};
+
+    // Return safe public subset (no internal tokens, no staff data)
+    const out = {
+      id:                inv.id,
+      invoice_number:    inv.invoice_number,
+      status_code:       inv.status_code,
+      issued_at:         inv.issued_at,
+      due_at:            inv.due_at,
+      service_date:      inv.service_date || "",
+      tech_name:         inv.tech_name || "",
+      customer_name:     inv.customer_name || client.name || "",
+      // Omit phone/email from public response for privacy
+      service_address:   prop.address_line1 ? [prop.address_line1, prop.city, prop.state].filter(Boolean).join(", ") : "",
+      property_address:  prop.address_line1 || "",
+      subtotal:          inv.subtotal || "0",
+      tax_rate:          inv.tax_rate  || "0",
+      tax_amount:        inv.tax_amount|| "0",
+      total:             inv.total     || "0",
+      paid_amount:       inv.paid_amount    || "0",
+      balance_due:       inv.balance_due    || "0",
+      deposit_applied:   inv.deposit_applied|| "0",
+      original_total:    inv.original_total || inv.total || "0",
+      notes:             inv.notes || "",
+      line_items_json:   inv.line_items_json    || "[]",
+      change_orders_json:inv.change_orders_json || "[]",
+    };
+
+    json(res, 200, { ok: true, invoice: out });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+/* =========================
+   ADD CHANGE ORDER — POST /api/invoices/:id/change-order
+   Body: { description, amount, type: "add"|"deduct", created_by? }
+========================= */
+async function handleAddChangeOrder(req, res) {
+  try {
+    const id = decodeURIComponent(
+      req.url.replace(/\?.*$/, "").replace("/api/invoices/", "").replace("/change-order", "")
+    );
+    const body = await readBody(req);
+
+    const description = String(body.description || "").trim();
+    const amount      = parseFloat(body.amount || 0);
+    const type        = String(body.type || "add").toLowerCase() === "deduct" ? "deduct" : "add";
+    const created_by  = String(body.created_by || "admin").trim();
+
+    if (!description) return json(res, 400, { ok: false, error: "description required." });
+    if (!isFinite(amount) || amount <= 0) return json(res, 400, { ok: false, error: "amount must be a positive number." });
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    const now = new Date().toISOString();
+
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!A1:Z5000" });
+    const values = resp.data.values || [];
+    if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
+
+    const headers = values[0];
+    const idCol   = headers.indexOf("id");
+
+    let rowIndex = -1;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][idCol] || "") === id) { rowIndex = r; break; }
+    }
+    if (rowIndex < 0) return json(res, 404, { ok: false, error: "Invoice not found." });
+
+    const inv = {};
+    for (let i = 0; i < headers.length; i++) {
+      inv[headers[i]] = values[rowIndex][i] != null ? String(values[rowIndex][i]) : "";
+    }
+
+    if (normalize(inv.status_code) === "void") {
+      return json(res, 409, { ok: false, error: "Cannot modify a void invoice." });
+    }
+
+    // Preserve original_total before the first change order
+    const originalTotal = parseFloat(inv.original_total || inv.total || 0);
+
+    // Parse and append change order
+    const existingCOs = (() => { try { return JSON.parse(inv.change_orders_json || "[]"); } catch { return []; } })();
+    const newCO = {
+      id:           "CO-" + Date.now(),
+      description,
+      amount:       String(amount),
+      type,
+      created_at:   now,
+      created_by,
+    };
+    existingCOs.push(newCO);
+
+    // Recalculate total from original_total + all change orders
+    const coTotal = existingCOs.reduce((sum, co) => {
+      return sum + (co.type === "deduct" ? -Math.abs(parseFloat(co.amount||0)) : Math.abs(parseFloat(co.amount||0)));
+    }, 0);
+    const newTotal   = round2(originalTotal + coTotal);
+    const depApplied = parseFloat(inv.deposit_applied || 0);
+    const paidAmt    = parseFloat(inv.paid_amount     || 0);
+    const newBalance = round2(Math.max(0, newTotal - depApplied - paidAmt));
+
+    const sheetRow = rowIndex + 1;
+    const updates  = [];
+    const setCell  = (field, value) => {
+      const ci = headers.indexOf(field);
+      if (ci >= 0) updates.push({ range: `Invoices!${colLetter(ci)}${sheetRow}`, values: [[String(value)]] });
+    };
+
+    setCell("change_orders_json", JSON.stringify(existingCOs));
+    setCell("total",              String(newTotal));
+    setCell("balance_due",        String(newBalance));
+    setCell("updated_at",         now);
+    if (!inv.original_total) setCell("original_total", inv.total || "0");
+
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: "RAW", data: updates },
+      });
+    }
+
+    logAudit({
+      actor:       created_by,
+      action:      "ADD_CHANGE_ORDER",
+      entity_type: "invoice",
+      entity_id:   id,
+      note:        `${type} $${amount}: ${description}`,
+      source:      "crm",
+    });
+
+    json(res, 200, { ok: true, change_order: newCO, new_total: newTotal, new_balance: newBalance });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGetInvoices,
   handleCreateInvoice,
@@ -721,4 +921,6 @@ module.exports = {
   handleSyncInvoiceStatus,
   handleGetInvoiceById,
   handleUpdateInvoice,
+  handlePublicInvoice,
+  handleAddChangeOrder,
 };

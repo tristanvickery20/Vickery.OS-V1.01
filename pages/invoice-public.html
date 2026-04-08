@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invoice — Vickery Electric</title>
+<style>
+/* ── Design Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --navy:     #0f172a;
+  --charcoal: #1e293b;
+  --blue:     #2563eb;
+  --blue-lt:  #dbeafe;
+  --white:    #ffffff;
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+  --green:    #16a34a;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --radius:   4px;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 16px rgba(0,0,0,.10);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--gray-800);
+  background: var(--gray-100);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Page shell ─────────────────────────────────────────────────────────────── */
+.page-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+.invoice-card {
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* ── Blue top accent ────────────────────────────────────────────────────────── */
+.invoice-accent {
+  height: 4px;
+  background: var(--blue);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.invoice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 32px 24px;
+  border-bottom: 1.5px solid var(--gray-200);
+}
+.header-logo-block { display: flex; flex-direction: column; gap: 6px; }
+.header-logo-block img { height: 56px; width: auto; object-fit: contain; }
+.company-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -.3px;
+}
+.company-tagline { font-size: 12px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .6px; }
+.header-meta { text-align: right; }
+.invoice-number {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -.4px;
+  line-height: 1.2;
+}
+.invoice-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  margin-top: 6px;
+}
+.status-draft   { background: var(--gray-100); color: var(--gray-600); }
+.status-sent    { background: #eff6ff; color: #1d4ed8; }
+.status-paid    { background: #dcfce7; color: var(--green); }
+.status-void    { background: #fee2e2; color: var(--red); }
+.status-partial { background: #fef9c3; color: #854d0e; }
+.status-overdue { background: #fee2e2; color: var(--red); }
+
+/* ── Info Grid (customer + job details) ─────────────────────────────────────── */
+.invoice-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1.5px solid var(--gray-200);
+}
+.info-col {
+  padding: 20px 32px;
+}
+.info-col + .info-col {
+  border-left: 1.5px solid var(--gray-200);
+}
+.info-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--gray-400);
+  margin-bottom: 8px;
+}
+.info-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+.info-line { font-size: 13.5px; color: var(--gray-600); line-height: 1.5; }
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.meta-row:last-child { margin-bottom: 0; }
+.meta-key { color: var(--gray-400); font-size: 12px; }
+.meta-val { color: var(--navy); font-weight: 600; }
+
+/* ── Line Items Table ───────────────────────────────────────────────────────── */
+.line-items-section { padding: 0 32px; border-bottom: 1.5px solid var(--gray-200); }
+.line-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.line-items-table thead tr {
+  border-bottom: 1.5px solid var(--gray-200);
+}
+.line-items-table th {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--gray-400);
+  padding: 12px 8px;
+  text-align: left;
+}
+.col-desc  { width: 45%; }
+.col-qty   { width: 10%; text-align: center; }
+.col-price { width: 18%; text-align: right; }
+.col-tax   { width: 12%; text-align: center; }
+.col-amt   { width: 15%; text-align: right; }
+.line-items-table td {
+  font-size: 13.5px;
+  padding: 12px 8px;
+  color: var(--gray-800);
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+.line-items-table tbody tr:last-child td { border-bottom: none; }
+.line-items-table td.col-qty  { text-align: center; color: var(--gray-600); }
+.line-items-table td.col-price{ text-align: right; color: var(--gray-600); }
+.line-items-table td.col-tax  { text-align: center; color: var(--gray-600); }
+.line-items-table td.col-amt  { text-align: right; font-weight: 600; color: var(--navy); }
+.item-title { font-weight: 600; color: var(--navy); margin-bottom: 1px; }
+.item-desc  { font-size: 12px; color: var(--gray-400); }
+.no-items   { padding: 20px 0; color: var(--gray-400); font-size: 13px; text-align: center; }
+
+/* ── Totals Block ───────────────────────────────────────────────────────────── */
+.totals-section {
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px 32px;
+  border-bottom: 1.5px solid var(--gray-200);
+}
+.totals-table {
+  min-width: 280px;
+  max-width: 320px;
+  width: 100%;
+}
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+.totals-row.divider { border-top: 1px solid var(--gray-200); margin-top: 6px; padding-top: 10px; }
+.totals-label { color: var(--gray-600); }
+.totals-value { font-weight: 600; color: var(--navy); }
+.totals-row.grand {
+  border-top: 2px solid var(--navy);
+  margin-top: 8px;
+  padding-top: 10px;
+}
+.totals-row.grand .totals-label { font-size: 15px; font-weight: 700; color: var(--navy); }
+.totals-row.grand .totals-value { font-size: 18px; font-weight: 800; color: var(--blue); }
+.totals-row.credit .totals-value { color: var(--green); }
+
+/* ── Change Orders ──────────────────────────────────────────────────────────── */
+.change-orders-section {
+  padding: 20px 32px;
+  border-bottom: 1.5px solid var(--gray-200);
+  background: #fffbeb;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--amber);
+  margin-bottom: 12px;
+}
+.co-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13.5px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e9d97d;
+}
+.co-row:last-child { border-bottom: none; }
+.co-desc { color: var(--gray-800); flex: 1; }
+.co-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+.co-amount { font-weight: 700; white-space: nowrap; }
+.co-add    { color: var(--red); }
+.co-deduct { color: var(--green); }
+
+/* ── Notes ──────────────────────────────────────────────────────────────────── */
+.notes-section {
+  padding: 20px 32px;
+  border-bottom: 1.5px solid var(--gray-200);
+}
+.notes-section .section-title { color: var(--gray-400); }
+.notes-text { font-size: 13.5px; color: var(--gray-600); line-height: 1.6; white-space: pre-line; }
+
+/* ── Footer / Actions ───────────────────────────────────────────────────────── */
+.invoice-footer {
+  padding: 20px 32px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.payment-note { font-size: 12.5px; color: var(--gray-400); line-height: 1.5; }
+.payment-note strong { color: var(--gray-600); }
+.btn-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-print:hover { background: var(--charcoal); }
+
+/* ── Loading / Error states ─────────────────────────────────────────────────── */
+.state-screen {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 24px;
+  gap: 12px;
+}
+.state-icon  { font-size: 48px; }
+.state-title { font-size: 18px; font-weight: 700; color: var(--navy); }
+.state-body  { font-size: 14px; color: var(--gray-400); max-width: 320px; line-height: 1.6; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .page-wrap { padding: 0 0 60px; }
+  .invoice-card { border-radius: 0; box-shadow: none; }
+  .invoice-header { flex-direction: column; padding: 20px; }
+  .header-meta { text-align: left; }
+  .invoice-info { grid-template-columns: 1fr; }
+  .info-col + .info-col { border-left: none; border-top: 1.5px solid var(--gray-200); }
+  .info-col { padding: 16px 20px; }
+  .line-items-section { padding: 0 16px; }
+  .line-items-table th, .line-items-table td { padding: 10px 6px; }
+  .col-tax { display: none; }
+  .totals-section { padding: 16px 20px; }
+  .totals-table { min-width: unset; max-width: unset; width: 100%; }
+  .change-orders-section, .notes-section { padding: 16px 20px; }
+  .invoice-footer { flex-direction: column; align-items: flex-start; padding: 16px 20px 32px; }
+}
+
+/* ── PRINT STYLESHEET ───────────────────────────────────────────────────────── */
+@media print {
+  @page { margin: 16mm 14mm; size: letter portrait; }
+
+  body   { background: #fff; font-size: 12pt; }
+  .page-wrap { padding: 0; max-width: none; }
+  .invoice-card { box-shadow: none; border-radius: 0; }
+  .invoice-accent { height: 3px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .invoice-header { padding: 16pt 0 12pt; }
+  .header-logo-block img { height: 44pt; }
+  .invoice-number { font-size: 16pt; }
+  .status-badge { border: 1px solid currentColor; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .info-col { padding: 12pt 0; }
+  .invoice-info { border-bottom: 1pt solid #cbd5e1; }
+  .info-col + .info-col { border-left: 1pt solid #cbd5e1; padding-left: 16pt; }
+
+  .line-items-section { padding: 0; }
+  .line-items-table th { font-size: 8pt; padding: 8pt 6pt; }
+  .line-items-table td { font-size: 10pt; padding: 7pt 6pt; }
+  .line-items-table thead tr { border-bottom: 1.5pt solid #0f172a; }
+  .line-items-table td { border-bottom: 0.5pt solid #cbd5e1; }
+
+  .totals-section { padding: 10pt 0; }
+  .totals-row.grand .totals-value { color: #2563eb; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .change-orders-section { padding: 10pt 0; background: #fffbeb; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .notes-section { padding: 10pt 0; }
+
+  .btn-print, .invoice-footer .btn-print { display: none !important; }
+  .invoice-footer { padding: 10pt 0 0; }
+  .payment-note { font-size: 9pt; }
+
+  /* Handwritten change order box — always shown on print */
+  .print-co-box {
+    display: block !important;
+    margin-top: 16pt;
+    border: 1.5pt solid #1e293b;
+    border-radius: 2pt;
+    padding: 10pt 12pt;
+    page-break-inside: avoid;
+  }
+  .print-co-box-title {
+    font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5pt;
+    color: #1e293b;
+    margin-bottom: 6pt;
+  }
+  .print-co-lines { display: flex; flex-direction: column; gap: 8pt; }
+  .print-co-line { display: flex; gap: 16pt; align-items: flex-end; }
+  .print-co-field { flex: 1; border-bottom: 0.75pt solid #94a3b8; height: 16pt; }
+  .print-co-label { font-size: 7pt; color: #64748b; margin-top: 2pt; }
+  .print-co-amt   { width: 60pt; }
+  .print-co-sig   { display: flex; gap: 16pt; margin-top: 10pt; }
+  .print-co-sig-field { flex: 1; border-bottom: 0.75pt solid #94a3b8; height: 24pt; }
+
+  /* Page break control */
+  .invoice-header  { page-break-inside: avoid; }
+  .invoice-info    { page-break-inside: avoid; }
+  .totals-section  { page-break-inside: avoid; }
+  .invoice-footer  { page-break-inside: avoid; }
+  .print-co-box    { page-break-inside: avoid; }
+}
+
+/* Print box is hidden on screen */
+.print-co-box { display: none; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap" id="root">
+  <div class="invoice-card">
+    <!-- Loading state (replaced by renderInvoice) -->
+    <div class="state-screen" id="loadState">
+      <div class="state-icon">⚡</div>
+      <div class="state-title">Loading invoice…</div>
+      <div class="state-body">Please wait.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function fmt$(n) {
+  const v = parseFloat(n);
+  if (isNaN(v)) return "$0.00";
+  return v.toLocaleString("en-US", { style:"currency", currency:"USD", minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(String(s).includes("T") ? s : s + "T12:00:00Z");
+  return isNaN(d) ? s : d.toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
+}
+function getToken() {
+  const parts = location.pathname.split("/").filter(Boolean);
+  return parts[parts.length - 1] || "";
+}
+
+// ── Status badge ─────────────────────────────────────────────────────────────
+function statusBadge(code, overdue) {
+  if (overdue && code === "sent") code = "overdue";
+  const labels = { draft:"Draft", sent:"Sent", paid:"Paid In Full", void:"Void", partial:"Partial", deposit_received:"Deposit Received", overdue:"Overdue" };
+  const label = labels[code] || (code || "Unknown");
+  return `<span class="status-badge status-${esc(code)}">${esc(label)}</span>`;
+}
+
+// ── Line items HTML ───────────────────────────────────────────────────────────
+function renderLineItems(items) {
+  if (!items || !items.length) return `<tr><td colspan="5" class="no-items">No line items on file.</td></tr>`;
+  return items.map(it => {
+    const qty   = it.quantity != null ? Number(it.quantity) : 1;
+    const price = it.unit_price != null ? Number(it.unit_price) : Number(it.line_total || 0);
+    const tax   = it.taxable ? (it.tax_rate ? Number(it.tax_rate).toFixed(1) + "%" : "Yes") : "—";
+    const amt   = Number(it.line_total ?? (qty * price));
+    return `<tr>
+      <td class="col-desc">
+        <div class="item-title">${esc(it.title || it.description || "Service")}</div>
+        ${it.description && it.title ? `<div class="item-desc">${esc(it.description)}</div>` : ""}
+      </td>
+      <td class="col-qty">${qty}</td>
+      <td class="col-price">${fmt$(price)}</td>
+      <td class="col-tax">${esc(tax)}</td>
+      <td class="col-amt">${fmt$(amt)}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Change orders HTML ────────────────────────────────────────────────────────
+function renderChangeOrders(cos) {
+  if (!cos || !cos.length) return "";
+  const rows = cos.map(co => {
+    const sign = co.type === "deduct" ? -1 : 1;
+    const cls  = co.type === "deduct" ? "co-deduct" : "co-add";
+    const prefix = co.type === "deduct" ? "−" : "+";
+    const by = co.created_by ? `By ${esc(co.created_by)}` : "";
+    const at = co.created_at ? ` · ${fmtDate(co.created_at)}` : "";
+    return `<div class="co-row">
+      <div>
+        <div class="co-desc">${esc(co.description || "Change order")}</div>
+        ${by || at ? `<div class="co-meta">${by}${at}</div>` : ""}
+      </div>
+      <div class="co-amount ${cls}">${prefix} ${fmt$(Math.abs(Number(co.amount || 0)))}</div>
+    </div>`;
+  }).join("");
+  return `<div class="change-orders-section">
+    <div class="section-title">⚡ Change Orders</div>
+    ${rows}
+  </div>`;
+}
+
+// ── Totals block ──────────────────────────────────────────────────────────────
+function renderTotals(inv, cos) {
+  const subtotal   = Number(inv.subtotal || 0);
+  const taxAmt     = Number(inv.tax_amount || 0);
+  const taxRate    = Number(inv.tax_rate || 0);
+  const deposit    = Number(inv.deposit_applied || 0);
+  const paid       = Number(inv.paid_amount || 0);
+  const origTotal  = Number(inv.original_total || inv.total || 0);
+  const balance    = Number(inv.balance_due || 0);
+
+  const coTotal = (cos || []).reduce((sum, co) => {
+    return sum + (co.type === "deduct" ? -Math.abs(Number(co.amount||0)) : Math.abs(Number(co.amount||0)));
+  }, 0);
+  const hasCoS = coTotal !== 0 && cos && cos.length > 0;
+
+  const rows = [];
+  rows.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${fmt$(subtotal)}</span></div>`);
+  if (taxAmt > 0) {
+    rows.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${fmt$(taxAmt)}</span></div>`);
+  }
+  if (deposit > 0) {
+    rows.push(`<div class="totals-row credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${fmt$(deposit)}</span></div>`);
+  }
+  if (paid > 0) {
+    rows.push(`<div class="totals-row credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${fmt$(paid)}</span></div>`);
+  }
+  if (hasCoS) {
+    rows.push(`<div class="totals-row divider"><span class="totals-label">Original Total</span><span class="totals-value">${fmt$(origTotal)}</span></div>`);
+    rows.push(`<div class="totals-row"><span class="totals-label">Change Orders</span><span class="totals-value">${coTotal >= 0 ? "+" : "−"} ${fmt$(Math.abs(coTotal))}</span></div>`);
+  }
+  rows.push(`<div class="totals-row grand"><span class="totals-label">${balance <= 0 ? "Paid In Full" : "Balance Due"}</span><span class="totals-value">${fmt$(Math.max(0, balance))}</span></div>`);
+
+  return `<div class="totals-section">
+    <div class="totals-table">${rows.join("")}</div>
+  </div>`;
+}
+
+// ── Print handwrite box (always rendered, shown only in print) ────────────────
+function printCOBox() {
+  return `<div class="print-co-box">
+    <div class="print-co-box-title">Field Change Order — Handwritten</div>
+    <div class="print-co-lines">
+      <div class="print-co-line">
+        <div><div class="print-co-field"></div><div class="print-co-label">Description of change</div></div>
+        <div class="print-co-amt"><div class="print-co-field"></div><div class="print-co-label">Amount ($)</div></div>
+      </div>
+      <div class="print-co-line">
+        <div><div class="print-co-field"></div><div class="print-co-label">Description of change</div></div>
+        <div class="print-co-amt"><div class="print-co-field"></div><div class="print-co-label">Amount ($)</div></div>
+      </div>
+    </div>
+    <div class="print-co-sig">
+      <div><div class="print-co-sig-field"></div><div class="print-co-label">Tech initials / signature</div></div>
+      <div><div class="print-co-sig-field"></div><div class="print-co-label">Customer approval (print name)</div></div>
+      <div style="width:70px"><div class="print-co-sig-field"></div><div class="print-co-label">Date</div></div>
+    </div>
+  </div>`;
+}
+
+// ── Full invoice render ───────────────────────────────────────────────────────
+function renderInvoice(inv) {
+  const root = document.getElementById("root");
+
+  const lineItems  = (() => { try { return JSON.parse(inv.line_items_json || "[]"); } catch { return []; } })();
+  const changeOrders = (() => { try { return JSON.parse(inv.change_orders_json || "[]"); } catch { return []; } })();
+  const sc     = String(inv.status_code || "draft").toLowerCase();
+  const now    = new Date();
+  const due    = inv.due_at ? new Date(inv.due_at) : null;
+  const overdue = sc === "sent" && due && due < now && Number(inv.balance_due) > 0;
+
+  const logoSrc = "/pages/img/pwa-icon-192.png";
+
+  root.innerHTML = `<div class="invoice-card">
+    <div class="invoice-accent"></div>
+
+    <div class="invoice-header">
+      <div class="header-logo-block">
+        <img src="${logoSrc}" alt="Vickery Electric" onerror="this.style.display='none'">
+        <div class="company-name">Vickery Electric</div>
+        <div class="company-tagline">Licensed Electrician · Orange, TX</div>
+      </div>
+      <div class="header-meta">
+        <div class="invoice-label">Invoice</div>
+        <div class="invoice-number">${esc(inv.invoice_number || inv.id)}</div>
+        ${statusBadge(sc, overdue)}
+      </div>
+    </div>
+
+    <div class="invoice-info">
+      <div class="info-col">
+        <div class="info-section-label">Bill To</div>
+        <div class="info-name">${esc(inv.customer_name || inv.client_name || "—")}</div>
+        ${inv.customer_phone ? `<div class="info-line">${esc(inv.customer_phone)}</div>` : ""}
+        ${inv.customer_email ? `<div class="info-line">${esc(inv.customer_email)}</div>` : ""}
+        ${inv.billing_address ? `<div class="info-line" style="margin-top:4px">${esc(inv.billing_address)}</div>` : ""}
+      </div>
+      <div class="info-col">
+        <div class="info-section-label">Job Details</div>
+        ${inv.service_address || inv.property_address ? `<div class="meta-row"><span class="meta-key">Service Address</span><span class="meta-val">${esc(inv.service_address || inv.property_address)}</span></div>` : ""}
+        ${inv.service_date ? `<div class="meta-row"><span class="meta-key">Service Date</span><span class="meta-val">${esc(fmtDate(inv.service_date))}</span></div>` : ""}
+        <div class="meta-row"><span class="meta-key">Invoice Date</span><span class="meta-val">${esc(fmtDate(inv.issued_at))}</span></div>
+        ${inv.due_at ? `<div class="meta-row"><span class="meta-key">Due Date</span><span class="meta-val">${esc(fmtDate(inv.due_at))}</span></div>` : ""}
+        ${inv.tech_name ? `<div class="meta-row"><span class="meta-key">Technician</span><span class="meta-val">${esc(inv.tech_name)}</span></div>` : ""}
+      </div>
+    </div>
+
+    <div class="line-items-section">
+      <table class="line-items-table">
+        <thead>
+          <tr>
+            <th class="col-desc">Description</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-price">Unit Price</th>
+            <th class="col-tax">Tax</th>
+            <th class="col-amt">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="lineItemsTbody">
+          ${renderLineItems(lineItems)}
+        </tbody>
+      </table>
+    </div>
+
+    ${renderTotals(inv, changeOrders)}
+    ${changeOrders.length ? renderChangeOrders(changeOrders) : ""}
+
+    ${inv.notes ? `<div class="notes-section">
+      <div class="section-title">Notes</div>
+      <div class="notes-text">${esc(inv.notes)}</div>
+    </div>` : ""}
+
+    <div class="invoice-footer">
+      <div class="payment-note">
+        <strong>Vickery Electric</strong> · (409) 554-3392 · Orange, TX<br>
+        Checks payable to Vickery Electric · Cash, check, or card accepted
+      </div>
+      <button class="btn-print" onclick="window.print()">⚡ Print Invoice</button>
+    </div>
+
+    ${printCOBox()}
+  </div>`;
+}
+
+// ── Error screen ──────────────────────────────────────────────────────────────
+function renderError(msg) {
+  document.getElementById("root").innerHTML = `<div class="invoice-card"><div class="state-screen">
+    <div class="state-icon">⚡</div>
+    <div class="state-title">Invoice Not Found</div>
+    <div class="state-body">${esc(msg || "This invoice link may have expired or been removed. Contact Vickery Electric for help.")}</div>
+    <div style="margin-top:12px;font-size:13px;color:#64748b">(409) 554-3392</div>
+  </div></div>`;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async function() {
+  const token = getToken();
+  if (!token || token === "invoice-public.html") {
+    renderError("No invoice token provided.");
+    return;
+  }
+  try {
+    const res  = await fetch("/api/invoice/public/" + encodeURIComponent(token));
+    const data = await res.json();
+    if (!data.ok || !data.invoice) {
+      renderError(data.error || "Invoice not found.");
+      return;
+    }
+    document.title = "Invoice " + (data.invoice.invoice_number || "") + " — Vickery Electric";
+    renderInvoice(data.invoice);
+  } catch (e) {
+    renderError("Could not load invoice. Please check your connection and try again.");
+  }
+})();
+</script>
+</body>
+</html>
