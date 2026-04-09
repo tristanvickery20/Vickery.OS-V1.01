@@ -1,0 +1,184 @@
+DRAFT COMPANY AGREEMENT PACKAGE
+Vickery Electric, LLC
+Prepared as a founder draft for internal review
+This package contains three documents intended to work together:
+• 1. Company Agreement / Operating Agreement
+• 2. Member Loan Agreement and Promissory Note (Gavin funding)
+• 3. Initial Written Consent of Members and Manager
+Important drafting assumptions used here
+• This draft assumes a Texas limited liability company using a manager-managed structure, with Tristan serving as initial Manager and Gavin serving as a Member with reserved approval rights over major decisions.
+• This draft does not hard-code a one-month unpaid labor term. Any productive work should be paid and should also comply with any applicable collective bargaining agreement and wage-and-hour law.
+• This draft treats Gavin’s $65,000 as a loan to the LLC, not automatic equity, because that gives the cleanest protection if the business underperforms or winds down early.
+• Ownership percentages, profit-distribution percentages, reserve thresholds, and certain valuation numbers are left bracketed only where the deal terms are still genuinely unresolved.
+• If the company will be manager-managed, the Texas certificate of formation should match that structure.
+This draft is not a substitute for Texas legal, tax, labor, union, licensing, or accounting advice.
+
+PART I
+COMPANY AGREEMENT OF VICKERY ELECTRIC, LLC
+This Company Agreement (this “Agreement”) is entered into effective as of _____________, 20___ (the “Effective Date”), by and among Tristan Vickery (“Tristan”), Gavin Vickery (“Gavin”), and Vickery Electric, LLC, a Texas limited liability company (the “Company”).
+1. Formation; Name; State of Organization. The Company has been formed as a Texas limited liability company under the Texas Business Organizations Code. The name of the Company is Vickery Electric, LLC unless later changed by amendment. The parties intend that the Company operate only after the certificate of formation has been properly filed and the governing documents in this package have been executed.
+2. Principal Office; Registered Agent. The principal office of the Company shall be at the address designated by the Manager from time to time. The registered office and registered agent shall be the office and agent identified in the Company’s certificate of formation or later filing.
+3. Purpose. The purpose of the Company is to engage in lawful electrical contracting, residential service work, estimating, dispatching, marketing, technology development, and any other lawful business approved under this Agreement, subject in all respects to licensing rules, permitting requirements, insurance requirements, union obligations, and applicable law.
+4. Term. The Company shall continue until dissolved in accordance with this Agreement or applicable law.
+5. Manager-Managed Structure. The Company shall be manager-managed. Tristan is hereby appointed as the initial Manager of the Company and shall have authority to conduct ordinary-course operations except as expressly limited by this Agreement. Gavin shall not be deemed a manager solely by reason of being a member, but Gavin shall have the approval rights, information rights, and protections specifically stated in this Agreement. The parties acknowledge that if the Company is manager-managed, the certificate of formation should reflect that structure.
+Article II — Members; Ownership; Capital Structure
+6. Members. The initial Members of the Company are Tristan and Gavin. No additional member may be admitted except with the prior written approval of Tristan and Gavin.
+7. Percentage Interests. As of the Effective Date, the Percentage Interests of the Members shall be as follows: Tristan: [50%]. Gavin: [50%]. These Percentage Interests govern economic rights except where a specific section of this Agreement states otherwise.
+8. Tristan Capital Contribution. As consideration for Tristan’s ownership interest, Tristan contributes and/or assigns to the Company the founder-built business infrastructure described on Schedule A, including the CRM architecture, pricing and estimating logic, workflow documents, operational systems, website assets, brand assets, and related intellectual property, to the extent owned or controlled by Tristan and transferable to the Company. The agreed contribution value for internal accounting purposes is $[0].
+9. Gavin Capital Contribution. Except as specifically stated in this Agreement or in the Member Loan Agreement attached to this package, Gavin is not required to make a capital contribution. Any funds advanced by Gavin shall be treated as debt only if documented as debt in writing. The $65,000 funding described in Part II of this package is intended to be a loan to the Company and not an automatic capital contribution.
+10. No Additional Required Contributions. No Member shall be required to contribute additional money, property, or services to the Company absent a later written agreement signed by both Members.
+11. No Funding Before Execution. No Member shall be required or permitted to advance loan proceeds, trade in a vehicle, guarantee debt, or make any comparable funding commitment on behalf of the Company until this Agreement, the Member Loan Agreement and Promissory Note, and the Initial Written Consent have all been fully executed.
+12. No Certificates Required. Membership certificates are not required unless later approved in writing by both Members.
+Article III — Roles; Duties; Compensation
+13. Tristan Role. Tristan shall serve as the Company’s initial Manager and as Operations Director. Tristan shall be responsible for ordinary-course operations, including CRM administration, dispatch, scheduling, quoting workflow, collections follow-up, KPI tracking, marketing operations, digital systems maintenance, pricing implementation, and strategic planning. Tristan may also perform field work and customer-facing tasks as needed.
+14. Gavin Role. Gavin shall serve as field lead, customer relationship lead, review and referral lead, master relationship coordinator, and quality-control lead, subject to any applicable employment documents, union dispatch obligations, and lawful supervision requirements. Gavin is expected to own field execution quality, end-of-job customer handoff, review requests, and relationship-driven growth efforts.
+15. Manager Standard of Conduct. The Manager shall devote commercially reasonable efforts to the business of the Company, act in good faith, use reasonable business judgment, preserve Company cash, and avoid self-dealing or undisclosed conflicts of interest. The Manager shall promptly disclose any material licensing, insurance, labor, union, permitting, safety, banking, or tax issue affecting the Company.
+16. Compensation of Tristan. Beginning on the Effective Date, Tristan shall receive monthly compensation of $4,167.00, payable in installments consistent with the Company’s normal payroll or draw practices, subject to required tax treatment, applicable law, and the Company having sufficient available funds. Unpaid accrued compensation shall remain a Company obligation unless expressly waived in writing by Tristan.
+17. Compensation of Gavin. Beginning on Gavin’s formal employment start date, Gavin shall be compensated in accordance with the applicable employment arrangement and, if applicable, the controlling collective bargaining agreement, including any required wage rates, fringe contributions, benefit contributions, dispatch/referral requirements, and work rules. If Gavin is employed in a bargaining-unit role, this Agreement shall be interpreted to complement and not override the controlling collective bargaining agreement as to employment terms.
+18. Observation or Transition Period. The parties may agree to a pre-employment observation, ride-along, education, or transition period. No productive work shall be required or knowingly permitted during such period unless compensated as required by law and any applicable collective bargaining agreement. This section is intended to avoid any implication that the Company may require unpaid compensable work.
+19. Reimbursement of Company Expenses. The Company shall reimburse Members and authorized personnel for reasonable and documented business expenses actually incurred on behalf of the Company, consistent with Company policy and available cash.
+20. No Guaranteed Distribution by Reason of Labor. Except for stated compensation, reimbursements, and approved distributions under this Agreement, neither Member is entitled to additional payment solely because that Member worked more hours, generated more leads, or performed more field labor.
+Article IV — Management; Reserved Decisions; Protections
+21. Ordinary-Course Authority of Manager. Subject to the reserved matters below, the Manager may make ordinary-course decisions for the Company, including staffing schedules, customer communications, dispatching, marketing execution, ordinary purchases within budget, workflow design, estimating implementation, collections activity, and vendor management.
+22. Reserved Matters Requiring Both Members’ Written Approval. The following actions require the prior written approval of both Tristan and Gavin: (a) incurring indebtedness other than ordinary trade payables in the ordinary course; (b) issuing or transferring membership interests; (c) admitting a new member; (d) merging, converting, dissolving, or selling substantially all Company assets; (e) changing the Company’s line of business or expanding into a new trade; (f) changing the salary or guaranteed compensation of either founder; (g) paying distributions other than under the standard distribution policy; (h) hiring or terminating a key licensed qualifier or master electrician; (i) entering a lease, truck financing arrangement, or equipment financing arrangement over $[10000]; (j) settling litigation or claims over $[5000]; (k) amending this Agreement; and (l) any related-party transaction involving a Member or a Member affiliate.
+23. Deadlock on Reserved Matters. If the Members are deadlocked on a Reserved Matter for more than fifteen (15) days after written notice of the dispute, the Members shall first meet in person or by video conference in good faith. If not resolved within ten (10) additional days, the matter shall proceed to mediation before either party files suit, except for requests for temporary injunctive relief.
+24. Books; Records; Access Rights. The Company shall keep complete and accurate books and records, including bank statements, loan balances, payroll records, tax filings, gross revenue reports, job costing summaries, accounts receivable aging, and monthly profit-and-loss statements. Gavin shall have full reasonable access to those records. Tristan shall likewise have full access to all Company records. Access may be provided digitally.
+25. Monthly Reporting. Within ten (10) days after the end of each calendar month, the Company shall circulate to both Members a monthly reporting package showing cash on hand, total debt, accounts receivable aging, revenue, gross margin, net income or loss, reserve balance, and any material covenant, licensing, labor, tax, or insurance issue.
+26. Banking Controls. Company funds shall be held in Company accounts. No Member shall commingle Company funds with personal funds. Withdrawals, transfers, or payments above $[500] shall require dual approval or another internal control approved in writing by both Members.
+27. Distributions Blocked During Default. No distributions shall be made to either Member if the Company is in default under the Gavin Member Loan Agreement, if payroll taxes are delinquent, if required insurance is lapsed, or if the distribution would violate applicable law or the reserve rules in this Agreement.
+28. Insurance; Key-Person and Operational Protection. The Company shall maintain commercially reasonable insurance coverage as available and financially prudent, including general liability, commercial auto, workers’ compensation if required, and any bond or license-related coverage required by law or contract. The Members shall also evaluate whether key-person or disability coverage is commercially reasonable for any individual whose loss would materially impair operations.
+29. Master / Qualifier Protection. The Company shall use commercially reasonable efforts to maintain at least one active licensed qualifying individual or other legally required supervisory arrangement at all times. Any actual or threatened loss of the Company’s key qualifier, master electrician, or lawful operating authority shall be disclosed immediately to both Members and shall be treated as a Reserved Matter.
+Article V — Profits; Losses; Cash Reserves; Distributions
+30. Profits and Losses. Profits and losses shall be allocated to the Members in proportion to their Percentage Interests unless otherwise required by applicable tax law or specifically provided in this Agreement.
+31. Minimum Cash Reserve. The Company shall maintain a minimum unrestricted cash reserve of $[__________] before making distributions, unless both Members approve otherwise in writing for a specific situation.
+32. Distribution Trigger. No Member shall have a right to distributions except as declared under this Article. Subject to law, loan compliance, tax obligations, payroll obligations, insurance obligations, and the required reserve, the Company may make distributions only if net distributable cash exceeds the reserve floor and all current obligations are being timely paid.
+33. Distribution Formula. If a distribution is approved, distributable cash shall be distributed as follows: (a) first, to satisfy any agreed tax distributions; (b) second, if applicable, to cure any approved accrued founder compensation then due; and (c) third, the remaining approved distributable cash shall be split [_____%] to Tristan and [_____%] to Gavin.
+34. No Distribution Right Based on Projections. No projection, forecast, business plan, viability model, probability model, pitch memorandum, or informal conversation shall create a legal right to a distribution. Only the written terms of this Agreement and a written distribution approval shall control.
+35. Prohibited Distributions. The Company shall not make a distribution if the distribution is prohibited by applicable law, would render the Company unable to pay debts as they become due, or would cause the Company’s liabilities to exceed the value of its assets after giving effect to the distribution.
+Article VI — Intellectual Property; Confidentiality; Non-Solicit
+36. Assignment of Company IP. To the extent not already vested in the Company, Tristan hereby assigns and agrees to assign to the Company the Company-specific systems, workflows, forms, website content, customer process design, pricing logic, automation logic, and other business infrastructure identified on Schedule A, excluding any generally useful know-how not uniquely developed for the Company. Gavin hereby assigns and agrees to assign to the Company any Company-specific photos, field documentation, customer relationship materials, training materials, and other work product created within the scope of Company business.
+37. Use of IP After Exit. Upon a Member’s exit, the exiting Member shall have no right to remove, disable, withhold, damage, or commercially exploit Company-owned systems, customer data, workflows, branding, or Company-specific IP, except as expressly stated in a written buyout or separation agreement.
+38. Confidential Information. Each Member shall keep confidential and shall not use except for Company purposes any non-public customer information, pricing logic, margin data, marketing data, CRM records, operating procedures, vendor terms, financial statements, and strategic plans.
+39. Non-Solicit. During the term of this Agreement and for twenty-four (24) months after a Member ceases active involvement with the Company, that Member shall not directly solicit for a competing residential electrical business any current Company customer, current Company employee, current Company subcontractor regularly used by the Company, or the Company’s key licensed qualifier, if the purpose is to divert business or staffing away from the Company.
+40. Limited Non-Compete. Only to the extent enforceable under applicable law, and only as ancillary to the confidentiality, goodwill, and business-protection obligations in this Agreement, a Member who exits the Company shall not own, operate, or actively manage a directly competing residential service electrical contracting business in [Orange, Jefferson, and Hardin Counties, Texas] for [12] months after exit; provided, however, that this restriction shall not prohibit passive ownership of less than five percent (5%) of a publicly traded company and shall not prohibit a Member from lawful wage employment in the electrical field unless a court determines such restriction is enforceable and reasonable under the facts then existing.
+Article VII — Transfers; Buyout; Death; Disability; Removal
+41. No Transfer Without Consent. No Member may sell, assign, pledge, or otherwise transfer any membership interest except with the prior written approval of the other Member, except for a permitted transfer to a revocable trust or estate planning vehicle that remains controlled by the transferring Member and remains bound by this Agreement.
+42. Events Triggering Buyout Option. The Company and then the non-triggering Member shall have an option to purchase a Member’s interest upon any of the following: voluntary withdrawal; material breach of this Agreement not cured within fifteen (15) days after notice; fraud; theft; embezzlement; conviction of a felony materially affecting the Company; willful misconduct causing material harm; death; permanent disability; bankruptcy filing by or against the Member; or failure to remain actively involved in the Company for more than sixty (60) consecutive days without written approval.
+43. Valuation. Unless otherwise agreed in writing at the time of the buyout, the purchase price for a membership interest shall equal the fair market value of that interest as determined by a mutually agreed independent business appraiser experienced in small service businesses, taking into account debt, cash, contingent liabilities, and normalized earnings. If the triggering event involves fraud, theft, embezzlement, or willful misconduct, the purchase price may be reduced by the amount of proven damages and by an additional bad-act discount of twenty-five percent (25%) if enforceable.
+44. Payment Terms for Buyout. Unless otherwise agreed, the buyout price shall be paid twenty percent (20%) down and the balance in equal monthly installments over thirty-six (36) months with interest at the Wall Street Journal prime rate in effect on the closing date or the maximum lawful rate, whichever is lower.
+45. Right of First Refusal. If a Member receives a bona fide third-party offer for that Member’s interest that the Member wishes to accept, the Company and then the other Member shall have a right of first refusal on the same material terms.
+46. Death and Disability. Upon death or permanent disability of a Member, the Company may continue business, and the affected Member or estate shall be treated as an economic interest holder until the buyout closes, but shall not automatically gain management rights beyond those already held under this Agreement.
+Article VIII — Indemnification; Limitations; Dispute Resolution
+47. Indemnification. To the fullest extent permitted by law and subject to the limitations in this Agreement, the Company shall indemnify the Manager and each Member against claims, losses, costs, and expenses arising out of Company activities, except to the extent arising from fraud, willful misconduct, bad-faith acts, knowing legal violations, or material breach of this Agreement.
+48. No Waiver of Fraud Claims. Nothing in this Agreement waives claims for fraud, theft, intentional misconduct, or equitable relief.
+49. Mediation First. Except for requests for temporary injunctive relief, any dispute arising out of this Agreement shall first be submitted to nonbinding mediation in Texas before a mutually agreed mediator.
+50. Venue; Governing Law. This Agreement shall be governed by Texas law. Exclusive venue for any action not resolved by mediation shall lie in a state court of competent jurisdiction in __________ County, Texas, unless federal jurisdiction is mandatory.
+51. Attorneys’ Fees. In any action to enforce this Agreement, the prevailing party shall be entitled to recover reasonable attorneys’ fees and costs, except as a court may limit such recovery under applicable law.
+Article IX — Tax; Accounting; Miscellaneous
+52. Tax Classification. The Members shall decide the Company’s tax classification and tax reporting positions in consultation with qualified tax advisors. Nothing in this Agreement is intended as tax advice.
+53. Fiscal Year. The fiscal year of the Company shall be the calendar year unless changed by the Manager with the written approval of Gavin.
+54. Notices. Any notice required under this Agreement shall be in writing and delivered personally, by recognized overnight courier, by certified mail return receipt requested, or by email with confirmation of transmission to the addresses last designated by the parties.
+55. Entire Agreement Within Package. This Agreement, together with the Member Loan Agreement and Promissory Note, the Initial Written Consent, and any schedules and signed amendments, constitutes the parties’ full agreement regarding the governance of the Company and supersedes inconsistent prior oral understandings.
+56. Amendments. No amendment to this Agreement is effective unless in a signed writing approved by both Members.
+57. Counterparts; Electronic Signatures. This Agreement may be signed in counterparts and by electronic signature, each of which shall be deemed an original.
+58. Severability. If any provision of this Agreement is held invalid or unenforceable, the remaining provisions shall remain in effect to the fullest extent permitted by law.
+59. Dissolution and Winding Up. The Company shall dissolve upon the written agreement of both Members, upon an event requiring winding up under applicable law, or upon any other event specified in this Agreement. Upon winding up, Company property shall be applied first to creditors of the Company, including to the extent allowed any Member creditors, and then distributed to Members in accordance with applicable law and this Agreement.
+60. Execution. The parties have executed this Agreement effective as of the Effective Date stated above.
+__________________________________
+TRISTAN VICKERY
+Member and Initial Manager
+Date: ____________________________
+__________________________________
+GAVIN ____________________
+Member
+Date: ____________________________
+
+PART II
+MEMBER LOAN AGREEMENT AND PROMISSORY NOTE
+This Member Loan Agreement and Promissory Note (this “Note”) is made effective as of _____________, 20___, by and between Gavin ____________________ (“Lender”) and Vickery Electric, LLC, a Texas limited liability company (“Borrower”).
+1. Promise to Pay. For value received, Borrower promises to pay to the order of Lender the principal sum of Sixty-Five Thousand Dollars ($65,000.00), together with interest, if any, as provided below.
+2. Purpose of Loan. The loan is intended to provide startup and operating capital for the Borrower, including permitted expenditures for truck acquisition, tools, marketing, insurance, working capital, and other Company-approved purposes.
+3. Funding Conditions. Lender shall have no obligation to fund until all of the following have occurred: (a) the Borrower has been legally formed; (b) the Company Agreement has been signed; (c) the Initial Written Consent has been signed; (d) a Company bank account has been opened; and (e) Lender has received copies of the executed Company governance documents.
+4. Funding Mechanics. The loan proceeds may be funded in one or more disbursements. Borrower shall provide a written funding request describing the intended use of funds. Lender may require reasonable support before releasing funds.
+5. Interest. Interest shall accrue at [_____%] per annum, simple interest, unless the parties intentionally elect a zero-interest insider note, in which case this section shall state 0.00% and all other references to accrued interest shall be read accordingly. In no event shall interest exceed the maximum lawful rate.
+6. Maturity Date. All unpaid principal and accrued interest shall be due and payable in full on _____________, 20___ (the “Maturity Date”), unless sooner accelerated under this Note or extended in a signed writing.
+7. Payment Terms. Payments shall be made as follows: [interest-only for ___ months / payment deferral until Month ___ / monthly installments of $__________ beginning _____________]. Borrower may prepay this Note at any time without premium or penalty.
+8. Use of Proceeds Covenant. Borrower shall use loan proceeds only for lawful Company purposes and shall not use proceeds for personal expenses of a Member except approved compensation, reimbursements, or distributions allowed under the Company Agreement.
+9. Negative Covenants While Note Outstanding. Until this Note is paid in full, Borrower shall not, without Lender’s written consent: (a) make owner distributions except those expressly permitted by the Company Agreement and not otherwise blocked by default; (b) incur additional debt outside the ordinary course; (c) transfer substantially all assets; (d) pay related-party amounts outside the ordinary course; or (e) materially change the Company’s business model in a way that reasonably increases credit risk.
+10. Reporting While Note Outstanding. Borrower shall deliver to Lender the monthly reporting package required by the Company Agreement and shall promptly notify Lender of any material adverse event, including loss of key licensure support, tax delinquency, default under another debt instrument, lapse of insurance, or material litigation.
+11. Events of Default. Each of the following is an Event of Default: (a) failure to pay any amount due under this Note within ten (10) days after written notice of nonpayment; (b) Borrower’s insolvency or admission of inability to pay debts as they become due; (c) unauthorized distributions made while payment obligations under this Note are delinquent; (d) material misuse or diversion of loan proceeds; (e) material breach of the Company Agreement that materially impairs Lender’s position and remains uncured for fifteen (15) days after notice; (f) dissolution of Borrower without payment arrangements reasonably protecting Lender; or (g) any materially false written statement made to induce the loan.
+12. Remedies. Upon an Event of Default, Lender may declare all unpaid principal and accrued interest immediately due and payable, seek injunctive relief, and pursue any rights available at law or in equity, subject to any mandatory dispute-resolution procedures that do not bar emergency relief.
+13. Subordination to Senior Purchase-Money Liens. Unless a separate security agreement states otherwise, this Note is unsecured. However, the parties acknowledge that truck financing or purchase-money equipment financing may require priority rights in specific collateral. Nothing herein prevents Borrower from granting a lawful purchase-money lien approved under the Company Agreement.
+14. Priority in Winding Up. If the Borrower winds up or liquidates, amounts due under this Note shall be treated as indebtedness of the Borrower and shall be paid after lawful payment of third-party creditors with superior priority and before any residual equity distributions to Members, to the extent permitted by law.
+15. No Merger Into Equity. This Note is debt and shall not convert into equity except by a later written conversion agreement signed by Borrower and Lender.
+16. Costs of Enforcement. If Lender enforces this Note after default, Borrower shall pay reasonable attorneys’ fees and enforcement costs to the extent allowed by law.
+17. Governing Law; Venue. This Note shall be governed by Texas law. Venue for disputes shall be as stated in the Company Agreement, unless otherwise required by law.
+18. Execution. Borrower and Lender have executed this Note effective as of the date first written above.
+__________________________________
+VICKERY ELECTRIC, LLC
+Borrower
+Date: ____________________________
+__________________________________
+By: TRISTAN VICKERY
+Its: Initial Manager
+Date: ____________________________
+__________________________________
+GAVIN ____________________
+Lender
+Date: ____________________________
+
+PART III
+INITIAL WRITTEN CONSENT OF MEMBERS AND INITIAL MANAGER
+The undersigned, being all of the Members of Vickery Electric, LLC and the initial Manager of the Company, adopt the following resolutions effective as of _____________, 20___:
+1. Resolution. the Company Agreement in Part I of this package is hereby approved and adopted as the governing agreement of the Company.
+2. Resolution. the Member Loan Agreement and Promissory Note in Part II of this package is hereby approved, and the Company is authorized to borrow up to $65,000.00 from Gavin on the terms stated therein.
+3. Resolution. Tristan Vickery is hereby confirmed as the initial Manager of the Company and is authorized to conduct ordinary-course operations subject to the limits of the Company Agreement.
+4. Resolution. the Company shall open one or more business bank accounts, merchant accounts, and payment-processing accounts in the Company’s name, with signer authority and internal controls to be implemented consistent with the Company Agreement.
+5. Resolution. the Company may obtain insurance, tax registrations, permits, software subscriptions, a vehicle, tools, marketing services, and other startup items approved under the operating plan and the Company Agreement.
+6. Resolution. the Company shall maintain books and records sufficient to provide the monthly reporting package required by the Company Agreement.
+7. Resolution. all prior actions taken in connection with forming the Company, evaluating funding, preparing internal systems, and negotiating this package are ratified to the extent lawful and consistent with the documents adopted herein.
+The undersigned execute this Initial Written Consent effective as of the date first written above.
+__________________________________
+TRISTAN VICKERY
+Member and Initial Manager
+Date: ____________________________
+__________________________________
+GAVIN ____________________
+Member
+Date: ____________________________
+
+SCHEDULE A
+TRISTAN CONTRIBUTED SYSTEMS, ASSETS, AND INTELLECTUAL PROPERTY
+• CRM architecture and workflows
+• Pricing engine logic, formulas, estimate flow, and quote logic
+• Website pages, estimator pages, lead forms, and booking flow
+• Standard operating procedures, checklists, and business process documents
+• Branding assets, logos, copy, and service-package design owned by Tristan and intended for Company use
+• Source files, repositories, admin credentials, spreadsheets, and automation files identified on an attached transfer list
+• Any other founder-built Company-specific systems identified in writing before or at closing
+Agreed contribution value for accounting purposes: $__________________
+SCHEDULE B
+RESERVED MATTERS AND APPROVAL THRESHOLDS
+• Any debt outside ordinary trade payables
+• Any change to founder compensation
+• Any owner distribution outside the standard policy
+• Any hiring, firing, or replacement of the Company’s key master / qualifier
+• Any sale of assets over $__________________
+• Any lease or financing contract over $__________________
+• Any litigation settlement over $__________________
+• Any admission of a new member or issuance of new equity
+• Any expansion into security, HVAC, plumbing, or another trade
+• Any amendment to the Company Agreement or the Note
+SCHEDULE C
+NUMBERS STILL TO FILL IN BEFORE SIGNING
+• Tristan ownership percentage: ________%
+• Gavin ownership percentage: ________%
+• Tristan contribution value: $__________________
+• Loan interest rate: ________% or 0%
+• Loan maturity date: __________________
+• Loan payment schedule: __________________
+• Minimum cash reserve: $__________________
+• Distribution split after approved trigger: Tristan ________% / Gavin ________%
+• Dual-approval threshold for outgoing payments: $__________________
+• Lease / financing threshold requiring both approvals: $__________________
+• Venue county: __________________ County, Texas
