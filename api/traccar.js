@@ -421,6 +421,14 @@ async function handleGetPositions(req, res) {
   if (!traccarEnabled()) {
     return json(res, 200, { ok: true, online: false, positions: [], mode: null, lastPoll: null });
   }
+
+  // If cache is cold (server just started) or stale by >90s, trigger a fresh poll
+  // so the first fleet page load gets live data without a 30-60s wait.
+  const staleMs = _cache.lastPoll ? (Date.now() - new Date(_cache.lastPoll).getTime()) : Infinity;
+  if (!_cache.lastPoll || staleMs > 90_000) {
+    try { await poll(); } catch { /* errors already logged inside poll() */ }
+  }
+
   return json(res, 200, {
     ok:        true,
     online:    _cache.online,

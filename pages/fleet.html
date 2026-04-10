@@ -257,7 +257,6 @@
         .setLngLat([j.lng, j.lat])
         .setPopup(popup)
         .addTo(_map);
-      el.addEventListener("click", () => marker.togglePopup());
       _jobMarkers.push(marker);
     });
   }
@@ -300,6 +299,9 @@
         pill.className = "gps-status-pill offline";
         pill.textContent = "GPS offline";
         renderTrucks([]);
+        // If this is the very first poll result and server cache was cold,
+        // retry in 5s (server just ran a fresh poll to warm cache).
+        if (!d.lastPoll) setTimeout(pollFleet, 5_000);
         return;
       }
 
@@ -387,7 +389,6 @@
         .setLngLat([p.lng, p.lat])
         .setPopup(popup)
         .addTo(_map);
-      el.addEventListener("click", () => marker.togglePopup());
       _truckMarkers.push(marker);
     });
 
@@ -395,7 +396,9 @@
     _jobs.forEach(j => { if (j.lat && j.lng) bounds.extend([j.lng, j.lat]); });
 
     if (!bounds.isEmpty()) {
-      _map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 });
+      const doBounds = () => _map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 });
+      if (_map.loaded()) doBounds();
+      else _map.once("load", doBounds);
     }
   }
 
