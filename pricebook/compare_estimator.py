@@ -22,25 +22,39 @@ DB_DEFAULT = Path("output/pricebook.db")
 # ── Your current estimator assemblies + labor hours ────────────────────────
 # Edit these to match your actual assembly blended_labor_hours values.
 # Format: (service_name, search_keywords, our_labor_hours, unit)
+
+# ── NOTE on NEE hours ────────────────────────────────────────────────────────
+# NEE device-only entries (outlet, switch, GFCI) assume box and wire already
+# in place — "trim-out" labor only. Your service-call hours include rough-in,
+# wire run, and box work, so your numbers will legitimately be higher.
+# Panel and service-entrance entries are panel unit only, not full service upgrade.
+# ────────────────────────────────────────────────────────────────────────────
+
 OUR_ASSEMBLIES = [
-    # (display_name,             nee_search_keywords,        our_hrs, unit)
-    ("Recessed Light Install",   "recessed light",            1.5,    "EA"),
-    ("Ceiling Fan Install",      "ceiling fan",               2.0,    "EA"),
-    ("Ceiling Fan (existing box)","ceiling fan",              1.5,    "EA"),
-    ("Light Fixture Install",    "light fixture",             1.2,    "EA"),
-    ("Dimmer Switch",            "dimmer switch",             0.75,   "EA"),
-    ("Outlet Install",           "duplex outlet receptacle",  0.75,   "EA"),
-    ("GFCI Outlet",              "GFCI",                      0.75,   "EA"),
-    ("Panel Upgrade 200A",       "200 amp panel service",     12.0,   "EA"),
-    ("Subpanel Install",         "subpanel sub panel",        8.0,    "EA"),
-    ("Whole-Home Surge Protector","surge protector",          1.0,    "EA"),
-    ("EV Charger (240V circuit)", "electric vehicle charger", 6.0,    "EA"),
-    ("Hot Tub Circuit",          "hot tub spa circuit",       6.0,    "EA"),
-    ("Outdoor Light (new circuit)","outdoor light",           2.5,    "EA"),
-    ("Motion Security Light",    "security light motion",     1.5,    "EA"),
-    ("Smoke/CO Detector",        "smoke detector",            0.75,   "EA"),
-    ("Ballast Replacement",      "ballast replace",           0.5,    "EA"),
-    ("Exit/Emergency Light",     "exit emergency light",      1.0,    "EA"),
+    # (display_name,                 nee_search_keywords,       our_hrs,  unit)
+    # ── Lighting ──────────────────────────────────────────────────────────────
+    ("Recessed Light Install",       "recessed light fixtures",  1.5,    "EA"),
+    ("Ceiling Fan Install",          "exhaust fans",             2.0,    "EA"),  # no ceiling fan entry; exhaust fan is closest
+    ("Light Fixture Install",        "LED panel lights",         1.2,    "EA"),
+    ("Outdoor / Security Light",     "outdoor light",            2.5,    "EA"),
+    ("Motion Security Light",        "motion",                   1.5,    "EA"),
+    ("Ballast Replacement",          "ballast",                  0.5,    "EA"),
+    ("Exit / Emergency Light",       "emergency driver",         1.0,    "EA"),
+    # ── Devices ───────────────────────────────────────────────────────────────
+    ("Dimmer Switch",                "dimmer switches",          0.75,   "EA"),
+    ("Standard Switch",              "1 gang single switch",     0.75,   "EA"),
+    ("Outlet Install",               "1 gang duplex outlet",     0.75,   "EA"),
+    ("GFCI Outlet",                  "GFCI",                     0.75,   "EA"),
+    # ── Service / Panel ───────────────────────────────────────────────────────
+    ("Panel Upgrade 200A",           "main lug",                 12.0,   "EA"),
+    ("Subpanel Install",             "loadcenters main lugs",    8.0,    "EA"),
+    ("Whole-Home Surge Protector",   "surge suppressor",         1.0,    "EA"),
+    # ── Specialty Circuits ────────────────────────────────────────────────────
+    ("EV Charger (240V circuit)",    "electric vehicle",         6.0,    "EA"),
+    ("Hot Tub / Spa Circuit",        "hot tub",                  6.0,    "EA"),
+    # ── Safety ────────────────────────────────────────────────────────────────
+    ("Smoke / CO Detector",          "smoke detectors",          0.75,   "EA"),
+    ("Commercial Smoke Detector",    "120 volt smoke",           0.75,   "EA"),
 ]
 
 
