@@ -167,6 +167,28 @@ All public pages share the same 8-link nav (Home / Services / Service Area / Why
 - Lead detail (`crm-lead.html` / `crm-lead-detail.js`): Invoicing card in right column — fetches invoice by lead_id, shows status/amounts, Create Invoice / Send Invoice / Record Deposit / Mark Paid buttons + payment modal.
 - Client detail (`client-detail.js`): Invoices tab implemented — fetches by client_id, shows summary stats + invoice list with status badges.
 
+## Automatic Material Price Updater
+
+`lib/materialPriceUpdater.js` — runs monthly (first of month, 2am) using the BLS Producer Price Index.
+
+**BLS series used** (verified working, no API key required):
+| Series | Covers | BLS ID |
+|---|---|---|
+| Wire/cable | NM-B, THHN, MC cable, conduit | `PCU335931335931` |
+| Devices | Outlets, switches, GFCIs, dimmers | `PCU335999335999` |
+| Panel/general | Breakers, panels, all other electrical | `WPU1174` |
+
+**Flow:**
+1. First run — captures current BLS index as baseline in the Config tab. No price changes.
+2. Each subsequent monthly run — fetches new BLS index, computes ratio (current/baseline), multiplies every material's `base_cost` by that ratio × regional factor (0.99 default for SE Texas proximity discount), writes back to Materials tab, stores new baseline.
+
+**Config tab keys managed automatically:**
+`ppi_baseline_wire`, `ppi_baseline_device`, `ppi_baseline_panel`, `ppi_baseline_general`, `ppi_baseline_period`, `ppi_regional_factor`, `materials_last_updated`
+
+**Manual trigger:** `POST /api/admin/materials/price-update` (auth required) — runs immediately, returns summary JSON.
+
+**Cost:** $0. BLS v1 API is a public US government endpoint, no registration or API key needed.
+
 ## Recent Changes
 - 2026-04-08: Traccar GPS improvements — departure detection (auto-stamps departed_at + job_duration_minutes when NO truck within 500ft after 5+ min on site), customer arrival SMS (sends "Your tech is here" to customer phone via we_are_here template when truck arrives), SVG truck marker replacing emoji on schedule map, On site/Left after X min GPS badges on crew job cards, GPS arrival row in job detail overlay. New Bookings schema fields: departed_at, job_duration_minutes, customer_sms_sent_at (auto-added to live sheet on startup).
 - 2026-04-07: Accounting adapter + invoice/payment workflow (Task 6) — MockProvider provider pattern, from-lead invoice creation, send action, payment modal on lead detail, Invoices tab on client detail, schema extended for lead_id/provider_ref/provider_name

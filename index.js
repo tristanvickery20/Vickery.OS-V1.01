@@ -69,6 +69,8 @@ const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize"
 const { handleMapboxConfig } = require("./api/config-mapbox");
 const { handleGetPositions, startPolling: startTraccarPolling } = require("./api/traccar");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
+const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
+const { getSheetsClient } = require("./lib/sheets");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -400,6 +402,24 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath === "/api/estimator/classification" && req.method === "GET") {
     return handleEstimatorClassification(req, res);
+  }
+
+  // ── Material price auto-update (manual trigger) ────────────────────────────
+  if (_epath === "/api/admin/materials/price-update" && req.method === "POST") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
+    (async () => {
+      try {
+        const sheets  = await getSheetsClient();
+        const sheetId = process.env.ESTIMATOR_V2_SHEET_ID;
+        if (!sheetId) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:"ESTIMATOR_V2_SHEET_ID not configured"})); return; }
+        const result = await runMaterialPriceUpdate(sheets, sheetId);
+        res.writeHead(200, {"Content-Type":"application/json"});
+        res.end(JSON.stringify({ok:true,...result}));
+      } catch(e) {
+        res.writeHead(500); res.end(JSON.stringify({ok:false,error:e.message}));
+      }
+    })();
+    return;
   }
 
   // ── Zone check — public, no auth required ─────────────────────────────────
@@ -810,4 +830,13 @@ server.listen(5000, "0.0.0.0", () => {
     console.log(`[Nightly] Actuals scheduled in ${Math.round(msUntil/3600000)}h`);
   }
   scheduleNightlyActuals();
+
+  // Monthly material price update (BLS PPI, first of each month at 2am)
+  if (process.env.ESTIMATOR_V2_SHEET_ID) {
+    getSheetsClient().then(sheets => {
+      scheduleMonthlyPriceUpdate(sheets, process.env.ESTIMATOR_V2_SHEET_ID);
+    }).catch(err => {
+      console.error("[MaterialPriceUpdater] Failed to init scheduler:", err.message);
+    });
+  }
 });
