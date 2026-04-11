@@ -1199,6 +1199,31 @@
     html.dark .q-equip-variant-btn { color: hsl(var(--muted-fg)); }
     html.dark .q-equip-variant-btn.selected { background: hsl(var(--primary) / .15); }
 
+    /* Customer-supplied equipment card */
+    .q-equip-card.q-equip-supplied {
+      border-style: dashed; border-color: hsl(var(--border));
+    }
+    .q-equip-card.q-equip-supplied .q-equip-icon { color: hsl(var(--muted-fg)); }
+    .q-equip-card.q-equip-supplied .q-equip-brand { color: hsl(var(--muted-fg)); font-style: italic; }
+    .q-equip-card.q-equip-supplied.selected { border-style: solid; border-color: hsl(var(--primary)); }
+    html.dark .q-equip-card.q-equip-supplied { border-color: hsl(220 10% 30%); }
+
+    /* "Not sure" question option */
+    .q-option--notsure {
+      border-style: dashed; color: hsl(var(--muted-fg));
+      background: transparent;
+    }
+    .q-option--notsure.selected {
+      border-style: solid; color: hsl(var(--fg));
+      background: hsl(var(--primary) / .06); border-color: hsl(var(--primary) / .5);
+    }
+    .q-notsure-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      border: 1.5px solid currentColor; font-size: 10px; font-weight: 700;
+      font-style: normal; margin-right: 2px; vertical-align: middle;
+    }
+
     /* Equipment card spark-appear animation */
     #stepContent .q-equip-card {
       visibility: hidden; opacity: 0;

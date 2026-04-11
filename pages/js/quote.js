@@ -38,6 +38,22 @@ const _ICON_SWCH  = '<rect x="10" y="6" width="28" height="36" rx="5"/><rect x="
 const _ICON_PLUG  = '<rect x="9" y="6" width="30" height="36" rx="6"/><rect x="14" y="14" width="5" height="8" rx="1" fill="currentColor" stroke="none"/><rect x="29" y="14" width="5" height="8" rx="1" fill="currentColor" stroke="none"/><path d="M18 30 Q24 37 30 30"/>';
 const _ICON_EV    = '<rect x="8" y="5" width="22" height="30" rx="6"/><path d="M19 22 L16 33 L23 28 L26 17 Z" fill="currentColor" stroke="none"/><path d="M30 14 L40 14 M30 20 L40 20 M35 14 L35 36"/>';
 const _ICON_DIMR  = '<rect x="10" y="8" width="28" height="32" rx="5"/><line x1="17" y1="24" x2="31" y2="24" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="currentColor" stroke="none"/>';
+const _ICON_BOX   = '<rect x="7" y="20" width="34" height="22" rx="3"/><path d="M7 20 L24 10 L41 20"/><line x1="24" y1="10" x2="24" y2="20"/><path d="M15 20 L24 26 L33 20"/>';
+
+// ── "Not sure" injection config ────────────────────────────────────────────────
+// Modules where we inject a client-side "Not sure" option. Customers aren't
+// electricians — if they can't answer a technical question the quote must still flow.
+// Selecting "not sure" stores value="not_sure" which evaluates as the safe neutral
+// default in all qualifier checks (no restrictive notices fire; base pricing used).
+const NOT_SURE_MODULES = {
+  "HOME_AGE":            "Not sure — our tech can assess this on-site",
+  "CEILING_HEIGHT":      "Not sure — I can't tell / haven't measured",
+  "FIXTURE_WEIGHT":      "Not sure — looks standard",
+  "FAN_EXISTING_WIRING": "Not sure — haven't checked the ceiling",
+  "CRAWLSPACE_ACCESS":   "Not sure / not applicable",
+  "CIRCUIT_SCOPE":       "Not sure — I need your advice",
+  "CONDUIT_REQUIRED":    "Not sure — haven't checked the route",
+};
 
 const PRODUCT_CATALOG = {
   // ── Recessed Lighting ───────────────────────────────────────────────────────
@@ -131,6 +147,10 @@ const PRODUCT_CATALOG = {
       { test: () => ["pre_1950","1950_1970","1970_1990"].includes(S.answers["HOME_AGE"]),
         notice: "Homes built before 1990 often don't have a neutral wire at the switch box. The Lutron Caseta works without one — we recommend it for this home.",
         type: "info", highlightSku: "LUTRON-PD6WCL" },
+      // Not sure of home age → soft recommendation (Caseta works in any home)
+      { test: () => S.answers["HOME_AGE"] === "not_sure",
+        notice: "Not sure of your home's age? The Lutron Caseta works without a neutral wire in any home — a reliable choice regardless.",
+        type: "info", highlightSku: "LUTRON-PD6WCL" },
     ],
     // Cross-service compatibility notices
     compatNotices: [
@@ -205,6 +225,9 @@ const PRODUCT_CATALOG = {
       { test: () => ["pre_1950","1950_1970","1970_1990"].includes(S.answers["HOME_AGE"]),
         notice: "Older homes often lack a neutral wire at the switch box. The Lutron Caseta doesn't need one — we recommend it for this home.",
         type: "info", highlightSku: "LUTRON-PD10NXD" },
+      { test: () => S.answers["HOME_AGE"] === "not_sure",
+        notice: "Not sure of your home's age? The Lutron Caseta works without a neutral wire in any home — the safe and reliable choice.",
+        type: "info", highlightSku: "LUTRON-PD10NXD" },
     ],
     products: [
       { sku: "LEVITON-D26HD",   brand: "Leviton", name: "Decora Smart Wi-Fi",  upgrade_delta:  0, img: null,
@@ -228,6 +251,10 @@ const PRODUCT_CATALOG = {
       { test: () => S.answers["PANEL_SPACE"] === "no",
         notice: "Your panel may be full. Adding a 40–50A breaker might require a subpanel or breaker expansion — our tech will assess on-site. A 40A charger is the lowest-impact option.",
         type: "warning", highlightSku: "JUICEBOX-40" },
+      // Not sure about panel → soft nudge, tech will check
+      { test: () => S.answers["PANEL_SPACE"] === "unknown",
+        notice: "No worries about not knowing your panel — our tech will check available space on arrival. The 40A charger is the most flexible option if capacity turns out to be tight.",
+        type: "info", highlightSku: "JUICEBOX-40" },
       // Long wire run → voltage drop note
       { test: () => S.answers["DISTANCE_FROM_PANEL"] === "over75",
         notice: "At 75+ ft from the panel, voltage drop is a consideration. We'll size the wire correctly. A 40A charger may be the better choice for this run distance.",
@@ -722,17 +749,26 @@ function renderQuestion(q) {
       </div>`;
   }
 
+  // Inject a "Not sure" option for modules where customers commonly can't answer
+  const notSureLabel = NOT_SURE_MODULES[q.question_id];
+  const hasNotSureAlready = effectiveOptions.some(o =>
+    /not.sure|unknown|unsure/i.test(o.label) || o.option_id === "not_sure" || o.option_id === "unknown"
+  );
+  const allOptions = (effectiveOptions.length && notSureLabel && !hasNotSureAlready)
+    ? [...effectiveOptions, { option_id: "not_sure", label: notSureLabel, _injected: true }]
+    : effectiveOptions;
+
   return `
     <div class="q-question" data-qid="${q.question_id}">
       <div class="q-question-prompt">${escHtml(q.prompt)}${q.required ? " <span class='q-req'>*</span>" : ""}</div>
-      ${effectiveOptions.length ? `
+      ${allOptions.length ? `
         <div class="q-options">
-          ${effectiveOptions.map(o => `
-            <label class="q-option${S.answers[q.question_id] === o.option_id ? " selected" : ""}"
+          ${allOptions.map(o => `
+            <label class="q-option${S.answers[q.question_id] === o.option_id ? " selected" : ""}${o._injected ? " q-option--notsure" : ""}"
               data-dis="${o.disqualify ? "1" : ""}" data-unc="${o.uncertain ? "1" : ""}">
               <input type="radio" name="q_${q.question_id}" value="${escHtml(o.option_id)}"
                 ${S.answers[q.question_id] === o.option_id ? "checked" : ""}>
-              ${escHtml(o.label)}
+              ${o._injected ? `<span class="q-notsure-icon">?</span> ` : ""}${escHtml(o.label)}
             </label>`).join("")}
         </div>
       ` : `
@@ -771,12 +807,19 @@ function renderReview() {
         const equip = getEquipServices();
         if (!equip.length) return "";
         const lines = equip.map(svc => {
-          const cat = PRODUCT_CATALOG[svc.job_type_id];
           const sku = S.equipmentSelections[svc.job_type_id];
+          if (sku === "CUSTOMER-PROVIDED") {
+            const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+            return `<span style="display:block;">${SWORD_SVG}&nbsp;<em>${escHtml(jt?.name_public || svc.job_type_id)}</em> <span style="font-size:11px;color:hsl(var(--muted-fg));">(customer-supplied — labor only)</span></span>`;
+          }
+          const cat  = resolveEquipCatalog(svc);
           const prod = cat?.products.find(p => p.sku === sku);
           if (!prod) return "";
           const delta = equipUpgradeDelta(svc);
-          return `<span style="display:block;">${SWORD_SVG}&nbsp;${escHtml(prod.brand)} ${escHtml(prod.name)}${delta > 0 ? ` <span style="font-size:11px;color:hsl(var(--primary));">(+$${delta} upgrade)</span>` : " <span style=\"font-size:11px;\">(standard)</span>"}</span>`;
+          const vid = S.variantSelections[varKey(svc.job_type_id, sku)];
+          const variant = prod.variants?.find(v => v.id === vid);
+          const variantSuffix = variant ? ` · <span style="font-size:11px;">${escHtml(variant.label)}</span>` : "";
+          return `<span style="display:block;">${SWORD_SVG}&nbsp;${escHtml(prod.brand)} ${escHtml(prod.name)}${variantSuffix}${delta > 0 ? ` <span style="font-size:11px;color:hsl(var(--primary));">(+$${delta} upgrade)</span>` : " <span style=\"font-size:11px;\">(standard)</span>"}</span>`;
         }).filter(Boolean).join("");
         return lines ? `<div class="q-price-footer-equip">${lines}</div>` : "";
       })()}
@@ -1112,6 +1155,30 @@ function renderEquipment() {
     const multiUnitNote = svc.qty > 1
       ? `<div class="q-equip-multi-unit">This finish selection applies to all ${svc.qty} units. Let us know day-of if you need different finishes per room.</div>` : "";
 
+    // Customer-supplied pseudo-product (appended after catalog products)
+    const suppliedCard = (() => {
+      const isSel = selectedSku === "CUSTOMER-PROVIDED";
+      return `
+        <div class="q-equip-card q-equip-supplied${isSel ? " selected" : ""}"
+             data-typeid="${escHtml(svc.job_type_id)}" data-sku="CUSTOMER-PROVIDED"
+             style="--sp-d:${0.04 + cat.products.length * 0.09}s;--sp-f:${0.20 + cat.products.length * 0.09}s;">
+          <div class="q-equip-img-col">
+            <div class="q-equip-icon">
+              <svg width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_ICON_BOX}</svg>
+            </div>
+          </div>
+          <div class="q-equip-body">
+            <div class="q-equip-brand">Customer-Supplied</div>
+            <div class="q-equip-name">I already have the equipment</div>
+            <div class="q-equip-desc">You purchased your own — we handle the professional installation only</div>
+            <div class="q-equip-badge included">
+              ${isSel ? SWORD_SVG + "&nbsp;" : ""}Labor only &mdash; no materials markup
+            </div>
+          </div>
+          <div class="q-equip-radio"></div>
+        </div>`;
+    })();
+
     const cardsHTML = cat.products.map((p, pi) => {
       const isSel       = p.sku === selectedSku;
       const isIncl      = p.upgrade_delta === 0;
@@ -1170,7 +1237,7 @@ function renderEquipment() {
         <div class="q-equip-label">${escHtml(cat.label)}</div>
         ${cat.note ? `<div class="q-equip-note">${escHtml(cat.note)}</div>` : ""}
         ${noticesHTML}
-        <div class="q-equip-grid">${cardsHTML}</div>
+        <div class="q-equip-grid">${cardsHTML}${suppliedCard}</div>
         ${multiUnitNote}
       </div>`;
   }).join("");
