@@ -310,8 +310,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === "/quote") {
-    res.writeHead(301, { Location: "/instant-estimate" });
-    return res.end();
+    return serveFile(res, path.join(__dirname, "pages/quote.html"), "text/html");
   }
 
   if (req.url === "/instant-estimate") {
