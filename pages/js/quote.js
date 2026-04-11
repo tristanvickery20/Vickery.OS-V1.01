@@ -16,6 +16,7 @@ const S = {
   uncertain: {},            // module_id → true for "not sure" answers
   photos: {},               // module_id → File[]
   addons: [],
+  equipmentSelections: {},  // { [job_type_id]: sku } — one product pick per service
   pricing: null,            // {final_price, services:[]} — summed across all services
   lock: null,               // server lock response
   photoUploaded: false,
@@ -25,6 +26,119 @@ const S = {
   selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
   booking: null,
 };
+
+// ── Equipment / Material catalog ───────────────────────────────────────────────
+// Keyed by job_type_id. Services with no entry silently skip the Equipment step.
+// `icon` is an SVG path body (viewBox 0 0 48 48) shown when no `img` URL is set.
+// `img`  is a product photo URL — set per product to override the icon fallback.
+const _ICON_BULB  = '<circle cx="24" cy="20" r="11"/><line x1="24" y1="31" x2="24" y2="38"/><line x1="19" y1="38" x2="29" y2="38"/><line x1="8" y1="20" x2="14" y2="20"/><line x1="34" y1="20" x2="40" y2="20"/><line x1="11" y1="8" x2="15" y2="13"/><line x1="37" y1="8" x2="33" y2="13"/>';
+const _ICON_FAN   = '<circle cx="24" cy="24" r="5"/><path d="M24 6 C15 6 14 14 22 20"/><path d="M42 24 C42 15 34 14 28 22"/><path d="M24 42 C33 42 34 34 26 28"/><path d="M6 24 C6 33 14 34 20 26"/>';
+const _ICON_SWCH  = '<rect x="10" y="6" width="28" height="36" rx="5"/><rect x="18" y="10" width="12" height="6" rx="2" fill="currentColor" stroke="none"/><rect x="18" y="32" width="12" height="6" rx="2" fill="currentColor" stroke="none"/>';
+const _ICON_PLUG  = '<rect x="9" y="6" width="30" height="36" rx="6"/><rect x="14" y="14" width="5" height="8" rx="1" fill="currentColor" stroke="none"/><rect x="29" y="14" width="5" height="8" rx="1" fill="currentColor" stroke="none"/><path d="M18 30 Q24 37 30 30"/>';
+const _ICON_EV    = '<rect x="8" y="5" width="22" height="30" rx="6"/><path d="M19 22 L16 33 L23 28 L26 17 Z" fill="currentColor" stroke="none"/><path d="M30 14 L40 14 M30 20 L40 20 M35 14 L35 36"/>';
+const _ICON_DIMR  = '<rect x="10" y="8" width="28" height="32" rx="5"/><line x1="17" y1="24" x2="31" y2="24" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="currentColor" stroke="none"/>';
+
+const PRODUCT_CATALOG = {
+  "A001": {
+    label:    "Choose Your Recessed Lights",
+    note:     "Upgrade price is per fixture",
+    icon:     _ICON_BULB,
+    products: [
+      { sku: "HALO-RL56",    brand: "Halo",    name: 'RL56 LED 5"/6"',         upgrade_delta:  0, img: null, desc: "65W equiv · 650 lm · 2700K warm white · Dimmable" },
+      { sku: "HALO-HLB6",    brand: "Halo",    name: "HLB6 Color-Select",       upgrade_delta: 28, img: null, desc: "Tunable 2700–5000K · Adjustable CCT · Slim profile" },
+      { sku: "LUTRON-HILUME", brand: "Lutron", name: 'Hi-lume ELV 6"',          upgrade_delta: 68, img: null, desc: "Ultra-smooth dim to <1% · Ideal for dining & living rooms" },
+    ],
+  },
+  "A003": {
+    label:    "Choose Your Fixture Style",
+    icon:     _ICON_BULB,
+    products: [
+      { sku: "HB-3LT",        brand: "Hampton Bay", name: "Globe 3-Light",      upgrade_delta:  0, img: null, desc: "Clean lines · Brushed nickel · Fits most 4\" outlet boxes" },
+      { sku: "KICHLER-5216",  brand: "Kichler",     name: "Stetson 5-Light",    upgrade_delta: 95, img: null, desc: "Elegant design · LED included · Bronze or brushed nickel" },
+      { sku: "PROGRESS-P3926",brand: "Progress",    name: "Rogue 3-Light LED",  upgrade_delta:185, img: null, desc: "90+ CRI · Matte black or nickel · Dimmable LED built-in" },
+    ],
+  },
+  "A004": {
+    label:    "Choose Your Ceiling Fan",
+    note:     "Upgrade price is per fan",
+    icon:     _ICON_FAN,
+    products: [
+      { sku: "HUNTER-DEMPSEY",  brand: "Hunter",  name: 'Dempsey 52"',         upgrade_delta:  0, img: null, desc: "5 reversible blades · 3-speed pull chain · Matte black or white" },
+      { sku: "HUNTER-CRESTFIELD",brand:"Hunter",  name: 'Crestfield 52"',      upgrade_delta: 89, img: null, desc: "Integrated LED · Aged barnwood blades · Remote ready" },
+      { sku: "HUNTER-SIGNAL",   brand: "Hunter",  name: 'Signal 54" WiFi',     upgrade_delta:199, img: null, desc: "Smart WiFi · LED light kit · Alexa & Google compatible" },
+    ],
+  },
+  "A007": {
+    label:    "Choose Your LED Bulbs",
+    note:     "Upgrade price is per fixture",
+    icon:     _ICON_BULB,
+    products: [
+      { sku: "SYLVANIA-A19",   brand: "Sylvania", name: "LED A19 Soft White",  upgrade_delta:  0, img: null, desc: "60W equiv · 800 lm · 2700K · 11W · Dimmable" },
+      { sku: "CREE-BA19",      brand: "Cree",     name: "Exceptional LED A19", upgrade_delta: 18, img: null, desc: "90+ CRI · 25-year rated · 100% dimmable · True color" },
+      { sku: "PHILIPS-HUE-A19",brand: "Philips",  name: "Hue White Ambiance",  upgrade_delta: 52, img: null, desc: "Tunable 2200–6500K · Smart ready · Works with any hub" },
+    ],
+  },
+  "A008": {
+    label:    "Choose Your Dimmer Switch",
+    icon:     _ICON_DIMR,
+    products: [
+      { sku: "LEVITON-6674",   brand: "Leviton", name: "Decora 600W Dimmer",   upgrade_delta:  0, img: null, desc: "Slide dimmer · Works with LED & incandescent · White" },
+      { sku: "LUTRON-PD6WCL",  brand: "Lutron",  name: "Caseta Smart Dimmer",  upgrade_delta: 62, img: null, desc: "WiFi · No hub needed · Alexa, Siri & Google compatible" },
+      { sku: "LUTRON-PDCA60",  brand: "Lutron",  name: "Caseta Pro 3-Way Kit", upgrade_delta:119, img: null, desc: "Includes Pico remote · Best whole-room setup · Instant on" },
+    ],
+  },
+  "A011": {
+    label:    "Choose Your Outlet",
+    icon:     _ICON_PLUG,
+    products: [
+      { sku: "LEVITON-T5325",  brand: "Leviton", name: "Decora 15A TR Outlet", upgrade_delta:  0, img: null, desc: "Tamper-resistant · Decora style · White or ivory" },
+      { sku: "LEVITON-T5632",  brand: "Leviton", name: "USB Type A+C Outlet",  upgrade_delta: 22, img: null, desc: "2 USB ports + 2 AC plugs · 3.6A USB combined · TR" },
+      { sku: "LEVITON-D215P",  brand: "Leviton", name: "Decora Smart Outlet",  upgrade_delta: 48, img: null, desc: "WiFi · App & voice control · Real-time energy monitoring" },
+    ],
+  },
+  "A012": {
+    label:    "Choose Your GFCI Outlet",
+    icon:     _ICON_PLUG,
+    products: [
+      { sku: "LEVITON-GFNT1",  brand: "Leviton", name: "SmartlockPro 20A",     upgrade_delta:  0, img: null, desc: "Self-testing · LED indicator · Kitchens, baths & garages" },
+      { sku: "LEVITON-GFWT1",  brand: "Leviton", name: "SmartlockPro Wi-Fi",   upgrade_delta: 25, img: null, desc: "Smart GFCI · Remote monitoring via app · Auto self-test" },
+      { sku: "LEGRAND-1597TR", brand: "Legrand",  name: "USB + GFCI Outlet",   upgrade_delta: 42, img: null, desc: "USB-A charging + GFCI protection · Tamper-resistant" },
+    ],
+  },
+  "A014": {
+    label:    "Choose Your Smart Switch",
+    icon:     _ICON_SWCH,
+    products: [
+      { sku: "LEVITON-D26HD",  brand: "Leviton", name: "Decora Smart Wi-Fi",   upgrade_delta:  0, img: null, desc: "No hub required · Alexa & Google compatible · Decora trim" },
+      { sku: "LUTRON-PD10NXD", brand: "Lutron",  name: "Caseta Smart Switch",  upgrade_delta: 52, img: null, desc: "Industry-leading reliability · Pico remote compatible" },
+      { sku: "LUTRON-PD10NXD3",brand: "Lutron",  name: "Caseta 3-Way Kit",     upgrade_delta:119, img: null, desc: "Switch + Pico remote + Smart Bridge · Full 3-way setup" },
+    ],
+  },
+  "A028": {
+    label:    "Choose Your EV Charger",
+    icon:     _ICON_EV,
+    products: [
+      { sku: "JUICEBOX-40",     brand: "JuiceBox",    name: "JuiceBox 40A",    upgrade_delta:  0, img: null, desc: "40A Level 2 · WiFi & energy tracking · ENERGY STAR" },
+      { sku: "CHARGEPOINT-FLEX",brand: "ChargePoint", name: "Home Flex 50A",   upgrade_delta:125, img: null, desc: "50A · Universal fit · ChargePoint app + Alexa · CPO backed" },
+      { sku: "EMPORIA-EVSE",    brand: "Emporia",     name: "Smart EV 48A",    upgrade_delta:175, img: null, desc: "48A · Solar-ready · Lowest cost per charge · Monitor via app" },
+    ],
+  },
+};
+
+// ── Equipment catalog helpers ──────────────────────────────────────────────────
+function hasEquipmentCatalog() {
+  return S.selectedServices.some(svc => !!PRODUCT_CATALOG[svc.job_type_id]);
+}
+function getEquipServices() {
+  return S.selectedServices.filter(svc => !!PRODUCT_CATALOG[svc.job_type_id]);
+}
+function equipUpgradeDelta(svc) {
+  const cat = PRODUCT_CATALOG[svc.job_type_id];
+  if (!cat) return 0;
+  const selSku = S.equipmentSelections[svc.job_type_id];
+  const prod   = cat.products.find(p => p.sku === selSku);
+  return (prod?.upgrade_delta || 0) * (svc.qty || 1);
+}
 
 // ── Helpers for primary service ────────────────────────────────────────────────
 function primaryTypeId() { return S.selectedServices[0]?.job_type_id || null; }
@@ -135,10 +249,16 @@ function go(step) {
 }
 
 function back() {
+  const pid       = primaryTypeId();
+  const hasQs     = (S.config?.questionsByType?.[pid]?.length || 0) > 0;
+  const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
+
   if (S.step === "review") {
-    const pid       = primaryTypeId();
-    const hasQs     = (S.config?.questionsByType?.[pid]?.length || 0) > 0;
-    const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
+    if (hasEquipmentCatalog()) { go("equipment"); return; }
+    go(hasQs || hasAddons ? "questions" : "services");
+    return;
+  }
+  if (S.step === "equipment") {
     go(hasQs || hasAddons ? "questions" : "services");
     return;
   }
@@ -166,6 +286,7 @@ function renderStep() {
     case "services":   clone.innerHTML = renderServices();   break;
     case "questions":  clone.innerHTML = renderQuestions();  break;
     case "sitevisit":  clone.innerHTML = renderSiteVisit();  break;
+    case "equipment":  clone.innerHTML = renderEquipment();  break;
     case "review":
       clone.innerHTML = renderReview();
       loadBlocksForReview();
@@ -182,10 +303,11 @@ function setContent(html) { document.getElementById("stepContent").innerHTML = h
 
 // ── Progress bar (horizontal tab style) ───────────────────────────────────────
 function progressHTML() {
-  const steps = ["Type", "Categories", "Services", "Review", "Done"];
+  const steps = ["Type", "Services", "Equipment", "Review", "Done"];
   const idx   = {
-    segment: 0, categories: 1,
-    services: 2, questions: 2, sitevisit: 2,
+    segment: 0, categories: 0,
+    services: 1, questions: 1, sitevisit: 1,
+    equipment: 2,
     review: 3,
     confirm: 4, photo: 4, booked: 4,
   };
@@ -480,7 +602,7 @@ function renderReview() {
     : null;
 
   return `
-    ${stepHeader(4, "Final Review &amp; Scheduling")}
+    ${stepHeader(5, "Final Review &amp; Scheduling")}
 
     <div class="q-price-footer">
       <div class="q-price-footer-label">
@@ -489,6 +611,19 @@ function renderReview() {
       <div class="q-price-footer-amount">
         $${price != null ? Number(price).toLocaleString() : "0.00"}
       </div>
+      ${(() => {
+        const equip = getEquipServices();
+        if (!equip.length) return "";
+        const lines = equip.map(svc => {
+          const cat = PRODUCT_CATALOG[svc.job_type_id];
+          const sku = S.equipmentSelections[svc.job_type_id];
+          const prod = cat?.products.find(p => p.sku === sku);
+          if (!prod) return "";
+          const delta = equipUpgradeDelta(svc);
+          return `<span style="display:block;">${SWORD_SVG}&nbsp;${escHtml(prod.brand)} ${escHtml(prod.name)}${delta > 0 ? ` <span style="font-size:11px;color:hsl(var(--primary));">(+$${delta} upgrade)</span>` : " <span style=\"font-size:11px;\">(standard)</span>"}</span>`;
+        }).filter(Boolean).join("");
+        return lines ? `<div class="q-price-footer-equip">${lines}</div>` : "";
+      })()}
       <div class="q-price-footer-sub">
         &#128205; A $25 travel fee may apply once your address is confirmed.
         ${S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
@@ -521,7 +656,7 @@ function renderConfirm() {
   const blockWindow  = S.selectedBlock?.window_label || "";
 
   return `
-    ${stepHeader(5, "Your Information")}
+    ${stepHeader(6, "Your Information")}
     <div class="q-confirm-summary">
       <div class="q-confirm-row">
         <span class="q-confirm-icon">${_SVG_CLOCK}</span>
@@ -632,7 +767,7 @@ function renderConfirm() {
 // ── Step 7: Photo gate ────────────────────────────────────────────────────────
 function renderPhoto() {
   return `
-    ${stepHeader(5, "One Quick Step")}
+    ${stepHeader(6, "One Quick Step")}
     <p class="q-muted" style="margin-bottom:20px;">
       Please upload a photo of your electrical panel so we can confirm compatibility before finalizing your booking.
     </p>
@@ -772,6 +907,77 @@ function renderSiteVisit() {
     ${NOTE}`;
 }
 
+// ── Step 5: Equipment / Material Picker ───────────────────────────────────────
+function renderEquipment() {
+  const equipSvcs = getEquipServices();
+
+  // Auto-select the standard (first) product for any service not yet chosen
+  for (const svc of equipSvcs) {
+    const cat = PRODUCT_CATALOG[svc.job_type_id];
+    if (!S.equipmentSelections[svc.job_type_id] && cat.products.length) {
+      S.equipmentSelections[svc.job_type_id] = cat.products[0].sku;
+    }
+  }
+
+  const sectionsHTML = equipSvcs.map(svc => {
+    const cat = PRODUCT_CATALOG[svc.job_type_id];
+    const jt  = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+    const selectedSku = S.equipmentSelections[svc.job_type_id];
+    const qtyLabel = svc.qty > 1 ? ` <span style="font-size:12px;color:hsl(var(--muted-fg));font-weight:400;">(${svc.qty} units — upgrade price per unit)</span>` : "";
+
+    const cardsHTML = cat.products.map((p, pi) => {
+      const isSel     = p.sku === selectedSku;
+      const isIncl    = p.upgrade_delta === 0;
+      const iconSVG   = cat.icon || '<polygon points="24,4 4,44 44,44"/>';
+      const imgOrIcon = p.img
+        ? `<img class="q-equip-img" src="${escHtml(p.img)}" alt="${escHtml(p.brand + ' ' + p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="q-equip-icon" style="display:none;">
+             <svg width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconSVG}</svg>
+           </div>`
+        : `<div class="q-equip-icon">
+             <svg width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconSVG}</svg>
+           </div>`;
+
+      return `
+        <div class="q-equip-card${isSel ? " selected" : ""}" data-typeid="${escHtml(svc.job_type_id)}" data-sku="${escHtml(p.sku)}" style="--sp-d:${0.04 + pi * 0.09}s;--sp-f:${0.20 + pi * 0.09}s;">
+          <div class="q-equip-img-col">${imgOrIcon}</div>
+          <div class="q-equip-body">
+            <div class="q-equip-brand">${escHtml(p.brand)}</div>
+            <div class="q-equip-name">${escHtml(p.name)}</div>
+            <div class="q-equip-desc">${escHtml(p.desc)}</div>
+            <div class="q-equip-badge ${isIncl ? "included" : "upgrade"}">
+              ${isSel ? `${SWORD_SVG}&nbsp;` : ""}${isIncl ? "Included in quote" : `+ $${p.upgrade_delta} per unit`}
+            </div>
+          </div>
+          <div class="q-equip-radio"></div>
+        </div>`;
+    }).join("");
+
+    return `
+      <div class="q-equip-section">
+        <div class="q-equip-section-title">${escHtml(jt?.name_public || cat.label)}${qtyLabel}</div>
+        <div class="q-equip-label">${escHtml(cat.label)}</div>
+        ${cat.note ? `<div class="q-equip-note">${escHtml(cat.note)}</div>` : ""}
+        <div class="q-equip-grid">${cardsHTML}</div>
+      </div>`;
+  }).join("");
+
+  return `
+    ${stepHeader(4, "Equipment &amp; Materials")}
+    <p class="q-muted" style="margin:-8px 0 22px;">
+      Choose the products that match your style and budget. All options include professional installation by our licensed crew.
+    </p>
+    ${sectionsHTML}
+    <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="equipNextBtn">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>See My Price</span>
+      </button>
+    </div>
+    ${NOTE}`;
+}
+
 // ── Event Binding ─────────────────────────────────────────────────────────────
 function bindEvents() {
   // Segment cards — click to select, Next Step to advance
@@ -866,6 +1072,7 @@ function bindEvents() {
     const hasQs     = (S.config?.questionsByType?.[pid]?.length || 0) > 0;
     const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     if (hasQs || hasAddons) go("questions");
+    else if (hasEquipmentCatalog()) go("equipment");
     else calcPrice();
   });
 
@@ -943,7 +1150,35 @@ function bindEvents() {
     inp.addEventListener("change", () => { S.answers[inp.name.replace("q_", "")] = inp.value; });
   });
 
-  document.getElementById("seePriceBtn")?.addEventListener("click", calcPrice);
+  document.getElementById("seePriceBtn")?.addEventListener("click", () => {
+    if (hasEquipmentCatalog()) go("equipment");
+    else calcPrice();
+  });
+
+  // Equipment card picker — radio-style within each service section
+  document.querySelectorAll(".q-equip-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const typeId = card.dataset.typeid;
+      const sku    = card.dataset.sku;
+      S.equipmentSelections[typeId] = sku;
+      // Update selected state for all cards in this type's section
+      document.querySelectorAll(`.q-equip-card[data-typeid="${typeId}"]`).forEach(c => {
+        const isSel = c === card;
+        c.classList.toggle("selected", isSel);
+        // Update the badge SVG sword indicator
+        const badge = c.querySelector(".q-equip-badge");
+        if (badge) {
+          const cat  = PRODUCT_CATALOG[typeId];
+          const cSku = c.dataset.sku;
+          const prod = cat?.products.find(p => p.sku === cSku);
+          const isIncl = (prod?.upgrade_delta || 0) === 0;
+          badge.innerHTML = `${isSel ? SWORD_SVG + "&nbsp;" : ""}${isIncl ? "Included in quote" : "+ $" + prod.upgrade_delta + " per unit"}`;
+        }
+      });
+    });
+  });
+
+  document.getElementById("equipNextBtn")?.addEventListener("click", calcPrice);
 
   // Review: advance to confirm once slot selected
   document.getElementById("goConfirmBtn")?.addEventListener("click", () => {
@@ -1095,7 +1330,10 @@ async function calcPrice() {
       if (!res.ok && res.error) throw new Error(res.error);
     }
 
-    const totalPrice = results.reduce((sum, r) => sum + (r.final_price || 0), 0);
+    // Add equipment upgrade deltas (client-side, per-unit × qty)
+    const totalPrice = results.reduce((sum, r, i) => {
+      return sum + (r.final_price || 0) + equipUpgradeDelta(S.selectedServices[i]);
+    }, 0);
     S.pricing = { ok: true, final_price: totalPrice, services: results, evaluation_flag: results.some(r => r.evaluation_flag) };
     S.selectedSlot  = null;
     S.selectedBlock = null;

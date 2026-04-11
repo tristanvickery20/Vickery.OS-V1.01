@@ -1039,6 +1039,110 @@
       animation-delay: var(--sp-d, 0.05s);
     }
 
+    /* ── Equipment / Material Picker ─────────────────────────────── */
+    .q-equip-section { margin-bottom: 26px; }
+    .q-equip-section-title {
+      font-size: 12px; font-weight: 800; color: hsl(var(--muted-fg));
+      text-transform: uppercase; letter-spacing: .08em; margin: 0 0 4px;
+    }
+    .q-equip-label {
+      font-size: 15px; font-weight: 800; color: hsl(var(--fg));
+      font-family: var(--font-display); margin: 0 0 6px;
+    }
+    .q-equip-note {
+      font-size: 12px; color: hsl(var(--muted-fg)); margin: 0 0 10px;
+      padding: 6px 10px; background: hsl(215 28% 97%); border-radius: 7px;
+      border-left: 3px solid hsl(var(--primary) / .35);
+    }
+    .q-equip-grid { display: flex; flex-direction: column; gap: 10px; }
+    .q-equip-card {
+      display: flex; align-items: center; background: white;
+      border: 2px solid hsl(var(--border)); border-radius: 14px;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s;
+      overflow: hidden; position: relative;
+    }
+    .q-equip-card:hover { border-color: hsl(var(--primary) / .45); }
+    .q-equip-card.selected {
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 3px hsl(var(--primary) / .10);
+    }
+    .q-equip-img-col {
+      width: 92px; min-height: 92px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: hsl(215 28% 96%); align-self: stretch;
+    }
+    .q-equip-img {
+      width: 76px; height: 76px; object-fit: contain; border-radius: 6px;
+    }
+    .q-equip-icon {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: hsl(var(--primary) / .12);
+      display: flex; align-items: center; justify-content: center;
+      color: hsl(var(--primary));
+    }
+    .q-equip-body {
+      flex: 1; min-width: 0; padding: 11px 10px 11px 14px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .q-equip-brand {
+      font-size: 10px; font-weight: 800; color: hsl(var(--primary));
+      letter-spacing: .1em; text-transform: uppercase;
+    }
+    .q-equip-name {
+      font-size: 14px; font-weight: 800; color: hsl(var(--fg));
+      line-height: 1.2; font-family: var(--font-display);
+    }
+    .q-equip-desc {
+      font-size: 11.5px; color: hsl(var(--muted-fg)); line-height: 1.4; margin-top: 2px;
+    }
+    .q-equip-badge {
+      display: inline-flex; align-items: center; gap: 3px; margin-top: 6px;
+      font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+      width: fit-content;
+    }
+    .q-equip-badge.included { background: hsl(142 55% 90%); color: hsl(142 55% 28%); }
+    .q-equip-badge.upgrade  { background: hsl(var(--primary) / .1); color: hsl(var(--primary)); }
+    .q-equip-radio {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid hsl(var(--border)); margin: 0 14px;
+      flex-shrink: 0; position: relative; transition: border-color .15s, background .15s;
+    }
+    .q-equip-card.selected .q-equip-radio {
+      border-color: hsl(var(--primary)); background: hsl(var(--primary));
+    }
+    .q-equip-card.selected .q-equip-radio::after {
+      content: ''; position: absolute; inset: 3px; border-radius: 50%; background: white;
+    }
+    /* Equipment summary in review price footer */
+    .q-price-footer-equip {
+      font-size: 13px; color: hsl(var(--fg)); margin: 8px 0 4px;
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 8px 12px; background: hsl(var(--primary) / .06);
+      border-radius: 8px; border: 1px solid hsl(var(--primary) / .15);
+    }
+    /* Dark mode */
+    html.dark .q-equip-card { background: hsl(220 10% 16%); border-color: hsl(220 10% 24%); }
+    html.dark .q-equip-card.selected { border-color: hsl(var(--primary)); }
+    html.dark .q-equip-img-col { background: hsl(220 10% 12%); }
+    html.dark .q-equip-note { background: hsl(220 10% 14%); }
+    html.dark .q-equip-badge.included { background: hsl(142 30% 16%); color: hsl(142 60% 65%); }
+    html.dark .q-price-footer-equip {
+      background: hsl(var(--primary) / .08); border-color: hsl(var(--primary) / .2);
+    }
+
+    /* Equipment card spark-appear animation */
+    #stepContent .q-equip-card {
+      visibility: hidden; opacity: 0;
+      animation: cardRevealVis .55s ease forwards, cardAppear .32s ease forwards;
+      animation-delay: var(--sp-d, .05s), var(--sp-f, .22s);
+    }
+    #stepContent .q-equip-card::before {
+      content: ''; position: absolute; inset: -2px; border-radius: 16px;
+      pointer-events: none; z-index: 3; visibility: visible;
+      animation: sparkGlow .52s ease forwards;
+      animation-delay: var(--sp-d, .05s);
+    }
+
     /* Stagger each nth-child (up to 8 items) */
     #stepContent .q-type-list  > *:nth-child(1),
     #stepContent .q-cat-list   > *:nth-child(1),
