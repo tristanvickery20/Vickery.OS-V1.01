@@ -130,9 +130,11 @@ async function handleEstimatorQuote(req, res) {
     const body = await readBody(req);
     const {
       segment, qty = 1,
-      answersByModule = {}, photoCount = 0,
+      photoCount = 0,
       customer_name = "", customer_phone = "", customer_email = "",
     } = body;
+    // Accept both "answersByModule" (canonical) and "answers" (legacy alias)
+    const answersByModule = body.answersByModule || body.answers || {};
 
     // ── Item 3: normalize service_id ─────────────────────────────────────────
     const raw_service_id = body.service_id;
