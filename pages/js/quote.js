@@ -17,6 +17,7 @@ const S = {
   photos: {},               // module_id → File[]
   addons: [],
   equipmentSelections: {},  // { [job_type_id]: sku } — one product pick per service
+  variantSelections:   {},  // { "typeId|sku": variantId } — finish/color per product
   pricing: null,            // {final_price, services:[]} — summed across all services
   lock: null,               // server lock response
   photoUploaded: false,
@@ -39,93 +40,247 @@ const _ICON_EV    = '<rect x="8" y="5" width="22" height="30" rx="6"/><path d="M
 const _ICON_DIMR  = '<rect x="10" y="8" width="28" height="32" rx="5"/><line x1="17" y1="24" x2="31" y2="24" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="currentColor" stroke="none"/>';
 
 const PRODUCT_CATALOG = {
+  // ── Recessed Lighting ───────────────────────────────────────────────────────
   "A001": {
-    label:    "Choose Your Recessed Lights",
-    note:     "Upgrade price is per fixture",
-    icon:     _ICON_BULB,
+    label: "Choose Your Recessed Lights",
+    note:  "Upgrade price is per fixture",
+    icon:  _ICON_BULB,
     products: [
-      { sku: "HALO-RL56",    brand: "Halo",    name: 'RL56 LED 5"/6"',         upgrade_delta:  0, img: null, desc: "65W equiv · 650 lm · 2700K warm white · Dimmable" },
-      { sku: "HALO-HLB6",    brand: "Halo",    name: "HLB6 Color-Select",       upgrade_delta: 28, img: null, desc: "Tunable 2700–5000K · Adjustable CCT · Slim profile" },
-      { sku: "LUTRON-HILUME", brand: "Lutron", name: 'Hi-lume ELV 6"',          upgrade_delta: 68, img: null, desc: "Ultra-smooth dim to <1% · Ideal for dining & living rooms" },
+      { sku: "HALO-RL56",    brand: "Halo",   name: 'RL56 LED 5"/6"',       upgrade_delta:  0, img: null,
+        desc: "65W equiv · 650 lm · 2700K warm white · Dimmable",
+        variants: [{ id: "wh", label: "White Baffle", swatch: "#f5f5f5", border: true },
+                   { id: "nb", label: "Brushed Nickel Baffle", swatch: "#a0a0a0" }] },
+      { sku: "HALO-HLB6",    brand: "Halo",   name: "HLB6 Color-Select",    upgrade_delta: 28, img: null,
+        desc: "Tunable 2700–5000K · Adjustable CCT · Slim profile",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true }] },
+      { sku: "LUTRON-HILUME", brand: "Lutron", name: 'Hi-lume ELV 6"',      upgrade_delta: 68, img: null,
+        desc: "Ultra-smooth dim to <1% · Best for dining & living rooms",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true }] },
     ],
   },
+  // ── Chandelier / Fixture ────────────────────────────────────────────────────
   "A003": {
-    label:    "Choose Your Fixture Style",
-    icon:     _ICON_BULB,
+    label: "Choose Your Fixture Style",
+    icon:  _ICON_BULB,
     products: [
-      { sku: "HB-3LT",        brand: "Hampton Bay", name: "Globe 3-Light",      upgrade_delta:  0, img: null, desc: "Clean lines · Brushed nickel · Fits most 4\" outlet boxes" },
-      { sku: "KICHLER-5216",  brand: "Kichler",     name: "Stetson 5-Light",    upgrade_delta: 95, img: null, desc: "Elegant design · LED included · Bronze or brushed nickel" },
-      { sku: "PROGRESS-P3926",brand: "Progress",    name: "Rogue 3-Light LED",  upgrade_delta:185, img: null, desc: "90+ CRI · Matte black or nickel · Dimmable LED built-in" },
+      { sku: "HB-3LT",        brand: "Hampton Bay", name: "Globe 3-Light",     upgrade_delta:  0, img: null,
+        desc: "Clean lines · Fits most 4\" outlet boxes · LED-ready",
+        variants: [{ id: "bn", label: "Brushed Nickel", swatch: "#9e9e9e" },
+                   { id: "mb", label: "Matte Black",    swatch: "#1a1a1a" }] },
+      { sku: "KICHLER-5216",  brand: "Kichler",     name: "Stetson 5-Light",   upgrade_delta: 95, img: null,
+        desc: "Elegant design · LED included · Olde Bronze or Brushed Nickel",
+        variants: [{ id: "oz", label: "Olde Bronze",    swatch: "#6b4c2a" },
+                   { id: "bn", label: "Brushed Nickel", swatch: "#9e9e9e" }] },
+      { sku: "PROGRESS-P3926", brand: "Progress",   name: "Rogue 3-Light LED", upgrade_delta:185, img: null,
+        desc: "90+ CRI · Dimmable LED built-in · Statement piece",
+        variants: [{ id: "mb", label: "Matte Black",    swatch: "#1a1a1a" },
+                   { id: "bn", label: "Brushed Nickel", swatch: "#9e9e9e" }] },
     ],
   },
+  // ── Ceiling Fan ─────────────────────────────────────────────────────────────
   "A004": {
-    label:    "Choose Your Ceiling Fan",
-    note:     "Upgrade price is per fan",
-    icon:     _ICON_FAN,
+    label: "Choose Your Ceiling Fan",
+    note:  "Upgrade price is per fan",
+    icon:  _ICON_FAN,
+    qualifiers: [
+      // Tall / vaulted ceiling → note about downrod hardware
+      { test: () => ["tall","vaulted","extreme"].includes(S.answers["CEILING_HEIGHT"]),
+        notice: "For ceilings over 10 ft your fan will need a longer downrod or angled mount adapter — we'll bring the right hardware.",
+        type: "info" },
+      // Very heavy fixture → fan-rated box note
+      { test: () => ["heavy","chandelier"].includes(S.answers["FIXTURE_WEIGHT"]),
+        notice: "A heavy-duty fan-rated ceiling box is required for this installation. We'll install one as part of the job.",
+        type: "info" },
+    ],
     products: [
-      { sku: "HUNTER-DEMPSEY",  brand: "Hunter",  name: 'Dempsey 52"',         upgrade_delta:  0, img: null, desc: "5 reversible blades · 3-speed pull chain · Matte black or white" },
-      { sku: "HUNTER-CRESTFIELD",brand:"Hunter",  name: 'Crestfield 52"',      upgrade_delta: 89, img: null, desc: "Integrated LED · Aged barnwood blades · Remote ready" },
-      { sku: "HUNTER-SIGNAL",   brand: "Hunter",  name: 'Signal 54" WiFi',     upgrade_delta:199, img: null, desc: "Smart WiFi · LED light kit · Alexa & Google compatible" },
+      { sku: "HUNTER-DEMPSEY",   brand: "Hunter", name: 'Dempsey 52"',       upgrade_delta:  0, img: null,
+        desc: "5 reversible blades · 3-speed pull chain · Hugger or downrod",
+        variants: [{ id: "mb", label: "Matte Black",         swatch: "#1a1a1a" },
+                   { id: "wh", label: "Fresh White",         swatch: "#f5f5f5", border: true },
+                   { id: "fw", label: "White / Bleached Oak", swatch: "#d4b896" }] },
+      { sku: "HUNTER-CRESTFIELD", brand: "Hunter", name: 'Crestfield 52"',   upgrade_delta: 89, img: null,
+        desc: "Integrated LED · Aged barnwood blades · Remote-ready",
+        variants: [{ id: "mb", label: "Matte Black",             swatch: "#1a1a1a" },
+                   { id: "ab", label: "Bn Nickel / Aged Barnwood", swatch: "#8b7355" }] },
+      { sku: "HUNTER-SIGNAL",    brand: "Hunter", name: 'Signal 54" WiFi',  upgrade_delta:199, img: null,
+        desc: "Smart WiFi · LED kit included · Alexa & Google compatible",
+        variants: [{ id: "mb", label: "Matte Black",   swatch: "#1a1a1a" },
+                   { id: "mn", label: "Matte Nickel",  swatch: "#b0b0b0" }] },
     ],
   },
+  // ── LED Retrofit ────────────────────────────────────────────────────────────
   "A007": {
-    label:    "Choose Your LED Bulbs",
-    note:     "Upgrade price is per fixture",
-    icon:     _ICON_BULB,
+    label: "Choose Your LED Bulbs",
+    note:  "Upgrade price is per fixture",
+    icon:  _ICON_BULB,
     products: [
-      { sku: "SYLVANIA-A19",   brand: "Sylvania", name: "LED A19 Soft White",  upgrade_delta:  0, img: null, desc: "60W equiv · 800 lm · 2700K · 11W · Dimmable" },
-      { sku: "CREE-BA19",      brand: "Cree",     name: "Exceptional LED A19", upgrade_delta: 18, img: null, desc: "90+ CRI · 25-year rated · 100% dimmable · True color" },
-      { sku: "PHILIPS-HUE-A19",brand: "Philips",  name: "Hue White Ambiance",  upgrade_delta: 52, img: null, desc: "Tunable 2200–6500K · Smart ready · Works with any hub" },
+      { sku: "SYLVANIA-A19",    brand: "Sylvania", name: "LED A19 Soft White",  upgrade_delta:  0, img: null,
+        desc: "60W equiv · 800 lm · 2700K · 11W · Dimmable" },
+      { sku: "CREE-BA19",       brand: "Cree",     name: "Exceptional LED A19", upgrade_delta: 18, img: null,
+        desc: "90+ CRI · 25-year rated · 100% dimmable · True color rendering" },
+      { sku: "PHILIPS-HUE-A19", brand: "Philips",  name: "Hue White Ambiance",  upgrade_delta: 52, img: null,
+        desc: "Tunable 2200–6500K · Smart ready · Works with any hub or app" },
     ],
   },
+  // ── Dimmer Switch ───────────────────────────────────────────────────────────
   "A008": {
-    label:    "Choose Your Dimmer Switch",
-    icon:     _ICON_DIMR,
+    label: "Choose Your Dimmer Switch",
+    icon:  _ICON_DIMR,
+    qualifiers: [
+      // Older home → likely no neutral wire at switch box → highlight Caseta
+      { test: () => ["pre_1950","1950_1970","1970_1990"].includes(S.answers["HOME_AGE"]),
+        notice: "Homes built before 1990 often don't have a neutral wire at the switch box. The Lutron Caseta works without one — we recommend it for this home.",
+        type: "info", highlightSku: "LUTRON-PD6WCL" },
+    ],
+    // Cross-service compatibility notices
+    compatNotices: [
+      { test: () => S.selectedServices.some(s => s.job_type_id === "A004"),
+        notice: "Standard light dimmers must never be wired to ceiling fan motors — this can overheat and damage the motor. Fan speed is controlled separately via pull chain. Your dimmer will control the fan's light kit only.",
+        type: "warning" },
+    ],
     products: [
-      { sku: "LEVITON-6674",   brand: "Leviton", name: "Decora 600W Dimmer",   upgrade_delta:  0, img: null, desc: "Slide dimmer · Works with LED & incandescent · White" },
-      { sku: "LUTRON-PD6WCL",  brand: "Lutron",  name: "Caseta Smart Dimmer",  upgrade_delta: 62, img: null, desc: "WiFi · No hub needed · Alexa, Siri & Google compatible" },
-      { sku: "LUTRON-PDCA60",  brand: "Lutron",  name: "Caseta Pro 3-Way Kit", upgrade_delta:119, img: null, desc: "Includes Pico remote · Best whole-room setup · Instant on" },
+      { sku: "LEVITON-6674",  brand: "Leviton", name: "Decora 600W Dimmer",  upgrade_delta:  0, img: null,
+        desc: "Slide dimmer · LED & incandescent · Up to 600W · Requires neutral",
+        variants: [{ id: "wh", label: "White",        swatch: "#f5f5f5", border: true },
+                   { id: "iv", label: "Ivory",         swatch: "#f0ead2", border: true },
+                   { id: "la", label: "Light Almond",  swatch: "#d4b896" }] },
+      { sku: "LUTRON-PD6WCL", brand: "Lutron",  name: "Caseta Smart Dimmer", upgrade_delta: 62, img: null,
+        desc: "WiFi · No neutral wire needed · Alexa, Siri & Google compatible",
+        variants: [{ id: "wh", label: "White",        swatch: "#f5f5f5", border: true },
+                   { id: "la", label: "Light Almond",  swatch: "#d4b896" }] },
+      { sku: "LUTRON-PDCA60", brand: "Lutron",  name: "Caseta Pro 3-Way Kit",upgrade_delta:119, img: null,
+        desc: "Controls light from 2 locations · Includes Pico remote · No neutral",
+        variants: [{ id: "wh", label: "White",        swatch: "#f5f5f5", border: true }] },
     ],
   },
+  // ── New Outlet ──────────────────────────────────────────────────────────────
   "A011": {
-    label:    "Choose Your Outlet",
-    icon:     _ICON_PLUG,
+    label: "Choose Your Outlet",
+    icon:  _ICON_PLUG,
+    // If room type is kitchen/bathroom/garage → override with GFCI catalog (code requirement)
+    qualifiers: [
+      { test: () => ["kitchen","bathroom","garage"].includes(S.answers["ROOM_TYPE"]),
+        overrideCatalogId: "A012",
+        notice: "NEC code requires GFCI protection in kitchens, bathrooms, and garages. Showing GFCI outlet options that meet code.",
+        type: "code" },
+    ],
     products: [
-      { sku: "LEVITON-T5325",  brand: "Leviton", name: "Decora 15A TR Outlet", upgrade_delta:  0, img: null, desc: "Tamper-resistant · Decora style · White or ivory" },
-      { sku: "LEVITON-T5632",  brand: "Leviton", name: "USB Type A+C Outlet",  upgrade_delta: 22, img: null, desc: "2 USB ports + 2 AC plugs · 3.6A USB combined · TR" },
-      { sku: "LEVITON-D215P",  brand: "Leviton", name: "Decora Smart Outlet",  upgrade_delta: 48, img: null, desc: "WiFi · App & voice control · Real-time energy monitoring" },
+      { sku: "LEVITON-T5325", brand: "Leviton", name: "Decora 15A TR Outlet",  upgrade_delta:  0, img: null,
+        desc: "Tamper-resistant · Decora style · Bedroom, living room & office",
+        variants: [{ id: "wh", label: "White",        swatch: "#f5f5f5", border: true },
+                   { id: "iv", label: "Ivory",         swatch: "#f0ead2", border: true },
+                   { id: "la", label: "Light Almond",  swatch: "#d4b896" }] },
+      { sku: "LEVITON-T5632", brand: "Leviton", name: "USB Type A+C Outlet",   upgrade_delta: 22, img: null,
+        desc: "2 USB ports + 2 AC plugs · 3.6A USB combined · Tamper-resistant",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true },
+                   { id: "bn", label: "Brown", swatch: "#5c4033" }] },
+      { sku: "LEVITON-D215P", brand: "Leviton", name: "Decora Smart Outlet",   upgrade_delta: 48, img: null,
+        desc: "WiFi · App & voice control · Real-time energy monitoring",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true }] },
     ],
   },
+  // ── GFCI Outlet ─────────────────────────────────────────────────────────────
   "A012": {
-    label:    "Choose Your GFCI Outlet",
-    icon:     _ICON_PLUG,
+    label: "Choose Your GFCI Outlet",
+    icon:  _ICON_PLUG,
     products: [
-      { sku: "LEVITON-GFNT1",  brand: "Leviton", name: "SmartlockPro 20A",     upgrade_delta:  0, img: null, desc: "Self-testing · LED indicator · Kitchens, baths & garages" },
-      { sku: "LEVITON-GFWT1",  brand: "Leviton", name: "SmartlockPro Wi-Fi",   upgrade_delta: 25, img: null, desc: "Smart GFCI · Remote monitoring via app · Auto self-test" },
-      { sku: "LEGRAND-1597TR", brand: "Legrand",  name: "USB + GFCI Outlet",   upgrade_delta: 42, img: null, desc: "USB-A charging + GFCI protection · Tamper-resistant" },
+      { sku: "LEVITON-GFNT1",  brand: "Leviton", name: "SmartlockPro 20A",  upgrade_delta:  0, img: null,
+        desc: "Self-testing · LED indicator · For kitchens, baths & garages",
+        variants: [{ id: "wh", label: "White",  swatch: "#f5f5f5", border: true },
+                   { id: "iv", label: "Ivory",   swatch: "#f0ead2", border: true }] },
+      { sku: "LEVITON-GFWT1",  brand: "Leviton", name: "SmartlockPro Wi-Fi",upgrade_delta: 25, img: null,
+        desc: "Smart GFCI · Remote trip monitoring via app · Auto self-test",
+        variants: [{ id: "wh", label: "White",  swatch: "#f5f5f5", border: true }] },
+      { sku: "LEGRAND-1597TR", brand: "Legrand",  name: "USB + GFCI Outlet", upgrade_delta: 42, img: null,
+        desc: "USB-A charging + GFCI protection · Tamper-resistant · 20A",
+        variants: [{ id: "wh", label: "White",  swatch: "#f5f5f5", border: true },
+                   { id: "iv", label: "Ivory",   swatch: "#f0ead2", border: true }] },
     ],
   },
+  // ── Smart Switch ────────────────────────────────────────────────────────────
   "A014": {
-    label:    "Choose Your Smart Switch",
-    icon:     _ICON_SWCH,
+    label: "Choose Your Smart Switch",
+    icon:  _ICON_SWCH,
+    qualifiers: [
+      { test: () => ["pre_1950","1950_1970","1970_1990"].includes(S.answers["HOME_AGE"]),
+        notice: "Older homes often lack a neutral wire at the switch box. The Lutron Caseta doesn't need one — we recommend it for this home.",
+        type: "info", highlightSku: "LUTRON-PD10NXD" },
+    ],
     products: [
-      { sku: "LEVITON-D26HD",  brand: "Leviton", name: "Decora Smart Wi-Fi",   upgrade_delta:  0, img: null, desc: "No hub required · Alexa & Google compatible · Decora trim" },
-      { sku: "LUTRON-PD10NXD", brand: "Lutron",  name: "Caseta Smart Switch",  upgrade_delta: 52, img: null, desc: "Industry-leading reliability · Pico remote compatible" },
-      { sku: "LUTRON-PD10NXD3",brand: "Lutron",  name: "Caseta 3-Way Kit",     upgrade_delta:119, img: null, desc: "Switch + Pico remote + Smart Bridge · Full 3-way setup" },
+      { sku: "LEVITON-D26HD",   brand: "Leviton", name: "Decora Smart Wi-Fi",  upgrade_delta:  0, img: null,
+        desc: "No hub required · Alexa & Google · Requires neutral wire",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true }] },
+      { sku: "LUTRON-PD10NXD",  brand: "Lutron",  name: "Caseta Smart Switch", upgrade_delta: 52, img: null,
+        desc: "No neutral needed · Best-in-class reliability · Pico remote compatible",
+        variants: [{ id: "wh", label: "White",       swatch: "#f5f5f5", border: true },
+                   { id: "la", label: "Light Almond", swatch: "#d4b896" }] },
+      { sku: "LUTRON-PD10NXD3", brand: "Lutron",  name: "Caseta 3-Way Kit",    upgrade_delta:119, img: null,
+        desc: "Switch + Pico remote + Smart Bridge · Full 3-way control · No neutral",
+        variants: [{ id: "wh", label: "White", swatch: "#f5f5f5", border: true }] },
     ],
   },
+  // ── EV Charger ──────────────────────────────────────────────────────────────
   "A028": {
-    label:    "Choose Your EV Charger",
-    icon:     _ICON_EV,
+    label: "Choose Your EV Charger",
+    icon:  _ICON_EV,
+    qualifiers: [
+      // Panel full → 50A/48A charger may not fit, highlight 40A
+      { test: () => S.answers["PANEL_SPACE"] === "no",
+        notice: "Your panel may be full. Adding a 40–50A breaker might require a subpanel or breaker expansion — our tech will assess on-site. A 40A charger is the lowest-impact option.",
+        type: "warning", highlightSku: "JUICEBOX-40" },
+      // Long wire run → voltage drop note
+      { test: () => S.answers["DISTANCE_FROM_PANEL"] === "over75",
+        notice: "At 75+ ft from the panel, voltage drop is a consideration. We'll size the wire correctly. A 40A charger may be the better choice for this run distance.",
+        type: "info", highlightSku: "JUICEBOX-40" },
+    ],
     products: [
-      { sku: "JUICEBOX-40",     brand: "JuiceBox",    name: "JuiceBox 40A",    upgrade_delta:  0, img: null, desc: "40A Level 2 · WiFi & energy tracking · ENERGY STAR" },
-      { sku: "CHARGEPOINT-FLEX",brand: "ChargePoint", name: "Home Flex 50A",   upgrade_delta:125, img: null, desc: "50A · Universal fit · ChargePoint app + Alexa · CPO backed" },
-      { sku: "EMPORIA-EVSE",    brand: "Emporia",     name: "Smart EV 48A",    upgrade_delta:175, img: null, desc: "48A · Solar-ready · Lowest cost per charge · Monitor via app" },
+      { sku: "JUICEBOX-40",     brand: "JuiceBox",    name: "JuiceBox 40A",   upgrade_delta:  0, img: null,
+        desc: "40A Level 2 · WiFi & energy tracking · ENERGY STAR · Best for most EVs" },
+      { sku: "CHARGEPOINT-FLEX",brand: "ChargePoint", name: "Home Flex 50A",  upgrade_delta:125, img: null,
+        desc: "50A · Adjustable 16–50A · ChargePoint app + Alexa" },
+      { sku: "EMPORIA-EVSE",    brand: "Emporia",     name: "Smart EV 48A",   upgrade_delta:175, img: null,
+        desc: "48A · Solar-ready · Energy monitoring · Lowest $/kWh" },
     ],
   },
 };
 
 // ── Equipment catalog helpers ──────────────────────────────────────────────────
+// Returns the effective catalog for a service, applying any qualifier overrides.
+function resolveEquipCatalog(svc) {
+  const base = PRODUCT_CATALOG[svc.job_type_id];
+  if (!base) return null;
+  for (const q of (base.qualifiers || [])) {
+    if (q.overrideCatalogId && q.test?.()) {
+      const over = PRODUCT_CATALOG[q.overrideCatalogId];
+      if (over) return { ...over, _notice: q.notice, _noticeType: q.type || "code", _overriddenFrom: svc.job_type_id };
+    }
+  }
+  return base;
+}
+// Returns active non-override notices for a service (and cross-service compat notices).
+function getEquipNotices(svc, cat) {
+  const notices = [];
+  const baseCat = PRODUCT_CATALOG[svc.job_type_id];
+  for (const q of (baseCat?.qualifiers || [])) {
+    if (!q.overrideCatalogId && q.test?.()) notices.push({ msg: q.notice, type: q.type || "info", highlightSku: q.highlightSku });
+  }
+  for (const q of (baseCat?.compatNotices || [])) {
+    if (q.test?.()) notices.push({ msg: q.notice, type: q.type || "info" });
+  }
+  if (cat?._notice) notices.push({ msg: cat._notice, type: cat._noticeType || "code" });
+  return notices;
+}
+// Returns global notices that apply to the entire equipment step (cross-service).
+function getGlobalEquipNotices() {
+  const notices = [];
+  const hasFan    = S.selectedServices.some(s => s.job_type_id === "A004");
+  const hasDimmer = S.selectedServices.some(s => s.job_type_id === "A008");
+  if (hasFan && hasDimmer) notices.push({
+    msg:  "Important: Standard light dimmers must not be wired to ceiling fan motors — this overheats and damages the motor. Dimmers control only the fan's light kit. Fan speed uses the pull chain.",
+    type: "warning",
+  });
+  return notices;
+}
 function hasEquipmentCatalog() {
   return S.selectedServices.some(svc => !!PRODUCT_CATALOG[svc.job_type_id]);
 }
@@ -133,12 +288,13 @@ function getEquipServices() {
   return S.selectedServices.filter(svc => !!PRODUCT_CATALOG[svc.job_type_id]);
 }
 function equipUpgradeDelta(svc) {
-  const cat = PRODUCT_CATALOG[svc.job_type_id];
+  const cat  = resolveEquipCatalog(svc);
   if (!cat) return 0;
-  const selSku = S.equipmentSelections[svc.job_type_id];
-  const prod   = cat.products.find(p => p.sku === selSku);
+  const prod = cat.products.find(p => p.sku === S.equipmentSelections[svc.job_type_id]);
   return (prod?.upgrade_delta || 0) * (svc.qty || 1);
 }
+// Variant selection key: "typeId|sku"
+function varKey(typeId, sku) { return typeId + "|" + sku; }
 
 // ── Helpers for primary service ────────────────────────────────────────────────
 function primaryTypeId() { return S.selectedServices[0]?.job_type_id || null; }
@@ -907,30 +1063,64 @@ function renderSiteVisit() {
     ${NOTE}`;
 }
 
-// ── Step 5: Equipment / Material Picker ───────────────────────────────────────
-function renderEquipment() {
-  const equipSvcs = getEquipServices();
+// ── Notice banner + Equipment picker ─────────────────────────────────────────
+function noticeHTML(msg, type) {
+  const iconPaths = {
+    code:    '<path d="M24 4L44 40H4L24 4Z" stroke-width="1.8" stroke-linejoin="round" fill="none"/><line x1="24" y1="19" x2="24" y2="30" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="36.5" r="2" fill="currentColor" stroke="none"/>',
+    warning: '<path d="M24 4L44 40H4L24 4Z" stroke-width="1.8" stroke-linejoin="round" fill="none"/><line x1="24" y1="19" x2="24" y2="30" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="36.5" r="2" fill="currentColor" stroke="none"/>',
+    info:    '<circle cx="24" cy="24" r="20" stroke-width="1.8" fill="none"/><circle cx="24" cy="14" r="2" fill="currentColor" stroke="none"/><line x1="24" y1="20" x2="24" y2="36" stroke-width="2.5" stroke-linecap="round"/>',
+  };
+  const cls = type === "warning" ? "q-notice--warning" : type === "code" ? "q-notice--code" : "q-notice--info";
+  return `<div class="q-equip-notice ${cls}">
+    <svg class="q-notice-icon" width="18" height="18" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${iconPaths[type] || iconPaths.info}</svg>
+    <span>${escHtml(msg)}</span>
+  </div>`;
+}
 
-  // Auto-select the standard (first) product for any service not yet chosen
+function renderEquipment() {
+  const equipSvcs     = getEquipServices();
+  const globalNotices = getGlobalEquipNotices();
+
+  // Auto-select first product and default variant for any service not yet chosen
   for (const svc of equipSvcs) {
-    const cat = PRODUCT_CATALOG[svc.job_type_id];
-    if (!S.equipmentSelections[svc.job_type_id] && cat.products.length) {
-      S.equipmentSelections[svc.job_type_id] = cat.products[0].sku;
+    const cat = resolveEquipCatalog(svc);
+    if (!cat) continue;
+    if (!S.equipmentSelections[svc.job_type_id]) {
+      S.equipmentSelections[svc.job_type_id] = cat.products[0]?.sku;
+    }
+    for (const p of cat.products) {
+      const vk = varKey(svc.job_type_id, p.sku);
+      if (p.variants?.length && !S.variantSelections[vk]) {
+        S.variantSelections[vk] = p.variants[0].id;
+      }
     }
   }
 
+  const globalNoticesHTML = globalNotices.map(n => noticeHTML(n.msg, n.type)).join("");
+
   const sectionsHTML = equipSvcs.map(svc => {
-    const cat = PRODUCT_CATALOG[svc.job_type_id];
-    const jt  = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+    const cat = resolveEquipCatalog(svc);
+    if (!cat) return "";
+    const jt          = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
     const selectedSku = S.equipmentSelections[svc.job_type_id];
-    const qtyLabel = svc.qty > 1 ? ` <span style="font-size:12px;color:hsl(var(--muted-fg));font-weight:400;">(${svc.qty} units — upgrade price per unit)</span>` : "";
+    const notices     = getEquipNotices(svc, cat);
+    const highlightSkus = notices.filter(n => n.highlightSku).map(n => n.highlightSku);
+
+    const noticesHTML  = notices.map(n => noticeHTML(n.msg, n.type)).join("");
+    const qtyLabel     = svc.qty > 1
+      ? `<span class="q-equip-qty-note">${svc.qty} units &mdash; upgrade price per unit</span>` : "";
+    const multiUnitNote = svc.qty > 1
+      ? `<div class="q-equip-multi-unit">This finish selection applies to all ${svc.qty} units. Let us know day-of if you need different finishes per room.</div>` : "";
 
     const cardsHTML = cat.products.map((p, pi) => {
-      const isSel     = p.sku === selectedSku;
-      const isIncl    = p.upgrade_delta === 0;
-      const iconSVG   = cat.icon || '<polygon points="24,4 4,44 44,44"/>';
+      const isSel       = p.sku === selectedSku;
+      const isIncl      = p.upgrade_delta === 0;
+      const isHighlight = highlightSkus.includes(p.sku);
+      const iconSVG     = cat.icon || '<polygon points="24,4 4,44 44,44"/>';
+
       const imgOrIcon = p.img
-        ? `<img class="q-equip-img" src="${escHtml(p.img)}" alt="${escHtml(p.brand + ' ' + p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        ? `<img class="q-equip-img" src="${escHtml(p.img)}" alt="${escHtml(p.brand + ' ' + p.name)}" loading="lazy"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
            <div class="q-equip-icon" style="display:none;">
              <svg width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconSVG}</svg>
            </div>`
@@ -938,16 +1128,37 @@ function renderEquipment() {
              <svg width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconSVG}</svg>
            </div>`;
 
+      // Variant picker — only rendered inside the selected card, and only if product has >1 variant
+      const vk = varKey(svc.job_type_id, p.sku);
+      const selectedVid = S.variantSelections[vk] || p.variants?.[0]?.id;
+      const variantPickerHTML = (isSel && (p.variants?.length ?? 0) > 1)
+        ? `<div class="q-equip-variants">
+             <span class="q-equip-variant-label">Finish</span>
+             ${(p.variants || []).map(v => `
+               <button class="q-equip-variant-btn${v.id === selectedVid ? " selected" : ""}"
+                       data-typeid="${escHtml(svc.job_type_id)}"
+                       data-sku="${escHtml(p.sku)}"
+                       data-varid="${escHtml(v.id)}"
+                       title="${escHtml(v.label)}">
+                 <span class="q-equip-swatch-dot" style="--sw-color:${escHtml(v.swatch)};${v.border ? "border-color:hsl(var(--border));" : ""}"></span>
+                 ${escHtml(v.label)}
+               </button>`).join("")}
+           </div>` : "";
+
       return `
-        <div class="q-equip-card${isSel ? " selected" : ""}" data-typeid="${escHtml(svc.job_type_id)}" data-sku="${escHtml(p.sku)}" style="--sp-d:${0.04 + pi * 0.09}s;--sp-f:${0.20 + pi * 0.09}s;">
+        <div class="q-equip-card${isSel ? " selected" : ""}${isHighlight ? " highlighted" : ""}"
+             data-typeid="${escHtml(svc.job_type_id)}" data-sku="${escHtml(p.sku)}"
+             style="--sp-d:${0.04 + pi * 0.09}s;--sp-f:${0.20 + pi * 0.09}s;">
           <div class="q-equip-img-col">${imgOrIcon}</div>
           <div class="q-equip-body">
+            ${isHighlight ? `<span class="q-equip-recommended">Recommended</span>` : ""}
             <div class="q-equip-brand">${escHtml(p.brand)}</div>
             <div class="q-equip-name">${escHtml(p.name)}</div>
             <div class="q-equip-desc">${escHtml(p.desc)}</div>
             <div class="q-equip-badge ${isIncl ? "included" : "upgrade"}">
-              ${isSel ? `${SWORD_SVG}&nbsp;` : ""}${isIncl ? "Included in quote" : `+ $${p.upgrade_delta} per unit`}
+              ${isSel ? SWORD_SVG + "&nbsp;" : ""}${isIncl ? "Included in quote" : `+ $${p.upgrade_delta} per unit`}
             </div>
+            ${variantPickerHTML}
           </div>
           <div class="q-equip-radio"></div>
         </div>`;
@@ -955,10 +1166,12 @@ function renderEquipment() {
 
     return `
       <div class="q-equip-section">
-        <div class="q-equip-section-title">${escHtml(jt?.name_public || cat.label)}${qtyLabel}</div>
+        <div class="q-equip-section-title">${escHtml(jt?.name_public || cat.label)} ${qtyLabel}</div>
         <div class="q-equip-label">${escHtml(cat.label)}</div>
         ${cat.note ? `<div class="q-equip-note">${escHtml(cat.note)}</div>` : ""}
+        ${noticesHTML}
         <div class="q-equip-grid">${cardsHTML}</div>
+        ${multiUnitNote}
       </div>`;
   }).join("");
 
@@ -967,6 +1180,7 @@ function renderEquipment() {
     <p class="q-muted" style="margin:-8px 0 22px;">
       Choose the products that match your style and budget. All options include professional installation by our licensed crew.
     </p>
+    ${globalNoticesHTML}
     ${sectionsHTML}
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
@@ -1156,24 +1370,28 @@ function bindEvents() {
   });
 
   // Equipment card picker — radio-style within each service section
+  // Re-renders the step (scroll-preserved) so variant pickers move with the selection
   document.querySelectorAll(".q-equip-card").forEach(card => {
-    card.addEventListener("click", () => {
+    card.addEventListener("click", e => {
+      if (e.target.closest(".q-equip-variant-btn")) return; // let variant handler run
       const typeId = card.dataset.typeid;
       const sku    = card.dataset.sku;
       S.equipmentSelections[typeId] = sku;
-      // Update selected state for all cards in this type's section
-      document.querySelectorAll(`.q-equip-card[data-typeid="${typeId}"]`).forEach(c => {
-        const isSel = c === card;
-        c.classList.toggle("selected", isSel);
-        // Update the badge SVG sword indicator
-        const badge = c.querySelector(".q-equip-badge");
-        if (badge) {
-          const cat  = PRODUCT_CATALOG[typeId];
-          const cSku = c.dataset.sku;
-          const prod = cat?.products.find(p => p.sku === cSku);
-          const isIncl = (prod?.upgrade_delta || 0) === 0;
-          badge.innerHTML = `${isSel ? SWORD_SVG + "&nbsp;" : ""}${isIncl ? "Included in quote" : "+ $" + prod.upgrade_delta + " per unit"}`;
-        }
+      const sy = window.scrollY;
+      go("equipment");
+      requestAnimationFrame(() => window.scrollTo(0, sy));
+    });
+  });
+
+  // Variant (color/finish) picker buttons
+  document.querySelectorAll(".q-equip-variant-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const { typeid: typeId, sku, varid: vid } = btn.dataset;
+      S.variantSelections[varKey(typeId, sku)] = vid;
+      // Update sibling button states without a full re-render
+      btn.closest(".q-equip-variants")?.querySelectorAll(".q-equip-variant-btn").forEach(b => {
+        b.classList.toggle("selected", b.dataset.varid === vid);
       });
     });
   });

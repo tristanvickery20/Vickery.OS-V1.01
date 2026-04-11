@@ -1130,6 +1130,75 @@
       background: hsl(var(--primary) / .08); border-color: hsl(var(--primary) / .2);
     }
 
+    /* Notice banners */
+    .q-equip-notice {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 14px; border-radius: 8px; margin-bottom: 10px;
+      font-size: 13px; line-height: 1.5;
+    }
+    .q-notice-icon { flex-shrink: 0; margin-top: 1px; }
+    .q-notice--info    { background: hsl(214 90% 96%); color: hsl(214 60% 34%); }
+    .q-notice--warning { background: hsl(0 70% 96%);   color: hsl(0 50% 36%); }
+    .q-notice--code    { background: hsl(142 60% 94%); color: hsl(142 55% 26%); }
+    html.dark .q-notice--info    { background: hsl(214 45% 15%); color: hsl(214 80% 75%); }
+    html.dark .q-notice--warning { background: hsl(0 35% 15%);   color: hsl(0 65% 72%); }
+    html.dark .q-notice--code    { background: hsl(142 25% 13%); color: hsl(142 65% 65%); }
+
+    /* Highlighted (Recommended) card */
+    .q-equip-card.highlighted {
+      border-color: hsl(var(--primary) / .55);
+      box-shadow: 0 0 0 3px hsl(var(--primary) / .1);
+    }
+    .q-equip-recommended {
+      display: inline-block; margin-bottom: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: hsl(var(--primary)); background: hsl(var(--primary) / .1);
+      border-radius: 4px; padding: 2px 7px;
+    }
+
+    /* Qty label inside section title */
+    .q-equip-qty-note {
+      font-size: 12px; color: hsl(var(--muted-fg)); font-weight: 400; margin-left: 6px;
+    }
+
+    /* Multi-unit note below card grid */
+    .q-equip-multi-unit {
+      font-size: 12px; color: hsl(var(--muted-fg)); line-height: 1.5;
+      margin-top: 8px; padding: 8px 12px;
+      background: hsl(var(--bg2)); border-radius: 7px;
+    }
+    html.dark .q-equip-multi-unit { background: hsl(220 10% 13%); }
+
+    /* Variant (color / finish) pill picker */
+    .q-equip-variants {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .q-equip-variant-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: hsl(var(--muted-fg)); flex-shrink: 0;
+    }
+    .q-equip-variant-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px 3px 5px; border-radius: 20px; cursor: pointer;
+      border: 1.5px solid hsl(var(--border)); background: transparent;
+      font-size: 11px; font-weight: 500; color: hsl(var(--muted-fg));
+      transition: border-color .12s, background .12s, color .12s;
+      white-space: nowrap;
+    }
+    .q-equip-variant-btn:hover { border-color: hsl(var(--primary) / .5); color: hsl(var(--fg)); }
+    .q-equip-variant-btn.selected {
+      border-color: hsl(var(--primary)); background: hsl(var(--primary) / .08);
+      color: hsl(var(--primary)); font-weight: 600;
+    }
+    .q-equip-swatch-dot {
+      width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+      background: var(--sw-color); border: 1.5px solid rgba(0,0,0,.14);
+    }
+    html.dark .q-equip-variant-btn { color: hsl(var(--muted-fg)); }
+    html.dark .q-equip-variant-btn.selected { background: hsl(var(--primary) / .15); }
+
     /* Equipment card spark-appear animation */
     #stepContent .q-equip-card {
       visibility: hidden; opacity: 0;
