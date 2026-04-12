@@ -442,11 +442,11 @@
     listEl.innerHTML = positions.map(p => {
       const moving   = p.speed > 3;
       const trips    = _tripsMap[String(p.deviceId)] || {};
-      const milesStr = trips.miles_today != null ? `${trips.miles_today} mi today` : null;
-      const timeStr  = trips.drive_minutes_today != null ? fmtDriveTime(trips.drive_minutes_today) : null;
-      const statsHtml = (milesStr || timeStr)
-        ? `<div class="truck-stats">${[milesStr, timeStr].filter(Boolean).map(s => `<span>${esc(s)}</span>`).join("")}</div>`
-        : "";
+      const milesVal = trips.miles_today ?? 0;
+      const driveMins = trips.drive_minutes_today ?? 0;
+      const milesStr = `${milesVal} mi today`;
+      const timeStr  = fmtDriveTime(driveMins) || "0m driving";
+      const statsHtml = `<div class="truck-stats"><span>${esc(milesStr)}</span><span>${esc(timeStr)}</span></div>`;
       const fixStr = p.fixTime
         ? new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
         : "—";
@@ -503,14 +503,14 @@
 
       const trips   = _tripsMap[String(p.deviceId)] || {};
       const speedStr = p.speed > 3 ? `${p.speed} mph` : "Stopped";
-      const milesStr = trips.miles_today != null ? `${trips.miles_today} mi today` : null;
-      const driveStr = trips.drive_minutes_today != null ? fmtDriveTime(trips.drive_minutes_today) : null;
-      const statsLine = [milesStr, driveStr].filter(Boolean).join(" · ");
+      const milesStr = `${trips.miles_today ?? 0} mi today`;
+      const driveStr = fmtDriveTime(trips.drive_minutes_today ?? 0) || "0m driving";
+      const statsLine = `${milesStr} · ${driveStr}`;
 
       const popup = new mapboxgl.Popup({ offset: 22, maxWidth: "210px", closeButton: true })
         .setHTML(`<strong>${esc(p.deviceName)}</strong>
           <div class="pop-meta">${speedStr}${p.fixTime ? ` · ${new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}` : ""}</div>
-          ${statsLine ? `<div class="pop-meta" style="margin-top:4px;">${esc(statsLine)}</div>` : ""}`);
+          <div class="pop-meta" style="margin-top:4px;">${esc(statsLine)}</div>`);
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([p.lng, p.lat])
