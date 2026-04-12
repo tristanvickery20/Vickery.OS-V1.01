@@ -43,16 +43,36 @@ const _ICON_BOX   = '<rect x="7" y="20" width="34" height="22" rx="3"/><path d="
 // ── "Not sure" injection config ────────────────────────────────────────────────
 // Modules where we inject a client-side "Not sure" option. Customers aren't
 // electricians — if they can't answer a technical question the quote must still flow.
-// Selecting "not sure" stores value="not_sure" which evaluates as the safe neutral
-// default in all qualifier checks (no restrictive notices fire; base pricing used).
+// Selecting "_unsure" stores value="_unsure" which triggers a 15% contingency buffer
+// in the engine and evaluates as the safe neutral default in all qualifier checks.
 const NOT_SURE_MODULES = {
   "HOME_AGE":            "Not sure — our tech can assess this on-site",
   "CEILING_HEIGHT":      "Not sure — I can't tell / haven't measured",
   "FIXTURE_WEIGHT":      "Not sure — looks standard",
   "FAN_EXISTING_WIRING": "Not sure — haven't checked the ceiling",
   "CRAWLSPACE_ACCESS":   "Not sure / not applicable",
-  "CIRCUIT_SCOPE":       "Not sure — I need your advice",
-  "CONDUIT_REQUIRED":    "Not sure — haven't checked the route",
+};
+
+// ── Hidden modules (never shown to customer) ───────────────────────────────────
+// These are technical questions only an electrician can answer. They are silently
+// excluded from the customer flow — the engine will use its safe defaults.
+const HIDDEN_MODULES = new Set([
+  "CONDUIT_REQUIRED",  // Electrician's call — customer cannot assess conduit route
+  "EXISTING_BOX",      // Box fixture-rating — default assumption: box exists
+]);
+
+// ── Module-level question overrides ───────────────────────────────────────────
+// Replaces the sheet's question text/options with simpler customer-answerable phrasing.
+// The option_ids must still match Driver_Multipliers so the engine picks up multipliers.
+const MODULE_OVERRIDES = {
+  "CIRCUIT_SCOPE": {
+    prompt: "Is there already a switch or outlet at this exact location?",
+    options: [
+      { option_id: "device_swap",     label: "Yes — I'm replacing the existing one at the same spot" },
+      { option_id: "extend_existing", label: "No — it's a brand new spot with nothing there now" },
+      { option_id: "_unsure",         label: "Not sure — I'd like your advice on-site", _injected: true },
+    ],
+  },
 };
 
 const PRODUCT_CATALOG = {
@@ -245,6 +265,7 @@ const PRODUCT_CATALOG = {
   // ── EV Charger ──────────────────────────────────────────────────────────────
   "A028": {
     label: "Choose Your EV Charger",
+    note:  "Your charger preference will be included in your site visit quote — no pricing impact now.",
     icon:  _ICON_EV,
     qualifiers: [
       // Panel full → 50A/48A charger may not fit, highlight 40A
@@ -263,9 +284,9 @@ const PRODUCT_CATALOG = {
     products: [
       { sku: "JUICEBOX-40",     brand: "JuiceBox",    name: "JuiceBox 40A",   upgrade_delta:  0, img: null,
         desc: "40A Level 2 · WiFi & energy tracking · ENERGY STAR · Best for most EVs" },
-      { sku: "CHARGEPOINT-FLEX",brand: "ChargePoint", name: "Home Flex 50A",  upgrade_delta:125, img: null,
+      { sku: "CHARGEPOINT-FLEX",brand: "ChargePoint", name: "Home Flex 50A",  upgrade_delta:  0, img: null,
         desc: "50A · Adjustable 16–50A · ChargePoint app + Alexa" },
-      { sku: "EMPORIA-EVSE",    brand: "Emporia",     name: "Smart EV 48A",   upgrade_delta:175, img: null,
+      { sku: "EMPORIA-EVSE",    brand: "Emporia",     name: "Smart EV 48A",   upgrade_delta:  0, img: null,
         desc: "48A · Solar-ready · Energy monitoring · Lowest $/kWh" },
     ],
   },
@@ -322,6 +343,34 @@ function equipUpgradeDelta(svc) {
 }
 // Variant selection key: "typeId|sku"
 function varKey(typeId, sku) { return typeId + "|" + sku; }
+
+// Builds an array of equipment selections with display info for the server snapshot.
+// Called before lock so crew invoice generator can read named line items from the snapshot.
+function buildEquipmentLineItems() {
+  return getEquipServices().flatMap(svc => {
+    const sku = S.equipmentSelections[svc.job_type_id];
+    if (!sku) return [];
+    const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+    const svcName = jt?.name_public || svc.job_type_id;
+    if (sku === "CUSTOMER-PROVIDED") {
+      return [{ job_type_id: svc.job_type_id, service_name: svcName, sku, name: "Customer-provided", brand: null, variant: null, upgrade_delta: 0 }];
+    }
+    const cat  = resolveEquipCatalog(svc);
+    const prod = cat?.products.find(p => p.sku === sku);
+    if (!prod) return [];
+    const vid     = S.variantSelections[varKey(svc.job_type_id, sku)];
+    const variant = prod.variants?.find(v => v.id === vid);
+    return [{
+      job_type_id:   svc.job_type_id,
+      service_name:  svcName,
+      sku,
+      name:          prod.name,
+      brand:         prod.brand,
+      variant:       variant?.label || null,
+      upgrade_delta: (prod.upgrade_delta || 0) * (svc.qty || 1),
+    }];
+  });
+}
 
 // ── Helpers for primary service ────────────────────────────────────────────────
 function primaryTypeId() { return S.selectedServices[0]?.job_type_id || null; }
@@ -667,7 +716,8 @@ function renderServices() {
 // ── Step 4: Questions + Add-ons ───────────────────────────────────────────────
 function renderQuestions() {
   const pid       = primaryTypeId();
-  const questions = S.config?.questionsByType?.[pid] || [];
+  const questions = (S.config?.questionsByType?.[pid] || [])
+    .filter(q => !HIDDEN_MODULES.has(q.question_id));
   const addons    = S.config?.addonsByType?.[pid]   || [];
 
   return `
@@ -706,7 +756,9 @@ function renderQuestions() {
 }
 
 function renderQuestion(q) {
-  const options  = S.config?.optionsByQuestion?.[q.question_id] || [];
+  const override = MODULE_OVERRIDES[q.question_id];
+  if (override) q = { ...q, ...override };
+  const options  = q.options || S.config?.optionsByQuestion?.[q.question_id] || [];
   // yesno with no options → synthesize Yes / No choices
   const itype = q.input_type || "single_select";
   const effectiveOptions = (itype === "yesno" && !options.length)
@@ -749,13 +801,14 @@ function renderQuestion(q) {
       </div>`;
   }
 
-  // Inject a "Not sure" option for modules where customers commonly can't answer
+  // Inject a "Not sure" option for modules where customers commonly can't answer.
+  // Stores value="_unsure" so the engine adds a 15% contingency buffer.
   const notSureLabel = NOT_SURE_MODULES[q.question_id];
   const hasNotSureAlready = effectiveOptions.some(o =>
-    /not.sure|unknown|unsure/i.test(o.label) || o.option_id === "not_sure" || o.option_id === "unknown"
+    /not.sure|unknown|unsure/i.test(o.label) || o.option_id === "_unsure" || o.option_id === "not_sure" || o.option_id === "unknown"
   );
   const allOptions = (effectiveOptions.length && notSureLabel && !hasNotSureAlready)
-    ? [...effectiveOptions, { option_id: "not_sure", label: notSureLabel, _injected: true }]
+    ? [...effectiveOptions, { option_id: "_unsure", label: notSureLabel, _injected: true }]
     : effectiveOptions;
 
   return `
@@ -1842,7 +1895,7 @@ async function reprice(zip) {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, zip }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, zip, equipment_line_items: buildEquipmentLineItems() }),
     });
     const data = await r.json();
     if (data.final_price != null) {
@@ -1890,7 +1943,7 @@ async function submitLock() {
   try {
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems() }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");

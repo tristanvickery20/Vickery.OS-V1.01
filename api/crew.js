@@ -427,6 +427,11 @@ async function handleGenerateInvoice(req, res) {
       let totalHours = parseFloat(sGet("total_hours"))        || 0;
       let addons = [];
       try { addons = JSON.parse(sGet("selected_addons_json") || "[]"); } catch {}
+      let snapEquipItems = [];
+      try {
+        const snapOpts = JSON.parse(sGet("selected_options_json") || "{}");
+        if (Array.isArray(snapOpts.equipment_line_items)) snapEquipItems = snapOpts.equipment_line_items;
+      } catch {}
 
       // Snapshot has no cost breakdown — derive proportional breakdown from CRM JobTypes + Rates
       if (laborCost === 0 && materials === 0) {
@@ -497,6 +502,16 @@ async function handleGenerateInvoice(req, res) {
             description: "", quantity: 1, unit_price: fee, taxable: false, line_total: fee,
           });
         }
+      });
+      // Equipment selections from quote snapshot — always listed so crew knows what to bring
+      snapEquipItems.forEach((eq, i) => {
+        const delta = Number(eq.upgrade_delta) || 0;
+        const label = [eq.brand, eq.name, eq.variant].filter(Boolean).join(" ");
+        const desc  = delta > 0 ? `Upgrade +$${delta}` : "Included in quote";
+        lineItems.push({
+          id: `LI-equip-${i}`, title: `Equipment: ${label || eq.sku || "Selected product"}`,
+          description: desc, quantity: 1, unit_price: delta, taxable: false, line_total: delta,
+        });
       });
     }
 

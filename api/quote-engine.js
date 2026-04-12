@@ -459,6 +459,7 @@ async function handleQuoteLock(req, res) {
       quote_id, job_type_id, answers, addons, qty,
       customer_name, phone, email, address, zip, lead_source,
       sms_opt_in, sms_marketing_consent,
+      equipment_line_items,
     } = body;
 
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
@@ -543,7 +544,7 @@ async function handleQuoteLock(req, res) {
       quote_id,
       event_type:            "locked",
       job_type_id,
-      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty, classification: cls.status }),
+      selected_options_json: JSON.stringify({ answers: answers || {}, qty: resolvedQty, classification: cls.status, equipment_line_items: equipment_line_items || [] }),
       selected_addons_json:  JSON.stringify(addons || []),
       total_hours:           pricing.hours,
       labor_cost:            pricing.labor_cost,
