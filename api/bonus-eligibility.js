@@ -1,5 +1,7 @@
 const { getSheetsClient } = require("../lib/sheets");
-const { getConfig } = require("../lib/config");
+const { getConfig }       = require("../lib/config");
+const { getCrewSession }  = require("../lib/staff");
+const { isAuthed }        = require("../lib/auth");
 
 function num(x) {
   const n = Number(x);
@@ -47,23 +49,58 @@ async function handleBonusEligibility(req, res) {
     res.end(JSON.stringify(data));
   }
 
-  const url     = new URL(req.url, "http://localhost");
-  const leadId  = (url.searchParams.get("lead_id")  || "").trim();
-  const quoteId = (url.searchParams.get("quote_id") || "").trim();
-  if (!leadId && !quoteId) return json(400, { ok: false, error: "lead_id or quote_id is required" });
+  const url       = new URL(req.url, "http://localhost");
+  const leadId    = (url.searchParams.get("lead_id")    || "").trim();
+  let   quoteId   = (url.searchParams.get("quote_id")   || "").trim();
+  const bookingId = (url.searchParams.get("booking_id") || "").trim();
+  if (!leadId && !quoteId && !bookingId) {
+    return json(400, { ok: false, error: "lead_id, quote_id, or booking_id is required" });
+  }
+
+  // Auth: crew sessions may only query their own assigned jobs (must provide booking_id)
+  const crewSession = getCrewSession(req);
+  const crmAdmin    = isAuthed(req);
+  if (crewSession && !crmAdmin && !bookingId) {
+    return json(403, { ok: false, error: "Crew sessions must provide booking_id" });
+  }
 
   try {
     const sheets = await getSheetsClient();
     const sid    = process.env.CRM_SHEET_ID;
 
-    const [config, timeData, expData, clientsData, attachData, invoicesData] = await Promise.all([
+    const [config, timeData, expData, clientsData, attachData, invoicesData, bookingsData] = await Promise.all([
       getConfig(),
       fetchTabRows(sheets, sid, "Time!A1:L2000"),
       fetchTabRows(sheets, sid, "Expenses!A1:J2000"),
       fetchTabRows(sheets, sid, "Clients!A1:ZZ5000"),
       fetchTabRows(sheets, sid, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, sid, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
+      bookingId
+        ? fetchTabRows(sheets, sid, "Bookings!A1:ZZ2000").catch(() => ({ headers: [], rows: [] }))
+        : Promise.resolve({ headers: [], rows: [] }),
     ]);
+
+    // ── Booking path: verify ownership + resolve quoteId ──
+    if (bookingId) {
+      const bIdx = {};
+      (bookingsData.headers || []).forEach((h, i) => { bIdx[h] = i; });
+      const bRow = (bookingsData.rows || []).find((r) =>
+        String(r[bIdx["booking_id"]] ?? "").trim() === bookingId
+      );
+      if (crewSession && !crmAdmin) {
+        // Crew sessions must be assigned to this booking
+        if (!bRow) return json(403, { ok: false, error: "Booking not found or not authorized" });
+        const techId  = String(bRow[bIdx["assigned_tech_id"]] ?? "").trim();
+        const techIds = String(bRow[bIdx["assigned_tech_ids"]] ?? "").trim();
+        const mine    = techId === crewSession.staffId
+          || techIds.split(",").map((s) => s.trim()).includes(crewSession.staffId);
+        if (!mine) return json(403, { ok: false, error: "Not authorized to view this job's bonus data" });
+      }
+      // Resolve quoteId from booking if not already provided
+      if (bRow && !quoteId) {
+        quoteId = String(bRow[bIdx["quote_id"]] ?? "").trim();
+      }
+    }
 
     const laborRateTech = num(config.labor_rate_tech || 50);
     const burdenPct     = num(config.burden_pct     || 0);
@@ -140,7 +177,8 @@ async function handleBonusEligibility(req, res) {
       }
     }
 
-    // ── Collected revenue: sum paid_amount from Invoices tab for this lead ──
+    // ── Collected revenue: sum paid_amount from Invoices tab for this lead/booking ──
+    // Matches by lead_id (canonical) OR booking_id (crew path — booking_id on invoice is exact match)
     const iLeadIdx = invoicesData.headers.indexOf("lead_id");
     const iPaidIdx = invoicesData.headers.indexOf("paid_amount");
     const iBkgIdx  = invoicesData.headers.indexOf("booking_id");
@@ -150,7 +188,7 @@ async function handleBonusEligibility(req, res) {
         const invLead = iLeadIdx >= 0 ? String(row[iLeadIdx] || "").trim() : "";
         const invBkg  = iBkgIdx  >= 0 ? String(row[iBkgIdx]  || "").trim() : "";
         const matches = (invLead && invLead === resolvedLeadId)
-                     || (quoteId && invBkg === quoteId);
+                     || (bookingId && invBkg === bookingId);
         if (!matches) continue;
         collectedRevenue += num(row[iPaidIdx]);
       }
