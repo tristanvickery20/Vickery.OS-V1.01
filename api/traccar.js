@@ -402,18 +402,47 @@ async function poll() {
 // ── Trips endpoint ────────────────────────────────────────────────────────
 
 // Returns today's Chicago-local midnight as an ISO UTC string.
+// Uses a probe-based approach to avoid the Intl `hour=24` quirk (which can occur
+// with hour12:false on some V8/ICU builds when the local hour is midnight).
 function todayChicagoMidnightIso() {
   const now = new Date();
-  const fmt = new Intl.DateTimeFormat("en-US", {
+
+  // Step 1 — Get today's Chicago date as "YYYY-MM-DD" (en-CA gives ISO date format).
+  const chicagoDateStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Chicago",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(now).map(p => [p.type, p.value]));
-  const secsSinceMidnight =
-    parseInt(parts.hour, 10) * 3600 +
-    parseInt(parts.minute, 10) * 60 +
-    parseInt(parts.second, 10);
-  return new Date(now.getTime() - secsSinceMidnight * 1000).toISOString();
+  }).format(now); // e.g. "2026-04-12"
+
+  // Step 2 — Find the UTC instant that is midnight in Chicago.
+  // America/Chicago is UTC-5 (CDT, ~Mar–Nov) or UTC-6 (CST, ~Nov–Mar).
+  // Probe both offsets and pick the one whose UTC time round-trips back to hour 0 Chicago.
+  for (const utcOffsetHours of [5, 6]) {
+    const candidate = new Date(chicagoDateStr + "T00:00:00.000Z");
+    candidate.setUTCHours(utcOffsetHours); // advance to 05:00Z or 06:00Z
+    // Verify: format candidate back to Chicago hour using hourCycle h23 (0–23, never 24).
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric", hourCycle: "h23",
+    }).formatToParts(candidate);
+    const hour = parseInt((parts.find(p => p.type === "hour") || {}).value || "1", 10);
+    if (hour === 0) {
+      console.log(`[traccar/trips] today window: ${chicagoDateStr}T00:00 Chicago = ${candidate.toISOString()} UTC`);
+      return candidate.toISOString();
+    }
+  }
+
+  // Fallback (unreachable in practice): subtract seconds-since-midnight from now.
+  // hourCycle h23 guarantees 0–23 range — immune to the "hour=24" Intl quirk.
+  const timeParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const tp = Object.fromEntries(timeParts.map(p => [p.type, p.value]));
+  const h  = Math.min(parseInt(tp.hour   || "0", 10), 23);
+  const m  = parseInt(tp.minute  || "0", 10);
+  const s  = parseInt(tp.second  || "0", 10);
+  const midnight = new Date(now.getTime() - (h * 3600 + m * 60 + s) * 1000);
+  console.log(`[traccar/trips] today window (fallback): ${chicagoDateStr}T00:00 Chicago = ${midnight.toISOString()} UTC`);
+  return midnight.toISOString();
 }
 
 // Fetch today's trips from Traccar and aggregate per device.
