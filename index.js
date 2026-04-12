@@ -218,6 +218,15 @@ const server = http.createServer(async (req, res) => {
   if (req.url.split("?")[0] === "/api/crew/invoice-for-booking" && req.method === "GET") {
     return handleGetInvoiceForBooking(req, res);
   }
+  // Bonus eligibility — require crew OR CRM session
+  if (_epath === "/api/bonus-eligibility" && req.method === "GET") {
+    if (!getCrewSession(req) && !isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    return handleBonusEligibility(req, res);
+  }
+
   // Time and expense POSTs — require crew OR CRM session (not fully public)
   if (req.url === "/api/time" && req.method === "POST") {
     if (!getCrewSession(req) && !isAuthed(req)) {
@@ -678,10 +687,6 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/dashboard") && req.method === "GET") {
     if (_epath === "/api/dashboard/financials") return handleDashboardFinancials(req, res);
     return handleDashboard(req, res);
-  }
-
-  if (_epath === "/api/bonus-eligibility" && req.method === "GET") {
-    return handleBonusEligibility(req, res);
   }
 
   if (req.url.startsWith("/api/audit") && req.method === "GET") {

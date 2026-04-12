@@ -67,17 +67,20 @@ async function handleBonusEligibility(req, res) {
     const burdenPct     = num(config.burden_pct     || 0);
     const loadedRate    = laborRateTech * (1 + burdenPct / 100);
 
-    // ── Time: sum minutes for this lead ──
-    const tLeadIdx = timeData.headers.indexOf("lead_id");
-    const tMinIdx  = timeData.headers.indexOf("minutes");
+    // ── Time: sum WORK minutes for this lead (exclude drive/admin) ──
+    const tLeadIdx  = timeData.headers.indexOf("lead_id");
+    const tMinIdx   = timeData.headers.indexOf("minutes");
+    const tCatIdx   = timeData.headers.indexOf("category");
+    const NON_WORK  = new Set(["drive", "travel", "admin", "overhead"]);
     let totalMinutes  = 0;
     let timeEntries   = 0;
     if (tLeadIdx >= 0 && tMinIdx >= 0) {
       for (const row of timeData.rows) {
-        if (String(row[tLeadIdx] || "").trim() === leadId) {
-          totalMinutes += num(row[tMinIdx]);
-          timeEntries++;
-        }
+        if (String(row[tLeadIdx] || "").trim() !== leadId) continue;
+        const cat = tCatIdx >= 0 ? String(row[tCatIdx] || "").trim().toLowerCase() : "";
+        if (NON_WORK.has(cat)) continue;
+        totalMinutes += num(row[tMinIdx]);
+        timeEntries++;
       }
     }
     const laborCost = Math.round(((totalMinutes / 60) * loadedRate) * 100) / 100;

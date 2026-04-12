@@ -92,13 +92,15 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, quotesData, snapshotsData, config] = await Promise.all([
+    const [leadsData, timeData, expData, quotesData, snapshotsData, config, attachData, clientsData] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       fetchTabRows(sheets, spreadsheetId, "Quotes!A1:G2000"),
       fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A1:Z"),
       getConfig(),
+      fetchTabRows(sheets, spreadsheetId, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const laborRateTech = Number(config.labor_rate_tech || 50);
@@ -108,6 +110,23 @@ async function handleDashboard(req, res) {
     const leads = leadsData.rows
       .filter((r) => r.some((cell) => String(cell || "").trim() !== ""))
       .map((r) => parseLeadRow(leadsData.headers, r));
+
+    // Build a combined lead set for bonus/profit-share computations (Leads tab + Clients tab)
+    const clientLeadsForBonus = (clientsData.rows || [])
+      .filter((r) => r && r.some((cell) => String(cell || "").trim() !== ""))
+      .map((r) => {
+        const obj = {};
+        (clientsData.headers || []).forEach((h, i) => { obj[h] = r[i] ?? ""; });
+        obj.id            = String(obj.lead_id || obj.id || "").trim();
+        obj.paid_amount   = num(obj.paid_amount);
+        obj.invoiced_amount = num(obj.invoiced_amount);
+        obj.quoted_price  = num(obj.quoted_price);
+        return obj;
+      })
+      .filter((r) => r.id);
+
+    const leadsTabIds    = new Set(leads.map((l) => l.id));
+    const allLeadsForBonus = [...leads, ...clientLeadsForBonus.filter((c) => !leadsTabIds.has(c.id))];
 
     const today = todayUTC();
     const week = getCurrentWeekUTC();
@@ -334,12 +353,17 @@ async function handleDashboard(req, res) {
 
     const completed_not_invoiced = leads.filter((l) => st(l) === "complete").length;
 
-    const tLeadIdx = timeData.headers.indexOf("lead_id");
-    const tMinIdx2 = timeData.headers.indexOf("minutes");
+    // ── Labor minutes (work category only, excluding drive/admin) ──
+    const tLeadIdx    = timeData.headers.indexOf("lead_id");
+    const tMinIdx2    = timeData.headers.indexOf("minutes");
+    const tCatIdx2    = timeData.headers.indexOf("category");
+    const NON_WORK_D  = new Set(["drive", "travel", "admin", "overhead"]);
     const laborMinByLead = {};
     for (const row of timeData.rows) {
       const lid = String(row[tLeadIdx] || "").trim();
       if (!lid) continue;
+      const cat = tCatIdx2 >= 0 ? String(row[tCatIdx2] || "").trim().toLowerCase() : "";
+      if (NON_WORK_D.has(cat)) continue;
       laborMinByLead[lid] = (laborMinByLead[lid] || 0) + num(row[tMinIdx2]);
     }
 
@@ -350,6 +374,21 @@ async function handleDashboard(req, res) {
       const lid = String(row[eLeadIdx2] || "").trim();
       if (!lid) continue;
       expCostByLead[lid] = (expCostByLead[lid] || 0) + num(row[eAmtIdx2]);
+    }
+
+    // ── Photos per lead from Attachments tab ──
+    const aEntityIdIdx = attachData.headers.indexOf("entity_id");
+    const aFileUrlIdx  = attachData.headers.indexOf("file_url");
+    const photosPerLead = {};
+    if (aEntityIdIdx >= 0 && aFileUrlIdx >= 0) {
+      for (const row of attachData.rows) {
+        const lid  = String(row[aEntityIdIdx] || "").trim();
+        if (!lid) continue;
+        const url2 = String(row[aFileUrlIdx] || "").toLowerCase();
+        if (/\.(png|jpg|jpeg|webp|gif)(\?|$)/.test(url2)) {
+          photosPerLead[lid] = (photosPerLead[lid] || 0) + 1;
+        }
+      }
     }
 
     let total_labor_cost_this_week = 0;
@@ -375,45 +414,103 @@ async function handleDashboard(req, res) {
       ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 10000) / 100
       : null;
 
-    // ── Bonus Tracker ──
-    function bonusAmount(collected) {
+    // ── Bonus Tracker (all 4 tests, current-month payroll period) ──
+    function bonusTierAmt(collected) {
       if (collected < 1000) return 50;
       if (collected < 5000) return 100;
       return 150;
     }
-    const bonusCompletedStatuses = new Set(["complete", "closed", "paid"]);
-    let bonusEarned = 0, bonusPending = 0, bonusMarginFail = 0, bonusDocFail = 0;
-    let bonusTotalEarned = 0;
-    const now = new Date();
-    for (const l of leads) {
-      if (!bonusCompletedStatuses.has(st(l))) continue;
-      const collected    = num(l.paid_amount) > 0 ? num(l.paid_amount) : num(l.invoiced_amount);
-      const labMin       = laborMinByLead[l.id] || 0;
-      const labCost      = (labMin / 60) * loadedRate;
-      const expCost      = expCostByLead[l.id] || 0;
-      const totalC       = labCost + expCost;
-      const marginPct    = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
-      const marginOk     = marginPct !== null && marginPct >= 40;
-      const hasTime      = labMin > 0;
-      const compDateStr  = String(l.paid_date || l.scheduled_date || "");
-      const compDate     = compDateStr ? new Date(compDateStr.includes("T") ? compDateStr : compDateStr + "T00:00:00Z") : null;
-      const daysSince    = compDate ? (now.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
-      const qualityOk    = daysSince !== null && daysSince >= 14;
+    // Profit-share tiers by Adjusted Net Profit — verify breakpoints against Exhibit A
+    function profitShareTier(anp) {
+      if (anp <= 0)        return { pct: 0,  label: "0%" };
+      if (anp < 50000)     return { pct: 1,  label: "1%" };
+      if (anp < 100000)    return { pct: 2,  label: "2%" };
+      if (anp < 200000)    return { pct: 3,  label: "3%" };
+      return               { pct: 6,  label: "6%" };
+    }
 
-      if (!marginOk)             bonusMarginFail++;
-      else if (!hasTime)         bonusDocFail++;
-      else if (!qualityOk)       bonusPending++;
-      else {
+    const nowD = new Date();
+    const thisMonthYear = nowD.getUTCFullYear();
+    const thisMonth     = nowD.getUTCMonth();
+    const thisYear      = nowD.getUTCFullYear();
+
+    const bonusDoneStatus = new Set(["complete", "closed", "paid"]);
+    let bonusEarned = 0, bonusPending = 0, bonusMarginFail = 0, bonusDocFail = 0;
+    let bonusTotalEarned = 0, bonusEarnedThisMonth = 0;
+
+    // YTD profit-share accumulation
+    let ytdCollected = 0, ytdDirectCost = 0;
+
+    for (const l of allLeadsForBonus) {
+      const lStatus = st(l);
+
+      // YTD profit-share: all paid jobs this calendar year
+      const paidDateStr = String(l.paid_date || "");
+      const paidDate    = paidDateStr ? new Date(paidDateStr.includes("T") ? paidDateStr : paidDateStr + "T00:00:00Z") : null;
+      if (paidDate && paidDate.getUTCFullYear() === thisYear) {
+        const coll      = num(l.paid_amount);
+        const labMin    = laborMinByLead[l.id] || 0;
+        const labCost   = (labMin / 60) * loadedRate;
+        const expCost   = expCostByLead[l.id] || 0;
+        ytdCollected   += coll;
+        ytdDirectCost  += labCost + expCost;
+      }
+
+      if (!bonusDoneStatus.has(lStatus)) continue;
+
+      const collected = num(l.paid_amount) > 0 ? num(l.paid_amount) : num(l.invoiced_amount);
+      const labMin    = laborMinByLead[l.id] || 0;
+      const labCost   = (labMin / 60) * loadedRate;
+      const expCost   = expCostByLead[l.id] || 0;
+      const totalC    = labCost + expCost;
+      const marginPct = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
+      const marginOk  = marginPct !== null && marginPct >= 40;
+      const hasTime   = labMin > 0;
+      const hasPhoto  = (photosPerLead[l.id] || 0) >= 1;
+      const docOk     = hasTime && hasPhoto;
+      const noDeviation = !(String(l.unauthorized_deviation || "").toLowerCase() === "true");
+
+      const compDateStr = String(l.paid_date || l.scheduled_date || "");
+      const compDate    = compDateStr ? new Date(compDateStr.includes("T") ? compDateStr : compDateStr + "T00:00:00Z") : null;
+      const daysSince   = compDate ? (nowD.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
+      const qualityOk   = daysSince !== null && daysSince >= 14;
+
+      if (!marginOk || !noDeviation) {
+        bonusMarginFail++;
+      } else if (!docOk) {
+        bonusDocFail++;
+      } else if (!qualityOk) {
+        bonusPending++;
+      } else {
+        const earnedAmt = bonusTierAmt(collected);
         bonusEarned++;
-        bonusTotalEarned += bonusAmount(collected);
+        bonusTotalEarned += earnedAmt;
+        // This payroll period = completion in current calendar month
+        if (compDate && compDate.getUTCFullYear() === thisMonthYear && compDate.getUTCMonth() === thisMonth) {
+          bonusEarnedThisMonth += earnedAmt;
+        }
       }
     }
+
+    const ytdANP    = Math.round((ytdCollected - ytdDirectCost) * 100) / 100;
+    const psTier    = profitShareTier(ytdANP);
+    const psAmount  = Math.round(ytdANP * (psTier.pct / 100) * 100) / 100;
+
     const bonus_tracker = {
-      earned_count:      bonusEarned,
-      pending_count:     bonusPending,
-      margin_fail_count: bonusMarginFail,
-      doc_fail_count:    bonusDocFail,
-      total_earned_bonus: bonusTotalEarned,
+      earned_count:         bonusEarned,
+      pending_count:        bonusPending,
+      margin_fail_count:    bonusMarginFail,
+      doc_fail_count:       bonusDocFail,
+      total_earned_bonus:   bonusTotalEarned,
+      earned_this_month:    bonusEarnedThisMonth,
+    };
+    const profit_share = {
+      ytd_collected_revenue: Math.round(ytdCollected * 100) / 100,
+      ytd_direct_job_cost:   Math.round(ytdDirectCost * 100) / 100,
+      ytd_adjusted_net_profit: ytdANP,
+      projected_tier_pct:    psTier.pct,
+      projected_tier_label:  psTier.label,
+      projected_share_amount: psAmount,
     };
 
     const kpis = {
@@ -440,6 +537,7 @@ async function handleDashboard(req, res) {
       kpis,
       risk,
       bonus_tracker,
+      profit_share,
       today_summary,
       pipeline_card,
       money_card,

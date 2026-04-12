@@ -131,10 +131,21 @@
   }
 
   function renderBonusTracker(d) {
-    set("bonusEarned",   escH(String(d.earned_count      || 0)));
-    set("bonusPending",  escH(String(d.pending_count     || 0)));
-    set("bonusFailed",   escH(String((d.margin_fail_count || 0) + (d.doc_fail_count || 0))));
-    set("bonusLiability",escH(fmt$(d.total_earned_bonus  || 0)));
+    set("bonusEarned",    escH(String(d.earned_count      || 0)));
+    set("bonusPending",   escH(String(d.pending_count     || 0)));
+    set("bonusFailed",    escH(String((d.margin_fail_count || 0) + (d.doc_fail_count || 0))));
+    set("bonusLiability", escH(fmt$(d.total_earned_bonus  || 0)));
+    set("bonusThisMonth", escH(fmt$(d.earned_this_month   || 0)));
+  }
+
+  function renderProfitShare(d) {
+    if (!d) return;
+    const anp = d.ytd_adjusted_net_profit;
+    set("psANP",       escH(fmt$(anp)));
+    set("psCollected", escH(fmt$(d.ytd_collected_revenue)));
+    set("psCost",      escH(fmt$(d.ytd_direct_job_cost)));
+    set("psTier",      escH(d.projected_tier_label || "0%"));
+    set("psAmount",    escH(fmt$(d.projected_share_amount || 0)));
   }
 
   function renderSchedule(list) {
@@ -218,6 +229,7 @@
       renderSchedule(data.today_schedule || []);
       renderActivity(data.recent_activity || []);
       renderBonusTracker(data.bonus_tracker || {});
+      renderProfitShare(data.profit_share || null);
 
       if (finResp) {
         const finData = await finResp.json().catch(() => ({ ok: false }));
