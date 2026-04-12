@@ -2168,7 +2168,8 @@ function checkPhotoGate() {
                     || jt.photo_gate_prompt
                     || "A photo is required before we can generate your estimate.",
         };
-        S.photoGateFromStep = S.step;   // remember entry point for back() navigation
+        // Only record source step when entering fresh (not looping between gate screens)
+        if (S.step !== "photo_gate") S.photoGateFromStep = S.step;
         go("photo_gate");
         return;
       }
