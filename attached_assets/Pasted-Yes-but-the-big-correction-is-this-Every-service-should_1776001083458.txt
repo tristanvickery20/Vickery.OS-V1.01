@@ -1,0 +1,515 @@
+Yes — but the big correction is this:
+
+Every service should have its own question set.
+Not every service should be auto-quoted.
+
+That is how you keep it simple for homeowners and still control risk.
+
+The doctrine I’d use
+
+For every service, every question must do one of these:
+	•	add labor
+	•	multiply labor
+	•	add a fee
+	•	flag/disqualify
+
+For every service, risk must be controlled by one of these:
+	•	a priced question
+	•	a “Not sure” buffer
+	•	a required photo
+	•	manual review / no instant price
+
+So the real rule is not “ask everything.”
+The real rule is:
+
+No uncontrolled risk is allowed to pass through the funnel.
+
+Betty-safe rules
+
+Use these on every service:
+	•	Max 4–6 customer questions before photos
+	•	No jargon
+	•	Use plain homeowner language
+	•	Any technical question gets Not sure
+	•	Any dangerous/unclear condition gets manual review
+	•	Never ask two questions that mean the same thing
+	•	Never ask a question unless at least one answer changes price or routing
+
+Three quote modes
+
+1. Instant-price
+
+Safe, routine, predictable.
+
+2. Instant-price + photo gate
+
+Can still quote, but only if customer uploads a photo and no red flags show up.
+
+3. Diagnostic / manual quote only
+
+Customer can answer questions, but they do not get a real instant price. They get:
+	•	diagnostic fee
+	•	request quote
+	•	site visit required
+
+⸻
+
+My recommended service routing
+
+Safe for instant-price
+	•	Recessed (Can) Lighting
+	•	Under-Cabinet Lighting
+	•	Chandelier & Fixture Installation
+	•	Ceiling Fan Installation
+	•	Motion Sensor & Security Lighting
+	•	LED Lighting Upgrades (simple retrofits)
+	•	Dimmer Switch Installation
+	•	New Outlet Installation
+	•	GFCI Outlet Installation
+	•	Smart Switch & Smart Outlet Installation
+	•	Surge Protection (with panel photo)
+	•	Smoke & Carbon Monoxide Detector Installation
+
+Instant-price + photo gate
+	•	Outdoor & Landscape Lighting
+	•	Light Fixture Repair
+	•	Switch & Outlet Repair
+	•	Adding Dedicated Circuits
+	•	Installation for New Appliances
+	•	Portable Generator Hookup
+	•	EV Charger Installation
+
+Manual / diagnostic / request-quote only
+	•	Troubleshooting (Flickering lights)
+	•	Whole-House Rewiring
+	•	Partial Home Rewiring
+	•	Code Compliance & Correction
+	•	Service Panel Upgrade
+	•	Subpanel Installation
+	•	Fuse Box to Breaker Panel Conversion
+	•	Breaker Tripping Issues
+	•	Panel or Breaker Repair
+	•	Standby Generator Installation
+	•	Hot Tub & Pool Wiring
+	•	Home Automation & Smart Home Integration
+
+That split is what makes the system usable.
+
+⸻
+
+Universal question patterns to reuse inside each service
+
+These are the only patterns you really need.
+Duplicate them into each service-specific set.
+
+1. Quantity
+
+“How many?”
+	•	add hours
+	•	add materials
+
+2. Existing vs brand new
+
+“Is there already a light / fan / outlet / hookup there now?”
+	•	existing = lower labor
+	•	brand new = added labor
+
+3. Distance from power source
+
+“Is this in the same room, next room, or farther away?”
+	•	adds hours
+
+4. Access difficulty
+
+“Can we reach it from an attic / crawlspace, or would the walls/ceiling need to stay closed?”
+	•	add hours or multiplier
+	•	not sure = buffer
+
+5. Height
+
+“How tall is the ceiling?”
+	•	multiplier
+	•	over threshold = disqualify
+
+6. Wall / ceiling finish
+
+“Drywall, tile, brick, plaster, wood?”
+	•	multiplier or fee
+
+7. Outdoor / trenching exposure
+
+“On the house, on a pole, across the yard, or underground?”
+	•	add hours / fee / manual review
+
+8. Safety red flag
+
+“Any burning smell, buzzing, sparks, water damage, or melted parts?”
+	•	flag / disqualify
+
+9. Photo requirement
+
+Used when words alone are not reliable
+	•	panel
+	•	existing fixture
+	•	location
+	•	appliance area
+	•	exterior mounting spot
+
+⸻
+
+Service-by-service question blueprint
+
+Lighting
+
+Recessed (Can) Lighting — instant-price
+	•	How many lights do you want installed?
+Number → add hours/materials
+	•	Are these going where lights already exist, or are we cutting brand-new holes?
+Add hours
+	•	Can we reach above this ceiling from an attic?
+Add hours / multiplier / not sure buffer
+	•	How tall is the ceiling?
+Multiplier / over 20 ft = flag
+
+Under-Cabinet Lighting — instant-price
+	•	About how many cabinets or sections need lighting?
+Add hours/materials
+	•	Is there already power nearby under/above the cabinets?
+Add hours
+	•	Is the backsplash/wall drywall, tile, or something harder?
+Multiplier / fee
+	•	Do you want plug-in style or hidden hardwired lighting?
+Add hours
+
+Chandelier & Fixture Installation — instant-price
+	•	Are we replacing an existing light, or adding a new location?
+Add hours
+	•	Is the fixture standard, heavy, or extra-large / crystal / assembly-heavy?
+Add hours / multiplier
+	•	How tall is the ceiling?
+Multiplier / flag
+	•	Is the fixture already assembled and ready to hang?
+Add hours
+
+Ceiling Fan Installation — instant-price
+	•	Is there already a ceiling fan there now, or just a light / nothing there?
+Add hours
+	•	Is the ceiling flat or sloped/vaulted?
+Multiplier
+	•	How tall is the ceiling?
+Multiplier / flag
+	•	Do you want a wall control, remote setup, or basic install only?
+Add fee / hours
+
+Outdoor & Landscape Lighting — instant-price + photo gate
+	•	Is this mounted on the house, or does it need wiring run across the yard?
+Add hours / flag
+	•	How many fixtures?
+Add hours/materials
+	•	Do any wires need to go underground?
+Add hours / fee
+	•	Upload a photo of the install area.
+Photo gate
+
+Motion Sensor & Security Lighting — instant-price
+	•	Are we replacing an existing exterior light, or adding a brand-new one?
+Add hours
+	•	How high is the mounting area?
+Multiplier / flag
+	•	Is this on brick/siding/stucco or easier wall material?
+Multiplier
+	•	Do you want one light, two lights, or sensor flood/security style?
+Add materials/fee
+
+LED Lighting Upgrades (Retrofits) — instant-price
+	•	How many lights/fixtures are being upgraded?
+Add hours/materials
+	•	Is this just swapping to LED, or replacing trim/retrofit kits/fixtures too?
+Add hours
+	•	How tall is the ceiling?
+Multiplier
+	•	Is access easy, or are the lights in stairwells/high areas/vaulted spaces?
+Multiplier
+
+Dimmer Switch Installation — instant-price
+	•	How many dimmers do you want installed?
+Add hours/materials
+	•	Does this light work from one switch or two switch locations?
+Add hours
+	•	Is there already a dimmer there now?
+Lower labor / no lower labor
+	•	Standard dimmer or smart dimmer?
+Add fee
+
+Light Fixture Repair — photo gate or diagnostic
+	•	Is the light loose, flickering, broken, or completely dead?
+Route / add time
+	•	Is it just one fixture or several?
+Add hours / route to troubleshooting
+	•	How tall is the ceiling?
+Multiplier
+	•	Upload a photo of the fixture.
+Photo gate
+
+Troubleshooting (Flickering lights) — diagnostic only
+	•	Is it one light, one room, or many parts of the home?
+Route severity
+	•	Any burning smell, buzzing, sparks, or heat?
+Flag
+	•	Does it happen when a certain appliance turns on?
+Route
+	•	This should return diagnostic visit, not full repair quote.
+
+⸻
+
+Outlets / switches
+
+New Outlet Installation — instant-price
+	•	How many new outlets do you want?
+Add hours/materials
+	•	Is there already an outlet or switch on that same wall nearby?
+Add hours
+	•	Is the wall drywall, tile, brick, or something else?
+Multiplier
+	•	Is power in the same room, next room, or farther away?
+Add hours
+
+GFCI Outlet Installation — instant-price
+	•	Are we replacing an existing outlet or adding a brand-new one?
+Add hours
+	•	How many GFCI outlets?
+Add hours/materials
+	•	Is this in a kitchen, bathroom, garage, laundry, or outdoors?
+Minor pricing/routing
+	•	Indoors or outdoors / weather-exposed?
+Fee / material change
+
+Switch & Outlet Repair — instant-price + red-flag routing
+	•	Is it cracked/loose, not working, or warm/sparking?
+Add hours / flag
+	•	Is it one device or several?
+Add hours
+	•	Has the breaker tripped too, or is it just the device itself?
+Route
+	•	Upload a photo if damaged.
+Photo gate
+
+Smart Switch & Smart Outlet Installation — instant-price
+	•	Are we replacing an existing switch/outlet or adding a new location?
+Add hours
+	•	How many devices?
+Add hours/materials
+	•	Does the light work from one switch or two locations?
+Add hours
+	•	Have you already purchased the smart device?
+Material adjustment
+
+⸻
+
+Rewiring / circuits / panel-adjacent
+
+Whole-House Rewiring — manual only
+	•	How big is the home?
+	•	About how old is the home?
+	•	Is anyone living there during the work?
+	•	Are the walls/ceilings mostly drywall or plaster?
+	•	Return request quote / site visit required
+
+Partial Home Rewiring — manual only
+	•	Which area needs rewiring?
+	•	How many rooms?
+	•	Can we access attic/crawlspace?
+	•	Drywall or plaster?
+	•	Return request quote
+
+Adding Dedicated Circuits — photo gate
+	•	What appliance is this for?
+Affects base job
+	•	Is the panel in the same room, next room, or farther away?
+Add hours
+	•	Can we route wire through attic/crawlspace?
+Add hours / multiplier
+	•	Upload panel photo and install area photo.
+Photo gate
+
+Code Compliance & Correction — manual only
+	•	Is this based on an inspection report or known issue?
+	•	Upload report/photo if available
+	•	Is it one issue or multiple?
+	•	Return manual review
+
+Service Panel Upgrade — manual + photo
+	•	Why do you need the upgrade: more space, insurance, old panel, adding large load?
+	•	Upload panel photo
+	•	Is the service overhead or underground?
+	•	Indoor or outdoor panel?
+	•	Return manual review, not instant price
+
+Subpanel Installation — manual + photo
+	•	Where is the new subpanel going?
+	•	Same building or detached garage/shop?
+	•	About how far from the main panel?
+	•	Upload main panel and destination photos
+	•	Return manual review
+
+Fuse Box to Breaker Panel Conversion — manual + photo
+	•	Upload current fuse box photo
+	•	Is this the main service or a small secondary panel?
+	•	Is power demand changing too?
+	•	Return manual review
+
+Breaker Tripping Issues — diagnostic only
+	•	Which breaker trips: one appliance, one room, or random areas?
+	•	How often does it happen?
+	•	Any heat, smell, buzzing, or scorch marks?
+	•	Return diagnostic, not repair quote
+
+Panel or Breaker Repair — diagnostic/manual
+	•	Is it one breaker, multiple breakers, or the whole panel?
+	•	Any heat/rust/buzzing/water signs?
+	•	Upload panel photo
+	•	Return manual review or diagnostic
+
+Surge Protection (Whole-house) — instant-price + panel photo
+	•	Upload panel photo
+	•	Indoor or outdoor panel?
+	•	Has there been recent surge/lightning/equipment damage?
+Can add inspection/review
+	•	Standard whole-home surge protector install
+Base price with photo approval
+
+⸻
+
+Heavy-load / special equipment
+
+Installation for New Appliances — photo gate
+
+This service is too broad. Split later if possible.
+
+For now ask:
+	•	What appliance is this for?
+Changes base service
+	•	Is this replacing an existing hookup or brand new?
+Add hours
+	•	Is the panel nearby or farther away?
+Add hours
+	•	Upload panel + appliance location photos
+Photo gate
+
+Standby Generator Installation — manual only
+	•	Whole-home or essential circuits only?
+	•	Natural gas or propane?
+	•	Generator already purchased?
+	•	Upload panel/meter/exterior location photos
+	•	Return manual quote
+
+Portable Generator Hookup (Transfer Switch) — photo gate/manual
+	•	Do you want to power a few selected circuits or much of the home?
+Changes scope
+	•	Do you already own the generator/inlet kit?
+Materials
+	•	Upload panel photo
+	•	Indoor or outdoor panel?
+	•	Usually photo-reviewed, not blind instant quote
+
+EV Charger Installation — instant-price + photo gate
+	•	Do you already have the charger, or do you want us to provide it?
+Material
+	•	Garage, carport, outside wall, or detached building?
+Add hours
+	•	Is the panel in the same area, next room, or farther away?
+Add hours
+	•	Upload panel + charger location photos
+Photo gate
+
+Hot Tub & Pool Wiring — manual only
+	•	Hot tub or pool equipment?
+	•	Already on site or not yet installed?
+	•	Same building area or detached / trench needed?
+	•	Upload panel + equipment location photos
+	•	Return manual quote
+
+⸻
+
+Safety / smart home
+
+Smoke & Carbon Monoxide Detector Installation — instant-price
+	•	How many detectors?
+Add hours/materials
+	•	Battery-only replacement or hardwired install?
+Changes base labor
+	•	Replacing existing locations or adding new ones?
+Add hours
+	•	One-story or two-story/high ceilings?
+Multiplier
+
+Home Automation & Smart Home Integration — manual only
+	•	What do you want connected: lights, switches, thermostats, cameras, locks, speakers, scenes?
+	•	One room or whole home?
+	•	Do you already own the equipment?
+	•	Do you need setup/programming too?
+	•	Return consult / manual quote
+
+⸻
+
+Hard disqualifiers you should use across services
+
+These should stop auto-quoting immediately:
+	•	Ceiling over 20 ft
+	•	Burning smell / sparking / melted device
+	•	Water intrusion into electrical equipment
+	•	Unknown damaged panel condition from photo
+	•	Aluminum wiring / knob-and-tube / fuse box on services not built for it
+	•	Detached structure with trenching on services that are not trench-priced
+	•	Pool/spa equipment without clear scope
+	•	Commercial property if this estimator is residential-only
+	•	Multi-family / condo where access rules complicate the job
+	•	Customer says “not sure” on too many core risk questions
+
+⸻
+
+Very important wording fix
+
+Do not ask technical questions like:
+	•	“Is there a fan-rated box?”
+	•	“Is it a 3-way?”
+	•	“Do you have attic access?”
+	•	“Is it a dedicated 240V circuit with two-pole breaker capacity?”
+
+Instead ask:
+	•	“Is there already a ceiling fan there now?”
+	•	“Does this light turn on from one switch or two different switches?”
+	•	“Can we reach above this ceiling from an attic?”
+	•	“Is your breaker box in the same area as the charger, next room, or farther away?”
+	•	“Please upload a photo of the breaker box.”
+
+That is the Betty test.
+
+⸻
+
+Biggest recommendation
+
+These service names are too broad and should be split later:
+	•	Outdoor & Landscape Lighting
+	•	Installation for New Appliances
+	•	Home Automation & Smart Home Integration
+	•	Partial Home Rewiring
+	•	Code Compliance & Correction
+
+Broad services create messy questions and bad pricing.
+
+⸻
+
+What I’d tell Replit
+
+Use this as the operating rule:
+
+Build a separate question set for every service.
+Do not rely on customers to know electrical terms.
+Every question must either change price, add uncertainty buffer, require a photo, or route to manual review.
+Any service with high scope variance, hidden access risk, trenching risk, panel risk, or diagnostic uncertainty must not return a blind instant price.
+For technical unknowns, auto-add a “Not sure” option that applies a buffer and flags the quote for review.
+Keep each service to 4–6 homeowner-safe questions max, then use photos and routing rules to control the rest.
+
+If you want, next I’ll turn this into a service-by-service Replit-ready question sheet with:
+service | question_text | input_type | answer_options | effect_type | effect_value | not_sure_rule | disqualify_rule
