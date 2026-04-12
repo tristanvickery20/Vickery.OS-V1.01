@@ -956,9 +956,81 @@ async function generateCrewInvoice() {
     }
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Regenerate Invoice"; }
     showToast("Invoice created: " + data.invoice_number);
+
+    // Show bonus eligibility status
+    const leadId = j.quote_id || j.booking_id || "";
+    if (leadId) fetchBonusStatus(leadId);
   } catch (err) {
     showToast(err.message || "Failed to generate invoice", true);
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
+  }
+}
+
+async function fetchBonusStatus(leadId) {
+  const el = document.getElementById("jdBonusRow");
+  if (!el) return;
+  try {
+    const res  = await fetch("/api/bonus-eligibility?lead_id=" + encodeURIComponent(leadId));
+    const d    = await res.json();
+    if (!d.ok) return;
+
+    const pct = d.gross_margin_pct !== null ? d.gross_margin_pct.toFixed(1) + "%" : "—";
+
+    const STATUS_MAP = {
+      not_complete:    { label: "Job Not Complete",       color: "rgba(230,238,252,0.45)" },
+      margin_fail:     { label: "Margin Below 40%",       color: "#f87171" },
+      doc_fail:        { label: "Missing Time or Photo",  color: "#fcd34d" },
+      budget_fail:     { label: "Deviation Flagged",      color: "#f87171" },
+      pending_quality: { label: "Pending Quality Check",  color: "#fcd34d" },
+      earned:          { label: "Bonus Earned!",          color: "#4ade80" },
+    };
+    const sm = STATUS_MAP[d.status] || { label: d.status, color: "rgba(230,238,252,0.45)" };
+
+    function pill(pass) {
+      return pass
+        ? `<span style="color:#4ade80;font-weight:700;font-size:12px;">Pass</span>`
+        : `<span style="color:#f87171;font-weight:700;font-size:12px;">Fail</span>`;
+    }
+
+    let html = `
+      <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(230,238,252,0.45);margin-bottom:10px;">
+        Bonus Eligibility
+      </div>
+      <div style="font-size:15px;font-weight:800;color:${sm.color};margin-bottom:12px;">
+        ${sm.label}
+        ${d.all_pass ? `<span style="margin-left:8px;font-size:18px;">+$${d.bonus_amount}</span>` : ""}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+          <span style="color:rgba(230,238,252,0.7);">Gross Margin (40% min)</span>
+          <span>${pill(d.tests.margin_ok)} <span style="color:rgba(230,238,252,0.5);font-size:12px;">${pct}</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+          <span style="color:rgba(230,238,252,0.7);">Time logged + photo</span>
+          <span>${pill(d.tests.doc_ok)} <span style="color:rgba(230,238,252,0.5);font-size:12px;">${d.time_entries} entr${d.time_entries === 1 ? "y" : "ies"}, ${d.photo_count} photo${d.photo_count === 1 ? "" : "s"}</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+          <span style="color:rgba(230,238,252,0.7);">14-day quality window</span>
+          <span>${d.is_complete && d.days_remaining_in_quality_window !== null
+            ? `<span style="color:#fcd34d;font-size:12px;">${d.days_remaining_in_quality_window}d remaining</span>`
+            : pill(d.tests.quality_ok)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+          <span style="color:rgba(230,238,252,0.7);">No unauthorized deviations</span>
+          <span>${pill(d.tests.budget_ok)}</span>
+        </div>
+      </div>`;
+
+    if (d.status === "pending_quality") {
+      html += `<div style="margin-top:10px;font-size:11px;color:rgba(230,238,252,0.45);line-height:1.5;">
+        Margin and documentation requirements met. Bonus clears automatically after the 14-day quality window.
+      </div>`;
+    }
+
+    el.innerHTML = html;
+    el.style.display = "block";
+  } catch {
+    // Silently ignore — bonus is a nice-to-have here
   }
 }
 

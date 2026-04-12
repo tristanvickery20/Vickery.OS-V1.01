@@ -130,6 +130,13 @@
     set("clsClosed", escH(String(d.closed_30d || 0)));
   }
 
+  function renderBonusTracker(d) {
+    set("bonusEarned",   escH(String(d.earned_count      || 0)));
+    set("bonusPending",  escH(String(d.pending_count     || 0)));
+    set("bonusFailed",   escH(String((d.margin_fail_count || 0) + (d.doc_fail_count || 0))));
+    set("bonusLiability",escH(fmt$(d.total_earned_bonus  || 0)));
+  }
+
   function renderSchedule(list) {
     const el = document.getElementById("scheduleList");
     if (!el) return;
@@ -210,6 +217,7 @@
       renderCloseout(data.closeout_card || {});
       renderSchedule(data.today_schedule || []);
       renderActivity(data.recent_activity || []);
+      renderBonusTracker(data.bonus_tracker || {});
 
       if (finResp) {
         const finData = await finResp.json().catch(() => ({ ok: false }));

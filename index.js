@@ -18,6 +18,7 @@ const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
 const { handleDashboard, handleDashboardFinancials } = require("./api/dashboard");
+const { handleBonusEligibility } = require("./api/bonus-eligibility");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
 const { handleScheduleLead } = require("./api/leads-schedule");
 const { handleGetTime, handleCreateTime, handleUpdateTime } = require("./api/time");
@@ -677,6 +678,10 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/dashboard") && req.method === "GET") {
     if (_epath === "/api/dashboard/financials") return handleDashboardFinancials(req, res);
     return handleDashboard(req, res);
+  }
+
+  if (_epath === "/api/bonus-eligibility" && req.method === "GET") {
+    return handleBonusEligibility(req, res);
   }
 
   if (req.url.startsWith("/api/audit") && req.method === "GET") {

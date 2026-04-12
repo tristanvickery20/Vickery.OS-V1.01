@@ -102,6 +102,8 @@ async function handleDashboard(req, res) {
     ]);
 
     const laborRateTech = Number(config.labor_rate_tech || 50);
+    const burdenPct     = Number(config.burden_pct || 0);
+    const loadedRate    = laborRateTech * (1 + burdenPct / 100);
 
     const leads = leadsData.rows
       .filter((r) => r.some((cell) => String(cell || "").trim() !== ""))
@@ -373,6 +375,47 @@ async function handleDashboard(req, res) {
       ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 10000) / 100
       : null;
 
+    // ── Bonus Tracker ──
+    function bonusAmount(collected) {
+      if (collected < 1000) return 50;
+      if (collected < 5000) return 100;
+      return 150;
+    }
+    const bonusCompletedStatuses = new Set(["complete", "closed", "paid"]);
+    let bonusEarned = 0, bonusPending = 0, bonusMarginFail = 0, bonusDocFail = 0;
+    let bonusTotalEarned = 0;
+    const now = new Date();
+    for (const l of leads) {
+      if (!bonusCompletedStatuses.has(st(l))) continue;
+      const collected    = num(l.paid_amount) > 0 ? num(l.paid_amount) : num(l.invoiced_amount);
+      const labMin       = laborMinByLead[l.id] || 0;
+      const labCost      = (labMin / 60) * loadedRate;
+      const expCost      = expCostByLead[l.id] || 0;
+      const totalC       = labCost + expCost;
+      const marginPct    = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
+      const marginOk     = marginPct !== null && marginPct >= 40;
+      const hasTime      = labMin > 0;
+      const compDateStr  = String(l.paid_date || l.scheduled_date || "");
+      const compDate     = compDateStr ? new Date(compDateStr.includes("T") ? compDateStr : compDateStr + "T00:00:00Z") : null;
+      const daysSince    = compDate ? (now.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
+      const qualityOk    = daysSince !== null && daysSince >= 14;
+
+      if (!marginOk)             bonusMarginFail++;
+      else if (!hasTime)         bonusDocFail++;
+      else if (!qualityOk)       bonusPending++;
+      else {
+        bonusEarned++;
+        bonusTotalEarned += bonusAmount(collected);
+      }
+    }
+    const bonus_tracker = {
+      earned_count:      bonusEarned,
+      pending_count:     bonusPending,
+      margin_fail_count: bonusMarginFail,
+      doc_fail_count:    bonusDocFail,
+      total_earned_bonus: bonusTotalEarned,
+    };
+
     const kpis = {
       open_leads_count: openLeads.length,
       pipeline_estimated,
@@ -396,6 +439,7 @@ async function handleDashboard(req, res) {
       ok: true,
       kpis,
       risk,
+      bonus_tracker,
       today_summary,
       pipeline_card,
       money_card,

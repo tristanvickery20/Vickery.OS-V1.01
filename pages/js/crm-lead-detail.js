@@ -224,6 +224,12 @@
             <div id="ldInvoiceContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
           </div>
 
+          <!-- Bonus Eligibility (populated by loadBonusPanel) -->
+          <div class="ld-card" id="ldBonusCard">
+            <div class="ld-card-title">Bonus Eligibility</div>
+            <div id="ldBonusContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+          </div>
+
         </div>
       </div>
     `;
@@ -231,6 +237,7 @@
     attachEvents(lead);
     if (hasQuoteId) loadSnapshot(lead.last_quote_id);
     loadLeadInvoice(lead.id || lead.lead_id, lead);
+    loadBonusPanel(lead.id || lead.lead_id);
   }
 
   async function loadSnapshot(quoteId) {
@@ -632,6 +639,87 @@
         submitBtn.disabled = false; submitBtn.textContent = 'Save Payment';
       }
     };
+  }
+
+  async function loadBonusPanel(lid) {
+    const el = document.getElementById('ldBonusContent');
+    if (!el || !lid) return;
+    try {
+      const d = await window.Api.fetchJson('/api/bonus-eligibility?lead_id=' + encodeURIComponent(lid));
+      if (!d.ok) {
+        el.innerHTML = `<span style="opacity:.6;">Could not load bonus data.</span>`;
+        return;
+      }
+
+      const pct  = d.gross_margin_pct !== null ? d.gross_margin_pct.toFixed(1) + '%' : '—';
+      const rev  = d.collected_revenue;
+      const cost = d.direct_job_cost;
+
+      const STATUS_LABEL = {
+        not_complete:    { text: 'Job Not Complete',        color: 'hsl(220,15%,55%)' },
+        margin_fail:     { text: 'Below 40% Margin',        color: 'hsl(0,70%,50%)' },
+        doc_fail:        { text: 'Missing Documentation',   color: 'hsl(38,80%,40%)' },
+        budget_fail:     { text: 'Unauthorized Deviation',  color: 'hsl(0,70%,50%)' },
+        pending_quality: { text: 'In Quality Window',       color: 'hsl(38,80%,40%)' },
+        earned:          { text: 'Bonus Earned',            color: 'hsl(142,50%,40%)' },
+      };
+      const sl = STATUS_LABEL[d.status] || { text: d.status, color: 'hsl(220,15%,55%)' };
+
+      function testRow(label, pass, detail) {
+        const icon = pass
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(142,50%,45%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(0,70%,55%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+        return `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid hsl(var(--border));">
+            <div style="flex:0 0 auto;margin-top:1px;">${icon}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:hsl(var(--foreground));">${label}</div>
+              ${detail ? `<div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:2px;">${detail}</div>` : ''}
+            </div>
+          </div>`;
+      }
+
+      const marginDetail = d.gross_margin_pct !== null
+        ? `${pct} margin — Revenue ${fmt$(rev)}, Direct Cost ${fmt$(cost)}`
+        : 'No collected revenue recorded';
+      const docDetail = `${d.time_entries} time ${d.time_entries === 1 ? 'entry' : 'entries'}, ${d.photo_count} photo${d.photo_count === 1 ? '' : 's'}`;
+      let qualityDetail = '';
+      if (!d.is_complete) {
+        qualityDetail = 'Job not yet marked complete';
+      } else if (d.days_remaining_in_quality_window !== null) {
+        qualityDetail = `${d.days_remaining_in_quality_window} day${d.days_remaining_in_quality_window === 1 ? '' : 's'} remaining in quality window`;
+      } else if (d.tests.quality_ok) {
+        qualityDetail = `${d.days_since_completion} days since completion — window closed`;
+      }
+
+      let html = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:13px;font-weight:700;color:${sl.color};">${sl.text}</span>
+          ${d.all_pass ? `<span style="font-size:22px;font-weight:800;font-family:var(--font-display);color:hsl(142,50%,40%);">+$${d.bonus_amount}</span>` : ''}
+        </div>`;
+
+      html += testRow('Gross Margin ≥ 40%', d.tests.margin_ok, marginDetail);
+      html += testRow('Documentation (time + photo)', d.tests.doc_ok, docDetail);
+      html += testRow('14-Day Quality Window', d.tests.quality_ok, qualityDetail);
+      html += testRow('No Unauthorized Deviations', d.tests.budget_ok, d.tests.budget_ok ? 'No deviation flag on record' : 'Deviation flagged by admin');
+
+      if (d.bonus_tier) {
+        html += `
+          <div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:hsl(142,30%,96%);border:1px solid hsl(142,40%,85%);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:hsl(142,40%,40%);margin-bottom:2px;">Bonus Tier (${esc(d.bonus_tier.label)})</div>
+            <div style="font-size:20px;font-weight:800;font-family:var(--font-display);color:hsl(142,50%,35%);">$${d.bonus_amount}</div>
+          </div>`;
+      }
+
+      html += `
+        <div style="margin-top:12px;font-size:11px;color:hsl(var(--muted-foreground));">
+          Loaded labor rate: $${Number(d.loaded_rate).toFixed(2)}/hr &bull; ${d.total_minutes} min logged
+        </div>`;
+
+      el.innerHTML = html;
+    } catch (err) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
+    }
   }
 
   async function load() {

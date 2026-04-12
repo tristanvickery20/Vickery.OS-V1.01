@@ -1,7 +1,7 @@
 # Vickery Electric CRM
 
 ## Overview
-Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, and invoicing. Backed by Google Sheets API.
+Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, and per-job gross margin + bonus eligibility tracking (per Master Electrician of Record employment agreement). Backed by Google Sheets API.
 
 ## Tech Stack
 - **Backend**: Node.js (vanilla `http` module), Express-less
@@ -137,6 +137,35 @@ All public pages share the same 8-link nav (Home / Services / Service Area / Why
 - **Bookings sheet** new columns: block_allocated_minutes, booking_group_id, is_continuation (all auto-added via ensureTabHeaders on startup).
 - **CRM Schedule view** (crm-schedule.html): shows per-block crew-hours load bar (color-coded green/amber/red) and ⛓ continuation badge on multi-block job rows.
 - **Quote /booked screen**: shows all blocks_reserved when job spans >1 block ("Your job spans: Morning (X hrs) + Afternoon (Y hrs)").
+
+## Bonus Eligibility System (Task #11)
+Per the Master Electrician of Record employment agreement, each completed job is evaluated for a performance bonus.
+
+**Endpoint**: `GET /api/bonus-eligibility?lead_id=X` (CRM auth required)
+
+**Formula**:
+- Loaded Labor Rate = `labor_rate_tech × (1 + burden_pct / 100)` (from Config tab)
+- Direct Labor Cost = (Time tab minutes for lead) / 60 × loaded rate
+- Direct Materials = Expenses where type ∈ {material, parts, equipment, supply}
+- Direct Permits = Expenses where type ∈ {permit, inspection, fee}
+- Direct Sub = Expenses where type ∈ {subcontractor, sub}
+- Gross Margin % = (collected_revenue − direct_job_cost) / collected_revenue × 100
+
+**4 Qualifying Tests**:
+1. **Margin ≥ 40%** — gross margin must be at least 40%
+2. **Documentation** — at least 1 time entry AND ≥ 1 photo attachment for the job
+3. **14-Day Quality Window** — must be 14+ days since completion with no callback
+4. **No Unauthorized Deviation** — `unauthorized_deviation` field must not be flagged (admin-set)
+
+**Bonus Tiers** (all 4 tests must pass):
+- Collected Revenue < $1,000 → **$50**
+- Collected Revenue $1,000–$4,999 → **$100**
+- Collected Revenue ≥ $5,000 → **$150**
+
+**Where it appears**:
+- Lead detail page: "Bonus Eligibility" card in right column (crm-lead-detail.js `loadBonusPanel`)
+- Dashboard: "Bonus Tracker" KPI card showing earned/pending/failed counts + total liability
+- Crew portal: bonus status panel displayed after invoice generation (`fetchBonusStatus` in crew.js)
 
 ## Authentication
 - PIN-based login using CRM_PIN secret
