@@ -280,6 +280,20 @@ body {
   opacity: .5;
   cursor: not-allowed;
 }
+.btn-review {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 22px;
+  background: var(--blue);
+  color: #fff;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition: opacity .15s;
+}
+.btn-review:hover { opacity: .88; }
 
 /* ── Loading / Error states ─────────────────────────────────────────────────── */
 .state-screen {
@@ -391,7 +405,7 @@ body {
   <div class="invoice-card">
     <!-- Loading state (replaced by renderInvoice) -->
     <div class="state-screen" id="loadState">
-      <div class="state-icon"><img src="/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
+      <div class="state-icon"><img src="/pages/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
       <div class="state-title">Loading invoice…</div>
       <div class="state-body">Please wait.</div>
     </div>
@@ -605,9 +619,12 @@ function renderInvoice(inv) {
     <div class="invoice-footer">
       <div class="payment-note">
         <strong>Vickery Electric</strong> · (409) 554-3392 · Orange, TX<br>
-        Cash, check, or card accepted
+        Cash, check, or card accepted &mdash; <a href="tel:4095543392" style="color:var(--blue);">Call to pay</a>
       </div>
-      <button class="btn-pay-now" disabled>Pay Now — Coming Soon</button>
+      ${window._reviewUrl ? `<a class="btn-review" href="${esc(window._reviewUrl)}" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Leave a Google Review
+      </a>` : ""}
     </div>
 
     ${printCOBox()}
@@ -617,7 +634,7 @@ function renderInvoice(inv) {
 // ── Error screen ──────────────────────────────────────────────────────────────
 function renderError(msg) {
   document.getElementById("root").innerHTML = `<div class="invoice-card"><div class="state-screen">
-    <div class="state-icon"><img src="/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
+    <div class="state-icon"><img src="/pages/img/vickery-sword.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.6;" /></div>
     <div class="state-title">Invoice Not Found</div>
     <div class="state-body">${esc(msg || "This invoice link may have expired or been removed. Contact Vickery Electric for help.")}</div>
     <div style="margin-top:12px;font-size:13px;color:#64748b">(409) 554-3392</div>
@@ -638,6 +655,7 @@ function renderError(msg) {
       renderError(data.error || "Invoice not found.");
       return;
     }
+    window._reviewUrl = data.review_url || "";
     document.title = "Invoice " + (data.invoice.invoice_number || "") + " — Vickery Electric";
     renderInvoice(data.invoice);
     // Auto-print if ?print=1 (used by admin CRM "Print / Download" button)

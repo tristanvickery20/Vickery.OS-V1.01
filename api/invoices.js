@@ -777,6 +777,8 @@ async function handlePublicInvoice(req, res) {
     const client = clients.find(c => c.id === inv.client_id) || {};
     const prop   = properties.find(p => p.id === inv.property_id) || {};
 
+    const config = await getConfig().catch(() => ({}));
+
     // Return safe public subset (no internal tokens, no staff data)
     const out = {
       id:                inv.id,
@@ -803,7 +805,9 @@ async function handlePublicInvoice(req, res) {
       change_orders_json:inv.change_orders_json || "[]",
     };
 
-    json(res, 200, { ok: true, invoice: out });
+    const reviewUrl = config.google_review_url || process.env.GOOGLE_REVIEW_URL || "";
+
+    json(res, 200, { ok: true, invoice: out, review_url: reviewUrl });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
