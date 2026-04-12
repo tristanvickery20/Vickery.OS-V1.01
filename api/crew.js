@@ -515,9 +515,11 @@ async function handleGenerateInvoice(req, res) {
       });
     }
 
-    // If the tech submitted line items from the form (includes pre-populated + any additions), use those
+    // If the tech submitted line items from the form (includes pre-populated + any additions), use those.
+    // Equipment items from the quote snapshot are merged in so they always appear on the invoice,
+    // regardless of whether custom line items were also submitted.
     if (customLineItems.length > 0) {
-      lineItems = customLineItems.map((li, i) => ({
+      const customMapped = customLineItems.map((li, i) => ({
         id:          li.id || `LI-custom-${i + 1}`,
         title:       String(li.title || li.description || "Service").trim(),
         description: String(li.description || "").trim(),
@@ -526,6 +528,20 @@ async function handleGenerateInvoice(req, res) {
         taxable:     Boolean(li.taxable),
         line_total:  Number(li.line_total) || Math.round(Number(li.quantity || 1) * Number(li.unit_price || 0) * 100) / 100,
       }));
+      // Merge snapshot equipment items — skip any already covered by a custom item with the same id
+      const customIds = new Set(customMapped.map(li => li.id));
+      const equipMerge = snapEquipItems
+        .map((eq, i) => {
+          const delta = Number(eq.upgrade_delta) || 0;
+          const label = [eq.brand, eq.name, eq.variant].filter(Boolean).join(" ");
+          return {
+            id: `LI-equip-${i}`, title: `Equipment: ${label || eq.sku || "Selected product"}`,
+            description: delta > 0 ? `Upgrade +$${delta}` : "Included in quote",
+            quantity: 1, unit_price: delta, taxable: false, line_total: delta,
+          };
+        })
+        .filter(li => !customIds.has(li.id));
+      lineItems = [...customMapped, ...equipMerge];
     }
 
     // Fallback: compute proportional breakdown from JobTypes + Rates when snapshot had no cost data
