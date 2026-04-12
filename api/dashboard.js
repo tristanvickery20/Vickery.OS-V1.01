@@ -388,12 +388,27 @@ async function handleDashboard(req, res) {
     }
 
     const eLeadIdx2 = expData.headers.indexOf("lead_id");
-    const eAmtIdx2 = expData.headers.indexOf("amount");
+    const eAmtIdx2  = expData.headers.indexOf("amount");
+    const eTypeIdx2 = expData.headers.indexOf("type");
     const expCostByLead = {};
+    // directExpByLead uses the same category filter as bonus-eligibility.js:
+    // only material/parts, permit/inspection, and subcontractor expenses count
+    // toward direct job cost for gross margin calculations.
+    const DIRECT_EXP_TYPES = new Set([
+      "material", "materials", "parts", "part", "equipment", "supply", "supplies",
+      "permit", "permits", "inspection", "fee", "fees",
+      "subcontractor", "sub", "subcontract",
+    ]);
+    const directExpByLead = {};
     for (const row of expData.rows) {
       const lid = String(row[eLeadIdx2] || "").trim();
       if (!lid) continue;
-      expCostByLead[lid] = (expCostByLead[lid] || 0) + num(row[eAmtIdx2]);
+      const amt  = num(row[eAmtIdx2]);
+      expCostByLead[lid] = (expCostByLead[lid] || 0) + amt;
+      const type = eTypeIdx2 >= 0 ? String(row[eTypeIdx2] || "").trim().toLowerCase() : "";
+      if (DIRECT_EXP_TYPES.has(type)) {
+        directExpByLead[lid] = (directExpByLead[lid] || 0) + amt;
+      }
     }
 
     // ── Photos per lead from Attachments tab ──
@@ -478,7 +493,8 @@ async function handleDashboard(req, res) {
       if (invDate && !isNaN(invDate.getTime()) && invDate.getUTCFullYear() === thisYear && ytdInvAmt > 0) {
         const labMin    = laborMinByLead[l.id] || 0;
         const labCost   = (labMin / 60) * loadedRate;
-        const expCost   = expCostByLead[l.id] || 0;
+        // Use directExpByLead (same category filter as bonus-eligibility.js) for consistent ANP
+        const expCost   = directExpByLead[l.id] || 0;
         ytdInvoiced    += ytdInvAmt;
         ytdDirectCost  += labCost + expCost;
       }
@@ -490,7 +506,8 @@ async function handleDashboard(req, res) {
       const collected = invPaid !== undefined ? invPaid : (num(l.paid_amount) > 0 ? num(l.paid_amount) : 0);
       const labMin    = laborMinByLead[l.id] || 0;
       const labCost   = (labMin / 60) * loadedRate;
-      const expCost   = expCostByLead[l.id] || 0;
+      // directExpByLead: same category filter as bonus-eligibility.js (material/permit/sub only)
+      const expCost   = directExpByLead[l.id] || 0;
       const totalC    = labCost + expCost;
       const marginPct = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
       // Strict margin bucket: ONLY below-40% failures (not deviation, not missing docs)
