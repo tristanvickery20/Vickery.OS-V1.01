@@ -27,6 +27,10 @@ let todayExpMap  = {}; // key → [{ type, amount, vendor }]
 // Inline expense panel state (only one job's panel open at a time)
 let expandedExpJobId = null; // booking_id whose expense panel is open
 
+// Invoice status cache for card badges — only ever moves pending → invoiced
+// Values: "loading" | "pending" | "invoiced"
+const _invoiceStatus = new Map();
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -468,6 +472,47 @@ function renderJobCards() {
 
   // Kick off display update immediately for active timer
   if (timerState) tickTimer();
+
+  // Async: check invoice status for each complete job card
+  checkCardInvoiceStatuses();
+}
+
+// ── Invoice card badge helpers ────────────────────────────────────────────────
+
+function _invBadgeHtml(status) {
+  if (status === "invoiced") return `<span class="badge-inv-done">Invoiced</span>`;
+  if (status === "pending")  return `<span class="badge-inv-pending">Invoice Pending</span>`;
+  return ""; // loading or unknown — no badge yet
+}
+
+function updateCardBadge(bid, status) {
+  _invoiceStatus.set(bid, status);
+  const el = document.getElementById("inv-badge-" + bid);
+  if (el) el.innerHTML = _invBadgeHtml(status);
+}
+
+async function checkCardInvoiceStatuses() {
+  const completeJobs = _todayJobs.filter(j =>
+    String(j.status || "").toLowerCase() === "complete" && j.booking_id
+  );
+  for (const j of completeJobs) {
+    const bid = j.booking_id;
+    // Already resolved — re-apply badge in case card was just re-rendered
+    if (_invoiceStatus.get(bid) === "pending" || _invoiceStatus.get(bid) === "invoiced") {
+      updateCardBadge(bid, _invoiceStatus.get(bid));
+      continue;
+    }
+    // Fire fetch without blocking the loop
+    (async (bookingId) => {
+      try {
+        const r = await fetch(`/api/crew/invoice-for-booking?booking_id=${encodeURIComponent(bookingId)}`);
+        const d = await r.json();
+        updateCardBadge(bookingId, d.ok && d.found ? "invoiced" : "pending");
+      } catch {
+        updateCardBadge(bookingId, "pending");
+      }
+    })(bid);
+  }
 }
 
 function toggleExpensePanel(bid, toggleBtn) {
@@ -645,8 +690,9 @@ function jobCard(j) {
     </div>`;
 
   const isJobComplete = String(j.status || "").toLowerCase() === "complete";
-  const invoiceBadge  = isJobComplete
-    ? `<span class="badge-ready-invoice">Ready to Invoice</span>`
+  const _invSt = isJobComplete ? (_invoiceStatus.get(bid) || "loading") : null;
+  const invoiceBadge = isJobComplete
+    ? `<span id="inv-badge-${esc(bid)}">${_invBadgeHtml(_invSt)}</span>`
     : "";
 
   const isArrived  = !!j.arrived_at;
@@ -956,6 +1002,9 @@ async function generateCrewInvoice() {
     }
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Regenerate Invoice"; }
     showToast("Invoice created: " + data.invoice_number);
+
+    // Update card badge immediately — no reload needed
+    if (j.booking_id) updateCardBadge(j.booking_id, "invoiced");
 
     // Show bonus eligibility status — always pass booking_id for crew (required for auth + invoice matching)
     if (j.booking_id) fetchBonusStatus(j.booking_id);
@@ -1314,6 +1363,8 @@ async function checkExistingInvoice(j) {
           View Invoice
         </a>`;
     }
+    // Update card badge to "Invoiced" since we confirmed one exists
+    if (j.booking_id) updateCardBadge(j.booking_id, "invoiced");
     // Also show bonus status for already-completed jobs with existing invoice
     if (j.booking_id) fetchBonusStatus(j.booking_id);
   } catch { /* silent — crew still sees Generate button as fallback */ }

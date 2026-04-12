@@ -339,12 +339,29 @@
       text-align: center;
       margin-top: 6px;
     }
-    .badge-ready-invoice {
+    @keyframes inv-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.65; }
+    }
+    .badge-inv-pending {
       display: inline-block;
       font-size: 11px;
       font-weight: 700;
-      background: hsl(225 80% 50%);
-      color: #fff;
+      background: hsl(38 90% 48%);
+      color: #000;
+      border-radius: 99px;
+      padding: 3px 9px;
+      margin-left: 8px;
+      vertical-align: middle;
+      letter-spacing: .03em;
+      animation: inv-pulse 1.8s ease-in-out infinite;
+    }
+    .badge-inv-done {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #166534;
+      color: #86efac;
       border-radius: 99px;
       padding: 3px 9px;
       margin-left: 8px;
