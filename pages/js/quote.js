@@ -1534,7 +1534,7 @@ function bindEvents() {
     const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
     if (hasQs || hasAddons) go("questions");
     else if (hasEquipmentCatalog()) go("equipment");
-    else calcPrice();
+    else checkPhotoGate();  // enforce photo gate even when no questions/equipment
   });
 
   // Questions — radio (with disqualify gate + uncertain tracking)
@@ -1787,6 +1787,7 @@ async function calcPrice() {
           answers: S.answers,
           addons: S.addons,
           qty: svc.qty,
+          photo_modules_uploaded: Object.keys(S.photos).filter(k => (S.photos[k] || []).length > 0),
         }),
       }).then(r => r.json())
     ));

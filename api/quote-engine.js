@@ -336,7 +336,7 @@ async function handleQuoteStart(req, res) {
 async function handleQuoteCalc(req, res) {
   try {
     const body = await parseBody(req);
-    const { quote_id, job_type_id, answers, addons, qty } = body;
+    const { quote_id, job_type_id, answers, addons, qty, photo_modules_uploaded } = body;
 
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
     if (!job_type_id) return json(res, 400, { ok: false, error: "job_type_id required" });
@@ -372,6 +372,25 @@ async function handleQuoteCalc(req, res) {
         ballparkRange: cls.ballparkRange || null,
         _trace: { service_id: serviceId, classification: cls.status, quote_allowed: false, blocker: cls.blockerReason },
       });
+    }
+
+    // ── Server-side photo gate enforcement ───────────────────────────────────
+    // If the service is classified as photo-gated, reject calc requests that
+    // don't declare the required modules as uploaded. This prevents direct-API
+    // bypass of the frontend photo gate.
+    if (cls.photoGate) {
+      const requiredModules = cls.photoGateModules
+        || (cls.photoGateModule ? [cls.photoGateModule] : []);
+      const uploaded = Array.isArray(photo_modules_uploaded) ? photo_modules_uploaded : [];
+      const missing  = requiredModules.filter(m => !uploaded.includes(m));
+      if (missing.length > 0) {
+        return json(res, 400, {
+          ok: false,
+          photo_gate_required: true,
+          missing_modules: missing,
+          error: `This service requires ${missing.join(" and ")} before pricing can be calculated. Please use the quote form at vickeryelectric.com/quote.`,
+        });
+      }
     }
 
     // Resolve module-format answers (CEILING_HEIGHT, WALL_TYPE, etc.) → driver options + disqualify
