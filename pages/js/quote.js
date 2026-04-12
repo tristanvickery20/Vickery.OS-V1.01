@@ -26,6 +26,8 @@ const S = {
   selectedSlot: null,   // ISO string — start of selected block (or exact slot for legacy)
   selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
   booking: null,
+  photoGateInfo: null,  // { module, label, prompt } — set when photo gate triggers
+  consultData: null,    // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
 };
 
 // ── Equipment / Material catalog ───────────────────────────────────────────────
@@ -60,6 +62,33 @@ const HIDDEN_MODULES = new Set([
   "CONDUIT_REQUIRED",  // Electrician's call — customer cannot assess conduit route
   "EXISTING_BOX",      // Box fixture-rating — default assumption: box exists
 ]);
+
+// ── Photo gate enforcement ─────────────────────────────────────────────────────
+// Services where a specific photo must be uploaded before we can price the job.
+// Key = assembly job_type_id; value = { module, label, prompt }.
+// Enforced client-side in checkPhotoGate() before calcPrice() is called.
+const PHOTO_GATED_SERVICES = {
+  "A024": {
+    module: "PANEL_PHOTO",
+    label:  "a panel photo",
+    prompt: "This service requires a photo of your electrical panel so we can verify there is space for the surge protector before giving you a price.",
+  },
+  "A028": {
+    module: "PANEL_PHOTO",
+    label:  "a panel photo",
+    prompt: "EV charger installation requires a panel photo to verify capacity and available breaker space before we can generate your estimate.",
+  },
+  "A005": {
+    module: "WORK_AREA_PHOTOS",
+    label:  "a photo of the installation area",
+    prompt: "A photo of the outdoor installation area helps us confirm the scope and give you an accurate price.",
+  },
+  "A006": {
+    module: "WORK_AREA_PHOTOS",
+    label:  "a photo of the mounting location",
+    prompt: "A photo of where the light will mount helps us confirm the correct hardware and give you an accurate price.",
+  },
+};
 
 // ── Module-level question overrides ───────────────────────────────────────────
 // Replaces the sheet's question text/options with simpler customer-answerable phrasing.
@@ -495,12 +524,14 @@ function back() {
     return;
   }
   const prev = {
-    categories: "segment",
-    services:   "categories",
-    questions:  "services",
-    sitevisit:  "questions",
-    confirm:    "review",
-    photo:      "confirm",
+    categories:  "segment",
+    services:    "categories",
+    questions:   "services",
+    sitevisit:   "questions",
+    confirm:     "review",
+    photo:       "confirm",
+    photo_gate:  "questions",
+    consult:     "questions",
   };
   if (prev[S.step]) go(prev[S.step]);
 }
@@ -523,10 +554,12 @@ function renderStep() {
       clone.innerHTML = renderReview();
       loadBlocksForReview();
       break;
-    case "confirm":    clone.innerHTML = renderConfirm();    break;
-    case "photo":      clone.innerHTML = renderPhoto();      break;
-    case "booked":     clone.innerHTML = renderBooked();     break;
-    default:           clone.innerHTML = errHTML("Unknown step."); break;
+    case "confirm":     clone.innerHTML = renderConfirm();    break;
+    case "photo":       clone.innerHTML = renderPhoto();      break;
+    case "photo_gate":  clone.innerHTML = renderPhotoGate();  break;
+    case "consult":     clone.innerHTML = renderConsult();    break;
+    case "booked":      clone.innerHTML = renderBooked();     break;
+    default:            clone.innerHTML = errHTML("Unknown step."); break;
   }
   bindEvents();
 }
@@ -538,9 +571,9 @@ function progressHTML() {
   const steps = ["Type", "Services", "Equipment", "Review", "Done"];
   const idx   = {
     segment: 0, categories: 0,
-    services: 1, questions: 1, sitevisit: 1,
+    services: 1, questions: 1, sitevisit: 1, photo_gate: 1,
     equipment: 2,
-    review: 3,
+    review: 3, consult: 3,
     confirm: 4, photo: 4, booked: 4,
   };
   const cur = idx[S.step] ?? 0;
@@ -1159,6 +1192,114 @@ function renderSiteVisit() {
     ${NOTE}`;
 }
 
+// ── Step: Photo Gate ──────────────────────────────────────────────────────────
+// Shown when a selected service requires a photo before we can price the job.
+function renderPhotoGate() {
+  const info = S.photoGateInfo || {};
+  const label = info.label || "a photo";
+  const prompt = info.prompt || "A photo is needed before we can generate your estimate.";
+  const fileCount = (S.photos[info.module] || []).length;
+  return `
+    ${stepHeader(3, "One Photo Required")}
+    <div class="q-card-section" style="padding:28px 20px 24px;">
+      <div style="font-size:48px;text-align:center;margin-bottom:16px;">
+        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><rect x="4" y="12" width="40" height="30" rx="3"/><circle cx="24" cy="27" r="8"/><path d="M16 12l3-6h10l3 6"/><circle cx="38" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
+        We need ${escHtml(label)}
+      </h3>
+      <p class="q-muted" style="max-width:400px;margin:0 auto 20px;text-align:center;font-size:14px;">
+        ${escHtml(prompt)}
+      </p>
+      <div style="border:2px dashed hsl(var(--border));border-radius:12px;padding:20px;text-align:center;background:hsl(var(--subtle-bg,var(--card-bg)));">
+        <label class="q-file-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:14px;font-weight:700;border:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          ${fileCount > 0 ? `${fileCount} photo${fileCount > 1 ? "s" : ""} selected — tap to change` : "Choose Photo"}
+          <input type="file" id="photoGateFile" accept="image/*" multiple style="display:none;"
+            onchange="onPhotoGateSelected(this)">
+        </label>
+        <p class="q-muted" style="font-size:12px;margin:10px 0 0;">JPG, PNG or HEIC &bull; up to 5 photos</p>
+        ${fileCount > 0 ? `<p style="margin:10px 0 0;font-size:13px;color:hsl(var(--success,120 60% 40%));font-weight:600;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
+          ${fileCount} photo${fileCount > 1 ? "s" : ""} ready
+        </p>` : ""}
+      </div>
+    </div>
+    <div class="q-nav-row" style="margin-top:20px;">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="photoGateProceedBtn"
+        ${fileCount > 0 ? "" : "disabled"}
+        onclick="calcPrice()">
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>See My Price</span>
+      </button>
+    </div>
+    ${NOTE}`;
+}
+
+// ── Step: Consult CTA ─────────────────────────────────────────────────────────
+// Shown when the quote engine returns manual_review_required: true.
+function renderConsult() {
+  const d = S.consultData || {};
+  const svcName = d.service_name || "this service";
+  const range   = d.ballparkRange
+    ? `$${Number(d.ballparkRange.low).toLocaleString()} – $${Number(d.ballparkRange.high).toLocaleString()}`
+    : null;
+
+  return `
+    ${stepHeader(3, "Custom Quote Needed")}
+    <div class="q-card-section" style="padding:28px 20px 24px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><circle cx="24" cy="24" r="20"/><line x1="24" y1="16" x2="24" y2="24" stroke-width="2.8"/><circle cx="24" cy="32" r="2" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
+        ${escHtml(svcName)} Needs a Personal Quote
+      </h3>
+      <p class="q-muted" style="max-width:420px;margin:0 auto 16px;text-align:center;font-size:14px;">
+        Every installation for this service involves unique site conditions that our online estimator cannot fully account for. One of our electricians will review your project and give you an accurate price — usually within a few hours.
+      </p>
+      ${range ? `
+      <div style="background:hsl(var(--primary) / 0.08);border:1px solid hsl(var(--primary) / 0.25);border-radius:10px;padding:14px 18px;text-align:center;margin:0 auto 20px;max-width:320px;">
+        <div class="q-muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ballpark Range</div>
+        <div style="font-size:24px;font-weight:900;font-family:var(--font-display);color:hsl(var(--primary));letter-spacing:-0.02em;">${escHtml(range)}</div>
+        <div class="q-muted" style="font-size:11px;margin-top:4px;">Final price confirmed after site review</div>
+      </div>` : ""}
+    </div>
+
+    <div class="q-card-section" style="margin-top:12px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Request a Free Quote Call</div>
+      <div class="q-form">
+        <div class="q-field">
+          <label class="q-label">Your Name <span class="q-req">*</span></label>
+          <input type="text" id="consult_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Phone Number <span class="q-req">*</span></label>
+          <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Best Time to Reach You</label>
+          <select id="consult_best_time" class="q-input">
+            <option value="">Any time</option>
+            <option value="morning">Morning (8 am – 12 pm)</option>
+            <option value="afternoon">Afternoon (12 pm – 5 pm)</option>
+            <option value="evening">Evening (5 pm – 7 pm)</option>
+          </select>
+        </div>
+        <div id="consultErr" class="q-error-box" style="display:none;"></div>
+        <button class="q-btn-next" id="submitConsultBtn" onclick="submitConsultRequest()" style="width:100%;margin-top:8px;">
+          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+          <span>Request My Quote</span>
+        </button>
+      </div>
+    </div>
+    <div class="q-nav-row" style="margin-top:16px;">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <div></div>
+    </div>
+    ${NOTE}`;
+}
+
 // ── Notice banner + Equipment picker ─────────────────────────────────────────
 function noticeHTML(msg, type) {
   const iconPaths = {
@@ -1486,7 +1627,7 @@ function bindEvents() {
 
   document.getElementById("seePriceBtn")?.addEventListener("click", () => {
     if (hasEquipmentCatalog()) go("equipment");
-    else calcPrice();
+    else checkPhotoGate();
   });
 
   // Equipment card picker — radio-style within each service section
@@ -1516,7 +1657,7 @@ function bindEvents() {
     });
   });
 
-  document.getElementById("equipNextBtn")?.addEventListener("click", calcPrice);
+  document.getElementById("equipNextBtn")?.addEventListener("click", checkPhotoGate);
 
   // Review: advance to confirm once slot selected
   document.getElementById("goConfirmBtn")?.addEventListener("click", () => {
@@ -1663,6 +1804,22 @@ async function calcPrice() {
         }),
       }).then(r => r.json())
     ));
+
+    // Check for manual_review_required before throwing on errors
+    const blockedResult = results.find(r => r.manual_review_required);
+    if (blockedResult) {
+      const idx = results.indexOf(blockedResult);
+      const svc = S.selectedServices[idx];
+      const jt  = (S.config?.jobTypes || []).find(j => j.job_type_id === svc?.job_type_id);
+      S.consultData = {
+        service_id:    svc?.job_type_id || null,
+        service_name:  jt?.name_public  || svc?.job_type_id || "this service",
+        ballparkRange: blockedResult.ballparkRange || null,
+        reason:        blockedResult.disqualify_reason || null,
+      };
+      go("consult");
+      return;
+    }
 
     for (const res of results) {
       if (!res.ok && res.error) throw new Error(res.error);
@@ -2001,6 +2158,91 @@ async function uploadPhoto() {
   } catch (e) {
     statusEl.textContent = "\u274C Upload failed: " + e.message;
     if (btn) { btn.disabled = false; btn.textContent = "Upload Photo"; }
+  }
+}
+
+// ── Photo gate — check before calcPrice() ─────────────────────────────────────
+// Walks selected services and finds the first gate whose photos haven't been
+// supplied yet. If a gate is pending, it sets S.photoGateInfo and routes to
+// the photo_gate step. If all gates are satisfied (or no gates apply), it
+// calls calcPrice() directly.
+function checkPhotoGate() {
+  for (const svc of S.selectedServices) {
+    const gate = PHOTO_GATED_SERVICES[svc.job_type_id];
+    if (!gate) continue;
+    if ((S.photos[gate.module] || []).length === 0) {
+      S.photoGateInfo = gate;
+      go("photo_gate");
+      return;
+    }
+  }
+  calcPrice();
+}
+
+// ── Photo gate file picker ─────────────────────────────────────────────────────
+// Called from the inline onchange in renderPhotoGate(). Stores files in
+// S.photos[module] then re-renders the gate so the proceed button unlocks.
+function onPhotoGateSelected(input) {
+  if (!input.files?.length) return;
+  const module = S.photoGateInfo?.module;
+  if (!module) return;
+  if (!S.photos[module]) S.photos[module] = [];
+  Array.from(input.files).forEach(f => S.photos[module].push(f));
+  go("photo_gate");   // re-render to reflect new count + enable proceed button
+}
+
+// ── Consult request submit ─────────────────────────────────────────────────────
+async function submitConsultRequest() {
+  const name      = (document.getElementById("consult_name")?.value  || "").trim();
+  const phone     = (document.getElementById("consult_phone")?.value || "").trim();
+  const best_time = document.getElementById("consult_best_time")?.value || "";
+
+  const errEl = document.getElementById("consultErr");
+  const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
+  if (errEl) errEl.style.display = "none";
+
+  if (!name)  return show("Please enter your name.");
+  if (!phone) return show("Please enter your phone number.");
+
+  const btn = document.getElementById("submitConsultBtn");
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "Sending\u2026"; }
+
+  try {
+    const r = await fetch("/api/quote/consult-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        phone,
+        best_time,
+        service_id:   S.consultData?.service_id   || null,
+        service_name: S.consultData?.service_name || null,
+        quote_id:     S.quoteId || null,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Submission failed.");
+
+    // Show success inline (replace form content)
+    const card = document.querySelector(".q-card-section:last-of-type");
+    if (card) {
+      card.innerHTML = `
+        <div style="text-align:center;padding:28px 16px;">
+          <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(120 60% 40%);display:block;margin:0 auto 16px;"><circle cx="24" cy="24" r="20"/><polyline points="14 24 21 31 34 17" stroke-width="2.8"/></svg>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;">Request Received!</h3>
+          <p class="q-muted" style="font-size:14px;max-width:360px;margin:0 auto;">
+            We got your request for a custom quote on <strong>${escHtml(S.consultData?.service_name || "this service")}</strong>.
+            Someone from the Vickery Electric team will call you at <strong>${escHtml(phone)}</strong>
+            ${best_time ? ` during your preferred time` : ""} — usually within a few hours on business days.
+          </p>
+        </div>`;
+    }
+  } catch (e) {
+    show(e.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.querySelector("span").textContent = "Request My Quote";
+    }
   }
 }
 

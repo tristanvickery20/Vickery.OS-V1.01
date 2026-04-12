@@ -369,6 +369,7 @@ async function handleQuoteCalc(req, res) {
         manual_review_required: true,
         classification: cls.status,
         disqualify_reason: cls.blockerReason,
+        ballparkRange: cls.ballparkRange || null,
         _trace: { service_id: serviceId, classification: cls.status, quote_allowed: false, blocker: cls.blockerReason },
       });
     }
@@ -491,6 +492,7 @@ async function handleQuoteLock(req, res) {
         manual_review_required: true,
         classification: cls.status,
         disqualify_reason: cls.blockerReason,
+        ballparkRange: cls.ballparkRange || null,
         _trace: { service_id: serviceId, classification: cls.status, quote_allowed: false, blocker: cls.blockerReason },
       });
     }
@@ -571,4 +573,69 @@ async function handleQuoteLock(req, res) {
   }
 }
 
-module.exports = { handleQuoteStart, handleQuoteCalc, handleQuoteLock, computePrice, resolveModuleAnswers };
+// ── Consult request handler ───────────────────────────────────────────────────
+// POST /api/quote/consult-request
+// Captures lead info for services that are manual-quote-only.
+// Creates a Leads row tagged consult_request and fires an owner SMS alert.
+async function handleConsultRequest(req, res) {
+  try {
+    const body = await parseBody(req);
+    const { name, phone, best_time, service_id, service_name, quote_id } = body;
+
+    if (!phone) return json(res, 400, { ok: false, error: "phone required" });
+
+    const sheetId = SPREADSHEET_ID();
+    const sheets  = await getSheetsClient();
+
+    const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+    const now    = new Date().toISOString();
+
+    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Leads!A1:Z1" });
+    const headers  = (leadsRes.data.values || [[]])[0] || [];
+    const idxOf    = h => headers.indexOf(h);
+
+    const newRow = new Array(Math.max(headers.length, 27)).fill("");
+    const set    = (h, v) => { const i = idxOf(h); if (i >= 0) newRow[i] = v; };
+    set("id",          leadId);
+    set("created_at",  now);
+    set("name",        name    || "");
+    set("phone",       phone   || "");
+    set("job_type",    service_id   || "");
+    set("status",      "Consult Request");
+    set("lead_type",   "consult_request");
+    set("notes",       [
+      service_name ? `Service: ${service_name}` : "",
+      best_time    ? `Best time to call: ${best_time}` : "",
+      quote_id     ? `Quote session: ${quote_id}` : "",
+    ].filter(Boolean).join(" | "));
+    set("estimated_value", "");
+    set("lead_source",     "Website");
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId, range: "Leads!A:A",
+      valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+      requestBody: { majorDimension: "ROWS", values: [newRow] },
+    });
+    console.log(`[consult-request] Created Lead ${leadId} service=${service_id} phone=${phone}`);
+
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (ownerPhone) {
+      const { sendSms, buildMessage, CONSULT_TEMPLATES } = require("../lib/sms");
+      const svcLabel = service_name || service_id || "Unknown service";
+      const msg = buildMessage(CONSULT_TEMPLATES.CONSULT_REQUEST_ADMIN, {
+        name:       name        || "Unknown",
+        phone:      phone       || "",
+        service:    svcLabel,
+        best_time:  best_time   || "Not specified",
+      });
+      sendSms(ownerPhone, msg).catch(err => console.error("[consult-request] SMS error:", err.message));
+    }
+
+    json(res, 200, { ok: true, lead_id: leadId });
+  } catch (err) {
+    console.error("[consult-request]", err.message);
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+module.exports = { handleQuoteStart, handleQuoteCalc, handleQuoteLock, handleConsultRequest, computePrice, resolveModuleAnswers };
