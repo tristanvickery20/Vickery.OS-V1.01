@@ -47,25 +47,45 @@ async function handleBonusEligibility(req, res) {
     res.end(JSON.stringify(data));
   }
 
-  const url = new URL(req.url, "http://localhost");
-  const leadId = url.searchParams.get("lead_id") || "";
-  if (!leadId) return json(400, { ok: false, error: "lead_id is required" });
+  const url     = new URL(req.url, "http://localhost");
+  const leadId  = (url.searchParams.get("lead_id")  || "").trim();
+  const quoteId = (url.searchParams.get("quote_id") || "").trim();
+  if (!leadId && !quoteId) return json(400, { ok: false, error: "lead_id or quote_id is required" });
 
   try {
     const sheets = await getSheetsClient();
     const sid    = process.env.CRM_SHEET_ID;
 
-    const [config, timeData, expData, clientsData, attachData] = await Promise.all([
+    const [config, timeData, expData, clientsData, attachData, invoicesData] = await Promise.all([
       getConfig(),
       fetchTabRows(sheets, sid, "Time!A1:L2000"),
       fetchTabRows(sheets, sid, "Expenses!A1:J2000"),
       fetchTabRows(sheets, sid, "Clients!A1:ZZ5000"),
       fetchTabRows(sheets, sid, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, sid, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const laborRateTech = num(config.labor_rate_tech || 50);
     const burdenPct     = num(config.burden_pct     || 0);
     const loadedRate    = laborRateTech * (1 + burdenPct / 100);
+
+    // ── Lead record: find by lead_id, id, OR last_quote_id ──
+    const cIdx = {};
+    (clientsData.headers || []).forEach((h, i) => { cIdx[h] = i; });
+    let lead = null;
+    for (const row of clientsData.rows || []) {
+      const lid  = String(row[cIdx["lead_id"]]      ?? "").trim();
+      const id2  = String(row[cIdx["id"]]           ?? "").trim();
+      const lqid = String(row[cIdx["last_quote_id"]]?? "").trim();
+      const matches = (leadId  && (lid === leadId  || id2  === leadId))
+                   || (quoteId && (lqid === quoteId || lid  === quoteId || id2 === quoteId));
+      if (matches) { lead = row; break; }
+    }
+
+    // Canonical lead ID used for Time/Expense/Attachment lookups
+    const resolvedLeadId = lead
+      ? (String(lead[cIdx["lead_id"]] ?? lead[cIdx["id"]] ?? "").trim() || leadId || quoteId)
+      : (leadId || quoteId);
 
     // ── Time: sum WORK minutes for this lead (exclude drive/admin) ──
     const tLeadIdx  = timeData.headers.indexOf("lead_id");
@@ -76,7 +96,8 @@ async function handleBonusEligibility(req, res) {
     let timeEntries   = 0;
     if (tLeadIdx >= 0 && tMinIdx >= 0) {
       for (const row of timeData.rows) {
-        if (String(row[tLeadIdx] || "").trim() !== leadId) continue;
+        const rowLid = String(row[tLeadIdx] || "").trim();
+        if (rowLid !== resolvedLeadId) continue;
         const cat = tCatIdx >= 0 ? String(row[tCatIdx] || "").trim().toLowerCase() : "";
         if (NON_WORK.has(cat)) continue;
         totalMinutes += num(row[tMinIdx]);
@@ -94,12 +115,12 @@ async function handleBonusEligibility(req, res) {
     let directSub       = 0;
     if (eLeadIdx >= 0 && eAmtIdx >= 0) {
       for (const row of expData.rows) {
-        if (String(row[eLeadIdx] || "").trim() !== leadId) continue;
+        if (String(row[eLeadIdx] || "").trim() !== resolvedLeadId) continue;
         const amt  = num(row[eAmtIdx]);
         const type = String(row[eTypeIdx] || "").trim().toLowerCase();
-        if (MATERIAL_TYPES.has(type))  directMaterials += amt;
-        else if (PERMIT_TYPES.has(type)) directPermits += amt;
-        else if (SUB_TYPES.has(type))   directSub     += amt;
+        if (MATERIAL_TYPES.has(type))    directMaterials += amt;
+        else if (PERMIT_TYPES.has(type)) directPermits   += amt;
+        else if (SUB_TYPES.has(type))    directSub       += amt;
       }
     }
     directMaterials = Math.round(directMaterials * 100) / 100;
@@ -109,32 +130,32 @@ async function handleBonusEligibility(req, res) {
 
     // ── Attachments: count photos for this lead ──
     let photoCount = 0;
-    const aEntityTypeIdx = attachData.headers.indexOf("entity_type");
-    const aEntityIdIdx   = attachData.headers.indexOf("entity_id");
-    const aFileUrlIdx    = attachData.headers.indexOf("file_url");
+    const aEntityIdIdx = attachData.headers.indexOf("entity_id");
+    const aFileUrlIdx  = attachData.headers.indexOf("file_url");
     if (aEntityIdIdx >= 0) {
       for (const row of attachData.rows) {
-        if (String(row[aEntityIdIdx] || "").trim() !== leadId) continue;
+        if (String(row[aEntityIdIdx] || "").trim() !== resolvedLeadId) continue;
         const url2 = String(row[aFileUrlIdx] || "").toLowerCase();
         if (/\.(png|jpg|jpeg|webp|gif)(\?|$)/.test(url2)) photoCount++;
       }
     }
 
-    // ── Lead record: find by id ──
-    const cIdx = {};
-    (clientsData.headers || []).forEach((h, i) => { cIdx[h] = i; });
-    let lead = null;
-    for (const row of clientsData.rows || []) {
-      const lid = String(row[cIdx["lead_id"]] ?? row[cIdx["id"]] ?? "").trim();
-      if (lid === leadId) {
-        lead = row;
-        break;
+    // ── Collected revenue: sum paid_amount from Invoices tab for this lead ──
+    const iLeadIdx = invoicesData.headers.indexOf("lead_id");
+    const iPaidIdx = invoicesData.headers.indexOf("paid_amount");
+    const iBkgIdx  = invoicesData.headers.indexOf("booking_id");
+    let collectedRevenue = 0;
+    if (iPaidIdx >= 0) {
+      for (const row of invoicesData.rows) {
+        const invLead = iLeadIdx >= 0 ? String(row[iLeadIdx] || "").trim() : "";
+        const invBkg  = iBkgIdx  >= 0 ? String(row[iBkgIdx]  || "").trim() : "";
+        const matches = (invLead && invLead === resolvedLeadId)
+                     || (quoteId && invBkg === quoteId);
+        if (!matches) continue;
+        collectedRevenue += num(row[iPaidIdx]);
       }
     }
-
-    const collectedRevenue = lead
-      ? Math.max(num(lead[cIdx["paid_amount"]] || 0), num(lead[cIdx["invoiced_amount"]] || 0))
-      : 0;
+    collectedRevenue = Math.round(collectedRevenue * 100) / 100;
 
     const leadStatus = lead ? String(lead[cIdx["status_code"]] || lead[cIdx["status"]] || "").toLowerCase() : "";
     const isComplete = ["complete", "closed", "paid"].includes(leadStatus);
@@ -191,7 +212,7 @@ async function handleBonusEligibility(req, res) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       ok: true,
-      lead_id:               leadId,
+      lead_id:               resolvedLeadId,
       loaded_rate:           loadedRate,
       total_minutes:         totalMinutes,
       time_entries:          timeEntries,

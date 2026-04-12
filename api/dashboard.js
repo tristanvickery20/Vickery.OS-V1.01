@@ -117,10 +117,12 @@ async function handleDashboard(req, res) {
       .map((r) => {
         const obj = {};
         (clientsData.headers || []).forEach((h, i) => { obj[h] = r[i] ?? ""; });
-        obj.id            = String(obj.lead_id || obj.id || "").trim();
-        obj.paid_amount   = num(obj.paid_amount);
+        obj.id              = String(obj.lead_id || obj.id || "").trim();
+        obj.paid_amount     = num(obj.paid_amount);
         obj.invoiced_amount = num(obj.invoiced_amount);
-        obj.quoted_price  = num(obj.quoted_price);
+        obj.quoted_price    = num(obj.quoted_price);
+        // Normalize status: prefer status_code, fall back to status column
+        obj.status = String(obj.status_code || obj.status || "").toLowerCase().trim();
         return obj;
       })
       .filter((r) => r.id);

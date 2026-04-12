@@ -219,7 +219,7 @@ const server = http.createServer(async (req, res) => {
     return handleGetInvoiceForBooking(req, res);
   }
   // Bonus eligibility — require crew OR CRM session
-  if (_epath === "/api/bonus-eligibility" && req.method === "GET") {
+  if (req.url.split("?")[0] === "/api/bonus-eligibility" && req.method === "GET") {
     if (!getCrewSession(req) && !isAuthed(req)) {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));

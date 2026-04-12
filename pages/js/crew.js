@@ -957,20 +957,24 @@ async function generateCrewInvoice() {
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Regenerate Invoice"; }
     showToast("Invoice created: " + data.invoice_number);
 
-    // Show bonus eligibility status
-    const leadId = j.quote_id || j.booking_id || "";
-    if (leadId) fetchBonusStatus(leadId);
+    // Show bonus eligibility status — pass quote_id so endpoint can resolve via last_quote_id
+    const bonusLookupId = j.lead_id || "";
+    const bonusQuoteId  = j.quote_id || "";
+    if (bonusLookupId || bonusQuoteId) fetchBonusStatus(bonusLookupId, bonusQuoteId);
   } catch (err) {
     showToast(err.message || "Failed to generate invoice", true);
     if (genBtn) { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
   }
 }
 
-async function fetchBonusStatus(leadId) {
+async function fetchBonusStatus(leadId, quoteId) {
   const el = document.getElementById("jdBonusRow");
   if (!el) return;
   try {
-    const res  = await fetch("/api/bonus-eligibility?lead_id=" + encodeURIComponent(leadId));
+    const qs = new URLSearchParams();
+    if (leadId)  qs.set("lead_id",  leadId);
+    if (quoteId) qs.set("quote_id", quoteId);
+    const res  = await fetch("/api/bonus-eligibility?" + qs.toString());
     const d    = await res.json();
     if (!d.ok) return;
 
