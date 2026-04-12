@@ -1,0 +1,289 @@
+Before you spend on ads, build the conversion machine, the proof machine, and the tracking machine.
+
+In the Golden Triangle, that matters even more because this is not one tiny town. The core market is Beaumont, Port Arthur, and Orange, and nearby cities like Vidor and Bridge City are meaningful enough that people search by city, not just “near me.” Beaumont alone is about 112,893 people, Port Arthur about 55,799, Orange about 19,275, Vidor about 9,686, and Bridge City about 9,559. That means your prep should be city-specific, not one generic Southeast Texas page.  ￼
+
+What you need built before the marketing machine goes live
+
+1. Lock the launch box
+
+Create these first:
+	•	exact launch service area
+	•	exact launch services
+	•	exact “not offered” list
+	•	exact pricing/estimate rules
+	•	exact offer stack
+
+For you, this should mean a tight Tier 1/Tier 2/Tier 3 map, not “we serve all of SETX.” Google local ranking is driven mainly by relevance, distance, and prominence, so tighter relevance beats vague coverage.  ￼
+
+2. Finish the trust stack
+
+Before marketing, have every trust element ready:
+	•	legal business name finalized
+	•	domain bought
+	•	business email
+	•	business phone
+	•	insurance docs
+	•	master/EOR/licensing structure ready
+	•	license verification info ready
+	•	warranty language
+	•	payment methods
+	•	quote/invoice templates
+
+Google Local Services Ads for electricians are available in the U.S., but they can require licensing, insurance, and screening/background verification. Texas electrician licensing is handled through TDLR, and TDLR provides license verification tools.  ￼
+
+3. Build the Google foundation before ads
+
+This is the highest-leverage free asset:
+	•	claim and verify Google Business Profile
+	•	set it up correctly as a service-area business
+	•	use real business name only
+	•	set primary category and a few supporting categories
+	•	add services
+	•	add hours
+	•	add website
+	•	add phone
+	•	add service areas
+	•	upload real photos/videos
+
+Google says a verified Business Profile helps customers find you on Search and Maps, verification can take up to 5 business days, service-area businesses can hide their address, and you can set up to 20 service areas. Google also says complete profiles, reviews, and photos help local ranking.  ￼
+
+4. Do the GBP the right way so it does not get kneecapped
+
+Create and prepare:
+	•	verification video assets
+	•	vehicle photos with branding
+	•	tool/work photos
+	•	proof of business ownership/operation
+	•	service area list
+	•	correct address handling
+	•	exact NAP format you will use everywhere
+
+Google’s guidelines require the business to be represented accurately, with one profile per business, accurate address/service area details, and no remote mailbox or P.O. box used as the business location.  ￼
+
+5. Build the website to convert, not just exist
+
+Before traffic, the website needs:
+	•	homepage
+	•	instant quote page
+	•	booking/request page
+	•	financing/payment info page if used
+	•	review page
+	•	about/trust page
+	•	contact page
+	•	5–10 core service pages
+	•	5–8 city pages
+
+For your market, I’d build pages for:
+	•	Orange
+	•	West Orange
+	•	Bridge City
+	•	Vidor
+	•	Beaumont
+	•	Port Arthur
+	•	Nederland
+	•	Groves
+	•	Port Neches
+	•	Lumberton
+
+And service pages for your launch jobs:
+	•	ceiling fan install
+	•	recessed lighting
+	•	dimmer switch install
+	•	surge protection
+	•	smoke detector install
+	•	EV outlet/prewire
+	•	exterior outlet install
+	•	light fixture replacement
+	•	dedicated circuits
+	•	troubleshooting or diagnostic page if offered
+
+Reason: local ranking depends heavily on relevance and distance, so city + service combinations matter.  ￼
+
+6. Build the review machine before the first lead
+
+Create:
+	•	review ask script for tech
+	•	review ask SMS template
+	•	review ask email template
+	•	QR code review card
+	•	invoice footer review link
+	•	thank-you page with review CTA
+	•	review response SOP
+	•	automation timing rules
+
+Google explicitly allows you to create a review link/QR code and suggests using it on receipts, thank-you emails, and at the end of customer interactions. Google also says replying to reviews matters. But fake engagement can get reviews removed or even restrict your profile.  ￼
+
+So your review strategy should be:
+	•	real customers only
+	•	ask every happy customer
+	•	ask fast
+	•	make it one-click easy
+	•	reply to every review
+
+7. Build the photo/content bank before launch
+
+Do one organized content day and create:
+	•	truck photos
+	•	uniform/shirt photos
+	•	headshots
+	•	working photos
+	•	before/after photos
+	•	panel photos
+	•	exterior lighting photos
+	•	short 10–30 second job clips
+	•	“who we are” intro clip
+	•	“what we service” clips
+	•	“how instant quote works” clip
+
+Google says photos and videos help complete and improve the profile, and they only appear after verification.  ￼
+
+8. Build the referral/partner machine before ads
+
+Create a partner kit for:
+	•	plumbers
+	•	HVAC
+	•	handymen
+	•	remodelers
+	•	realtors
+	•	property managers
+	•	small GCs
+	•	apartment/duplex owners
+
+Each should get:
+	•	one-page service sheet
+	•	referral offer/process
+	•	contact card
+	•	service area map
+	•	“what we do / don’t do” sheet
+	•	fast scheduling promise
+	•	review link
+
+This matters because local prominence is not just ads; Google explicitly ties prominence to how well-known your business is, including links/references/reviews.  ￼
+
+9. Build the tracking machine before spending a dollar
+
+Inside your CRM, every lead should track:
+	•	source
+	•	campaign
+	•	city
+	•	service requested
+	•	quote shown
+	•	booked/not booked
+	•	job value
+	•	revenue
+	•	review requested
+	•	review completed
+	•	referral source
+
+Also create:
+	•	UTM-tagged links
+	•	unique landing pages by campaign
+	•	call outcome tags
+	•	missed call workflow
+	•	quote follow-up workflow
+	•	abandoned quote workflow
+
+Without this, you will not know whether Google Ads, LSA, GBP, Facebook, referrals, or city pages are actually working.
+
+10. Build the speed-to-lead machine
+
+Before marketing, write the actual scripts:
+	•	first phone answer script
+	•	missed call text
+	•	quote follow-up text
+	•	“we’re on the way” text
+	•	“job done” text
+	•	review ask text
+	•	referral ask text
+	•	unsold estimate follow-up sequence
+
+Marketing fails when the follow-up is weak, not just when the ad is weak.
+
+11. Build your launch offer stack
+
+Have the first offers prewritten:
+	•	free instant quote
+	•	same/next-day small-job scheduling if true
+	•	transparent pricing
+	•	clean-up guarantee
+	•	workmanship warranty
+	•	review/referral thank-you structure
+	•	seasonal promos if relevant
+
+Do not launch ads without already knowing:
+	•	your headline
+	•	your main differentiator
+	•	your CTA
+	•	your follow-up sequence
+	•	your proof elements
+
+12. Build the local SEO skeleton before paid traffic
+
+At minimum create:
+	•	title/meta for each city/service page
+	•	schema/basic local business info
+	•	internal links between city and service pages
+	•	FAQ blocks
+	•	service area copy
+	•	trust badges
+	•	photo alt text
+	•	review embeds/testimonials once earned
+
+Because Google local visibility depends on relevance, distance, and prominence, your site should reinforce the same market box your GBP uses.  ￼
+
+The minimum viable prelaunch marketing kit
+
+If you want the lean version, do not spend until you have these done:
+	1.	Verified Google Business Profile
+	2.	Domain + working website
+	3.	Homepage + quote page + contact page
+	4.	5 core service pages
+	5.	5 core city pages
+	6.	Review link + QR code
+	7.	25–50 real business/job photos
+	8.	Call/text scripts
+	9.	CRM source tracking
+	10.	Missed-call and follow-up automations
+	11.	Referral partner one-pager
+	12.	Truck/signage/business card assets
+	13.	Quote and invoice templates
+	14.	Launch offer and headline finalized
+	15.	LSA paperwork ready if you plan to use it
+
+What I would prioritize specifically for Vickery in the Golden Triangle
+
+Your best prelaunch order is:
+
+First: Orange, West Orange, Bridge City, Vidor
+Second: Beaumont
+Third: Nederland / Groves / Port Neches / Port Arthur
+Fourth: Lumberton and outer zones
+
+That fits both your operational control and the way Google local discovery works across nearby cities.  ￼
+
+Biggest mistake to avoid
+
+Do not turn on marketing with:
+	•	weak or unfinished website
+	•	unverified GBP
+	•	no reviews process
+	•	no city pages
+	•	no follow-up automation
+	•	no source tracking
+	•	vague service area
+	•	too many services at launch
+
+That just buys you expensive confusion.
+
+Best way to think about it
+
+Before launch, create:
+	•	something to find (GBP + local pages)
+	•	something to trust (photos, proof, license, reviews)
+	•	something to convert on (quote/book/contact flow)
+	•	something to measure with (CRM tracking)
+	•	something to compound (reviews, referrals, content)
+
+That is what makes the marketing machine effective, not the ad spend itself.
+
+I can turn this into a ruthless prelaunch checklist with exact deliverables and priority order for Vickery Electric.
