@@ -68,11 +68,12 @@ async function handleBonusEligibility(req, res) {
     const sheets = await getSheetsClient();
     const sid    = process.env.CRM_SHEET_ID;
 
-    const [config, timeData, expData, clientsData, attachData, invoicesData, bookingsData] = await Promise.all([
+    const [config, timeData, expData, clientsData, leadsData, attachData, invoicesData, bookingsData] = await Promise.all([
       getConfig(),
       fetchTabRows(sheets, sid, "Time!A1:L2000"),
       fetchTabRows(sheets, sid, "Expenses!A1:J2000"),
       fetchTabRows(sheets, sid, "Clients!A1:ZZ5000"),
+      fetchTabRows(sheets, sid, "Leads!A1:Z5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, sid, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, sid, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
       bookingId
@@ -106,10 +107,12 @@ async function handleBonusEligibility(req, res) {
     const burdenPct     = num(config.burden_pct     || 0);
     const loadedRate    = laborRateTech * (1 + burdenPct / 100);
 
-    // ── Lead record: find by lead_id, id, OR last_quote_id ──
+    // ── Lead record: search Clients tab first, then fall back to legacy Leads tab ──
     const cIdx = {};
     (clientsData.headers || []).forEach((h, i) => { cIdx[h] = i; });
-    let lead = null;
+    let lead     = null;
+    let leadIdxMap = cIdx; // active column index map
+
     for (const row of clientsData.rows || []) {
       const lid  = String(row[cIdx["lead_id"]]      ?? "").trim();
       const id2  = String(row[cIdx["id"]]           ?? "").trim();
@@ -119,9 +122,22 @@ async function handleBonusEligibility(req, res) {
       if (matches) { lead = row; break; }
     }
 
+    // Fallback: search legacy Leads tab (for jobs not yet migrated to Clients)
+    if (!lead) {
+      const lIdx = {};
+      (leadsData.headers || []).forEach((h, i) => { lIdx[h] = i; });
+      for (const row of leadsData.rows || []) {
+        const lid  = String(row[lIdx["id"]] ?? "").trim();
+        const lqid = String(row[lIdx["last_quote_id"]] ?? row[lIdx["quote_id"]] ?? "").trim();
+        const matches = (leadId  && lid  === leadId)
+                     || (quoteId && (lqid === quoteId || lid === quoteId));
+        if (matches) { lead = row; leadIdxMap = lIdx; break; }
+      }
+    }
+
     // Canonical lead ID used for Time/Expense/Attachment lookups
     const resolvedLeadId = lead
-      ? (String(lead[cIdx["lead_id"]] ?? lead[cIdx["id"]] ?? "").trim() || leadId || quoteId)
+      ? (String(lead[leadIdxMap["lead_id"]] ?? lead[leadIdxMap["id"]] ?? "").trim() || leadId || quoteId)
       : (leadId || quoteId);
 
     // ── Time: sum WORK minutes for this lead (exclude drive/admin) ──
@@ -195,17 +211,18 @@ async function handleBonusEligibility(req, res) {
     }
     collectedRevenue = Math.round(collectedRevenue * 100) / 100;
 
-    const leadStatus = lead ? String(lead[cIdx["status_code"]] || lead[cIdx["status"]] || "").toLowerCase() : "";
+    // Use leadIdxMap (points to Clients or Leads tab, whichever matched)
+    const leadStatus = lead ? String(lead[leadIdxMap["status_code"]] || lead[leadIdxMap["status"]] || "").toLowerCase() : "";
     const isComplete = ["complete", "closed", "paid"].includes(leadStatus);
     const unauthorizedDeviation = lead
-      ? (String(lead[cIdx["unauthorized_deviation"]] || "").toLowerCase() === "true")
+      ? (String(lead[leadIdxMap["unauthorized_deviation"]] || "").toLowerCase() === "true")
       : false;
 
     // Completion date: prefer completed_at → paid_date → scheduled_date
     // completed_at is the canonical job-completion timestamp; paid_date marks when payment cleared;
     // scheduled_date is a last-resort proxy only (forward-looking, may pre-date actual completion).
     const completionDateStr = lead
-      ? (String(lead[cIdx["completed_at"]] || "") || String(lead[cIdx["paid_date"]] || "") || String(lead[cIdx["scheduled_date"]] || ""))
+      ? (String(lead[leadIdxMap["completed_at"]] || "") || String(lead[leadIdxMap["paid_date"]] || "") || String(lead[leadIdxMap["scheduled_date"]] || ""))
       : "";
     const completionDate = parseDate(completionDateStr);
     const now = new Date();
