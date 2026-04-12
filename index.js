@@ -65,6 +65,7 @@ const {
 } = require("./api/invoices");
 const { handleCreatePayment } = require("./api/payments");
 const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
+const { handleEstimatorMatrix } = require("./api/estimator-matrix");
 const { handleGeocode } = require("./api/schedule-geocode");
 const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
 const { handleMapboxConfig } = require("./api/config-mapbox");
@@ -414,6 +415,10 @@ const server = http.createServer(async (req, res) => {
     return handleEstimatorClassification(req, res);
   }
 
+  if (_epath === "/api/admin/estimator-matrix" && req.method === "GET") {
+    return handleEstimatorMatrix(req, res);
+  }
+
   // ── Material price auto-update (manual trigger) ────────────────────────────
   if (_epath === "/api/admin/materials/price-update" && req.method === "POST") {
     if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
@@ -597,6 +602,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/crm/audit") {
     return serveFile(res, path.join(__dirname, "pages/crm-audit.html"), "text/html");
+  }
+
+  if (req.url === "/crm/estimator-audit") {
+    return serveFile(res, path.join(__dirname, "pages/crm-estimator-audit.html"), "text/html");
+  }
+
+  if (req.url === "/crm/rulebook") {
+    return serveFile(res, path.join(__dirname, "pages/crm-rulebook.html"), "text/html");
   }
 
   if (req.url === "/crm/calculator") {

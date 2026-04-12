@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Service Rulebook &bull; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    /* ── Screen styles ── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .page-header h1 { font-size: 1.35rem; font-weight: 800; }
+    .page-header .sub { font-size: 0.82rem; color: hsl(var(--muted-foreground)); margin-top: 4px; max-width: 480px; }
+
+    .print-btn {
+      padding: 7px 18px;
+      background: hsl(var(--primary));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .print-btn:hover { opacity: 0.88; }
+
+    .rulebook-body { max-width: 900px; }
+
+    .rb-section {
+      background: #fff;
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .rb-section-header {
+      background: hsl(var(--primary));
+      color: #fff;
+      padding: 12px 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .rb-section-body { padding: 4px 0; }
+
+    .rb-service {
+      padding: 14px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .rb-service:last-child { border-bottom: none; }
+    .rb-service-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rb-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-instant   { background: hsl(145 55% 88%); color: hsl(145 55% 25%); }
+    .badge-safeguard { background: hsl(210 60% 88%); color: hsl(210 60% 28%); }
+    .badge-visit     { background: hsl(30 80% 90%);  color: hsl(30 80% 30%);  }
+    .badge-notoffered{ background: hsl(0 0% 90%);    color: hsl(0 0% 35%);    }
+
+    .rb-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 4px 16px;
+      font-size: 0.82rem;
+    }
+    .rb-grid .lbl { color: hsl(var(--muted-foreground)); font-weight: 600; }
+    .rb-grid .val { }
+
+    .zone-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .zone-table th {
+      background: hsl(var(--secondary));
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 2px solid hsl(var(--border));
+    }
+    .zone-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+      vertical-align: top;
+    }
+    .zone-table tr:last-child td { border-bottom: none; }
+    .zone-core    td:first-child { border-left: 4px solid hsl(145 55% 45%); }
+    .zone-ext     td:first-child { border-left: 4px solid hsl(210 60% 50%); }
+    .zone-outer   td:first-child { border-left: 4px solid hsl(38 80% 50%); }
+    .zone-reject  td:first-child { border-left: 4px solid hsl(0 60% 55%); }
+
+    .rule-row {
+      padding: 12px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      font-size: 0.85rem;
+    }
+    .rule-row:last-child { border-bottom: none; }
+    .rule-row .rule-title { font-weight: 700; margin-bottom: 2px; }
+    .rule-row .rule-desc  { color: hsl(var(--muted-foreground)); line-height: 1.5; }
+
+    .bonus-item {
+      padding: 10px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      gap: 16px;
+      align-items: baseline;
+      font-size: 0.85rem;
+    }
+    .bonus-item:last-child { border-bottom: none; }
+    .bonus-item .check {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      background: hsl(145 55% 45%);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bonus-item .check svg { stroke: #fff; }
+    .bonus-item .text { line-height: 1.5; }
+    .bonus-item .text b { font-weight: 700; }
+
+    .price-tier-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .price-tier-table th {
+      background: hsl(var(--secondary));
+      padding: 8px 12px;
+      font-weight: 700;
+      text-align: left;
+      border-bottom: 2px solid hsl(var(--border));
+    }
+    .price-tier-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .price-tier-table tr:last-child td { border-bottom: none; }
+
+    .doc-meta {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      @page { margin: 0.75in; }
+
+      body {
+        background: #fff !important;
+        font-size: 10pt;
+        font-family: Arial, sans-serif;
+        color: #000;
+      }
+      .app-shell { display: block !important; }
+      .sidebar, .print-btn { display: none !important; }
+      .main-area { padding: 0 !important; }
+      .main-content { padding: 0 !important; }
+      .rulebook-body { max-width: 100%; }
+
+      .page-header h1 { font-size: 16pt; }
+      .page-header .sub { font-size: 9pt; color: #555; }
+
+      .rb-section {
+        border: 1.5pt solid #000 !important;
+        border-radius: 0 !important;
+        margin-bottom: 16pt;
+        break-inside: avoid;
+      }
+      .rb-section-header {
+        background: #1e45c0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        font-size: 11pt;
+        padding: 8pt 14pt;
+      }
+      .rb-service { padding: 8pt 14pt; }
+      .rb-service-name { font-size: 10pt; }
+      .rb-grid { font-size: 9pt; }
+      .zone-table th, .zone-table td { font-size: 9pt; padding: 5pt 8pt; }
+      .rule-row { padding: 7pt 14pt; font-size: 9pt; }
+      .bonus-item { padding: 7pt 14pt; font-size: 9pt; }
+      .rb-badge, .badge-instant, .badge-safeguard, .badge-visit, .badge-notoffered {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <main class="main-area">
+    <div class="main-content">
+
+      <div class="page-header">
+        <div>
+          <h1>Vickery Electric &mdash; Service Rulebook</h1>
+          <div class="sub">Operational reference for dispatchers, the Master Electrician of Record, and office staff. All service rules, pricing policies, and bonus requirements in one place.</div>
+          <div class="doc-meta">Effective April 2026 &mdash; Orange, TX service area</div>
+        </div>
+        <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+      </div>
+
+      <div class="rulebook-body">
+
+        <!-- ── SECTION 1: Instant Quote Services ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Services &mdash; Instant Quote Available</div>
+          <div class="rb-section-body">
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Ceiling Fan Installation
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install customer-supplied ceiling fan. Fan-rated box, wiring connections, switch hookup.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$200 &ndash; $800 (base swap to new location, vaulted ceiling)</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Existing wiring / box, ceiling height, fixture weight, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Recommended &mdash; no photos = estimate flag</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Ceilings over 20 ft; fixture over 70 lbs without blocking</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Light Fixture Installation
+                <span class="rb-badge badge-safeguard">Instant w/ Safeguards</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install customer-supplied fixture. Box, mounting hardware, wiring.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$150 &ndash; $900+</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Circuit scope (swap vs. new), existing box, ceiling height, fixture weight, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Recommended</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Fixture over 70 lbs; ceiling over 20 ft</span>
+                <span class="lbl">Note</span>
+                <span class="val">Material costs verified on-site; final invoice reflects actual quantities</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Recessed Lighting Installation
+                <span class="rb-badge badge-safeguard">Instant w/ Safeguards</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install recessed LED cans. Attic work or below-ceiling fishing, wiring, switches.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$250 &ndash; $1,200+ (attic access to no-attic, tall ceiling, new circuit)</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Attic access, ceiling height, circuit scope, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Recommended</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Vaulted ceiling + no attic access combined</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Dimmer / Smart Switch Installation
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install dimmer or smart switch. Wiring, device hardware, troubleshooting neutral wire if needed.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$100 &ndash; $600</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Circuit scope (swap vs. new), wall type, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Optional</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Brick or masonry walls</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Outlet / Receptacle Installation
+                <span class="rb-badge badge-safeguard">Instant w/ Safeguards</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install standard outlet. Box, wire, cover plate. New circuit from panel if needed.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$100 &ndash; $950</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Circuit scope, wall type, crawlspace access, panel distance, room type, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Recommended for new-circuit jobs</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Brick / masonry walls; full panel with no slots</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                GFCI Outlet Installation
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install GFCI outlet (bathroom, kitchen, garage, exterior). Device, box, cover plate.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$100 &ndash; $550</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Circuit scope, wall type, room type, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Optional</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Brick / masonry walls</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Whole-Home Surge Protector
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Install breaker-mounted whole-home surge protection device. Wiring and panel connection included.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$300 &ndash; $600</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Panel space availability, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Yes &mdash; panel photo required for accuracy</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Panel completely full (site visit to assess tandem or subpanel options)</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Outdoor / Landscape Lighting
+                <span class="rb-badge badge-safeguard">Instant w/ Safeguards</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install exterior fixture. Weatherproof box, GFCI protection, wiring from circuit source.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$200 &ndash; $900</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Mounting surface, circuit source, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Recommended</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Brick or concrete block exterior walls</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Motion / Security Light Installation
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install motion-activated exterior security light. Weatherproof housing, wiring, GFCI if required.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$200 &ndash; $850</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Mounting surface, circuit source, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Optional</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">Brick or concrete block exterior walls</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Smoke / CO Detector Installation
+                <span class="rb-badge badge-instant">Instant</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">What&rsquo;s included</span>
+                <span class="val">Labor to install smoke or combination smoke/CO detector. Battery-swap, hardwired swap, or new-location wiring.</span>
+                <span class="lbl">Typical range</span>
+                <span class="val">$80 &ndash; $450</span>
+                <span class="lbl">Price drivers</span>
+                <span class="val">Job type (battery swap / hardwired swap / new location), ceiling height, home age</span>
+                <span class="lbl">Photo required</span>
+                <span class="val">Optional</span>
+                <span class="lbl">Disqualifies</span>
+                <span class="val">New interconnected whole-home system; ceiling over 20 ft</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION 2: Site Visit Required ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Services &mdash; Site Visit Required (No Instant Pricing)</div>
+          <div class="rb-section-body">
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Electrical Panel Upgrade
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Utility coordination, main breaker sizing, meter base, and grounding system must be assessed in person before pricing.</span>
+                <span class="lbl">Customer told</span>
+                <span class="val">"We need to assess your current panel, meter, and utility connection before we can give you an accurate quote. We&rsquo;ll schedule a free on-site assessment."</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Sub-Panel Installation
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Feeder cable run, panel location, and main panel capacity must be assessed on-site.</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                EV Charger Installation
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Panel capacity check, conduit run distance, and charger model selection must be confirmed before pricing.</span>
+                <span class="lbl">Customer told</span>
+                <span class="val">"EV charger installs depend on your panel capacity and run distance. We&rsquo;ll do a free site visit to confirm everything."</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Hot Tub / Spa Circuit
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Dedicated 240V run, GFCI disconnect location, and conduit path must be assessed on-site.</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Electrical Troubleshooting / Diagnostics
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Diagnostic and troubleshooting work is inherently variable &mdash; cannot be priced without seeing the fault.</span>
+                <span class="lbl">Customer told</span>
+                <span class="val">"Troubleshooting requires us to physically find the problem. We charge a diagnostic fee and provide a repair quote on-site."</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Whole-House / Partial Rewiring
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Scope, circuit count, wall access, and knob-and-tube assessment all require in-person evaluation.</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Standby / Backup Generator
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Transfer switch selection, fuel source routing, and panel assessment require on-site visit.</span>
+              </div>
+            </div>
+
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Commercial Work (Lighting retrofit, ballast, exit / emergency lights)
+                <span class="rb-badge badge-visit">Site Visit</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Why site visit</span>
+                <span class="val">Fixture count, control scope, code compliance, and permitting requirements vary too widely for remote quoting.</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION 3: Not Offered ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Services &mdash; Not Offered / Refer Out</div>
+          <div class="rb-section-body">
+            <div class="rb-service">
+              <div class="rb-grid" style="grid-template-columns:1fr;">
+                <span class="val">The following are outside our current scope. Refer the customer to a specialist:</span>
+              </div>
+            </div>
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Fire Alarm Systems
+                <span class="rb-badge badge-notoffered">Refer Out</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Reason</span>
+                <span class="val">Requires licensed fire alarm contractor (NICET). We can rough-in conduit only.</span>
+              </div>
+            </div>
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Commercial Transformer / Switchgear
+                <span class="rb-badge badge-notoffered">Refer Out</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Reason</span>
+                <span class="val">High-voltage / utility-grade work outside current licensing scope.</span>
+              </div>
+            </div>
+            <div class="rb-service">
+              <div class="rb-service-name">
+                Telecom / Low-Voltage Data Cabling
+                <span class="rb-badge badge-notoffered">Refer Out</span>
+              </div>
+              <div class="rb-grid">
+                <span class="lbl">Reason</span>
+                <span class="val">Cat-6, coax, and data runs are outside our current service mix.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECTION 4: Service Area ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Service Area</div>
+          <div class="rb-section-body">
+            <table class="zone-table">
+              <thead>
+                <tr>
+                  <th>Zone</th>
+                  <th>Cities / Areas</th>
+                  <th>Travel Fee</th>
+                  <th>Rules</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="zone-core">
+                  <td><b>Core</b></td>
+                  <td>Orange, West Orange, Pinehurst, Vidor</td>
+                  <td>$0</td>
+                  <td>Full instant pricing. Same-day scheduling available.</td>
+                </tr>
+                <tr class="zone-ext">
+                  <td><b>Extended</b></td>
+                  <td>Beaumont, Port Arthur, Nederland, Port Neches, Groves, Bridge City, Mauriceville</td>
+                  <td>$25</td>
+                  <td>Instant pricing + travel note added to quote. Next-day scheduling typical.</td>
+                </tr>
+                <tr class="zone-outer">
+                  <td><b>Outer</b></td>
+                  <td>Lumberton, Silsbee, Jasper, Kountze, Buna</td>
+                  <td>$50</td>
+                  <td>$1,000 minimum ticket. Custom quote review before dispatch. 2&ndash;3 day lead time.</td>
+                </tr>
+                <tr class="zone-reject">
+                  <td><b>Out of Area</b></td>
+                  <td>Anything beyond ~50 min one-way from Orange, TX</td>
+                  <td>N/A</td>
+                  <td>Not serviced. Politely decline and refer to local contractors.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── SECTION 5: Pricing Rules ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Pricing Rules &amp; Policies</div>
+          <div class="rb-section-body">
+
+            <div class="rule-row">
+              <div class="rule-title">Minimum Ticket</div>
+              <div class="rule-desc">$150 minimum for any dispatched job. Jobs quoting below minimum are automatically flagged for review before confirmation.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Deposit Policy</div>
+              <div class="rule-desc">No deposit required for jobs under $500. For jobs $500&ndash;$2,000: 25% deposit required to schedule. For jobs over $2,000: 50% deposit required to schedule. Deposit collected via invoice before crew is dispatched.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Change Orders</div>
+              <div class="rule-desc">Any scope change discovered on-site must be documented as a change order before additional work proceeds. Change orders are approved in writing (text confirmation is acceptable) by the customer. No verbal-only change orders.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Diagnostic / Troubleshooting Rate</div>
+              <div class="rule-desc">Troubleshooting jobs are dispatched as site visits. The diagnostic fee is applied toward the repair if the customer proceeds. Rate: confirm current rate in Config sheet.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Material Cost Policy</div>
+              <div class="rule-desc">Instant quotes include a material estimate. Final invoice reflects actual material quantities used. Customers are informed of this at quote time via the material disclosure notice.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Permits</div>
+              <div class="rule-desc">Permit fees are passed through to the customer at cost. No markup on permit fees. Permit pulled by Master Electrician of Record before work begins on permitted jobs.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Price Rounding</div>
+              <div class="rule-desc">All customer-facing prices are rounded to the nearest $5. Internal price calculations use full precision.</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION 6: Bonus and Documentation Rules ── -->
+        <div class="rb-section">
+          <div class="rb-section-header">Bonus &amp; Documentation Rules (Employment Agreement Summary)</div>
+          <div class="rb-section-body">
+
+            <div class="rule-row" style="background:hsl(var(--secondary) / 0.5);">
+              <div class="rule-desc" style="font-size:0.78rem;">
+                Summary of the Master Electrician of Record employment agreement. See signed agreement for full terms. In case of conflict, the signed agreement controls.
+              </div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Per-Job Bonus Tiers</div>
+              <div class="rule-desc" style="margin-top:6px;">
+                <table class="price-tier-table">
+                  <thead>
+                    <tr><th>Collected Revenue</th><th>Bonus</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Under $1,000</td><td>$50</td></tr>
+                    <tr><td>$1,000 &ndash; $4,999</td><td>$100</td></tr>
+                    <tr><td>$5,000 or more</td><td>$150</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">All Four Tests Must Pass to Receive Bonus</div>
+            </div>
+
+            <div class="bonus-item">
+              <div class="check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="text"><b>40% Gross Margin:</b> (Collected Revenue &minus; Direct Job Cost) &divide; Collected Revenue &ge; 40%. Direct job cost includes loaded labor (base rate &times; burden %), materials, permits, and subcontractors.</div>
+            </div>
+
+            <div class="bonus-item">
+              <div class="check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="text"><b>Time &amp; Photo Documentation:</b> At least one time entry and one job photo must be submitted for this job by 11:59 PM on the day of service.</div>
+            </div>
+
+            <div class="bonus-item">
+              <div class="check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="text"><b>14-Day Quality Window:</b> No customer complaint, callback, or warranty claim within 14 calendar days of job completion.</div>
+            </div>
+
+            <div class="bonus-item">
+              <div class="check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="text"><b>No Unauthorized Budget Deviation:</b> Job must not have an unauthorized_deviation flag set in the CRM. Any scope or cost change must go through a documented change order.</div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Profit-Share Pool Tiers (Annual, paid quarterly)</div>
+              <div class="rule-desc" style="margin-top:6px;">
+                <table class="price-tier-table">
+                  <thead>
+                    <tr><th>Adjusted Net Profit (YTD)</th><th>Pool %</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>$0 or less</td><td>0%</td></tr>
+                    <tr><td>$0 &ndash; $50,000</td><td>1%</td></tr>
+                    <tr><td>$50,001 &ndash; $100,000</td><td>2%</td></tr>
+                    <tr><td>$100,001 &ndash; $200,000</td><td>3%</td></tr>
+                    <tr><td>Over $200,000</td><td>6%</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="rule-row">
+              <div class="rule-title">Bonus Payroll Timing</div>
+              <div class="rule-desc">Per-job bonuses are paid in the payroll period following the calendar month in which the job closed and all four tests passed. Profit-share is calculated quarterly and paid within 30 days of each quarter close.</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- end rulebook-body -->
+    </div>
+  </main>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+  loadSidebar();
+  highlightNav();
+</script>
+</body>
+</html>
