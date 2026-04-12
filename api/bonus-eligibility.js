@@ -163,9 +163,11 @@ async function handleBonusEligibility(req, res) {
       ? (String(lead[cIdx["unauthorized_deviation"]] || "").toLowerCase() === "true")
       : false;
 
-    // Completion date: prefer paid_date → scheduled_date
+    // Completion date: prefer completed_at → paid_date → scheduled_date
+    // completed_at is the canonical job-completion timestamp; paid_date marks when payment cleared;
+    // scheduled_date is a last-resort proxy only (forward-looking, may pre-date actual completion).
     const completionDateStr = lead
-      ? (String(lead[cIdx["paid_date"]] || "") || String(lead[cIdx["scheduled_date"]] || ""))
+      ? (String(lead[cIdx["completed_at"]] || "") || String(lead[cIdx["paid_date"]] || "") || String(lead[cIdx["scheduled_date"]] || ""))
       : "";
     const completionDate = parseDate(completionDateStr);
     const now = new Date();

@@ -692,10 +692,36 @@
         qualityDetail = `${d.days_since_completion} days since completion — window closed`;
       }
 
+      function finRow(label, val, opts = {}) {
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;${opts.bold ? 'font-weight:700;border-top:1px solid hsl(var(--border));padding-top:6px;margin-top:2px;' : ''}">
+            <span style="font-size:12px;color:${opts.bold ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'};">${label}</span>
+            <span style="font-size:12px;font-weight:${opts.bold ? '700' : '500'};color:${opts.color || 'hsl(var(--foreground))'};">${val}</span>
+          </div>`;
+      }
+
+      const marginBadgeColor = d.tests.margin_ok ? 'hsl(142,50%,40%)' : 'hsl(0,70%,50%)';
+      const marginBadge = `<span style="display:inline-block;padding:1px 7px;border-radius:9999px;font-size:10px;font-weight:700;background:${d.tests.margin_ok ? 'hsl(142,30%,94%)' : 'hsl(0,50%,95%)'};color:${marginBadgeColor};border:1px solid ${marginBadgeColor};margin-left:6px;">${d.tests.margin_ok ? 'PASS' : 'BELOW 40%'}</span>`;
+
       let html = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <span style="font-size:13px;font-weight:700;color:${sl.color};">${sl.text}</span>
           ${d.all_pass ? `<span style="font-size:22px;font-weight:800;font-family:var(--font-display);color:hsl(142,50%,40%);">+$${d.bonus_amount}</span>` : ''}
+        </div>
+
+        <!-- Financial Breakdown -->
+        <div style="background:hsl(var(--muted));border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--muted-foreground));margin-bottom:6px;">Financial Summary</div>
+          ${finRow('Collected Revenue', fmt$(d.collected_revenue))}
+          ${finRow('Direct Labor (' + d.total_minutes + ' min @ $' + Number(d.loaded_rate).toFixed(2) + '/hr)', '− ' + fmt$(d.labor_cost))}
+          ${d.direct_materials > 0 ? finRow('Direct Materials', '− ' + fmt$(d.direct_materials)) : ''}
+          ${d.direct_permits   > 0 ? finRow('Permits / Inspections', '− ' + fmt$(d.direct_permits)) : ''}
+          ${d.direct_sub       > 0 ? finRow('Subcontractors', '− ' + fmt$(d.direct_sub)) : ''}
+          ${finRow('Total Direct Cost', fmt$(d.direct_job_cost), { bold: true })}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid hsl(var(--border));margin-top:2px;">
+            <span style="font-size:12px;font-weight:700;">Gross Margin</span>
+            <span style="font-size:13px;font-weight:800;color:${marginBadgeColor};">${pct}${marginBadge}</span>
+          </div>
         </div>`;
 
       html += testRow('Gross Margin ≥ 40%', d.tests.margin_ok, marginDetail);
@@ -710,11 +736,6 @@
             <div style="font-size:20px;font-weight:800;font-family:var(--font-display);color:hsl(142,50%,35%);">$${d.bonus_amount}</div>
           </div>`;
       }
-
-      html += `
-        <div style="margin-top:12px;font-size:11px;color:hsl(var(--muted-foreground));">
-          Loaded labor rate: $${Number(d.loaded_rate).toFixed(2)}/hr &bull; ${d.total_minutes} min logged
-        </div>`;
 
       el.innerHTML = html;
     } catch (err) {

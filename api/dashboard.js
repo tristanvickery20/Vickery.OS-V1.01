@@ -92,7 +92,7 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, quotesData, snapshotsData, config, attachData, clientsData] = await Promise.all([
+    const [leadsData, timeData, expData, quotesData, snapshotsData, config, attachData, clientsData, invoicesData] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
@@ -101,6 +101,7 @@ async function handleDashboard(req, res) {
       getConfig(),
       fetchTabRows(sheets, spreadsheetId, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, spreadsheetId, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const laborRateTech = Number(config.labor_rate_tech || 50);
@@ -129,6 +130,18 @@ async function handleDashboard(req, res) {
 
     const leadsTabIds    = new Set(leads.map((l) => l.id));
     const allLeadsForBonus = [...leads, ...clientLeadsForBonus.filter((c) => !leadsTabIds.has(c.id))];
+
+    // Build paid-revenue rollup from Invoices tab (same source-of-truth as bonus-eligibility endpoint)
+    const invLeadIdx = (invoicesData.headers || []).indexOf("lead_id");
+    const invPaidIdx = (invoicesData.headers || []).indexOf("paid_amount");
+    const paidByLeadId = {};
+    if (invLeadIdx >= 0 && invPaidIdx >= 0) {
+      for (const row of invoicesData.rows || []) {
+        const lid = String(row[invLeadIdx] || "").trim();
+        if (!lid) continue;
+        paidByLeadId[lid] = (paidByLeadId[lid] || 0) + num(row[invPaidIdx]);
+      }
+    }
 
     const today = todayUTC();
     const week = getCurrentWeekUTC();
@@ -447,39 +460,47 @@ async function handleDashboard(req, res) {
       const lStatus = st(l);
 
       // YTD profit-share: all paid jobs this calendar year
-      const paidDateStr = String(l.paid_date || "");
-      const paidDate    = paidDateStr ? new Date(paidDateStr.includes("T") ? paidDateStr : paidDateStr + "T00:00:00Z") : null;
-      if (paidDate && paidDate.getUTCFullYear() === thisYear) {
-        const coll      = num(l.paid_amount);
-        const labMin    = laborMinByLead[l.id] || 0;
-        const labCost   = (labMin / 60) * loadedRate;
-        const expCost   = expCostByLead[l.id] || 0;
-        ytdCollected   += coll;
-        ytdDirectCost  += labCost + expCost;
+      // Use Invoices-tab rollup; fall back to lead row paid_amount only if no invoice records
+      const invPaid       = paidByLeadId[l.id];
+      const ytdColl       = invPaid !== undefined ? invPaid : num(l.paid_amount);
+      const paidDateStr   = String(l.paid_date || l.completed_at || "");
+      const paidDate      = paidDateStr ? new Date(paidDateStr.includes("T") ? paidDateStr : paidDateStr + "T00:00:00Z") : null;
+      if (paidDate && !isNaN(paidDate.getTime()) && paidDate.getUTCFullYear() === thisYear && ytdColl > 0) {
+        const labMin      = laborMinByLead[l.id] || 0;
+        const labCost     = (labMin / 60) * loadedRate;
+        const expCost     = expCostByLead[l.id] || 0;
+        ytdCollected     += ytdColl;
+        ytdDirectCost    += labCost + expCost;
       }
 
       if (!bonusDoneStatus.has(lStatus)) continue;
 
-      const collected = num(l.paid_amount) > 0 ? num(l.paid_amount) : num(l.invoiced_amount);
+      // Use Invoices-tab paid_amount as source-of-truth for collected revenue
+      const collected = invPaid !== undefined ? invPaid : (num(l.paid_amount) > 0 ? num(l.paid_amount) : 0);
       const labMin    = laborMinByLead[l.id] || 0;
       const labCost   = (labMin / 60) * loadedRate;
       const expCost   = expCostByLead[l.id] || 0;
       const totalC    = labCost + expCost;
       const marginPct = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
+      // Strict margin bucket: ONLY below-40% failures (not deviation)
       const marginOk  = marginPct !== null && marginPct >= 40;
       const hasTime   = labMin > 0;
       const hasPhoto  = (photosPerLead[l.id] || 0) >= 1;
       const docOk     = hasTime && hasPhoto;
       const noDeviation = !(String(l.unauthorized_deviation || "").toLowerCase() === "true");
 
-      const compDateStr = String(l.paid_date || l.scheduled_date || "");
+      // Completion date: prefer completed_at → paid_date → scheduled_date (same order as bonus-eligibility.js)
+      const compDateStr = String(l.completed_at || l.paid_date || l.scheduled_date || "");
       const compDate    = compDateStr ? new Date(compDateStr.includes("T") ? compDateStr : compDateStr + "T00:00:00Z") : null;
-      const daysSince   = compDate ? (nowD.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
+      const compDateOk  = compDate && !isNaN(compDate.getTime());
+      const daysSince   = compDateOk ? (nowD.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
       const qualityOk   = daysSince !== null && daysSince >= 14;
 
-      if (!marginOk || !noDeviation) {
+      if (!marginOk) {
+        // Strictly margin below 40% (or no collected revenue)
         bonusMarginFail++;
-      } else if (!docOk) {
+      } else if (!docOk || !noDeviation) {
+        // Documentation missing OR unauthorized deviation — both are doc/compliance failures
         bonusDocFail++;
       } else if (!qualityOk) {
         bonusPending++;
@@ -488,7 +509,7 @@ async function handleDashboard(req, res) {
         bonusEarned++;
         bonusTotalEarned += earnedAmt;
         // This payroll period = completion in current calendar month
-        if (compDate && compDate.getUTCFullYear() === thisMonthYear && compDate.getUTCMonth() === thisMonth) {
+        if (compDateOk && compDate.getUTCFullYear() === thisMonthYear && compDate.getUTCMonth() === thisMonth) {
           bonusEarnedThisMonth += earnedAmt;
         }
       }
