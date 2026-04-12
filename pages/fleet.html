@@ -12,21 +12,12 @@
     :root {
       --bg: #0b0f14; --surface: #131920; --border: rgba(255,255,255,0.08);
       --text: #e2e8f0; --muted: #64748b; --blue: #3b82f6; --green: #34d399;
-      --red: #f87171; --sidebar-w: 240px;
+      --red: #f87171;
     }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: "Inter", sans-serif; }
 
-    /* ── Layout ── */
-    .app-shell { display: flex; height: 100vh; overflow: hidden; }
-
-    /* Desktop: sidebar is a fixed-width flex column */
-    .sidebar {
-      width: var(--sidebar-w); flex-shrink: 0;
-      background: var(--surface); border-right: 1px solid var(--border);
-      overflow-y: auto; display: flex; flex-direction: column;
-    }
-
-    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    /* ── Layout: map fills viewport, header on top ── */
+    .main { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
     /* ── Header bar ── */
     .fleet-header {
@@ -35,6 +26,12 @@
       background: var(--surface); flex-shrink: 0; min-height: 52px;
     }
     .fleet-header h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
+    .fleet-back-btn {
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      text-decoration: none; white-space: nowrap; flex-shrink: 0;
+      padding: 4px 8px; border-radius: 6px; transition: color .15s;
+    }
+    .fleet-back-btn:hover { color: var(--text); }
     .gps-status-pill {
       font-size: 11px; font-weight: 700; border-radius: 99px;
       padding: 3px 10px; border: 1px solid; white-space: nowrap; flex-shrink: 0;
@@ -44,59 +41,78 @@
     .gps-status-pill.unknown { background: rgba(100,116,139,.12); color: #94a3b8; border-color: rgba(100,116,139,.3); }
     .last-update { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Hamburger — hidden on desktop */
+    /* Hamburger — shown on mobile only */
     .fleet-hamburger {
       display: none; background: none; border: none; cursor: pointer;
       padding: 4px; color: var(--text); flex-shrink: 0;
     }
     .fleet-hamburger svg { display: block; }
 
-    /* ── Content area: map + panel side-by-side ── */
+    /* ── Content area: map + panel side-by-side on desktop ── */
     .fleet-body { flex: 1; display: flex; overflow: hidden; }
 
     /* ── Map ── */
     #fleetMap { flex: 1; min-width: 0; }
 
-    /* ── Side panel ── */
+    /* ── Side panel — desktop: inline right column ── */
     .fleet-panel {
       width: 280px; flex-shrink: 0; border-left: 1px solid var(--border);
       background: var(--surface); display: flex; flex-direction: column;
       overflow: hidden;
     }
     .fleet-panel-header {
-      padding: 14px 16px 10px; font-size: 12px; font-weight: 700;
-      color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+      padding: 14px 16px 10px;
+      display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
+    .fleet-panel-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+    .fleet-panel-close {
+      display: none; /* shown only on mobile */
+      background: none; border: none; color: var(--muted);
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0;
+    }
+    .fleet-panel-close:hover { color: var(--text); }
     .fleet-panel-body { flex: 1; overflow-y: auto; padding: 10px 0; }
 
-    /* ── Mobile sidebar overlay backdrop ── */
-    .sidebar-backdrop {
+    /* ── Panel backdrop ── */
+    .fleet-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
       z-index: 149; backdrop-filter: blur(2px);
     }
-    .sidebar-backdrop.show { display: block; }
+    .fleet-backdrop.show { display: block; }
 
     /* ── Truck cards ── */
     .truck-card {
-      display: flex; align-items: center; gap: 12px;
+      display: flex; align-items: flex-start; gap: 12px;
       padding: 10px 16px; cursor: pointer; transition: background .12s;
     }
     .truck-card:hover { background: rgba(255,255,255,.04); }
     .truck-icon {
       width: 38px; height: 38px; border-radius: 50%; background: #2563eb;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      border: 2px solid rgba(255,255,255,.2);
+      border: 2px solid rgba(255,255,255,.2); margin-top: 1px;
     }
     .truck-icon svg { width: 18px; height: 18px; }
     .truck-info { flex: 1; min-width: 0; }
+    .truck-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .truck-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .truck-badge {
+      font-size: 10px; font-weight: 700; border-radius: 99px;
+      padding: 1px 7px; white-space: nowrap; flex-shrink: 0;
+    }
+    .truck-badge.moving  { background: rgba(59,130,246,.18); color: var(--blue); }
+    .truck-badge.stopped { background: rgba(100,116,139,.15); color: var(--muted); }
+    .truck-stats { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .truck-stats span + span::before { content: " · "; }
     .truck-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .truck-speed { font-size: 11px; font-weight: 600; }
-    .truck-speed.moving { color: var(--blue); }
+    .truck-speed { font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 2px; }
+    .truck-speed.moving  { color: var(--blue); }
     .truck-speed.stopped { color: var(--muted); }
 
-    /* ── Job pins (matched to today's jobs) ── */
+    /* ── Job section ── */
     .job-section-header {
       padding: 14px 16px 8px; font-size: 12px; font-weight: 700;
       color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
@@ -152,74 +168,109 @@
     .fleet-empty svg { opacity: .35; }
     .fleet-empty p { font-size: 14px; max-width: 200px; line-height: 1.5; }
 
-    /* ── Mobile: sidebar becomes a fixed slide-over, map is full-screen ── */
+    /* ── Mobile overrides ── */
     @media (max-width: 768px) {
-      .sidebar {
-        position: fixed; top: 0; left: 0; height: 100vh;
-        z-index: 150; width: var(--sidebar-w);
-        transform: translateX(-100%);
+      /* Fleet panel slides in from the RIGHT */
+      .fleet-panel {
+        position: fixed; top: 0; right: 0; height: 100vh;
+        width: min(320px, 92vw); z-index: 150;
+        transform: translateX(100%);
         transition: transform 0.25s cubic-bezier(.4,0,.2,1);
         box-shadow: none;
       }
-      .sidebar.open {
+      .fleet-panel.open {
         transform: translateX(0);
-        box-shadow: 4px 0 24px rgba(0,0,0,.6);
+        box-shadow: -4px 0 24px rgba(0,0,0,.7);
       }
+      .fleet-panel-close { display: block; }
       .fleet-hamburger { display: flex; align-items: center; justify-content: center; }
-      .fleet-panel { display: none; }
       .last-update { display: none; }
+      /* Back link is always visible */
     }
 
     @media (min-width: 769px) {
       .fleet-panel { display: flex; }
-      .sidebar-backdrop { display: none !important; }
+      .fleet-backdrop { display: none !important; }
     }
   </style>
 </head>
 <body>
-<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-<div class="app-shell">
-  <div class="sidebar" id="sidebarMount"></div>
-  <div class="main">
-    <div class="fleet-header">
-      <button class="fleet-hamburger" id="fleetMenuBtn" aria-label="Open menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
-      <h1>Live Fleet</h1>
-      <span class="gps-status-pill unknown" id="fleetStatusPill">Connecting…</span>
-      <span class="last-update" id="fleetLastUpdate"></span>
-    </div>
-    <div class="fleet-body">
-      <div id="fleetMap"></div>
-      <div class="fleet-panel">
-        <div class="fleet-panel-header">Trucks</div>
-        <div class="fleet-panel-body" id="truckList">
-          <div class="fleet-empty">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <p>No trucks reporting location yet</p>
-          </div>
+<div class="fleet-backdrop" id="fleetBackdrop"></div>
+<div class="main">
+  <div class="fleet-header">
+    <button class="fleet-hamburger" id="fleetMenuBtn" aria-label="Open fleet panel">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <a class="fleet-back-btn" href="/crm/dashboard">&#8592; Dashboard</a>
+    <h1>Live Fleet</h1>
+    <span class="gps-status-pill unknown" id="fleetStatusPill">Connecting…</span>
+    <span class="last-update" id="fleetLastUpdate"></span>
+  </div>
+  <div class="fleet-body">
+    <div id="fleetMap"></div>
+    <div class="fleet-panel" id="fleetPanel">
+      <div class="fleet-panel-header">
+        <span class="fleet-panel-title">Trucks</span>
+        <button class="fleet-panel-close" id="fleetPanelClose" aria-label="Close panel">&times;</button>
+      </div>
+      <div class="fleet-panel-body" id="truckList">
+        <div class="fleet-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          <p>No trucks reporting location yet</p>
         </div>
-        <div id="jobListSection" style="display:none;">
-          <div class="job-section-header">Today's Jobs</div>
-          <div id="jobList"></div>
-        </div>
+      </div>
+      <div id="jobListSection" style="display:none;">
+        <div class="job-section-header">Today's Jobs</div>
+        <div id="jobList"></div>
       </div>
     </div>
   </div>
 </div>
 
-<script src="/pages/js/shell.js"></script>
 <script>
 (async function() {
-  // ── Mapbox init ──────────────────────────────────────────────────────────
-  let _map = null;
+  // ── State ─────────────────────────────────────────────────────────────────
+  let _map          = null;
   let _truckMarkers = [];
   let _jobMarkers   = [];
   let _pollTimer    = null;
   let _jobs         = [];
+  let _tripsMap     = {};   // deviceId (string) → { miles_today, drive_minutes_today, trip_count }
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function fmtDriveTime(mins) {
+    if (!mins) return null;
+    if (mins < 60) return `${mins}m driving`;
+    return `${Math.floor(mins / 60)}h ${mins % 60}m driving`;
+  }
+
+  // ── Mobile fleet panel toggle ─────────────────────────────────────────────
+  const _panel    = document.getElementById("fleetPanel");
+  const _backdrop = document.getElementById("fleetBackdrop");
+  const _menuBtn  = document.getElementById("fleetMenuBtn");
+  const _closeBtn = document.getElementById("fleetPanelClose");
+
+  function openPanel() {
+    _panel.classList.add("open");
+    _backdrop.classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+  function closePanel() {
+    _panel.classList.remove("open");
+    _backdrop.classList.remove("show");
+    document.body.style.overflow = "";
+  }
+  _menuBtn?.addEventListener("click", openPanel);
+  _closeBtn?.addEventListener("click", closePanel);
+  _backdrop?.addEventListener("click", closePanel);
+
+  // ── Mapbox init ───────────────────────────────────────────────────────────
   async function initMap() {
     try {
       const cfg = await fetch("/api/config/mapbox").then(r => r.json());
@@ -247,19 +298,17 @@
       });
       _map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
 
-      // Load today's jobs for map pins
       loadJobs();
     } catch (e) {
       console.error("Fleet map init error:", e);
     }
   }
 
-  // ── Load today's jobs ────────────────────────────────────────────────────
+  // ── Load today's jobs ─────────────────────────────────────────────────────
   async function loadJobs() {
     try {
       const d = await fetch("/api/schedule/bookings").then(r => r.json());
       if (d.ok && d.bookings) {
-        // Filter to today's non-cancelled jobs that have coordinates
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
         _jobs = d.bookings.filter(j =>
           j.local_date === todayStr &&
@@ -278,7 +327,7 @@
     if (!_map) return;
 
     _jobs.forEach((j, i) => {
-      const isOnSite  = !!j.arrived_at && !j.departed_at;
+      const isOnSite   = !!j.arrived_at && !j.departed_at;
       const isDeparted = !!j.departed_at;
       const el = document.createElement("div");
       el.className = "ft-job-pin" + (isOnSite ? " on-site" : isDeparted ? " departed" : "");
@@ -313,10 +362,10 @@
     if (!_jobs.length) { section.style.display = "none"; return; }
     section.style.display = "block";
     list.innerHTML = _jobs.map(j => {
-      const isOnSite  = !!j.arrived_at && !j.departed_at;
+      const isOnSite   = !!j.arrived_at && !j.departed_at;
       const isDeparted = !!j.departed_at;
-      const statusCls = isOnSite ? "on-site" : isDeparted ? "departed" : "pending";
-      const statusTxt = isOnSite
+      const statusCls  = isOnSite ? "on-site" : isDeparted ? "departed" : "pending";
+      const statusTxt  = isOnSite
         ? "● On site"
         : isDeparted
           ? `Departed · ${j.job_duration_minutes ?? "?"} min`
@@ -329,48 +378,59 @@
     }).join("");
   }
 
-  // ── Poll Traccar ─────────────────────────────────────────────────────────
+  // ── Trips data ────────────────────────────────────────────────────────────
+  async function loadTrips() {
+    try {
+      const d = await fetch("/api/traccar/trips").then(r => r.json());
+      if (d.ok && Array.isArray(d.trips)) {
+        _tripsMap = {};
+        for (const t of d.trips) _tripsMap[String(t.deviceId)] = t;
+      }
+    } catch {}
+  }
+
+  // ── Poll Traccar ──────────────────────────────────────────────────────────
   async function pollFleet() {
     try {
-      const d = await fetch("/api/traccar/positions").then(r => r.json());
-      const pill   = document.getElementById("fleetStatusPill");
-      const upd    = document.getElementById("fleetLastUpdate");
+      const [posData] = await Promise.all([
+        fetch("/api/traccar/positions").then(r => r.json()),
+        loadTrips(),
+      ]);
 
-      if (d.lastPoll) {
-        const t = new Date(d.lastPoll);
+      const pill = document.getElementById("fleetStatusPill");
+      const upd  = document.getElementById("fleetLastUpdate");
+
+      if (posData.lastPoll) {
+        const t = new Date(posData.lastPoll);
         upd.textContent = `Updated ${t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
       }
 
-      if (!d.ok || !d.online) {
-        pill.className = "gps-status-pill offline";
+      if (!posData.ok || !posData.online) {
+        pill.className   = "gps-status-pill offline";
         pill.textContent = "GPS offline";
         renderTrucks([]);
-        // If this is the very first poll result and server cache was cold,
-        // retry in 5s (server just ran a fresh poll to warm cache).
-        if (!d.lastPoll) setTimeout(pollFleet, 5_000);
+        if (!posData.lastPoll) setTimeout(pollFleet, 5_000);
         return;
       }
 
-      const positions = d.positions || [];
-      pill.className  = "gps-status-pill online";
+      const positions  = posData.positions || [];
+      pill.className   = "gps-status-pill online";
       pill.textContent = positions.length
         ? `● ${positions.length} truck${positions.length !== 1 ? "s" : ""} live`
         : "● Online — no trucks";
       renderTrucks(positions);
     } catch {
       const pill = document.getElementById("fleetStatusPill");
-      pill.className = "gps-status-pill offline";
+      pill.className   = "gps-status-pill offline";
       pill.textContent = "GPS offline";
     }
   }
 
-  // ── Render truck markers + panel list ────────────────────────────────────
+  // ── Render truck markers + panel list ─────────────────────────────────────
   function renderTrucks(positions) {
-    // Clear old markers
     _truckMarkers.forEach(m => m.remove());
     _truckMarkers = [];
 
-    // Panel list
     const listEl = document.getElementById("truckList");
     if (!positions.length) {
       listEl.innerHTML = `<div class="fleet-empty">
@@ -380,7 +440,17 @@
     }
 
     listEl.innerHTML = positions.map(p => {
-      const moving = p.speed > 3;
+      const moving   = p.speed > 3;
+      const trips    = _tripsMap[String(p.deviceId)] || {};
+      const milesStr = trips.miles_today != null ? `${trips.miles_today} mi today` : null;
+      const timeStr  = trips.drive_minutes_today != null ? fmtDriveTime(trips.drive_minutes_today) : null;
+      const statsHtml = (milesStr || timeStr)
+        ? `<div class="truck-stats">${[milesStr, timeStr].filter(Boolean).map(s => `<span>${esc(s)}</span>`).join("")}</div>`
+        : "";
+      const fixStr = p.fixTime
+        ? new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+        : "—";
+
       return `<div class="truck-card" data-device="${p.deviceId}">
         <div class="truck-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -391,10 +461,13 @@
           </svg>
         </div>
         <div class="truck-info">
-          <div class="truck-name">${esc(p.deviceName)}</div>
-          <div class="truck-meta">${p.fixTime ? new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }) : "—"}</div>
+          <div class="truck-name-row">
+            <span class="truck-name">${esc(p.deviceName)}</span>
+            <span class="truck-badge ${moving ? "moving" : "stopped"}">${moving ? "Moving" : "Stopped"}</span>
+          </div>
+          ${statsHtml}
+          <div class="truck-meta">${moving ? esc(p.speed + " mph") : "Stopped"} &middot; ${fixStr}</div>
         </div>
-        <div class="truck-speed ${moving ? "moving" : "stopped"}">${moving ? p.speed + " mph" : "Stopped"}</div>
       </div>`;
     }).join("");
 
@@ -403,7 +476,10 @@
       card.addEventListener("click", () => {
         const id = card.dataset.device;
         const p  = positions.find(x => String(x.deviceId) === String(id));
-        if (p && _map) _map.flyTo({ center: [p.lng, p.lat], zoom: 14, speed: 1.4 });
+        if (p && _map) {
+          _map.flyTo({ center: [p.lng, p.lat], zoom: 14, speed: 1.4 });
+          closePanel(); // close panel on mobile after selecting a truck
+        }
       });
     });
 
@@ -425,11 +501,16 @@
         <circle cx="18.5" cy="18.5" r="2.5"/>
       </svg>`;
 
+      const trips   = _tripsMap[String(p.deviceId)] || {};
       const speedStr = p.speed > 3 ? `${p.speed} mph` : "Stopped";
-      const popup = new mapboxgl.Popup({ offset: 22, maxWidth: "200px", closeButton: true })
+      const milesStr = trips.miles_today != null ? `${trips.miles_today} mi today` : null;
+      const driveStr = trips.drive_minutes_today != null ? fmtDriveTime(trips.drive_minutes_today) : null;
+      const statsLine = [milesStr, driveStr].filter(Boolean).join(" · ");
+
+      const popup = new mapboxgl.Popup({ offset: 22, maxWidth: "210px", closeButton: true })
         .setHTML(`<strong>${esc(p.deviceName)}</strong>
-          <div class="pop-meta">${speedStr}</div>
-          ${p.fixTime ? `<div class="pop-meta">${new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>` : ""}`);
+          <div class="pop-meta">${speedStr}${p.fixTime ? ` · ${new Date(p.fixTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}` : ""}</div>
+          ${statsLine ? `<div class="pop-meta" style="margin-top:4px;">${esc(statsLine)}</div>` : ""}`);
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([p.lng, p.lat])
@@ -438,7 +519,7 @@
       _truckMarkers.push(marker);
     });
 
-    // Also include job pins in bounds fit
+    // Include job pins in bounds fit
     _jobs.forEach(j => { if (j.lat && j.lng) bounds.extend([j.lng, j.lat]); });
 
     if (!bounds.isEmpty()) {
@@ -447,29 +528,6 @@
       else _map.once("load", doBounds);
     }
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  function esc(s) {
-    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-
-  // ── Mobile sidebar toggle ─────────────────────────────────────────────────
-  const _sidebar   = document.getElementById("sidebarMount");
-  const _backdrop  = document.getElementById("sidebarBackdrop");
-  const _menuBtn   = document.getElementById("fleetMenuBtn");
-
-  function openSidebarFleet() {
-    if (_sidebar)  _sidebar.classList.add("open");
-    if (_backdrop) _backdrop.classList.add("show");
-    document.body.style.overflow = "hidden";
-  }
-  function closeSidebarFleet() {
-    if (_sidebar)  _sidebar.classList.remove("open");
-    if (_backdrop) _backdrop.classList.remove("show");
-    document.body.style.overflow = "";
-  }
-  if (_menuBtn)  _menuBtn.addEventListener("click", openSidebarFleet);
-  if (_backdrop) _backdrop.addEventListener("click", closeSidebarFleet);
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   await initMap();

@@ -34,6 +34,10 @@ const FETCH_TIMEOUT_MS   = 10_000;   // abort Traccar requests after 10s
 let _cache = { positions: [], lastPoll: null, online: false };
 let _pollTimer = null;
 
+// Trips cache — refreshed on demand, max every 60s
+let _tripsCache = { data: [], lastFetch: null };
+const TRIPS_CACHE_TTL_MS = 60_000;
+
 // Guard: "bookingId|deviceId" pairs already logged as arrived today.
 // Cleared at midnight to allow next-day arrivals.
 let _arrivedGuard     = new Set();
@@ -395,6 +399,82 @@ async function poll() {
   }
 }
 
+// ── Trips endpoint ────────────────────────────────────────────────────────
+
+// Returns today's Chicago-local midnight as an ISO UTC string.
+function todayChicagoMidnightIso() {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(now).map(p => [p.type, p.value]));
+  const secsSinceMidnight =
+    parseInt(parts.hour, 10) * 3600 +
+    parseInt(parts.minute, 10) * 60 +
+    parseInt(parts.second, 10);
+  return new Date(now.getTime() - secsSinceMidnight * 1000).toISOString();
+}
+
+// Fetch today's trips from Traccar and aggregate per device.
+async function fetchTrips() {
+  const from = todayChicagoMidnightIso();
+  const to   = new Date().toISOString();
+  const raw  = await traccarFetch(
+    `/api/reports/trips?all=true&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+  );
+  if (!Array.isArray(raw)) return [];
+
+  const byDevice = {};
+  for (const trip of raw) {
+    const id = String(trip.deviceId);
+    if (!byDevice[id]) {
+      byDevice[id] = {
+        deviceId:            id,
+        deviceName:          trip.deviceName || `Device ${id}`,
+        miles_today:         0,
+        drive_minutes_today: 0,
+        trip_count:          0,
+      };
+    }
+    byDevice[id].miles_today         += (trip.distance || 0) / 1609.344; // m → miles
+    byDevice[id].drive_minutes_today += (trip.duration || 0) / 60000;    // ms → min
+    byDevice[id].trip_count          += 1;
+  }
+
+  return Object.values(byDevice).map(d => ({
+    ...d,
+    miles_today:         Math.round(d.miles_today * 10) / 10,
+    drive_minutes_today: Math.round(d.drive_minutes_today),
+  }));
+}
+
+async function handleGetTrips(req, res) {
+  if (!traccarEnabled()) {
+    return json(res, 200, { ok: true, trips: [] });
+  }
+
+  const staleMs = _tripsCache.lastFetch
+    ? Date.now() - new Date(_tripsCache.lastFetch).getTime()
+    : Infinity;
+
+  if (staleMs > TRIPS_CACHE_TTL_MS) {
+    try {
+      _tripsCache.data      = await fetchTrips();
+      _tripsCache.lastFetch = new Date().toISOString();
+      console.log(`[traccar] Trips refreshed — ${_tripsCache.data.length} device(s)`);
+    } catch (err) {
+      console.error("[traccar] Trips fetch error:", err.message);
+    }
+  }
+
+  return json(res, 200, {
+    ok:        true,
+    trips:     _tripsCache.data,
+    lastFetch: _tripsCache.lastFetch,
+  });
+}
+
 // ── Public API ────────────────────────────────────────────────────────────
 
 function startPolling() {
@@ -438,4 +518,4 @@ async function handleGetPositions(req, res) {
   });
 }
 
-module.exports = { handleGetPositions, startPolling, stopPolling };
+module.exports = { handleGetPositions, handleGetTrips, startPolling, stopPolling };

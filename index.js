@@ -69,7 +69,7 @@ const { handleEstimatorMatrix } = require("./api/estimator-matrix");
 const { handleGeocode } = require("./api/schedule-geocode");
 const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
 const { handleMapboxConfig } = require("./api/config-mapbox");
-const { handleGetPositions, startPolling: startTraccarPolling } = require("./api/traccar");
+const { handleGetPositions, handleGetTrips, startPolling: startTraccarPolling } = require("./api/traccar");
 const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/reschedule");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
@@ -820,6 +820,11 @@ const server = http.createServer(async (req, res) => {
   // Traccar fleet positions (CRM only — behind auth guard above)
   if (_epath === "/api/traccar/positions" && req.method === "GET") {
     return handleGetPositions(req, res);
+  }
+
+  // Traccar trips — today's mileage + drive time per device
+  if (_epath === "/api/traccar/trips" && req.method === "GET") {
+    return handleGetTrips(req, res);
   }
 
   res.writeHead(404, { "Content-Type": "text/plain" });
