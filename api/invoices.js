@@ -464,7 +464,7 @@ async function handleSendInvoice(req, res) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Invoices!A1:Z5000",
+      range: "Invoices!A1:AZ5000",
     });
     const values = resp.data.values || [];
     if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
@@ -578,7 +578,7 @@ async function handleSyncInvoiceStatus(req, res) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Invoices!A1:Z5000",
+      range: "Invoices!A1:AZ5000",
     });
     const values = resp.data.values || [];
     if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
@@ -689,7 +689,7 @@ async function handleUpdateInvoice(req, res) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Invoices!A1:Z5000",
+      range: "Invoices!A1:AZ5000",
     });
 
     const values = resp.data.values || [];
@@ -836,7 +836,7 @@ async function handleAddChangeOrder(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
     const now = new Date().toISOString();
 
-    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!A1:Z5000" });
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!A1:AZ5000" });
     const values = resp.data.values || [];
     if (values.length <= 1) return json(res, 404, { ok: false, error: "Not found." });
 
