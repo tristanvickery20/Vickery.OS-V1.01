@@ -63,31 +63,12 @@ const HIDDEN_MODULES = new Set([
   "EXISTING_BOX",      // Box fixture-rating — default assumption: box exists
 ]);
 
-// ── Photo gate enforcement ─────────────────────────────────────────────────────
-// Services where a specific photo must be uploaded before we can price the job.
-// Key = assembly job_type_id; value = { module, label, prompt }.
-// Enforced client-side in checkPhotoGate() before calcPrice() is called.
-const PHOTO_GATED_SERVICES = {
-  "A024": {
-    module: "PANEL_PHOTO",
-    label:  "a panel photo",
-    prompt: "This service requires a photo of your electrical panel so we can verify there is space for the surge protector before giving you a price.",
-  },
-  "A028": {
-    module: "PANEL_PHOTO",
-    label:  "a panel photo",
-    prompt: "EV charger installation requires a panel photo to verify capacity and available breaker space before we can generate your estimate.",
-  },
-  "A005": {
-    module: "WORK_AREA_PHOTOS",
-    label:  "a photo of the installation area",
-    prompt: "A photo of the outdoor installation area helps us confirm the scope and give you an accurate price.",
-  },
-  "A006": {
-    module: "WORK_AREA_PHOTOS",
-    label:  "a photo of the mounting location",
-    prompt: "A photo of where the light will mount helps us confirm the correct hardware and give you an accurate price.",
-  },
+// ── Photo gate — human-readable module labels ─────────────────────────────────
+// Maps photo module IDs (from service classification) to short display labels.
+// Gate requirements themselves come from the API config (jt.photo_gate_modules).
+const PHOTO_MODULE_LABELS = {
+  PANEL_PHOTO:      "a panel photo",
+  WORK_AREA_PHOTOS: "a photo of the installation area",
 };
 
 // ── Module-level question overrides ───────────────────────────────────────────
@@ -1229,7 +1210,7 @@ function renderPhotoGate() {
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <button class="q-btn-next" id="photoGateProceedBtn"
         ${fileCount > 0 ? "" : "disabled"}
-        onclick="calcPrice()">
+        onclick="checkPhotoGate()">
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         <span>See My Price</span>
       </button>
@@ -2162,18 +2143,28 @@ async function uploadPhoto() {
 }
 
 // ── Photo gate — check before calcPrice() ─────────────────────────────────────
-// Walks selected services and finds the first gate whose photos haven't been
-// supplied yet. If a gate is pending, it sets S.photoGateInfo and routes to
-// the photo_gate step. If all gates are satisfied (or no gates apply), it
-// calls calcPrice() directly.
+// Config-driven: reads photo_gate_modules from the loaded jobType config.
+// Walks all selected services; for each service, walks all required modules.
+// The first missing module triggers the photo_gate step. This is re-called
+// from the gate's proceed button so every required module is enforced
+// before calcPrice() runs.
 function checkPhotoGate() {
   for (const svc of S.selectedServices) {
-    const gate = PHOTO_GATED_SERVICES[svc.job_type_id];
-    if (!gate) continue;
-    if ((S.photos[gate.module] || []).length === 0) {
-      S.photoGateInfo = gate;
-      go("photo_gate");
-      return;
+    const jt      = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+    const modules = jt?.photo_gate_modules || [];
+    for (const mod of modules) {
+      if ((S.photos[mod] || []).length === 0) {
+        S.photoGateInfo = {
+          module:  mod,
+          modules: modules,
+          label:   PHOTO_MODULE_LABELS[mod] || "a required photo",
+          prompt:  (jt.photo_gate_prompts && jt.photo_gate_prompts[mod])
+                    || jt.photo_gate_prompt
+                    || "A photo is required before we can generate your estimate.",
+        };
+        go("photo_gate");
+        return;
+      }
     }
   }
   calcPrice();
