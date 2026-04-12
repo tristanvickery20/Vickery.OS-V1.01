@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 210">
+  <defs>
+    <marker id="arrowhead" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#1d6ed8"/>
+    </marker>
+  </defs>
+
+  <!-- Sky/ceiling background -->
+  <rect width="280" height="210" fill="#f0f2f4" rx="10"/>
+
+  <!-- Ceiling -->
+  <rect x="0" y="0" width="280" height="14" fill="#d8dfe8" rx="0"/>
+  <rect x="0" y="12" width="280" height="3" fill="#c8d0da"/>
+
+  <!-- Rear wall -->
+  <rect x="0" y="15" width="280" height="140" fill="#f8fafc"/>
+
+  <!-- Wall studs (subtle) -->
+  <line x1="56"  y1="15" x2="56"  y2="155" stroke="#edf1f5" stroke-width="1.2"/>
+  <line x1="112" y1="15" x2="112" y2="155" stroke="#edf1f5" stroke-width="1.2"/>
+  <line x1="168" y1="15" x2="168" y2="155" stroke="#edf1f5" stroke-width="1.2"/>
+  <line x1="224" y1="15" x2="224" y2="155" stroke="#edf1f5" stroke-width="1.2"/>
+
+  <!-- Floor -->
+  <rect x="0" y="155" width="280" height="42" fill="#e2e8f0"/>
+  <line x1="0" y1="155" x2="280" y2="155" stroke="#94a3b8" stroke-width="1.5"/>
+  <!-- Floor markings (parking spot lines) -->
+  <line x1="0" y1="175" x2="280" y2="175" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="12,8"/>
+
+  <!-- Existing 240V outlet (NEMA 14-50) on left side -->
+  <rect x="44" y="95" width="32" height="24" rx="3" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>
+  <ellipse cx="60" cy="103" rx="4" ry="5" fill="#94a3b8"/>
+  <rect x="55" y="110" width="4" height="5" rx="1" fill="#94a3b8"/>
+  <rect x="62" y="110" width="4" height="5" rx="1" fill="#94a3b8"/>
+  <text x="60" y="129" text-anchor="middle" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">240V outlet</text>
+
+  <!-- Conduit running up wall from outlet -->
+  <rect x="68" y="55" width="5" height="42" rx="2" fill="#b8c4d0"/>
+  <rect x="68" y="52" width="5" height="6" rx="1" fill="#94a3b8"/>
+
+  <!-- Target zone for charger - dashed outline box -->
+  <rect x="155" y="60" width="72" height="80" rx="6" fill="rgba(29,110,216,0.05)" stroke="#1d6ed8" stroke-width="2" stroke-dasharray="7,4"/>
+
+  <!-- Charger silhouette inside target box -->
+  <rect x="170" y="72" width="42" height="56" rx="4" fill="#e8f0fc" stroke="#1d6ed8" stroke-width="1.5"/>
+  <rect x="177" y="78" width="28" height="20" rx="2" fill="#c7d9f8"/>
+  <rect x="183" y="104" width="8" height="12" rx="4" fill="#1d6ed8" opacity="0.5"/>
+  <circle cx="191" cy="116" r="3" fill="#1d6ed8" opacity="0.4"/>
+  <text x="191" y="136" text-anchor="middle" fill="#1d6ed8" font-size="6.5" font-weight="bold" font-family="Arial,sans-serif">CHARGER</text>
+  <text x="191" y="144" text-anchor="middle" fill="#1d6ed8" font-size="6" font-family="Arial,sans-serif">LOCATION</text>
+
+  <!-- Arrow from label to target box -->
+  <line x1="106" y1="100" x2="152" y2="100" stroke="#1d6ed8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+  <text x="100" y="89" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">Show this</text>
+  <text x="100" y="98" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">whole area</text>
+
+  <!-- Car (simplified, parked) -->
+  <rect x="0" y="168" width="140" height="28" rx="8" fill="#d0d8e2" stroke="#94a3b8" stroke-width="1"/>
+  <rect x="12" y="158" width="110" height="24" rx="6" fill="#c0cad6" stroke="#94a3b8" stroke-width="1"/>
+  <circle cx="28"  cy="196" r="8" fill="#94a3b8"/>
+  <circle cx="28"  cy="196" r="4" fill="#cbd5e1"/>
+  <circle cx="108" cy="196" r="8" fill="#94a3b8"/>
+  <circle cx="108" cy="196" r="4" fill="#cbd5e1"/>
+
+  <!-- Example caption -->
+  <text x="140" y="205" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="Arial,sans-serif">Example — show full wall &amp; any existing outlets</text>
+</svg>

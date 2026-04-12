@@ -74,6 +74,42 @@ const PHOTO_MODULE_LABELS = {
   WORK_AREA_PHOTOS: "a photo of the installation area",
 };
 
+// Per-module photo guidance: step-by-step instructions + example image shown in the gate UI.
+const PHOTO_MODULE_GUIDES = {
+  PANEL_PHOTO: {
+    title:   "Your Electrical Panel",
+    steps: [
+      "Find your main electrical panel — usually in the garage, basement, utility room, or hallway closet.",
+      "Open the panel door all the way so all the breaker switches are fully visible.",
+      "Step back 2–3 feet and frame the entire panel from top to bottom in your shot.",
+      "Make sure the inside is lit — flip on a nearby light or use your phone's flashlight if needed.",
+    ],
+    tips: [
+      "Include the full panel — top breaker to bottom breaker",
+      "The label on the inside of the door is helpful but not required",
+      "No need to touch or flip any breakers",
+    ],
+    exampleImg: "/pages/img/example-panel.svg",
+    exampleAlt: "Example of a correctly photographed electrical panel with door open and all breakers visible",
+  },
+  WORK_AREA_PHOTOS: {
+    title:   "The Charger Location",
+    steps: [
+      "Stand in your garage facing the wall where you want the charger mounted.",
+      "Frame the wall from floor to ceiling — show about 6 feet wide around the target spot.",
+      "Capture any existing outlets, conduit, or wiring nearby.",
+      "Take a second shot showing the path between that wall and your electrical panel.",
+    ],
+    tips: [
+      "Portrait orientation works best for wall shots",
+      "Show where the car will park relative to the wall",
+      "If you already have a 240V outlet (NEMA 14-50), make sure it's in the frame",
+    ],
+    exampleImg: "/pages/img/example-ev-location.svg",
+    exampleAlt: "Example of a correctly photographed EV charger installation area showing wall, floor, and existing outlet",
+  },
+};
+
 // ── Module-level question overrides ───────────────────────────────────────────
 // Replaces the sheet's question text/options with simpler customer-answerable phrasing.
 // The option_ids must still match Driver_Multipliers so the engine picks up multipliers.
@@ -1180,61 +1216,96 @@ function renderSiteVisit() {
 }
 
 // ── Step: Photo Gate ──────────────────────────────────────────────────────────
-// Shown when a selected service requires a photo before we can price the job.
-// Three states: (1) no photo yet — file picker; (2) uploading — spinner;
-// (3) confirmed — server accepted the upload, proceed enabled.
+// Three states: (1) no photo yet — guide + picker; (2) uploading — spinner;
+// (3) confirmed — green success state, proceed enabled.
+// Uses PHOTO_MODULE_GUIDES for per-module step-by-step instructions + example image.
 function renderPhotoGate() {
   const info      = S.photoGateInfo || {};
   const module    = info.module;
-  const label     = info.label || "a photo";
-  const prompt    = info.prompt || "A photo is needed before we can generate your estimate.";
   const confirmed = Boolean(S.confirmedPhotoModules[module]);
   const uploading = S.photoGateUploading;
+  const guide     = PHOTO_MODULE_GUIDES[module] || {};
 
-  const cameraSvg = `<svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><rect x="4" y="12" width="40" height="30" rx="3"/><circle cx="24" cy="27" r="8"/><path d="M16 12l3-6h10l3 6"/><circle cx="38" cy="18" r="2" fill="currentColor" stroke="none"/></svg>`;
-  const checkSvg  = `<svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(120 60% 40%);display:block;margin:0 auto;"><circle cx="24" cy="24" r="20"/><polyline points="14 24 21 31 34 17" stroke-width="2.8"/></svg>`;
   const uploadSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+  const checkSvg  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="7 12 10.5 15.5 17 8.5"/></svg>`;
 
-  let uploadArea;
+  // ── Step-by-step instructions ──
+  const stepsHtml = (guide.steps || []).map((s, i) => `
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;">
+      <div style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:hsl(var(--primary));color:white;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i + 1}</div>
+      <p style="margin:0;font-size:14px;line-height:1.5;padding-top:2px;">${escHtml(s)}</p>
+    </div>`).join("");
+
+  // ── Quick tips ──
+  const tipsHtml = (guide.tips || []).length ? `
+    <div style="background:hsl(var(--subtle-bg,210 20% 97%));border-radius:10px;padding:12px 14px;margin-top:16px;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-fg));">Quick tips</p>
+      ${(guide.tips).map(t => `
+        <div style="display:flex;gap:8px;align-items:flex-start;margin-top:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px;"><polyline points="20 6 9 17 4 12"/></svg>
+          <span style="font-size:12.5px;color:hsl(var(--muted-fg));">${escHtml(t)}</span>
+        </div>`).join("")}
+    </div>` : "";
+
+  // ── Example image ──
+  const exampleHtml = guide.exampleImg ? `
+    <div style="margin:18px 0 0;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-fg));">Example photo</p>
+      <img src="${guide.exampleImg}" alt="${escHtml(guide.exampleAlt || "Example photo")}"
+        style="width:100%;border-radius:10px;border:1px solid hsl(var(--border));display:block;"/>
+    </div>` : "";
+
+  // ── Upload zone (bottom action area) ──
+  let actionArea;
   if (confirmed) {
-    uploadArea = `
-      <div style="text-align:center;padding:12px 18px 18px;">
-        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:hsl(120 60% 40%);">Photo uploaded — ready to continue</p>
-        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:hsl(var(--muted-fg));text-decoration:underline;">
-          Replace photo
+    actionArea = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:hsl(120 60% 97%);border:1.5px solid hsl(120 60% 80%);border-radius:12px;padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="color:hsl(120 60% 40%);">${checkSvg}</span>
+          <div>
+            <p style="margin:0;font-size:14px;font-weight:700;color:hsl(120 60% 35%);">Photo uploaded</p>
+            <p style="margin:2px 0 0;font-size:12px;color:hsl(120 60% 50%);">Ready to continue</p>
+          </div>
+        </div>
+        <label style="cursor:pointer;font-size:12px;color:hsl(var(--muted-fg));text-decoration:underline;white-space:nowrap;">
+          Replace
           <input type="file" accept="image/*" multiple style="display:none;" onchange="onPhotoGateSelected(this)">
         </label>
       </div>`;
   } else if (uploading) {
-    uploadArea = `
-      <div style="text-align:center;padding:24px;">
-        <div style="display:inline-block;width:36px;height:36px;border:3px solid hsl(var(--border));border-top-color:hsl(var(--primary));border-radius:50%;animation:q-spin 0.8s linear infinite;"></div>
-        <p class="q-muted" style="margin:12px 0 0;font-size:14px;">Uploading photo&hellip;</p>
+    actionArea = `
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;border:1.5px solid hsl(var(--border));border-radius:12px;padding:18px;">
+        <div style="width:22px;height:22px;border:2.5px solid hsl(var(--border));border-top-color:hsl(var(--primary));border-radius:50%;animation:q-spin 0.8s linear infinite;flex-shrink:0;"></div>
+        <p style="margin:0;font-size:14px;color:hsl(var(--muted-fg));">Uploading photo&hellip;</p>
       </div>`;
   } else {
-    uploadArea = `
-      <div style="border:2px dashed hsl(var(--border));border-radius:12px;padding:20px;text-align:center;background:hsl(var(--subtle-bg,var(--card-bg)));">
-        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:14px;font-weight:700;border:none;">
+    actionArea = `
+      <div style="border:2px dashed hsl(var(--border));border-radius:12px;padding:20px;text-align:center;">
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:11px 24px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:14px;font-weight:700;">
           ${uploadSvg}
           Choose Photo
           <input type="file" accept="image/*" multiple style="display:none;" onchange="onPhotoGateSelected(this)">
         </label>
         <p class="q-muted" style="font-size:12px;margin:10px 0 0;">JPG, PNG or HEIC &bull; up to 5 photos</p>
-        <p id="photoGateErr" class="q-error-box" style="display:none;margin:8px 0 0;"></p>
+        <p id="photoGateErr" style="display:none;margin:10px 0 0;padding:10px 12px;background:hsl(0 84% 97%);border:1px solid hsl(0 84% 85%);border-radius:8px;font-size:13px;color:hsl(0 72% 45%);"></p>
       </div>`;
   }
 
   return `
-    ${stepHeader(3, "One Photo Required")}
-    <div class="q-card-section" style="padding:28px 20px 24px;">
-      <div style="text-align:center;margin-bottom:16px;">${confirmed ? checkSvg : cameraSvg}</div>
-      <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
-        We need ${escHtml(label)}
+    ${stepHeader(3, "Photo Required")}
+    <div class="q-card-section" style="padding:24px 20px;">
+      <h3 style="font-family:var(--font-display);font-size:19px;font-weight:800;margin:0 0 4px;letter-spacing:-0.01em;">
+        ${escHtml(guide.title || "One photo needed")}
       </h3>
-      <p class="q-muted" style="max-width:400px;margin:0 auto 20px;text-align:center;font-size:14px;">
-        ${escHtml(prompt)}
+      <p class="q-muted" style="font-size:13px;margin:0 0 18px;">
+        We need this before we can calculate your price — it only takes a minute.
       </p>
-      ${uploadArea}
+      ${stepsHtml}
+      ${tipsHtml}
+      ${exampleHtml}
+      <div style="margin-top:20px;">
+        ${actionArea}
+      </div>
     </div>
     <div class="q-nav-row" style="margin-top:20px;">
       <button class="q-btn-back" onclick="back()" ${uploading ? "disabled" : ""}>&#8592; Back</button>

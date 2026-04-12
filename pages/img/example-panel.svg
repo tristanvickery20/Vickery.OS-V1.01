@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 210">
+  <!-- Background -->
+  <rect width="280" height="210" fill="#f0f2f4" rx="10"/>
+
+  <!-- Wall surface behind panel -->
+  <rect x="30" y="10" width="220" height="185" rx="4" fill="#e8edf2"/>
+
+  <!-- Panel enclosure -->
+  <rect x="80" y="18" width="148" height="170" rx="3" fill="#c8d0da" stroke="#8898aa" stroke-width="1.5"/>
+
+  <!-- Panel interior (exposed breakers) -->
+  <rect x="84" y="22" width="140" height="162" rx="2" fill="#1a2332"/>
+
+  <!-- Door (swung open to left, perspective hint) -->
+  <rect x="36" y="18" width="44" height="170" rx="3" fill="#b8c4d0" stroke="#8898aa" stroke-width="1.5"/>
+  <!-- Door inner label area -->
+  <rect x="40" y="30" width="36" height="60" rx="2" fill="#d0d8e0"/>
+  <line x1="44" y1="38" x2="72" y2="38" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="45" x2="72" y2="45" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="52" x2="72" y2="52" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="59" x2="66" y2="59" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="66" x2="72" y2="66" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="73" x2="60" y2="73" stroke="#8898aa" stroke-width="0.8"/>
+  <line x1="44" y1="80" x2="72" y2="80" stroke="#8898aa" stroke-width="0.8"/>
+  <text x="58" y="108" text-anchor="middle" fill="#8898aa" font-size="6.5" font-family="Arial,sans-serif">CIRCUIT</text>
+  <text x="58" y="116" text-anchor="middle" fill="#8898aa" font-size="6.5" font-family="Arial,sans-serif">DIRECTORY</text>
+
+  <!-- Hinges -->
+  <rect x="78" y="28" width="5" height="14" rx="2" fill="#8898aa"/>
+  <rect x="78" y="158" width="5" height="14" rx="2" fill="#8898aa"/>
+
+  <!-- Main breaker (large, top) -->
+  <rect x="92" y="28" width="124" height="22" rx="3" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>
+  <rect x="96" y="32" width="52" height="14" rx="2" fill="#1d4ed8"/>
+  <rect x="152" y="32" width="60" height="14" rx="2" fill="#374151"/>
+  <text x="122" y="42" text-anchor="middle" fill="white" font-size="8" font-weight="bold" font-family="Arial,sans-serif">MAIN</text>
+  <text x="182" y="42" text-anchor="middle" fill="#d1d5db" font-size="7" font-family="Arial,sans-serif">200A</text>
+
+  <!-- Separator line -->
+  <line x1="88" y1="54" x2="220" y2="54" stroke="#334155" stroke-width="0.8"/>
+
+  <!-- Breaker rows — left column -->
+  <rect x="92" y="58" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="61" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="118" y="67" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Kitchen</text>
+
+  <rect x="92" y="74" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="77" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="118" y="83" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">HVAC</text>
+
+  <rect x="92" y="90" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="93" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="118" y="99" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Laundry</text>
+
+  <rect x="92" y="106" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="109" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="118" y="115" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Garage</text>
+
+  <rect x="92" y="122" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="125" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="118" y="131" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Bedroom</text>
+
+  <rect x="92" y="138" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="141" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="118" y="147" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Outdoor</text>
+
+  <rect x="92" y="154" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="96" y="157" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="118" y="163" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Spare</text>
+
+  <!-- Breaker rows — right column -->
+  <rect x="154" y="58" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="61" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="180" y="67" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Dining</text>
+
+  <rect x="154" y="74" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="77" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="180" y="83" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Water Htr</text>
+
+  <rect x="154" y="90" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="93" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="180" y="99" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Dryer</text>
+
+  <rect x="154" y="106" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="109" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="180" y="115" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Bath</text>
+
+  <rect x="154" y="122" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="125" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="180" y="131" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Living Rm</text>
+
+  <rect x="154" y="138" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="141" width="16" height="7" rx="1" fill="#475569"/>
+  <text x="180" y="147" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Spare</text>
+
+  <rect x="154" y="154" width="58" height="13" rx="2" fill="#1e293b"/>
+  <rect x="158" y="157" width="16" height="7" rx="1" fill="#0f172a"/>
+  <text x="180" y="163" fill="#94a3b8" font-size="6" font-family="Arial,sans-serif">Spare</text>
+
+  <!-- "EXAMPLE" caption -->
+  <text x="140" y="202" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="Arial,sans-serif">Example — open door fully so all breakers are visible</text>
+</svg>
