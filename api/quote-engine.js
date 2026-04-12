@@ -601,7 +601,10 @@ async function handleConsultRequest(req, res) {
     const body = await parseBody(req);
     const { name, phone, best_time, service_id, service_name, quote_id } = body;
 
-    if (!phone) return json(res, 400, { ok: false, error: "phone required" });
+    if (!name || !String(name).trim())  return json(res, 400, { ok: false, error: "name required" });
+    if (!phone || !String(phone).trim()) return json(res, 400, { ok: false, error: "phone required" });
+    const cleanPhone = String(phone).replace(/\D/g, "");
+    if (cleanPhone.length < 10) return json(res, 400, { ok: false, error: "Please enter a valid phone number" });
 
     const sheetId = SPREADSHEET_ID();
     const sheets  = await getSheetsClient();
