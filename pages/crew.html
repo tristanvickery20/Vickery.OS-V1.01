@@ -142,6 +142,7 @@
       border-radius: 18px;
       padding: 18px 16px 14px;
       margin-bottom: 14px;
+      position: relative;
     }
     .job-block {
       display: inline-block;
@@ -302,6 +303,12 @@
     }
     .btn-generate-invoice:hover  { background: hsl(225 80% 45%); }
     .btn-generate-invoice:disabled { opacity: .55; cursor: not-allowed; }
+    @keyframes gen-attn {
+      0%   { box-shadow: 0 0 0 0 hsl(38 90% 50% / .7); }
+      60%  { box-shadow: 0 0 0 8px hsl(38 90% 50% / 0); }
+      100% { box-shadow: 0 0 0 0 hsl(38 90% 50% / 0); }
+    }
+    .btn-generate-invoice.attn { animation: gen-attn .9s ease-out 2; }
     .btn-send-invoice {
       width: 100%;
       padding: 12px;
@@ -343,6 +350,13 @@
       0%, 100% { opacity: 1; }
       50%       { opacity: 0.65; }
     }
+    /* Badge wrapper sits absolute top-right of the card */
+    [id^="inv-badge-"] {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 1;
+    }
     .badge-inv-pending {
       display: inline-block;
       font-size: 11px;
@@ -351,8 +365,6 @@
       color: #000;
       border-radius: 99px;
       padding: 3px 9px;
-      margin-left: 8px;
-      vertical-align: middle;
       letter-spacing: .03em;
       animation: inv-pulse 1.8s ease-in-out infinite;
     }
@@ -364,8 +376,6 @@
       color: #86efac;
       border-radius: 99px;
       padding: 3px 9px;
-      margin-left: 8px;
-      vertical-align: middle;
       letter-spacing: .03em;
     }
     .badge-arrived {

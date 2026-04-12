@@ -502,6 +502,8 @@ async function checkCardInvoiceStatuses() {
       updateCardBadge(bid, _invoiceStatus.get(bid));
       continue;
     }
+    // Mark loading to prevent duplicate in-flight fetches on rapid re-renders
+    _invoiceStatus.set(bid, "loading");
     // Fire fetch without blocking the loop
     (async (bookingId) => {
       try {
@@ -706,9 +708,10 @@ function jobCard(j) {
 
   return `
     <div class="job-card" id="card-${esc(bid)}">
+      ${invoiceBadge}
       <div class="job-card-top" data-job='${jobData}'>
         <div class="job-block">${block}${dur}</div>
-        <div class="job-customer">${esc(j.customer_name || "Customer")}${invoiceBadge}${gpsBadge}</div>
+        <div class="job-customer">${esc(j.customer_name || "Customer")}${gpsBadge}</div>
         <div class="job-address">${esc(j.address || "—")}</div>
         <div class="job-tap-hint">Tap to view details</div>
       </div>
@@ -1327,6 +1330,18 @@ function openJobDetail(j) {
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");
   if (typeof _lockBody === "function") _lockBody();
+
+  // If invoice is known-pending from card badge cache, pulse the Generate button
+  if (isComplete && j.booking_id && _invoiceStatus.get(j.booking_id) === "pending") {
+    const gb = document.getElementById("btnGenerateInvoice");
+    if (gb) {
+      gb.classList.remove("attn");
+      // Re-trigger animation by forcing reflow
+      void gb.offsetWidth;
+      gb.classList.add("attn");
+      gb.addEventListener("animationend", () => gb.classList.remove("attn"), { once: true });
+    }
+  }
 
   // If job is already complete, silently look up any existing invoice
   if (isComplete && j.booking_id) checkExistingInvoice(j);
