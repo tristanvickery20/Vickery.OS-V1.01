@@ -26,8 +26,9 @@ const S = {
   selectedSlot: null,   // ISO string — start of selected block (or exact slot for legacy)
   selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
   booking: null,
-  photoGateInfo: null,  // { module, label, prompt } — set when photo gate triggers
-  consultData: null,    // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
+  photoGateInfo: null,       // { module, modules, label, prompt } — set when photo gate triggers
+  photoGateFromStep: null,   // "questions" | "equipment" — where the photo gate was entered from
+  consultData: null,         // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
 };
 
 // ── Equipment / Material catalog ───────────────────────────────────────────────
@@ -504,6 +505,10 @@ function back() {
     go(hasQs || hasAddons ? "questions" : "services");
     return;
   }
+  if (S.step === "photo_gate") {
+    go(S.photoGateFromStep || "questions");
+    return;
+  }
   const prev = {
     categories:  "segment",
     services:    "categories",
@@ -511,7 +516,6 @@ function back() {
     sitevisit:   "questions",
     confirm:     "review",
     photo:       "confirm",
-    photo_gate:  "questions",
     consult:     "questions",
   };
   if (prev[S.step]) go(prev[S.step]);
@@ -2163,6 +2167,7 @@ function checkPhotoGate() {
                     || jt.photo_gate_prompt
                     || "A photo is required before we can generate your estimate.",
         };
+        S.photoGateFromStep = S.step;   // remember entry point for back() navigation
         go("photo_gate");
         return;
       }
