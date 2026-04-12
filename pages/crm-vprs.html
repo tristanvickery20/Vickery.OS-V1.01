@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPRS-100 Pre-Launch Score &bull; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .vprs-wrap { max-width: 980px; }
+
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.35rem; font-weight: 800; }
+    .page-header .sub { font-size: 0.82rem; color: hsl(var(--muted-foreground)); margin-top: 4px; max-width: 560px; line-height: 1.55; }
+
+    /* ── Sticky scoreboard ───────────────────────────────────────────────── */
+    .scoreboard {
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    .score-big {
+      font-size: 2.8rem;
+      font-weight: 900;
+      line-height: 1;
+      min-width: 90px;
+      text-align: center;
+    }
+    .score-divider { width: 1px; background: hsl(var(--border)); align-self: stretch; margin: 0 18px; }
+    .score-meta { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px 24px; }
+    .score-cell { display: flex; flex-direction: column; gap: 3px; }
+    .score-cell .lbl { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+    .score-cell .val { font-size: 1rem; font-weight: 800; }
+    .rating-band {
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .band-90 { background: #d1fae5; color: #065f46; }
+    .band-80 { background: #dbeafe; color: #1e40af; }
+    .band-70 { background: #fef9c3; color: #854d0e; }
+    .band-60 { background: #ffedd5; color: #9a3412; }
+    .band-50 { background: #fee2e2; color: #991b1b; }
+    .band-0  { background: #f1f5f9; color: #475569; }
+    .cap-warning {
+      font-size: 11px;
+      font-weight: 700;
+      color: #b45309;
+      margin-top: 4px;
+    }
+
+    /* ── Penalties panel ─────────────────────────────────────────────────── */
+    .penalties-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .penalties-card h3 { font-size: .9rem; font-weight: 800; margin-bottom: 14px; }
+    .penalty-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .penalty-cell { display: flex; flex-direction: column; gap: 6px; }
+    .penalty-cell label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); }
+    .penalty-count {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .penalty-count button {
+      width: 26px; height: 26px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      background: hsl(var(--card));
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .penalty-count button:hover { background: hsl(var(--muted)); }
+    .penalty-count .pval {
+      font-size: 1.2rem;
+      font-weight: 900;
+      min-width: 28px;
+      text-align: center;
+    }
+    .penalty-pts { font-size: 11px; color: #dc2626; font-weight: 700; margin-top: 2px; }
+
+    /* ── Category card ───────────────────────────────────────────────────── */
+    .cat-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .cat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      cursor: pointer;
+      user-select: none;
+    }
+    .cat-header:hover { background: hsl(var(--muted)); }
+    .cat-number {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      color: #fff;
+      font-size: 12px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .cat-name { font-size: .92rem; font-weight: 800; flex: 1; }
+    .cat-weight { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 600; white-space: nowrap; }
+    .cat-pct {
+      font-size: .8rem; font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .cat-pct-ok  { background: #d1fae5; color: #065f46; }
+    .cat-pct-mid { background: #fef9c3; color: #854d0e; }
+    .cat-pct-low { background: #fee2e2; color: #991b1b; }
+    .cat-wscore { font-size: .8rem; font-weight: 700; color: hsl(var(--muted-foreground)); white-space: nowrap; margin-left: 4px; }
+    .cat-chevron { font-size: .7rem; color: hsl(var(--muted-foreground)); transition: transform .2s; }
+    .cat-card.collapsed .cat-chevron { transform: rotate(-90deg); }
+    .cat-body { padding: 0; }
+    .cat-card.collapsed .cat-body { display: none; }
+
+    /* ── Criterion row ───────────────────────────────────────────────────── */
+    .crit-row {
+      padding: 14px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .crit-row:last-child { border-bottom: none; }
+    .crit-top { display: flex; align-items: flex-start; gap: 12px; }
+    .crit-id { font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); min-width: 28px; padding-top: 2px; }
+    .crit-main { flex: 1; min-width: 0; }
+    .crit-label {
+      font-size: .88rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .badge-serious {
+      font-size: 10px; font-weight: 800;
+      padding: 2px 8px; border-radius: 99px;
+      background: #fef3c7; color: #92400e;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .badge-essential {
+      font-size: 10px; font-weight: 800;
+      padding: 2px 8px; border-radius: 99px;
+      background: #fee2e2; color: #991b1b;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .crit-desc { font-size: .78rem; color: hsl(var(--muted-foreground)); line-height: 1.5; margin-bottom: 10px; }
+    .wqobt-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .wqobt-check {
+      display: flex; align-items: center; gap: 5px;
+      cursor: pointer;
+    }
+    .wqobt-check input[type="checkbox"] {
+      width: 17px; height: 17px;
+      accent-color: hsl(var(--primary));
+      cursor: pointer;
+    }
+    .wqobt-check .ltr {
+      font-size: 11px; font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .w-ltr { color: #2563eb; }
+    .q-ltr { color: #7c3aed; }
+    .o-ltr { color: #0891b2; }
+    .b-ltr { color: #16a34a; }
+    .t-ltr { color: #dc2626; }
+    .crit-score-pill {
+      margin-left: 8px;
+      font-size: 11px; font-weight: 900;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+    }
+    .crit-score-5 { background: #d1fae5; color: #065f46; }
+    .crit-score-4 { background: #dbeafe; color: #1e40af; }
+    .crit-score-3 { background: #fef9c3; color: #854d0e; }
+    .crit-score-2 { background: #ffedd5; color: #9a3412; }
+    .crit-score-1, .crit-score-0 { background: #fee2e2; color: #991b1b; }
+
+    /* ── Flags ───────────────────────────────────────────────────────────── */
+    .flags-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .flag-btn {
+      font-size: 10px; font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+      transition: all .15s;
+    }
+    .flag-btn:hover { border-color: #94a3b8; }
+    .flag-btn.active-major-cont   { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+    .flag-btn.active-minor-cont   { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+    .flag-btn.active-crit-unknown { background: #fdf4ff; border-color: #d8b4fe; color: #6b21a8; }
+    .flag-btn.active-spof         { background: #f0fdf4; border-color: #86efac; color: #166534; }
+
+    /* ── Notes ───────────────────────────────────────────────────────────── */
+    .notes-toggle {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .notes-toggle:hover { color: hsl(var(--foreground)); }
+    .notes-area {
+      display: none;
+      margin-top: 8px;
+    }
+    .notes-area.open { display: block; }
+    .notes-area textarea {
+      width: 100%;
+      min-height: 64px;
+      font-size: .8rem;
+      padding: 8px 10px;
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      resize: vertical;
+      font-family: inherit;
+      background: hsl(var(--muted));
+    }
+    .notes-area textarea:focus { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
+
+    /* ── Caps panel ──────────────────────────────────────────────────────── */
+    .caps-panel {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .caps-panel h3 { font-size: .9rem; font-weight: 800; margin-bottom: 12px; }
+    .cap-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid hsl(var(--border));
+      font-size: .82rem;
+    }
+    .cap-row:last-child { border-bottom: none; }
+    .cap-status {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900;
+    }
+    .cap-ok   { background: #d1fae5; color: #065f46; }
+    .cap-hit  { background: #fee2e2; color: #991b1b; }
+    .cap-desc { flex: 1; color: hsl(var(--muted-foreground)); }
+    .cap-limit { font-weight: 800; }
+
+    /* ── Actions ─────────────────────────────────────────────────────────── */
+    .actions-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .btn-action {
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      font-size: .82rem; font-weight: 700;
+      cursor: pointer;
+      color: hsl(var(--foreground));
+    }
+    .btn-action:hover { background: hsl(var(--muted)); }
+    .btn-action.primary { background: hsl(var(--primary)); color: #fff; border-color: transparent; }
+    .btn-action.primary:hover { opacity: .88; }
+    .btn-action.danger { color: #dc2626; border-color: #fca5a5; }
+    .btn-action.danger:hover { background: #fef2f2; }
+    .save-indicator { font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+    /* ── Summary table ───────────────────────────────────────────────────── */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      margin-top: 16px;
+    }
+    .summary-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid hsl(var(--border)); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); }
+    .summary-table td { padding: 7px 10px; border-bottom: 1px solid hsl(var(--border)); }
+    .summary-table tr:last-child td { border-bottom: none; }
+
+    /* ── Print ───────────────────────────────────────────────────────────── */
+    @media print {
+      .sidebar, .shell-topbar, .scoreboard, .actions-row, .flag-btn, .notes-toggle, .notes-area, .cat-header { break-inside: avoid; }
+      .cat-card.collapsed .cat-body { display: block !important; }
+      .scoreboard { position: static; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="shell-main">
+    <div class="shell-topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="topbar-title">VPRS-100 Pre-Launch Score</span>
+    </div>
+    <div class="shell-content">
+      <div class="vprs-wrap">
+
+        <div class="page-header">
+          <h1>Vickery Pre-Launch Readiness Score &mdash; VPRS-100</h1>
+          <p class="sub">Measures whether the business is designed tightly enough to launch without obvious self-inflicted chaos. This is a readiness score, not a market validation score. Score each criterion using W-Q-O-B-T (1 point each). Be mean — only check a box if it is actually true.</p>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn-action primary" onclick="window.print()">Print / Export PDF</button>
+          <button class="btn-action" onclick="expandAll()">Expand All</button>
+          <button class="btn-action" onclick="collapseAll()">Collapse All</button>
+          <button class="btn-action danger" onclick="confirmReset()">Reset All Scores</button>
+          <span class="save-indicator" id="saveIndicator">Auto-saved</span>
+        </div>
+
+        <!-- Scoreboard -->
+        <div class="scoreboard" id="scoreboard">
+          <div class="score-big" id="sbFinal">—</div>
+          <div class="score-divider"></div>
+          <div class="score-meta">
+            <div class="score-cell">
+              <span class="lbl">Rating</span>
+              <span class="val"><span id="sbBand" class="rating-band band-0">—</span></span>
+            </div>
+            <div class="score-cell">
+              <span class="lbl">Base Score</span>
+              <span class="val" id="sbBase">—</span>
+            </div>
+            <div class="score-cell">
+              <span class="lbl">Total Penalties</span>
+              <span class="val" id="sbPenalties" style="color:#dc2626;">—</span>
+            </div>
+            <div class="score-cell">
+              <span class="lbl">Cap Applied</span>
+              <span class="val" id="sbCap">None</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Penalties -->
+        <div class="penalties-card">
+          <h3>Penalties</h3>
+          <div class="penalty-grid">
+            <div class="penalty-cell">
+              <label>Major Contradictions</label>
+              <div class="penalty-count">
+                <button onclick="adj('major_cont',-1)">−</button>
+                <span class="pval" id="pv_major_cont">0</span>
+                <button onclick="adj('major_cont',1)">+</button>
+              </div>
+              <span class="penalty-pts" id="pp_major_cont">−0 pts (×2 each)</span>
+            </div>
+            <div class="penalty-cell">
+              <label>Minor Contradictions</label>
+              <div class="penalty-count">
+                <button onclick="adj('minor_cont',-1)">−</button>
+                <span class="pval" id="pv_minor_cont">0</span>
+                <button onclick="adj('minor_cont',1)">+</button>
+              </div>
+              <span class="penalty-pts" id="pp_minor_cont">−0 pts (×1 each)</span>
+            </div>
+            <div class="penalty-cell">
+              <label>Critical Unknowns</label>
+              <div class="penalty-count">
+                <button onclick="adj('crit_unknown',-1)">−</button>
+                <span class="pval" id="pv_crit_unknown">0</span>
+                <button onclick="adj('crit_unknown',1)">+</button>
+              </div>
+              <span class="penalty-pts" id="pp_crit_unknown">−0 pts (×2, cap 12)</span>
+            </div>
+            <div class="penalty-cell">
+              <label>Single Points of Failure</label>
+              <div class="penalty-count">
+                <button onclick="adj('spof',-1)">−</button>
+                <span class="pval" id="pv_spof">0</span>
+                <button onclick="adj('spof',1)">+</button>
+              </div>
+              <span class="penalty-pts" id="pp_spof">−0 pts (×1, cap 8)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category cards (rendered by JS) -->
+        <div id="catCards"></div>
+
+        <!-- Caps panel -->
+        <div class="caps-panel" id="capsPanel">
+          <h3>Score Caps</h3>
+          <div id="capsRows"></div>
+        </div>
+
+        <!-- Summary table -->
+        <div class="penalties-card">
+          <h3>Category Summary</h3>
+          <table class="summary-table" id="summaryTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Category</th>
+                <th>Weight</th>
+                <th>Category %</th>
+                <th>Weighted Score</th>
+              </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+const CATS = [
+  { id:1, name:"Strategic Clarity", weight:8, criteria:[
+    { id:"1.1", label:"Launch doctrine exists", desc:"Written doctrine: what the business is at launch, what it is not, what matters most, what chaos you refuse to allow." },
+    { id:"1.2", label:"Target customer is defined", desc:"Homeowner type, geography, budget sensitivity, problem types, what kind of buyer you want." },
+    { id:"1.3", label:"Differentiation is defined", desc:"One sentence: why someone chooses you over another electrician." },
+    { id:"1.4", label:"Non-goals / not-offered list exists", desc:"Clear definition of what you are NOT doing at launch." },
+    { id:"1.5", label:"Success / failure thresholds are defined", desc:"What good launch looks like, what bad launch looks like, what metrics trigger rework." },
+  ]},
+  { id:2, name:"Legal / Licensing / Control", weight:12, criteria:[
+    { id:"2.1", label:"Entity / ownership structure is defined", desc:"LLC/entity, ownership split, tax treatment, authority structure." },
+    { id:"2.2", label:"Electrical contractor / master structure is defined", desc:"Exactly how legal authority, supervision, and licensing work.", essential:true, serious:true },
+    { id:"2.3", label:"Compensation structure is defined", desc:"Who gets paid what, when, and under what conditions." },
+    { id:"2.4", label:"Roles and decision rights are defined", desc:"Who controls pricing, dispatch, customer decisions, quality calls, refunds, marketing, hiring." },
+    { id:"2.5", label:"Relationship failure / exit plan exists", desc:"If master leaves, partner conflict happens, or jobs are slow — what then?" },
+    { id:"2.6", label:"Customer / data / brand / IP ownership is defined", desc:"Who owns leads, customer records, estimator logic, CRM, reviews, brand assets." },
+  ]},
+  { id:3, name:"Offer / Scope / Service Box", weight:10, criteria:[
+    { id:"3.1", label:"Launch service list is final", desc:"Your 8–12 launch services are actually finalized.", essential:true, serious:true },
+    { id:"3.2", label:"Each service has a risk tier", desc:"Every service marked: routine, photo-gated, manual review, or not offered." },
+    { id:"3.3", label:"Instant-quote boundary is defined", desc:"You know exactly which jobs can be instantly priced and which cannot." },
+    { id:"3.4", label:"Service area / travel rule is defined", desc:"Core area, expanded area, no-go area, travel fee rule, max drive rule.", serious:true },
+    { id:"3.5", label:"Policy box is defined", desc:"Written rules for: diagnostic fees, deposits, permits, change orders, warranty, customer-supplied materials, reschedules/cancellations." },
+  ]},
+  { id:4, name:"Pricing / Estimating Architecture", weight:14, criteria:[
+    { id:"4.1", label:"Core pricing formula is defined", desc:"Labor burden × hours + materials × markup + overhead + target margin — chosen and written.", essential:true, serious:true },
+    { id:"4.2", label:"Labor model is defined", desc:"Labor rate, burden assumptions, crew assumptions, minimum labor blocks, overtime/after-hours logic." },
+    { id:"4.3", label:"Materials logic is defined", desc:"Source of material pricing, markup rule, consumables rule, supply house variance rule, substitution rule." },
+    { id:"4.4", label:"Risk modifiers are defined", desc:"Rules for: attic access, ceiling height, wall type, age of house, panel issues, uncertainty, travel, permit likelihood." },
+    { id:"4.5", label:"Price floor / rounding / minimum rules are defined", desc:"Minimum ticket, service minimums, floor price, rounding rule, when price is too low to offer." },
+    { id:"4.6", label:"Assumptions and disclaimers are defined", desc:"Quote explains what it assumes and when repricing happens." },
+    { id:"4.7", label:"Override / exception path exists", desc:"If the estimator hits weird inputs: who reviews it, what happens next?" },
+  ]},
+  { id:5, name:"Marketing / Lead System Design", weight:10, criteria:[
+    { id:"5.1", label:"Launch channels are selected", desc:"Actual channel stack chosen (GBP, LSA, local SEO, referral, direct reactivation, door hangers, social, etc.) — even if not running yet." },
+    { id:"5.2", label:"Message / offer / CTA are defined", desc:"You know what the customer sees and why they should act now." },
+    { id:"5.3", label:"Review / referral engine is designed", desc:"When review is asked, by who, through what message, what reminders exist." },
+    { id:"5.4", label:"Lead capture design is defined", desc:"Where leads come from, what form fields matter, what gets captured first, what gets delayed until later." },
+    { id:"5.5", label:"Tracking design is defined", desc:"How you tag: source, campaign, call vs form, quote requested, quote booked, review requested." },
+  ]},
+  { id:6, name:"Sales / Customer Journey Design", weight:8, criteria:[
+    { id:"6.1", label:"Intake logic is defined", desc:"What questions are asked and in what order." },
+    { id:"6.2", label:"Response standard is defined", desc:"How fast you respond, how missed calls are handled, after-hours handling, follow-up timing." },
+    { id:"6.3", label:"Quote delivery flow is defined", desc:"How pricing is shown, what happens after, when lead info is required." },
+    { id:"6.4", label:"Scheduling / deposit handoff is defined", desc:"Exact handoff from quote acceptance to actual booking." },
+    { id:"6.5", label:"Objection / no-response / no-show / cancellation handling is defined", desc:"Scripts or logic for common sales failures." },
+  ]},
+  { id:7, name:"Operations / CRM / Workflow", weight:12, criteria:[
+    { id:"7.1", label:"Status pipeline is defined", desc:"Lead → quoted → approved → scheduled → in progress → completed → invoiced → paid → review requested → closed." },
+    { id:"7.2", label:"Quote records / snapshots are defined", desc:"Every quote can be stored with assumptions and versioning." },
+    { id:"7.3", label:"Job execution records are defined", desc:"What photos, notes, approvals, and timestamps are stored." },
+    { id:"7.4", label:"Time / expense / job costing structure is defined", desc:"Even if simple — you know how it will be tracked." },
+    { id:"7.5", label:"Invoice / payment workflow is defined", desc:"When invoice is created, who sends it, what payment methods are accepted, overdue follow-up logic." },
+    { id:"7.6", label:"Dashboard / reporting / audit visibility is defined", desc:"What KPIs matter and where they will be seen." },
+  ]},
+  { id:8, name:"Scheduling / Geography / Capacity", weight:8, criteria:[
+    { id:"8.1", label:"Service zone logic is defined", desc:"Core area, extended area, quote-only area, no-go area." },
+    { id:"8.2", label:"Availability logic is defined", desc:"Which days/hours are actually available for booking." },
+    { id:"8.3", label:"Capacity logic is defined", desc:"How many jobs per day, what type, what buffers exist." },
+    { id:"8.4", label:"Travel / route logic is defined", desc:"How commute time affects booking and daily layout." },
+    { id:"8.5", label:"Reschedule / overflow / emergency logic is defined", desc:"What happens when the day breaks." },
+  ]},
+  { id:9, name:"Financial Structure / Cash Rules", weight:10, criteria:[
+    { id:"9.1", label:"Startup use-of-funds plan exists", desc:"You know exactly where the loan/cash would go." },
+    { id:"9.2", label:"Fixed-cost model exists", desc:"Estimated monthly fixed burn." },
+    { id:"9.3", label:"Owner pay rule exists", desc:"When and how you pay yourself.", essential:true, serious:true },
+    { id:"9.4", label:"Cash control rule exists", desc:"Reserve minimum, when to cut spend, when marketing cannot be cut, who can authorize purchases.", serious:true },
+    { id:"9.5", label:"Break-even / downside model exists", desc:"Minimum jobs/month, minimum gross profit/month, what bad month looks like, what triggers corrective action." },
+  ]},
+  { id:10, name:"Risk / Contingency / Launch Governance", weight:8, criteria:[
+    { id:"10.1", label:"Dependency map exists", desc:"Every critical dependency mapped: master, phone, CRM, website, payments, pricing sheet, vehicle, insurance, scheduling." },
+    { id:"10.2", label:"Backup rules exist", desc:"You know what happens if any one of those dependencies breaks." },
+    { id:"10.3", label:"Incident playbooks exist", desc:"Written handling for: customer complaint, callback, refund, payment failure, schedule failure, unavailable tech, unsafe condition." },
+    { id:"10.4", label:"Launch checklist / go/no-go gates exist", desc:"You know what must be true before launch.", essential:true },
+    { id:"10.5", label:"Review cadence and governance exist", desc:"Weekly review meeting, what is reviewed, what gets changed, who can approve major changes." },
+  ]},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+const LS_KEY = "vprs100_v1";
+let state = loadState();
+
+function defaultState() {
+  const s = { penalties: { major_cont:0, minor_cont:0, crit_unknown:0, spof:0 }, criteria:{} };
+  CATS.forEach(cat => cat.criteria.forEach(cr => {
+    s.criteria[cr.id] = { w:false, q:false, o:false, b:false, t:false, notes:"" };
+  }));
+  return s;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s.penalties && s.criteria) return s;
+    }
+  } catch(e) {}
+  return defaultState();
+}
+
+function saveState() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  const ind = document.getElementById("saveIndicator");
+  if (ind) {
+    ind.textContent = "Saved " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  }
+}
+
+// ── Scoring ───────────────────────────────────────────────────────────────────
+
+function critScore(id) {
+  const c = state.criteria[id] || {};
+  return (c.w?1:0)+(c.q?1:0)+(c.o?1:0)+(c.b?1:0)+(c.t?1:0);
+}
+
+function catPct(cat) {
+  const total = cat.criteria.reduce((a,cr) => a + critScore(cr.id), 0);
+  return total / (5 * cat.criteria.length);
+}
+
+function catWeightedScore(cat) {
+  return catPct(cat) * cat.weight;
+}
+
+function baseScore() {
+  return CATS.reduce((a, cat) => a + catWeightedScore(cat), 0);
+}
+
+function totalPenalties() {
+  const p = state.penalties;
+  const contPen = Math.min(p.major_cont * 2 + p.minor_cont * 1, 10);
+  const unknPen = Math.min(p.crit_unknown * 2, 12);
+  const spofPen = Math.min(p.spof * 1, 8);
+  return contPen + unknPen + spofPen;
+}
+
+function capsInfo() {
+  // Cap 1: Legal < 70% → ≤ 79
+  // Cap 2: Pricing < 70% → ≤ 79
+  // Cap 3: Financial < 70% → ≤ 79
+  // Cap 4: Any 2 of (Legal, Pricing, Sales, Ops, Finance) < 70% → ≤ 74
+  // Cap 5: Any essential criterion ≤ 1 → ≤ 69
+  const pcts = {};
+  CATS.forEach(c => { pcts[c.id] = catPct(c); });
+
+  const LEGAL = pcts[2], PRICING = pcts[4], FINANCE = pcts[9];
+  const SALES = pcts[6], OPS = pcts[7];
+
+  let cap = Infinity, capLabel = "None";
+
+  const caps = [];
+
+  // Cap 1
+  const c1 = LEGAL < 0.70;
+  caps.push({ label:"Cap 1: Legal/Licensing < 70%", hit: c1, limit: 79 });
+  if (c1 && 79 < cap) { cap = 79; capLabel = "Cap 1"; }
+
+  // Cap 2
+  const c2 = PRICING < 0.70;
+  caps.push({ label:"Cap 2: Pricing/Estimating < 70%", hit: c2, limit: 79 });
+  if (c2 && 79 < cap) { cap = 79; capLabel = "Cap 2"; }
+
+  // Cap 3
+  const c3 = FINANCE < 0.70;
+  caps.push({ label:"Cap 3: Financial Structure < 70%", hit: c3, limit: 79 });
+  if (c3 && 79 < cap) { cap = 79; capLabel = "Cap 3"; }
+
+  // Cap 4
+  const below70 = [LEGAL, PRICING, SALES, OPS, FINANCE].filter(p => p < 0.70).length;
+  const c4 = below70 >= 2;
+  caps.push({ label:"Cap 4: 2+ of (Legal/Pricing/Sales/Ops/Finance) < 70%", hit: c4, limit: 74 });
+  if (c4 && 74 < cap) { cap = 74; capLabel = "Cap 4"; }
+
+  // Cap 5: any essential criterion ≤ 1
+  const essentials = ["2.2","3.1","4.1","9.3","10.4"];
+  const essLow = essentials.filter(id => critScore(id) <= 1);
+  const c5 = essLow.length > 0;
+  caps.push({ label:"Cap 5: Essential criterion ≤ 1 (" + (essLow.length ? essLow.join(", ") : "none") + ")", hit: c5, limit: 69 });
+  if (c5 && 69 < cap) { cap = 69; capLabel = "Cap 5"; }
+
+  return { caps, cap: cap === Infinity ? null : cap, capLabel };
+}
+
+function finalScore() {
+  const base = baseScore();
+  const pen = totalPenalties();
+  const { cap, capLabel } = capsInfo();
+  const raw = base - pen;
+  const final = cap !== null ? Math.min(cap, raw) : raw;
+  return { base: Math.round(base * 10)/10, pen, raw: Math.round(raw * 10)/10, final: Math.max(0, Math.round(final * 10)/10), cap, capLabel };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function renderAll() {
+  renderCatCards();
+  renderPenaltyPanel();
+  updateScoreboard();
+  updateSummary();
+  updateCaps();
+}
+
+function renderCatCards() {
+  const container = document.getElementById("catCards");
+  container.innerHTML = "";
+  CATS.forEach(cat => {
+    const card = document.createElement("div");
+    card.className = "cat-card";
+    card.id = "cat_" + cat.id;
+
+    const pct = catPct(cat);
+    const pctPct = Math.round(pct * 100);
+    const pctClass = pct >= 0.70 ? "cat-pct-ok" : pct >= 0.50 ? "cat-pct-mid" : "cat-pct-low";
+    const ws = catWeightedScore(cat);
+
+    card.innerHTML = `
+      <div class="cat-header" onclick="toggleCat(${cat.id})">
+        <div class="cat-number">${cat.id}</div>
+        <div class="cat-name">${cat.name}</div>
+        <div class="cat-weight">Weight ${cat.weight}</div>
+        <span class="cat-pct ${pctClass}" id="catpct_${cat.id}">${pctPct}%</span>
+        <span class="cat-wscore" id="catws_${cat.id}">(${ws.toFixed(1)} pts)</span>
+        <span class="cat-chevron">&#9660;</span>
+      </div>
+      <div class="cat-body" id="catbody_${cat.id}">
+        ${cat.criteria.map(cr => renderCritRow(cr)).join("")}
+      </div>`;
+
+    container.appendChild(card);
+  });
+
+  // Bind events after DOM insert
+  CATS.forEach(cat => cat.criteria.forEach(cr => bindCrit(cr.id)));
+}
+
+function renderCritRow(cr) {
+  const s = state.criteria[cr.id] || {};
+  const sc = critScore(cr.id);
+  const badges = (cr.essential ? '<span class="badge-essential">Essential</span>' : "") +
+                 (cr.serious && !cr.essential ? '<span class="badge-serious">Extra-Serious</span>' : "");
+  const scoreClass = sc >= 5 ? "crit-score-5" : sc === 4 ? "crit-score-4" : sc === 3 ? "crit-score-3" : sc === 2 ? "crit-score-2" : "crit-score-0";
+  return `<div class="crit-row" id="critrow_${cr.id}">
+    <div class="crit-top">
+      <div class="crit-id">${cr.id}</div>
+      <div class="crit-main">
+        <div class="crit-label">
+          ${cr.label} ${badges}
+          <span class="crit-score-pill ${scoreClass}" id="critscore_${cr.id}">${sc}/5</span>
+        </div>
+        <div class="crit-desc">${cr.desc}</div>
+        <div class="wqobt-row">
+          ${["w","q","o","b","t"].map(l => `
+            <label class="wqobt-check">
+              <input type="checkbox" id="chk_${cr.id}_${l}" ${s[l] ? "checked" : ""} onchange="toggle('${cr.id}','${l}',this.checked)">
+              <span class="ltr ${l}-ltr">${l.toUpperCase()}</span>
+            </label>`).join("")}
+        </div>
+        <div class="flags-row">
+          <button class="flag-btn${getFlagClass(cr.id,'major_cont')}" id="flag_${cr.id}_major_cont" onclick="toggleFlag('${cr.id}','major_cont')">Major Contradiction</button>
+          <button class="flag-btn${getFlagClass(cr.id,'minor_cont')}" id="flag_${cr.id}_minor_cont" onclick="toggleFlag('${cr.id}','minor_cont')">Minor Contradiction</button>
+          <button class="flag-btn${getFlagClass(cr.id,'crit_unknown')}" id="flag_${cr.id}_crit_unknown" onclick="toggleFlag('${cr.id}','crit_unknown')">Critical Unknown</button>
+          <button class="flag-btn${getFlagClass(cr.id,'spof')}" id="flag_${cr.id}_spof" onclick="toggleFlag('${cr.id}','spof')">Single Point of Failure</button>
+        </div>
+        <button class="notes-toggle" onclick="toggleNotes('${cr.id}')">+ Notes</button>
+        <div class="notes-area ${s.notes ? 'open' : ''}" id="notes_${cr.id}">
+          <textarea placeholder="Notes, evidence, or what's still missing…" oninput="updateNotes('${cr.id}',this.value)">${s.notes || ""}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function getFlagClass(critId, flagKey) {
+  const s = state.criteria[critId] || {};
+  return s["flag_" + flagKey] ? " active-" + flagKey.replace(/_/g,"-") : "";
+}
+
+function bindCrit(id) {
+  // checkboxes and flags are inline onchange/onclick — no extra binding needed
+}
+
+// ── Interactions ──────────────────────────────────────────────────────────────
+
+function toggle(critId, letter, checked) {
+  if (!state.criteria[critId]) state.criteria[critId] = {};
+  state.criteria[critId][letter] = checked;
+  refreshCrit(critId);
+  refreshCat(getCatId(critId));
+  updateScoreboard();
+  updateSummary();
+  updateCaps();
+  saveState();
+}
+
+function toggleFlag(critId, flagKey) {
+  if (!state.criteria[critId]) state.criteria[critId] = {};
+  const key = "flag_" + flagKey;
+  const wasOn = !!state.criteria[critId][key];
+  state.criteria[critId][key] = !wasOn;
+
+  // Sync penalty counter
+  const delta = wasOn ? -1 : 1;
+  const penKey = flagKey === "major_cont" ? "major_cont"
+               : flagKey === "minor_cont" ? "minor_cont"
+               : flagKey === "crit_unknown" ? "crit_unknown" : "spof";
+  state.penalties[penKey] = Math.max(0, (state.penalties[penKey] || 0) + delta);
+
+  refreshCrit(critId);
+  renderPenaltyPanel();
+  updateScoreboard();
+  saveState();
+}
+
+function updateNotes(critId, val) {
+  if (!state.criteria[critId]) state.criteria[critId] = {};
+  state.criteria[critId].notes = val;
+  // Debounce save
+  clearTimeout(window._notesSave);
+  window._notesSave = setTimeout(saveState, 800);
+}
+
+function toggleNotes(critId) {
+  const el = document.getElementById("notes_" + critId);
+  if (el) el.classList.toggle("open");
+}
+
+function adj(key, delta) {
+  state.penalties[key] = Math.max(0, (state.penalties[key] || 0) + delta);
+  renderPenaltyPanel();
+  updateScoreboard();
+  saveState();
+}
+
+function toggleCat(id) {
+  const card = document.getElementById("cat_" + id);
+  if (card) card.classList.toggle("collapsed");
+}
+
+function expandAll() {
+  document.querySelectorAll(".cat-card").forEach(c => c.classList.remove("collapsed"));
+}
+function collapseAll() {
+  document.querySelectorAll(".cat-card").forEach(c => c.classList.add("collapsed"));
+}
+
+function confirmReset() {
+  if (confirm("Reset ALL scores and notes? This cannot be undone.")) {
+    state = defaultState();
+    saveState();
+    renderAll();
+  }
+}
+
+// ── Refresh helpers ───────────────────────────────────────────────────────────
+
+function refreshCrit(id) {
+  const sc = critScore(id);
+  const pill = document.getElementById("critscore_" + id);
+  if (pill) {
+    pill.textContent = sc + "/5";
+    pill.className = "crit-score-pill " + (sc === 5 ? "crit-score-5" : sc === 4 ? "crit-score-4" : sc === 3 ? "crit-score-3" : sc === 2 ? "crit-score-2" : "crit-score-0");
+  }
+  // Refresh flag buttons
+  ["major_cont","minor_cont","crit_unknown","spof"].forEach(fk => {
+    const btn = document.getElementById("flag_" + id + "_" + fk);
+    if (btn) btn.className = "flag-btn" + getFlagClass(id, fk);
+  });
+}
+
+function refreshCat(catId) {
+  const cat = CATS.find(c => c.id === catId);
+  if (!cat) return;
+  const pct = catPct(cat);
+  const pctPct = Math.round(pct * 100);
+  const pctClass = pct >= 0.70 ? "cat-pct-ok" : pct >= 0.50 ? "cat-pct-mid" : "cat-pct-low";
+  const ws = catWeightedScore(cat);
+  const pctEl = document.getElementById("catpct_" + catId);
+  const wsEl = document.getElementById("catws_" + catId);
+  if (pctEl) { pctEl.textContent = pctPct + "%"; pctEl.className = "cat-pct " + pctClass; }
+  if (wsEl) wsEl.textContent = "(" + ws.toFixed(1) + " pts)";
+}
+
+function getCatId(critId) {
+  const parts = critId.split(".");
+  return parseInt(parts[0], 10);
+}
+
+function renderPenaltyPanel() {
+  const p = state.penalties;
+  const items = [
+    { key:"major_cont", mult:2, label:"×2 each", cap:null },
+    { key:"minor_cont", mult:1, label:"×1 each", cap:null },
+    { key:"crit_unknown", mult:2, label:"×2, cap 12", cap:12 },
+    { key:"spof", mult:1, label:"×1, cap 8", cap:8 },
+  ];
+  items.forEach(it => {
+    const val = p[it.key] || 0;
+    const pts = it.cap !== null ? Math.min(val * it.mult, it.cap) : val * it.mult;
+    const vEl = document.getElementById("pv_" + it.key);
+    const pEl = document.getElementById("pp_" + it.key);
+    if (vEl) vEl.textContent = val;
+    if (pEl) pEl.textContent = "−" + pts + " pts (" + it.label + ")";
+  });
+}
+
+function updateScoreboard() {
+  const { base, pen, final, cap, capLabel } = finalScore();
+  document.getElementById("sbFinal").textContent = final.toFixed(1);
+  document.getElementById("sbBase").textContent = base.toFixed(1);
+  document.getElementById("sbPenalties").textContent = "−" + pen;
+  document.getElementById("sbCap").textContent = capLabel || "None";
+
+  const band = document.getElementById("sbBand");
+  let label, cls;
+  if (final >= 90) { label = "Launch-design complete"; cls = "band-90"; }
+  else if (final >= 80) { label = "Launchable — cleanup needed"; cls = "band-80"; }
+  else if (final >= 70) { label = "Promising but fragile"; cls = "band-70"; }
+  else if (final >= 60) { label = "Incomplete"; cls = "band-60"; }
+  else if (final >= 50) { label = "Preliminary"; cls = "band-50"; }
+  else { label = "Not ready"; cls = "band-0"; }
+  band.textContent = label;
+  band.className = "rating-band " + cls;
+
+  document.getElementById("sbFinal").style.color = final >= 90 ? "#065f46" : final >= 80 ? "#1e40af" : final >= 70 ? "#854d0e" : "#991b1b";
+}
+
+function updateSummary() {
+  const tbody = document.getElementById("summaryBody");
+  if (!tbody) return;
+  let rows = "";
+  CATS.forEach(cat => {
+    const pct = catPct(cat);
+    const pctPct = Math.round(pct * 100);
+    const ws = catWeightedScore(cat);
+    const pctClass = pct >= 0.70 ? "#065f46" : pct >= 0.50 ? "#854d0e" : "#dc2626";
+    rows += `<tr>
+      <td style="font-weight:700;color:hsl(var(--muted-foreground))">${cat.id}</td>
+      <td style="font-weight:600">${cat.name}</td>
+      <td>${cat.weight}</td>
+      <td style="font-weight:800;color:${pctClass}">${pctPct}%</td>
+      <td style="font-weight:800">${ws.toFixed(2)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows;
+}
+
+function updateCaps() {
+  const { caps } = capsInfo();
+  const container = document.getElementById("capsRows");
+  if (!container) return;
+  container.innerHTML = caps.map(c => `
+    <div class="cap-row">
+      <div class="cap-status ${c.hit ? 'cap-hit' : 'cap-ok'}">${c.hit ? "!" : "✓"}</div>
+      <div class="cap-desc">${c.label}</div>
+      <div class="cap-limit" style="color:${c.hit ? '#dc2626' : '#16a34a'}">${c.hit ? "Cap: max " + c.limit : "OK"}</div>
+    </div>`).join("");
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+renderAll();
+</script>
+</body>
+</html>

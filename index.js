@@ -628,6 +628,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-rulebook.html"), "text/html");
   }
 
+  if (req.url === "/crm/vprs") {
+    return serveFile(res, path.join(__dirname, "pages/crm-vprs.html"), "text/html");
+  }
+
   if (req.url === "/crm/calculator") {
     return serveFile(res, path.join(__dirname, "pages/crm-calculator.html"), "text/html");
   }

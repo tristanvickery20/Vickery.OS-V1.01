@@ -1,0 +1,874 @@
+Use this as your pre-launch only score.
+
+It does not measure whether the business is proven.
+It measures whether the business is designed tightly enough to launch without obvious self-inflicted chaos.
+
+Vickery Pre-Launch Readiness Score
+
+“VPRS-100”
+
+1) What this score is for
+
+This score answers:
+
+“How ready is this business to launch from a design, structure, and systems standpoint before spending money or running real jobs?”
+
+It does not answer:
+	•	whether leads will actually come in
+	•	whether people will buy
+	•	whether margins will hold in reality
+	•	whether you should quit your job
+
+It is a readiness score, not a market validation score.
+
+⸻
+
+2) Exact formula
+
+Step 1: Score every criterion from 0 to 5
+
+Each criterion gets points using this exact framework:
+
+WQOBT scoring
+
+For every criterion, give 1 point for each item below:
+	•	W = Written
+It exists in writing in one authoritative place.
+	•	Q = Quantified
+It has actual numbers, rules, limits, thresholds, or defined logic.
+	•	O = Owned
+One person or one system is clearly responsible for it.
+	•	B = Backup
+There is an exception path, fallback rule, or backup plan.
+	•	T = Tabletop-tested
+You have run a fake scenario through it and it held up without major confusion.
+
+Criterion score
+
+Criterion Score = W + Q + O + B + T
+
+So each criterion is:
+	•	0 = nonexistent
+	•	1 = vague idea
+	•	2 = rough draft
+	•	3 = documented but fragile
+	•	4 = solid and operational
+	•	5 = fully launch-ready on paper
+
+⸻
+
+Step 2: Calculate each category score
+
+For each category:
+
+Category % = (Sum of criterion scores) / (5 × number of criteria)
+
+Then:
+
+Weighted Category Score = Category % × Category Weight
+
+⸻
+
+Step 3: Add all weighted category scores
+
+Base Score = Sum of all Weighted Category Scores
+
+This gives you a number from 0 to 100.
+
+⸻
+
+Step 4: Apply penalties
+
+Final formula
+
+Final Readiness Score = Base Score – Contradiction Penalty – Critical Unknown Penalty – Single-Point-of-Failure Penalty
+
+⸻
+
+3) Penalties
+
+A. Contradiction Penalty
+
+A contradiction is when two parts of the business disagree in a way that changes execution.
+
+Examples:
+	•	service area says Beaumont allowed, scheduler says Beaumont approval only
+	•	estimator says deposit optional, ops says deposit required
+	•	quote says no travel fee, pricing rules say travel fee
+	•	CRM status flow conflicts with actual field workflow
+
+Score it like this:
+	•	Major contradiction = -2 each
+	•	Minor contradiction = -1 each
+
+Major contradiction areas:
+	•	licensing/authority
+	•	pricing
+	•	deposits/payment
+	•	scheduling
+	•	service area
+	•	who does what
+	•	what is offered/not offered
+
+Cap this penalty at 10.
+
+⸻
+
+B. Critical Unknown Penalty
+
+A critical unknown is something essential that is still unanswered.
+
+Examples:
+	•	no final master/electrical authority structure
+	•	no min ticket
+	•	no launch service list
+	•	no owner pay rule
+	•	no quote approval rule
+	•	no go/no-go launch rule
+
+Score it like this:
+	•	Critical unknown = -2 each
+
+Cap this penalty at 12.
+
+⸻
+
+C. Single-Point-of-Failure Penalty
+
+This is a dependency that can cripple launch if it breaks and there is no backup.
+
+Examples:
+	•	one master, no backup plan
+	•	one pricing sheet, no version backup
+	•	one phone line, no forwarding backup
+	•	one CRM login, no admin recovery
+	•	one payment path, no backup collection method
+
+Score it like this:
+	•	Critical single point of failure with no backup = -1 each
+
+Cap this penalty at 8.
+
+⸻
+
+4) Category weights
+
+Use these exact category weights:
+	1.	Strategic Clarity — 8
+	2.	Legal / Licensing / Control — 12
+	3.	Offer / Scope / Service Box — 10
+	4.	Pricing / Estimating Architecture — 14
+	5.	Marketing / Lead System Design — 10
+	6.	Sales / Customer Journey Design — 8
+	7.	Operations / CRM / Workflow — 12
+	8.	Scheduling / Geography / Capacity — 8
+	9.	Financial Structure / Cash Rules — 10
+	10.	Risk / Contingency / Launch Governance — 8
+
+Total = 100
+
+⸻
+
+5) Exact criteria by category
+
+1. Strategic Clarity — Weight 8
+
+Score these 5 criteria:
+
+1.1 Launch doctrine exists
+
+Do you have a short written doctrine defining:
+	•	what the business is at launch
+	•	what it is not
+	•	what matters most
+	•	what chaos you refuse to allow
+
+1.2 Target customer is defined
+
+Do you know exactly:
+	•	homeowner type
+	•	geography
+	•	budget sensitivity
+	•	problem types
+	•	what kind of buyer you want
+
+1.3 Differentiation is defined
+
+Can you state in one sentence why someone chooses you instead of another electrician?
+
+1.4 Non-goals / “not offered” list exists
+
+Do you clearly define what you are not doing at launch?
+
+1.5 Success / failure thresholds are defined
+
+Do you know:
+	•	what “good launch” means
+	•	what “bad launch” means
+	•	what metrics would trigger rework
+
+⸻
+
+2. Legal / Licensing / Control — Weight 12
+
+Score these 6 criteria:
+
+2.1 Entity / ownership structure is defined
+
+LLC/entity, ownership split, tax treatment, authority structure.
+
+2.2 Electrical contractor / master structure is defined
+
+Exactly how legal authority, supervision, and licensing work.
+
+2.3 Compensation structure is defined
+
+Who gets paid what, when, and under what conditions.
+
+2.4 Roles and decision rights are defined
+
+Who controls:
+	•	pricing
+	•	dispatch
+	•	customer decisions
+	•	quality calls
+	•	refunds
+	•	marketing
+	•	hiring
+
+2.5 Relationship failure / exit plan exists
+
+If the master leaves, if partner conflict happens, if jobs are slow, what then?
+
+2.6 Customer / data / brand / IP ownership is defined
+
+Who owns leads, customer records, estimator logic, CRM, reviews, brand assets.
+
+⸻
+
+3. Offer / Scope / Service Box — Weight 10
+
+Score these 5 criteria:
+
+3.1 Launch service list is final
+
+Your 8–12 launch services are actually finalized.
+
+3.2 Each service has a risk tier
+
+Each service is marked as:
+	•	routine
+	•	photo-gated
+	•	manual review
+	•	not offered
+
+3.3 Instant-quote boundary is defined
+
+You know exactly which jobs can be instantly priced and which cannot.
+
+3.4 Service area / travel rule is defined
+
+You know:
+	•	core area
+	•	expanded area
+	•	no-go area
+	•	travel fee rule
+	•	max drive rule
+
+3.5 Policy box is defined
+
+You have written rules for:
+	•	diagnostic fees
+	•	deposits
+	•	permits
+	•	change orders
+	•	warranty
+	•	customer-supplied materials
+	•	reschedules/cancellations
+
+⸻
+
+4. Pricing / Estimating Architecture — Weight 14
+
+Score these 7 criteria:
+
+4.1 Core pricing formula is defined
+
+Your quote formula is chosen and written.
+
+Example:
+labor burden × hours + materials × markup + overhead + target margin
+
+4.2 Labor model is defined
+
+You know:
+	•	labor rate
+	•	burden assumptions
+	•	crew assumptions
+	•	minimum labor blocks
+	•	overtime/after-hours logic if any
+
+4.3 Materials logic is defined
+
+You know:
+	•	where material pricing comes from
+	•	markup rule
+	•	consumables rule
+	•	supply house variance rule
+	•	substitution rule
+
+4.4 Risk modifiers are defined
+
+You have rules for things like:
+	•	attic access
+	•	ceiling height
+	•	wall type
+	•	age of house
+	•	panel issues
+	•	uncertainty
+	•	travel
+	•	permit likelihood
+
+4.5 Price floor / rounding / minimum rules are defined
+
+You know:
+	•	minimum ticket
+	•	service minimums
+	•	floor price
+	•	rounding rule
+	•	when price is too low to offer
+
+4.6 Assumptions and disclaimers are defined
+
+Your quote explains what it assumes and when repricing happens.
+
+4.7 Override / exception path exists
+
+If the estimator hits weird inputs, who reviews it and what happens next?
+
+⸻
+
+5. Marketing / Lead System Design — Weight 10
+
+Score these 5 criteria:
+
+5.1 Launch channels are selected
+
+You have chosen your actual channel stack, even if not running it yet.
+
+Example:
+	•	GBP
+	•	LSA
+	•	local SEO
+	•	referral
+	•	direct reactivation
+	•	door hanger follow-up
+	•	social retargeting later
+
+5.2 Message / offer / CTA are defined
+
+You know what the customer sees and why they should act now.
+
+5.3 Review / referral engine is designed
+
+You know:
+	•	when review is asked
+	•	by who
+	•	through what message
+	•	what reminders exist
+
+5.4 Lead capture design is defined
+
+You know:
+	•	where leads come from
+	•	what form fields matter
+	•	what gets captured first
+	•	what gets delayed until later
+
+5.5 Tracking design is defined
+
+You know how you will tag:
+	•	source
+	•	campaign
+	•	call vs form
+	•	quote requested
+	•	quote booked
+	•	review requested
+
+⸻
+
+6. Sales / Customer Journey Design — Weight 8
+
+Score these 5 criteria:
+
+6.1 Intake logic is defined
+
+You know what questions are asked and in what order.
+
+6.2 Response standard is defined
+
+You know:
+	•	how fast you respond
+	•	how missed calls are handled
+	•	after-hours handling
+	•	follow-up timing
+
+6.3 Quote delivery flow is defined
+
+You know how pricing is shown, what happens after, and when lead info is required.
+
+6.4 Scheduling / deposit handoff is defined
+
+You know the exact handoff from quote acceptance to actual booking.
+
+6.5 Objection / no-response / no-show / cancellation handling is defined
+
+You have scripts or logic for the common sales failures.
+
+⸻
+
+7. Operations / CRM / Workflow — Weight 12
+
+Score these 6 criteria:
+
+7.1 Status pipeline is defined
+
+Lead → quoted → approved → scheduled → in progress → completed → invoiced → paid → review requested → closed
+
+7.2 Quote records / snapshots are defined
+
+Every quote can be stored with assumptions and versioning.
+
+7.3 Job execution records are defined
+
+You know what photos, notes, approvals, and timestamps are stored.
+
+7.4 Time / expense / job costing structure is defined
+
+Even if simple, you know how it will be tracked.
+
+7.5 Invoice / payment workflow is defined
+
+You know:
+	•	when invoice is created
+	•	who sends it
+	•	what payment methods are accepted
+	•	overdue follow-up logic
+
+7.6 Dashboard / reporting / audit visibility is defined
+
+You know what KPIs matter and where they will be seen.
+
+⸻
+
+8. Scheduling / Geography / Capacity — Weight 8
+
+Score these 5 criteria:
+
+8.1 Service zone logic is defined
+
+Core area, extended area, quote-only area, no-go area.
+
+8.2 Availability logic is defined
+
+Which days/hours are actually available for booking.
+
+8.3 Capacity logic is defined
+
+How many jobs per day, what type of jobs, and what buffers exist.
+
+8.4 Travel / route logic is defined
+
+How commute time affects booking and daily layout.
+
+8.5 Reschedule / overflow / emergency logic is defined
+
+What happens when the day breaks.
+
+⸻
+
+9. Financial Structure / Cash Rules — Weight 10
+
+Score these 5 criteria:
+
+9.1 Startup use-of-funds plan exists
+
+You know exactly where the loan/cash would go.
+
+9.2 Fixed-cost model exists
+
+You know your estimated monthly fixed burn.
+
+9.3 Owner pay rule exists
+
+You know when and how you pay yourself.
+
+9.4 Cash control rule exists
+
+You know:
+	•	reserve minimum
+	•	when to cut spend
+	•	when marketing cannot be cut
+	•	who can authorize purchases
+
+9.5 Break-even / downside model exists
+
+You have modeled:
+	•	minimum jobs/month
+	•	minimum gross profit/month
+	•	what bad month looks like
+	•	what triggers corrective action
+
+⸻
+
+10. Risk / Contingency / Launch Governance — Weight 8
+
+Score these 5 criteria:
+
+10.1 Dependency map exists
+
+You know every critical dependency:
+	•	master
+	•	phone
+	•	CRM
+	•	website
+	•	payments
+	•	pricing sheet
+	•	vehicle
+	•	insurance
+	•	scheduling
+
+10.2 Backup rules exist
+
+You know what happens if any one of those breaks.
+
+10.3 Incident playbooks exist
+
+You have written handling for:
+	•	customer complaint
+	•	callback
+	•	refund request
+	•	payment failure
+	•	schedule failure
+	•	unavailable tech
+	•	unsafe condition
+
+10.4 Launch checklist / go-no-go gates exist
+
+You know what must be true before launch.
+
+10.5 Review cadence and governance exist
+
+You know:
+	•	weekly review meeting
+	•	what is reviewed
+	•	what gets changed
+	•	who can approve major changes
+
+⸻
+
+6) How to give the T “Tabletop-tested” point
+
+You said this must work without real jobs or spending money, so this is how “tested” works.
+
+A criterion gets the T point only if it survives a fake scenario.
+
+Tabletop-test rule
+
+You run a scenario from start to finish using your actual docs, scripts, sheets, and rules.
+
+You only get the T point if:
+	•	no major ambiguity appears
+	•	no key decision has to be made from memory
+	•	no contradiction appears
+	•	the next step is obvious
+	•	the output is usable
+
+If you had to say:
+	•	“we’d figure that out”
+	•	“depends”
+	•	“I know what I mean but it’s not written”
+	•	“that’s not built yet”
+	•	“we’ll decide later”
+
+then no T point.
+
+⸻
+
+7) Required simulation pack
+
+To avoid fake confidence, use this simulation battery.
+
+Strategic / offer simulations
+
+Run at least:
+	•	5 “should we take this job?” scenarios
+	•	5 “is this instant-quote or manual review?” scenarios
+
+Pricing simulations
+
+Run at least:
+	•	20 quote scenarios across your core services
+	•	5 weird/high-risk scenarios
+	•	5 “customer gave incomplete info” scenarios
+
+Sales simulations
+
+Run at least:
+	•	10 lead intake scenarios
+	•	5 no-answer / missed-call scenarios
+	•	5 objection/cancellation scenarios
+
+Ops simulations
+
+Run at least:
+	•	10 lead-to-close fake workflows
+	•	5 deposit-required booking scenarios
+	•	5 change-order scenarios
+	•	5 invoice/payment follow-up scenarios
+
+Scheduling simulations
+
+Run at least:
+	•	10 daily schedule boards
+	•	5 “job ran long” scenarios
+	•	5 “crew unavailable / reschedule” scenarios
+
+Risk simulations
+
+Run at least:
+	•	3 master unavailable scenarios
+	•	3 CRM/site/payment failure scenarios
+	•	3 angry-customer scenarios
+	•	3 slow-lead-month scenarios
+
+You do not need real customers.
+You can invent these scenarios.
+
+⸻
+
+8) Caps so the score can’t lie to you
+
+These are hard caps.
+
+Cap 1
+
+If Legal / Licensing / Control is below 70%, total score cannot exceed 79.
+
+Cap 2
+
+If Pricing / Estimating is below 70%, total score cannot exceed 79.
+
+Cap 3
+
+If Financial Structure / Cash Rules is below 70%, total score cannot exceed 79.
+
+Cap 4
+
+If any two of these are below 70%:
+	•	Legal
+	•	Pricing
+	•	Sales
+	•	Ops
+	•	Finance
+
+then total score cannot exceed 74.
+
+Cap 5
+
+If any of these essential criteria score 0 or 1, total score cannot exceed 69:
+	•	electrical/master structure
+	•	launch service list
+	•	core pricing formula
+	•	owner pay rule
+	•	go/no-go launch checklist
+
+⸻
+
+9) What counts as 90+ on this system
+
+A 90+ on this score means:
+	•	design is tight
+	•	responsibilities are defined
+	•	exceptions have backup rules
+	•	the system survives tabletop stress
+	•	launch chaos should be low if the market responds
+
+It still does not mean proven business.
+
+To be 90+ you must have all of this:
+	•	Final Score ≥ 90
+	•	No category below 80%
+	•	No essential criterion below 3/5
+	•	Total penalties ≤ 4
+	•	At least 80% pass rate on the simulation pack
+
+⸻
+
+10) Rating bands
+
+90–100
+
+Launch-design complete
+You are structurally ready to launch-test.
+
+80–89
+
+Launchable but cleanup needed
+Likely workable, but some weak points can still cause avoidable pain.
+
+70–79
+
+Promising but fragile
+Good thinking exists, but there are enough gaps that chaos is likely.
+
+60–69
+
+Incomplete
+You have a concept and partial structure, but launch would likely be messy.
+
+50–59
+
+Preliminary
+Too many unresolved dependencies and unwritten rules.
+
+Below 50
+
+Not ready
+Mostly ideas, not a controlled launch system.
+
+⸻
+
+11) Exact spreadsheet layout
+
+Make a sheet with these columns:
+	•	Category
+	•	Category Weight
+	•	Criterion
+	•	W
+	•	Q
+	•	O
+	•	B
+	•	T
+	•	Criterion Score
+	•	Criterion %
+	•	Category %
+	•	Weighted Score
+	•	Notes
+	•	Contradiction?
+	•	Critical Unknown?
+	•	Single Point of Failure?
+
+Formulas
+
+Criterion Score
+
+=SUM(W: T)
+If W is column D and T is column H, then:
+=SUM(D2:H2)
+
+Criterion %
+
+=I2/5
+
+Category %
+
+Average of all criterion % values in that category
+
+Weighted Score
+
+=Category % × Category Weight
+
+Base Score
+
+Sum of all Weighted Scores
+
+Penalties
+
+=(2 × Major Contradictions) + (1 × Minor Contradictions) + (2 × Critical Unknowns) + (1 × Single Point Failures)
+
+You can separate major/minor contradiction counts in summary cells.
+
+Final Readiness Score
+
+=MIN(Overall Cap, Base Score - Total Penalties)
+
+⸻
+
+12) My recommendation for how strict you should be
+
+Be mean when you score it.
+
+Do not give yourself the point unless it is actually true.
+
+Examples
+
+Bad self-scoring
+
+“We basically know our service area.”
+That is not quantified. No Q point.
+
+Bad self-scoring
+
+“I’ll handle that.”
+That is not owned unless it is explicitly written. No O point.
+
+Bad self-scoring
+
+“We have a backup.”
+Not unless the backup is written and usable. No B point.
+
+Bad self-scoring
+
+“I’ve thought through it a lot.”
+That is not tested. No T point.
+
+⸻
+
+13) The fastest way to use it
+
+Do this in order:
+	1.	Fill every criterion with WQOBT scores
+	2.	Count penalties honestly
+	3.	Apply the caps
+	4.	Get your final number
+	5.	Circle every criterion scoring 0, 1, or 2
+	6.	Fix those first
+	7.	Re-score
+
+That gives you a brutally honest pre-launch number.
+
+⸻
+
+14) My one adjustment for your specific business
+
+For Vickery Electric, I would treat these 5 criteria as extra-serious:
+	•	electrical/master structure
+	•	launch service list
+	•	core pricing formula
+	•	service area/travel rules
+	•	owner pay / cash rules
+
+If any of those are weak, your score should be viewed as inflated even if the math looks decent.
+
+⸻
+
+15) Clean one-line formula version
+
+Here is the formula exactly:
+
+Final Readiness Score = MIN(Overall Cap, Σ[Category Weight × (Σ Criterion WQOBT Scores / (5 × Number of Criteria))] – Contradiction Penalty – Critical Unknown Penalty – Single-Point-of-Failure Penalty)
+
+⸻
+
+16) What this lets you say honestly
+
+After you score it, you can say one of these:
+	•	“We are 88/100 and launchable with cleanup.”
+	•	“We are 74/100 and still fragile.”
+	•	“We are 92/100 on pre-launch readiness, but still not validated.”
+	•	“We are only 61/100 because too much is still in my head.”
+
+That is the right use of this score.
+
+If you want, I’ll turn this into a ready-to-paste Google Sheets template layout with every category and criterion already pre-filled.
