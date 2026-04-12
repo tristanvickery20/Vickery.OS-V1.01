@@ -1240,10 +1240,11 @@ function renderConsult() {
         Every installation for this service involves unique site conditions that our online estimator cannot fully account for. One of our electricians will review your project and give you an accurate price — usually within a few hours.
       </p>
       ${range ? `
-      <div style="background:hsl(var(--primary) / 0.08);border:1px solid hsl(var(--primary) / 0.25);border-radius:10px;padding:14px 18px;text-align:center;margin:0 auto 20px;max-width:320px;">
+      <div style="background:hsl(var(--primary) / 0.08);border:1px solid hsl(var(--primary) / 0.25);border-radius:10px;padding:14px 18px;text-align:center;margin:0 auto 20px;max-width:340px;">
         <div class="q-muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ballpark Range</div>
         <div style="font-size:24px;font-weight:900;font-family:var(--font-display);color:hsl(var(--primary));letter-spacing:-0.02em;">${escHtml(range)}</div>
         <div class="q-muted" style="font-size:11px;margin-top:4px;">Final price confirmed after site review</div>
+        ${d.ballparkRange?.note ? `<div class="q-muted" style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid hsl(var(--primary) / 0.2);font-style:italic;">${escHtml(d.ballparkRange.note)}</div>` : ""}
       </div>` : ""}
     </div>
 
