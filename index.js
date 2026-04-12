@@ -70,6 +70,7 @@ const { handleGeocode } = require("./api/schedule-geocode");
 const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
 const { handleMapboxConfig } = require("./api/config-mapbox");
 const { handleGetPositions, startPolling: startTraccarPolling } = require("./api/traccar");
+const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/reschedule");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -495,6 +496,12 @@ const server = http.createServer(async (req, res) => {
     return handleReferralSubmit(req, res);
   }
 
+  // ── Public reschedule response — no auth ─────────────────────────────────
+  // GET /reschedule/:token?r=accept|decline → customer taps link from SMS
+  if (_epath.startsWith("/reschedule/") && req.method === "GET") {
+    return handleRescheduleRespond(req, res);
+  }
+
   // ── Public invoice page — no auth ─────────────────────────────────────────
   // GET /invoice/:token → serve the customer-facing invoice HTML page
   if (_epath.startsWith("/invoice/") && req.method === "GET" && !_epath.startsWith("/invoices")) {
@@ -529,6 +536,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/schedule/bookings/") && req.method === "PATCH") {
     return handlePatchBooking(req, res);
+  }
+
+  // POST /api/schedule/bookings/:id/reschedule-request → send reschedule SMS to customer
+  if (req.url.includes("/reschedule-request") && req.method === "POST") {
+    return handleRescheduleRequest(req, res);
   }
 
   // Geocode bookings (CRM only)

@@ -361,6 +361,8 @@
       .detail-btn:hover { background: rgba(100,150,255,0.18); }
       .detail-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
       .detail-btn.primary:hover { background: #2460c8; }
+      .detail-btn.amber { background: hsl(38 90% 48%); border-color: hsl(38 90% 48%); color: #000; }
+      .detail-btn.amber:hover { background: hsl(38 90% 40%); }
 
       /* ── Bulk action bar ──────────────────────────────────────── */
       .bulk-bar {
@@ -561,6 +563,31 @@
         <div class="cal-modal-footer">
           <button class="cal-modal-cancel" id="reassignCancel">Cancel</button>
           <button class="cal-modal-confirm" id="reassignConfirm">Reassign All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reschedule Request modal -->
+    <div class="cal-modal-backdrop" id="rescheduleRequestModal">
+      <div class="cal-modal">
+        <div class="cal-modal-title">Request Reschedule</div>
+        <div class="cal-modal-body">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;" id="rescheduleReqDesc">
+            An SMS will be sent to the customer with two tap links — Accept or Decline.
+          </div>
+          <div>
+            <div class="cal-modal-label">Proposed New Date</div>
+            <input type="date" id="rescheduleReqDate">
+          </div>
+          <div>
+            <div class="cal-modal-label">Proposed New Time</div>
+            <input type="time" id="rescheduleReqTime">
+          </div>
+          <div id="rescheduleReqStatus" style="margin-top:10px;font-size:13px;display:none;"></div>
+        </div>
+        <div class="cal-modal-footer">
+          <button class="cal-modal-cancel" id="rescheduleReqCancel">Cancel</button>
+          <button class="cal-modal-confirm" id="rescheduleReqSend">Send SMS</button>
         </div>
       </div>
     </div>
@@ -1617,8 +1644,20 @@
         }
 
         detailBody.innerHTML = body;
+        // Reschedule status badge
+        const rsStatus = b.reschedule_status || "";
+        const rsBadge  = rsStatus === "pending"
+          ? `<div style="font-size:12px;color:hsl(38 90% 48%);font-weight:700;margin-bottom:4px;">&#8987; Reschedule request pending customer response</div>`
+          : rsStatus === "accepted"
+          ? `<div style="font-size:12px;color:#4ade80;font-weight:700;margin-bottom:4px;">&#10003; Reschedule accepted</div>`
+          : rsStatus === "declined"
+          ? `<div style="font-size:12px;color:#f87171;font-weight:700;margin-bottom:4px;">&#10007; Reschedule declined by customer</div>`
+          : "";
+
         detailFooter.innerHTML = `
+          ${rsBadge}
           ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
+          ${b.phone ? `<button class="detail-btn amber" id="detailRequestReschedule">Send Reschedule Request</button>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/lead?quote_id=${esc(b.quote_id)}" target="_blank">&#9889; Open Full Report</a>` : ""}
           ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
         `;
@@ -1646,6 +1685,11 @@
           }
         });
 
+        // Reschedule request button — opens the request modal for this booking
+        document.getElementById("detailRequestReschedule")?.addEventListener("click", () => {
+          openRescheduleRequestModal(b);
+        });
+
         detailPanel.classList.add("open");
         detailBackdrop.classList.add("show");
       }
@@ -1653,6 +1697,75 @@
       function closeDetail() {
         detailPanel.classList.remove("open");
         detailBackdrop.classList.remove("show");
+      }
+
+      // ── Reschedule Request modal ───────────────────────────────────
+      function openRescheduleRequestModal(booking) {
+        const modal    = document.getElementById("rescheduleRequestModal");
+        const dateEl   = document.getElementById("rescheduleReqDate");
+        const timeEl   = document.getElementById("rescheduleReqTime");
+        const statusEl = document.getElementById("rescheduleReqStatus");
+        const sendBtn  = document.getElementById("rescheduleReqSend");
+        const desc     = document.getElementById("rescheduleReqDesc");
+
+        // Reset fields
+        dateEl.value       = todayStr();
+        timeEl.value       = "";
+        statusEl.style.display = "none";
+        statusEl.textContent   = "";
+        sendBtn.disabled   = false;
+        sendBtn.textContent = "Send SMS";
+        desc.textContent   = `Sending to ${booking.phone || "customer"} for ${booking.customer_name || "this job"}.`;
+
+        modal.classList.add("show");
+
+        // Cancel button
+        const cancelBtn = document.getElementById("rescheduleReqCancel");
+        const closeFn = () => modal.classList.remove("show");
+        cancelBtn.onclick = closeFn;
+        modal.onclick = (e) => { if (e.target === modal) closeFn(); };
+
+        // Send button
+        sendBtn.onclick = async () => {
+          const newDate = dateEl.value;
+          const newTime = timeEl.value;
+          if (!newDate) { dateEl.focus(); return; }
+          if (!newTime) { timeEl.focus(); return; }
+
+          const proposedDatetime = `${newDate}T${newTime}:00`;
+          sendBtn.disabled   = true;
+          sendBtn.textContent = "Sending…";
+          statusEl.style.display  = "none";
+
+          try {
+            const r = await fetch(`/api/schedule/bookings/${encodeURIComponent(booking.booking_id)}/reschedule-request`, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({ proposed_datetime: proposedDatetime }),
+            });
+            const data = await r.json();
+            if (data.ok) {
+              statusEl.style.display  = "block";
+              statusEl.style.color    = "#4ade80";
+              statusEl.textContent    = "SMS sent! Waiting for customer response.";
+              sendBtn.textContent     = "Sent";
+              setTimeout(closeFn, 2000);
+              await loadData();
+            } else {
+              statusEl.style.display  = "block";
+              statusEl.style.color    = "#f87171";
+              statusEl.textContent    = data.error || "Failed to send SMS.";
+              sendBtn.disabled   = false;
+              sendBtn.textContent = "Retry";
+            }
+          } catch (err) {
+            statusEl.style.display  = "block";
+            statusEl.style.color    = "#f87171";
+            statusEl.textContent    = "Network error — try again.";
+            sendBtn.disabled   = false;
+            sendBtn.textContent = "Retry";
+          }
+        };
       }
 
       // ── MAP VIEW ──────────────────────────────────────────────────
