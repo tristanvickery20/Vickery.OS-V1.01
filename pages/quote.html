@@ -841,6 +841,9 @@
       background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d6ed8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/%3E%3C/svg%3E") center / contain no-repeat;
       animation: boltPulse 0.9s ease-in-out infinite;
     }
+    @keyframes q-spin {
+      to { transform: rotate(360deg); }
+    }
     @keyframes boltPulse {
       0%   { opacity: 1;    transform: scale(1);    filter: drop-shadow(0 0 0px hsl(var(--primary))); }
       40%  { opacity: 0.7;  transform: scale(1.14); filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.7)); }

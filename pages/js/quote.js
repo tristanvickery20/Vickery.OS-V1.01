@@ -26,9 +26,11 @@ const S = {
   selectedSlot: null,   // ISO string — start of selected block (or exact slot for legacy)
   selectedBlock: null,  // { date, block, start_iso, window_label, display } | null
   booking: null,
-  photoGateInfo: null,       // { module, modules, label, prompt } — set when photo gate triggers
-  photoGateFromStep: null,   // "questions" | "equipment" — where the photo gate was entered from
-  consultData: null,         // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
+  photoGateInfo: null,         // { module, modules, label, prompt } — set when photo gate triggers
+  photoGateFromStep: null,     // "questions" | "equipment" — where the photo gate was entered from
+  photoGateUploading: false,   // true while gate photo is being uploaded to server
+  confirmedPhotoModules: {},   // { [module]: true } — modules confirmed by successful server upload
+  consultData: null,           // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
 };
 
 // ── Equipment / Material catalog ───────────────────────────────────────────────
@@ -1179,41 +1181,65 @@ function renderSiteVisit() {
 
 // ── Step: Photo Gate ──────────────────────────────────────────────────────────
 // Shown when a selected service requires a photo before we can price the job.
+// Three states: (1) no photo yet — file picker; (2) uploading — spinner;
+// (3) confirmed — server accepted the upload, proceed enabled.
 function renderPhotoGate() {
-  const info = S.photoGateInfo || {};
-  const label = info.label || "a photo";
-  const prompt = info.prompt || "A photo is needed before we can generate your estimate.";
-  const fileCount = (S.photos[info.module] || []).length;
+  const info      = S.photoGateInfo || {};
+  const module    = info.module;
+  const label     = info.label || "a photo";
+  const prompt    = info.prompt || "A photo is needed before we can generate your estimate.";
+  const confirmed = Boolean(S.confirmedPhotoModules[module]);
+  const uploading = S.photoGateUploading;
+
+  const cameraSvg = `<svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><rect x="4" y="12" width="40" height="30" rx="3"/><circle cx="24" cy="27" r="8"/><path d="M16 12l3-6h10l3 6"/><circle cx="38" cy="18" r="2" fill="currentColor" stroke="none"/></svg>`;
+  const checkSvg  = `<svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(120 60% 40%);display:block;margin:0 auto;"><circle cx="24" cy="24" r="20"/><polyline points="14 24 21 31 34 17" stroke-width="2.8"/></svg>`;
+  const uploadSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+
+  let uploadArea;
+  if (confirmed) {
+    uploadArea = `
+      <div style="text-align:center;padding:12px 18px 18px;">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:hsl(120 60% 40%);">Photo uploaded — ready to continue</p>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:hsl(var(--muted-fg));text-decoration:underline;">
+          Replace photo
+          <input type="file" accept="image/*" multiple style="display:none;" onchange="onPhotoGateSelected(this)">
+        </label>
+      </div>`;
+  } else if (uploading) {
+    uploadArea = `
+      <div style="text-align:center;padding:24px;">
+        <div style="display:inline-block;width:36px;height:36px;border:3px solid hsl(var(--border));border-top-color:hsl(var(--primary));border-radius:50%;animation:q-spin 0.8s linear infinite;"></div>
+        <p class="q-muted" style="margin:12px 0 0;font-size:14px;">Uploading photo&hellip;</p>
+      </div>`;
+  } else {
+    uploadArea = `
+      <div style="border:2px dashed hsl(var(--border));border-radius:12px;padding:20px;text-align:center;background:hsl(var(--subtle-bg,var(--card-bg)));">
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:14px;font-weight:700;border:none;">
+          ${uploadSvg}
+          Choose Photo
+          <input type="file" accept="image/*" multiple style="display:none;" onchange="onPhotoGateSelected(this)">
+        </label>
+        <p class="q-muted" style="font-size:12px;margin:10px 0 0;">JPG, PNG or HEIC &bull; up to 5 photos</p>
+        <p id="photoGateErr" class="q-error-box" style="display:none;margin:8px 0 0;"></p>
+      </div>`;
+  }
+
   return `
     ${stepHeader(3, "One Photo Required")}
     <div class="q-card-section" style="padding:28px 20px 24px;">
-      <div style="font-size:48px;text-align:center;margin-bottom:16px;">
-        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><rect x="4" y="12" width="40" height="30" rx="3"/><circle cx="24" cy="27" r="8"/><path d="M16 12l3-6h10l3 6"/><circle cx="38" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
-      </div>
+      <div style="text-align:center;margin-bottom:16px;">${confirmed ? checkSvg : cameraSvg}</div>
       <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
         We need ${escHtml(label)}
       </h3>
       <p class="q-muted" style="max-width:400px;margin:0 auto 20px;text-align:center;font-size:14px;">
         ${escHtml(prompt)}
       </p>
-      <div style="border:2px dashed hsl(var(--border));border-radius:12px;padding:20px;text-align:center;background:hsl(var(--subtle-bg,var(--card-bg)));">
-        <label class="q-file-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:14px;font-weight:700;border:none;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          ${fileCount > 0 ? `${fileCount} photo${fileCount > 1 ? "s" : ""} selected — tap to change` : "Choose Photo"}
-          <input type="file" id="photoGateFile" accept="image/*" multiple style="display:none;"
-            onchange="onPhotoGateSelected(this)">
-        </label>
-        <p class="q-muted" style="font-size:12px;margin:10px 0 0;">JPG, PNG or HEIC &bull; up to 5 photos</p>
-        ${fileCount > 0 ? `<p style="margin:10px 0 0;font-size:13px;color:hsl(var(--success,120 60% 40%));font-weight:600;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
-          ${fileCount} photo${fileCount > 1 ? "s" : ""} ready
-        </p>` : ""}
-      </div>
+      ${uploadArea}
     </div>
     <div class="q-nav-row" style="margin-top:20px;">
-      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-back" onclick="back()" ${uploading ? "disabled" : ""}>&#8592; Back</button>
       <button class="q-btn-next" id="photoGateProceedBtn"
-        ${fileCount > 0 ? "" : "disabled"}
+        ${confirmed && !uploading ? "" : "disabled"}
         onclick="checkPhotoGate()">
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         <span>See My Price</span>
@@ -1787,7 +1813,7 @@ async function calcPrice() {
           answers: S.answers,
           addons: S.addons,
           qty: svc.qty,
-          photo_modules_uploaded: Object.keys(S.photos).filter(k => (S.photos[k] || []).length > 0),
+          photo_modules_uploaded: Object.keys(S.confirmedPhotoModules).filter(k => S.confirmedPhotoModules[k]),
         }),
       }).then(r => r.json())
     ));
@@ -2151,15 +2177,14 @@ async function uploadPhoto() {
 // ── Photo gate — check before calcPrice() ─────────────────────────────────────
 // Config-driven: reads photo_gate_modules from the loaded jobType config.
 // Walks all selected services; for each service, walks all required modules.
-// The first missing module triggers the photo_gate step. This is re-called
-// from the gate's proceed button so every required module is enforced
-// before calcPrice() runs.
+// The first unconfirmed module triggers the photo_gate step. "Confirmed" means
+// the photo was successfully uploaded to the server (S.confirmedPhotoModules[mod]).
 function checkPhotoGate() {
   for (const svc of S.selectedServices) {
     const jt      = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
     const modules = jt?.photo_gate_modules || [];
     for (const mod of modules) {
-      if ((S.photos[mod] || []).length === 0) {
+      if (!S.confirmedPhotoModules[mod]) {
         S.photoGateInfo = {
           module:  mod,
           modules: modules,
@@ -2179,15 +2204,67 @@ function checkPhotoGate() {
 }
 
 // ── Photo gate file picker ─────────────────────────────────────────────────────
-// Called from the inline onchange in renderPhotoGate(). Stores files in
-// S.photos[module] then re-renders the gate so the proceed button unlocks.
+// Called from the inline onchange in renderPhotoGate(). Triggers immediate upload
+// to the server so S.confirmedPhotoModules[module] gets set on success.
 function onPhotoGateSelected(input) {
   if (!input.files?.length) return;
-  const module = S.photoGateInfo?.module;
-  if (!module) return;
-  if (!S.photos[module]) S.photos[module] = [];
-  Array.from(input.files).forEach(f => S.photos[module].push(f));
-  go("photo_gate");   // re-render to reflect new count + enable proceed button
+  const mod = S.photoGateInfo?.module;
+  if (!mod) return;
+  // Store files locally too (used by the existing post-lock upload flow if needed)
+  if (!S.photos[mod]) S.photos[mod] = [];
+  Array.from(input.files).forEach(f => S.photos[mod].push(f));
+  uploadGatePhotos(Array.from(input.files), mod);
+}
+
+// ── Gate photo upload ──────────────────────────────────────────────────────────
+// Uploads all files for a gate module to the server, then confirms the module
+// and re-renders the gate. Requires S.quoteId — starts a quote session if needed.
+async function uploadGatePhotos(files, mod) {
+  S.photoGateUploading = true;
+  go("photo_gate");   // re-render to show spinner
+
+  try {
+    // Ensure quote session exists (creates S.quoteId if needed)
+    if (!S.quoteId) {
+      const sr = await fetch("/api/quote/start", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+      });
+      const sd = await sr.json();
+      if (!sd.quote_id) throw new Error("Could not start session.");
+      S.quoteId = sd.quote_id;
+    }
+
+    // Upload each file (server records quote_id + module on success)
+    for (const file of files) {
+      const base64   = await fileToBase64(file);
+      const mimeType = file.type || "image/jpeg";
+      const r = await fetch("/api/quote/photo", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quote_id:  S.quoteId,
+          base64,
+          mime_type: mimeType,
+          filename:  file.name,
+          module:    mod,
+        }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Upload failed.");
+    }
+
+    // All uploads succeeded — confirm module
+    S.confirmedPhotoModules[mod] = true;
+  } catch (e) {
+    // Show error inline without a full re-render so the user can retry
+    S.photoGateUploading = false;
+    go("photo_gate");
+    const errEl = document.getElementById("photoGateErr");
+    if (errEl) { errEl.textContent = "Upload failed: " + e.message; errEl.style.display = "block"; }
+    return;
+  }
+
+  S.photoGateUploading = false;
+  go("photo_gate");   // re-render with confirmed state
 }
 
 // ── Consult request submit ─────────────────────────────────────────────────────

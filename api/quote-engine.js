@@ -16,6 +16,7 @@
 const crypto = require("crypto");
 const { getSheetsClient }       = require("../lib/sheets");
 const { getActiveConfig, isV2Mode } = require("../lib/estimatorV2Config");
+const { hasGatePhoto }          = require("./photo-upload");
 const { getEstimatorConfig }    = require("../lib/estimatorModulesConfig");
 const { calculateQuote }        = require("../lib/quoteEngine");
 const { calculateQuoteV2 }      = require("../lib/quoteEngineV2");
@@ -375,20 +376,19 @@ async function handleQuoteCalc(req, res) {
     }
 
     // ── Server-side photo gate enforcement ───────────────────────────────────
-    // If the service is classified as photo-gated, reject calc requests that
-    // don't declare the required modules as uploaded. This prevents direct-API
-    // bypass of the frontend photo gate.
+    // For photo-gated services, verify that the required module photos have been
+    // actually uploaded to the server for this quote session (not just client-declared).
+    // hasGatePhoto() checks the in-process upload registry in api/photo-upload.js.
     if (cls.photoGate) {
       const requiredModules = cls.photoGateModules
         || (cls.photoGateModule ? [cls.photoGateModule] : []);
-      const uploaded = Array.isArray(photo_modules_uploaded) ? photo_modules_uploaded : [];
-      const missing  = requiredModules.filter(m => !uploaded.includes(m));
+      const missing = requiredModules.filter(m => !hasGatePhoto(quote_id, m));
       if (missing.length > 0) {
         return json(res, 400, {
           ok: false,
           photo_gate_required: true,
           missing_modules: missing,
-          error: `This service requires ${missing.join(" and ")} before pricing can be calculated. Please use the quote form at vickeryelectric.com/quote.`,
+          error: `This service requires photos (${missing.join(", ")}) to be uploaded before pricing. Please use the quote form at vickeryelectric.com/quote.`,
         });
       }
     }
