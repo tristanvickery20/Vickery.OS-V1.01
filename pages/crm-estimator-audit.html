@@ -241,6 +241,7 @@
           <thead>
             <tr>
               <th data-col="service_name">Service <span class="sort-arrow">&#8597;</span></th>
+              <th data-col="assembly_id">Assembly <span class="sort-arrow">&#8597;</span></th>
               <th data-col="scenario_tag">Scenario <span class="sort-arrow">&#8597;</span></th>
               <th data-col="scenario_label">Description <span class="sort-arrow">&#8597;</span></th>
               <th data-col="answers">Key Modifiers</th>
@@ -359,6 +360,7 @@
 
       return `<tr>
         <td style="font-weight:600;white-space:nowrap;">${row.service_name}</td>
+        <td style="font-family:monospace;font-size:0.75rem;color:hsl(var(--muted-foreground));white-space:nowrap;">${row.assembly_id || "—"}</td>
         <td><span class="tag-pill ${tagClass}">${row.scenario_tag}</span></td>
         <td style="min-width:220px;">${row.scenario_label}</td>
         <td class="answers-col">${answersHtml}</td>
@@ -447,7 +449,7 @@
 
   function exportCsv() {
     const rows = getFilteredRows();
-    const headers = ["Service", "Service ID", "Scenario", "Description", "Answers", "Price", "Price Source", "Drivers", "Flagged", "Disqualified"];
+    const headers = ["Service", "Service ID", "Assembly", "Scenario", "Description", "Answers", "Price", "Price Source", "Drivers", "Flagged", "Disqualified"];
     const lines = [headers.map(h => `"${h}"`).join(",")];
     rows.forEach(row => {
       const answersStr = Object.entries(row.answers || {}).map(([k,v]) => `${k}=${v}`).join("; ");
@@ -455,6 +457,7 @@
       lines.push([
         `"${row.service_name}"`,
         `"${row.service_id}"`,
+        `"${row.assembly_id || ""}"`,
         `"${row.scenario_tag}"`,
         `"${row.scenario_label.replace(/"/g,'""')}"`,
         `"${answersStr}"`,

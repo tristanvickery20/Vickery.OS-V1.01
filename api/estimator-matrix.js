@@ -4,9 +4,15 @@
 // pricing engine for each priceable service and returns all results.
 // Does NOT write lead snapshots — this is read-only verification tooling.
 
-const { getEstimatorConfig }                     = require("../lib/estimatorModulesConfig");
+const { getEstimatorConfig }                          = require("../lib/estimatorModulesConfig");
 const { evaluateService, computePrice, getBasePrice } = require("../lib/estimatorEngine");
-const { isAuthed }                               = require("../lib/auth");
+const { ASSEMBLY_TO_SERVICE }                         = require("../lib/serviceClassification");
+const { isAuthed }                                    = require("../lib/auth");
+
+// Build reverse map: service_id → assembly_id
+const SERVICE_TO_ASSEMBLY_ID = Object.fromEntries(
+  Object.entries(ASSEMBLY_TO_SERVICE).map(([asmId, svcId]) => [svcId, asmId])
+);
 
 const NO_CACHE = { "Content-Type": "application/json", "Cache-Control": "no-store, max-age=0" };
 
@@ -266,6 +272,7 @@ async function handleEstimatorMatrix(req, res) {
         results.push({
           service_id:    serviceId,
           service_name:  service.service_name,
+          assembly_id:   SERVICE_TO_ASSEMBLY_ID[serviceId] || null,
           segment:       service.segment,
           tier:          service.tier,
           scenario_label: scenario.label,
