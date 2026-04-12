@@ -131,15 +131,20 @@ async function handleDashboard(req, res) {
     const leadsTabIds    = new Set(leads.map((l) => l.id));
     const allLeadsForBonus = [...leads, ...clientLeadsForBonus.filter((c) => !leadsTabIds.has(c.id))];
 
-    // Build paid-revenue rollup from Invoices tab (same source-of-truth as bonus-eligibility endpoint)
-    const invLeadIdx = (invoicesData.headers || []).indexOf("lead_id");
-    const invPaidIdx = (invoicesData.headers || []).indexOf("paid_amount");
-    const paidByLeadId = {};
-    if (invLeadIdx >= 0 && invPaidIdx >= 0) {
+    // Build paid-revenue + invoiced-revenue rollups from Invoices tab
+    // paidByLeadId    → used for per-job bonus margin (collected = cash-in-hand)
+    // invoicedByLeadId → used for YTD profit-share ANP (invoiced = commitment to pay, per contract)
+    const invLeadIdx   = (invoicesData.headers || []).indexOf("lead_id");
+    const invPaidIdx   = (invoicesData.headers || []).indexOf("paid_amount");
+    const invInvdIdx   = (invoicesData.headers || []).indexOf("invoiced_amount");
+    const paidByLeadId     = {};
+    const invoicedByLeadId = {};
+    if (invLeadIdx >= 0) {
       for (const row of invoicesData.rows || []) {
         const lid = String(row[invLeadIdx] || "").trim();
         if (!lid) continue;
-        paidByLeadId[lid] = (paidByLeadId[lid] || 0) + num(row[invPaidIdx]);
+        if (invPaidIdx >= 0) paidByLeadId[lid]     = (paidByLeadId[lid]     || 0) + num(row[invPaidIdx]);
+        if (invInvdIdx >= 0) invoicedByLeadId[lid]  = (invoicedByLeadId[lid] || 0) + num(row[invInvdIdx]);
       }
     }
 
@@ -450,39 +455,45 @@ async function handleDashboard(req, res) {
     const thisYear      = nowD.getUTCFullYear();
 
     const bonusDoneStatus = new Set(["complete", "closed", "paid"]);
+    // All-time counters
     let bonusEarned = 0, bonusPending = 0, bonusMarginFail = 0, bonusDocFail = 0;
-    let bonusTotalEarned = 0, bonusEarnedThisMonth = 0;
+    let bonusTotalEarned = 0;
+    // Payroll-period counters (current calendar month = "this period")
+    let earnedCountPeriod = 0, pendingCountPeriod = 0, marginFailCountPeriod = 0, docFailCountPeriod = 0;
+    let bonusEarnedThisMonth = 0;
 
     // YTD profit-share accumulation
-    let ytdCollected = 0, ytdDirectCost = 0;
+    // Uses invoicedByLeadId (total invoiced revenue) as the YTD base per contract definition,
+    // with fallback to lead row invoiced_amount if no Invoices-tab record exists.
+    let ytdInvoiced = 0, ytdDirectCost = 0;
 
     for (const l of allLeadsForBonus) {
       const lStatus = st(l);
 
-      // YTD profit-share: all paid jobs this calendar year
-      // Use Invoices-tab rollup; fall back to lead row paid_amount only if no invoice records
-      const invPaid       = paidByLeadId[l.id];
-      const ytdColl       = invPaid !== undefined ? invPaid : num(l.paid_amount);
-      const paidDateStr   = String(l.paid_date || l.completed_at || "");
-      const paidDate      = paidDateStr ? new Date(paidDateStr.includes("T") ? paidDateStr : paidDateStr + "T00:00:00Z") : null;
-      if (paidDate && !isNaN(paidDate.getTime()) && paidDate.getUTCFullYear() === thisYear && ytdColl > 0) {
-        const labMin      = laborMinByLead[l.id] || 0;
-        const labCost     = (labMin / 60) * loadedRate;
-        const expCost     = expCostByLead[l.id] || 0;
-        ytdCollected     += ytdColl;
-        ytdDirectCost    += labCost + expCost;
+      // YTD profit-share: jobs invoiced this calendar year (invoiced revenue, not collected)
+      const invInvoiced   = invoicedByLeadId[l.id];
+      const ytdInvAmt     = invInvoiced !== undefined ? invInvoiced : num(l.invoiced_amount);
+      const invDateStr    = String(l.completed_at || l.paid_date || l.invoice_date || "");
+      const invDate       = invDateStr ? new Date(invDateStr.includes("T") ? invDateStr : invDateStr + "T00:00:00Z") : null;
+      if (invDate && !isNaN(invDate.getTime()) && invDate.getUTCFullYear() === thisYear && ytdInvAmt > 0) {
+        const labMin    = laborMinByLead[l.id] || 0;
+        const labCost   = (labMin / 60) * loadedRate;
+        const expCost   = expCostByLead[l.id] || 0;
+        ytdInvoiced    += ytdInvAmt;
+        ytdDirectCost  += labCost + expCost;
       }
 
       if (!bonusDoneStatus.has(lStatus)) continue;
 
-      // Use Invoices-tab paid_amount as source-of-truth for collected revenue
+      // Use Invoices-tab paid_amount as source-of-truth for per-job collected revenue (bonus margin)
+      const invPaid   = paidByLeadId[l.id];
       const collected = invPaid !== undefined ? invPaid : (num(l.paid_amount) > 0 ? num(l.paid_amount) : 0);
       const labMin    = laborMinByLead[l.id] || 0;
       const labCost   = (labMin / 60) * loadedRate;
       const expCost   = expCostByLead[l.id] || 0;
       const totalC    = labCost + expCost;
       const marginPct = collected > 0 ? ((collected - totalC) / collected) * 100 : null;
-      // Strict margin bucket: ONLY below-40% failures (not deviation)
+      // Strict margin bucket: ONLY below-40% failures (not deviation, not missing docs)
       const marginOk  = marginPct !== null && marginPct >= 40;
       const hasTime   = labMin > 0;
       const hasPhoto  = (photosPerLead[l.id] || 0) >= 1;
@@ -496,44 +507,59 @@ async function handleDashboard(req, res) {
       const daysSince   = compDateOk ? (nowD.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24) : null;
       const qualityOk   = daysSince !== null && daysSince >= 14;
 
+      // Is this job in the current payroll period (current calendar month)?
+      const isThisPeriod = compDateOk
+        && compDate.getUTCFullYear() === thisMonthYear
+        && compDate.getUTCMonth() === thisMonth;
+
       if (!marginOk) {
-        // Strictly margin below 40% (or no collected revenue)
         bonusMarginFail++;
+        if (isThisPeriod) marginFailCountPeriod++;
       } else if (!docOk || !noDeviation) {
         // Documentation missing OR unauthorized deviation — both are doc/compliance failures
         bonusDocFail++;
+        if (isThisPeriod) docFailCountPeriod++;
       } else if (!qualityOk) {
         bonusPending++;
+        if (isThisPeriod) pendingCountPeriod++;
       } else {
         const earnedAmt = bonusTierAmt(collected);
         bonusEarned++;
         bonusTotalEarned += earnedAmt;
-        // This payroll period = completion in current calendar month
-        if (compDateOk && compDate.getUTCFullYear() === thisMonthYear && compDate.getUTCMonth() === thisMonth) {
+        if (isThisPeriod) {
+          earnedCountPeriod++;
           bonusEarnedThisMonth += earnedAmt;
         }
       }
     }
 
-    const ytdANP    = Math.round((ytdCollected - ytdDirectCost) * 100) / 100;
+    const ytdANP    = Math.round((ytdInvoiced - ytdDirectCost) * 100) / 100;
     const psTier    = profitShareTier(ytdANP);
     const psAmount  = Math.round(ytdANP * (psTier.pct / 100) * 100) / 100;
 
     const bonus_tracker = {
-      earned_count:         bonusEarned,
-      pending_count:        bonusPending,
-      margin_fail_count:    bonusMarginFail,
-      doc_fail_count:       bonusDocFail,
-      total_earned_bonus:   bonusTotalEarned,
-      earned_this_month:    bonusEarnedThisMonth,
+      // Current payroll period (calendar month) — primary values for payroll decisions
+      earned_count_period:      earnedCountPeriod,
+      pending_count_period:     pendingCountPeriod,
+      margin_fail_count_period: marginFailCountPeriod,
+      doc_fail_count_period:    docFailCountPeriod,
+      bonus_liability_period:   bonusEarnedThisMonth,
+      // All-time totals for reference
+      earned_count:             bonusEarned,
+      pending_count:            bonusPending,
+      margin_fail_count:        bonusMarginFail,
+      doc_fail_count:           bonusDocFail,
+      total_earned_bonus:       bonusTotalEarned,
+      // Legacy alias kept for any existing UI consumers
+      earned_this_month:        bonusEarnedThisMonth,
     };
     const profit_share = {
-      ytd_collected_revenue: Math.round(ytdCollected * 100) / 100,
-      ytd_direct_job_cost:   Math.round(ytdDirectCost * 100) / 100,
+      ytd_invoiced_revenue:    Math.round(ytdInvoiced * 100) / 100,
+      ytd_direct_job_cost:     Math.round(ytdDirectCost * 100) / 100,
       ytd_adjusted_net_profit: ytdANP,
-      projected_tier_pct:    psTier.pct,
-      projected_tier_label:  psTier.label,
-      projected_share_amount: psAmount,
+      projected_tier_pct:      psTier.pct,
+      projected_tier_label:    psTier.label,
+      projected_share_amount:  psAmount,
     };
 
     const kpis = {

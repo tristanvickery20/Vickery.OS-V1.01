@@ -295,25 +295,35 @@
 
             <div class="kpi-card2">
               <div class="card-title">Bonus Tracker</div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,0.35);margin-bottom:6px;">This Payroll Period</div>
               <div class="kpi-row">
-                <span class="kpi-row-label">Earned (all 4 tests pass)</span>
-                <span class="kpi-row-val big" id="bonusEarned" style="color:#4ade80;">&mdash;</span>
+                <span class="kpi-row-label">Earned (jobs)</span>
+                <span class="kpi-row-val big" id="bonusEarnedPeriod" style="color:#4ade80;">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Bonus liability</span>
+                <span class="kpi-row-val big" id="bonusLiabilityPeriod" style="color:#4ade80;">&mdash;</span>
               </div>
               <div class="kpi-row">
                 <span class="kpi-row-label">Pending quality window</span>
-                <span class="kpi-row-val" id="bonusPending" style="color:#fcd34d;">&mdash;</span>
+                <span class="kpi-row-val" id="bonusPendingPeriod" style="color:#fcd34d;">&mdash;</span>
               </div>
               <div class="kpi-row">
-                <span class="kpi-row-label">Not eligible (margin/doc)</span>
-                <span class="kpi-row-val" id="bonusFailed">&mdash;</span>
+                <span class="kpi-row-label">Margin failures</span>
+                <span class="kpi-row-val" id="bonusMarginFailPeriod">&mdash;</span>
+              </div>
+              <div class="kpi-row">
+                <span class="kpi-row-label">Doc/compliance failures</span>
+                <span class="kpi-row-val" id="bonusDocFailPeriod">&mdash;</span>
               </div>
               <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,0.35);margin-bottom:6px;">All-Time</div>
                 <div class="kpi-row">
-                  <span class="kpi-row-label">Earned this month</span>
-                  <span class="kpi-row-val big" id="bonusThisMonth" style="color:#4ade80;">&mdash;</span>
+                  <span class="kpi-row-label">Earned (jobs)</span>
+                  <span class="kpi-row-val" id="bonusEarned" style="color:#4ade80;">&mdash;</span>
                 </div>
                 <div class="kpi-row">
-                  <span class="kpi-row-label">Total earned (all-time)</span>
+                  <span class="kpi-row-label">Total bonus accrued</span>
                   <span class="kpi-row-val" id="bonusLiability" style="color:#4ade80;">&mdash;</span>
                 </div>
               </div>
@@ -390,7 +400,7 @@
                 <span class="kpi-row-val big" id="psANP">&mdash;</span>
               </div>
               <div class="kpi-row">
-                <span class="kpi-row-label">YTD Collected</span>
+                <span class="kpi-row-label">YTD Invoiced Revenue</span>
                 <span class="kpi-row-val" id="psCollected">&mdash;</span>
               </div>
               <div class="kpi-row">

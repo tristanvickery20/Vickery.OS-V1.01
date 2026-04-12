@@ -131,18 +131,22 @@
   }
 
   function renderBonusTracker(d) {
-    set("bonusEarned",    escH(String(d.earned_count      || 0)));
-    set("bonusPending",   escH(String(d.pending_count     || 0)));
-    set("bonusFailed",    escH(String((d.margin_fail_count || 0) + (d.doc_fail_count || 0))));
-    set("bonusLiability", escH(fmt$(d.total_earned_bonus  || 0)));
-    set("bonusThisMonth", escH(fmt$(d.earned_this_month   || 0)));
+    // Current payroll period (primary)
+    set("bonusEarnedPeriod",      escH(String(d.earned_count_period      || 0)));
+    set("bonusLiabilityPeriod",   escH(fmt$(d.bonus_liability_period     || 0)));
+    set("bonusPendingPeriod",     escH(String(d.pending_count_period     || 0)));
+    set("bonusMarginFailPeriod",  escH(String(d.margin_fail_count_period || 0)));
+    set("bonusDocFailPeriod",     escH(String(d.doc_fail_count_period    || 0)));
+    // All-time (secondary)
+    set("bonusEarned",            escH(String(d.earned_count             || 0)));
+    set("bonusLiability",         escH(fmt$(d.total_earned_bonus         || 0)));
   }
 
   function renderProfitShare(d) {
     if (!d) return;
     const anp = d.ytd_adjusted_net_profit;
     set("psANP",       escH(fmt$(anp)));
-    set("psCollected", escH(fmt$(d.ytd_collected_revenue)));
+    set("psCollected", escH(fmt$(d.ytd_invoiced_revenue || d.ytd_collected_revenue || 0)));
     set("psCost",      escH(fmt$(d.ytd_direct_job_cost)));
     set("psTier",      escH(d.projected_tier_label || "0%"));
     set("psAmount",    escH(fmt$(d.projected_share_amount || 0)));
