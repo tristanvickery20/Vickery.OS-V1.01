@@ -893,9 +893,10 @@ document.getElementById("driveBtn").addEventListener("click", async () => {
     const data = await r.json();
     if (data.ok) {
       msg.className = "drive-msg ok";
-      msg.textContent = "Saved to Google Drive." + (data.doc_url ? " " : "") + (data.doc_url ? "" : "");
       if (data.doc_url) {
         msg.innerHTML = 'Saved to Google Drive. <a href="' + data.doc_url + '" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700;text-decoration:underline;">Open Doc</a>';
+      } else {
+        msg.textContent = "Saved to Google Drive.";
       }
     } else {
       msg.className = "drive-msg err";
