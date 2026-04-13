@@ -904,9 +904,21 @@ function renderQuestion(q) {
 }
 
 // ── Step 5: Review — price + slot picker (no lead info) ───────────────────────
+function priceRange(price) {
+  if (price == null) return null;
+  const low  = Math.floor(price * 0.85 / 5) * 5;
+  const high = Math.ceil(price * 1.15 / 5) * 5;
+  return {
+    low,
+    high,
+    label: `$${low.toLocaleString()} \u2013 $${high.toLocaleString()}`,
+  };
+}
+
 function renderReview() {
   const price  = S.pricing?.final_price ?? null;
-  const bnpl   = price && price >= 200 ? Math.ceil(price / 12) : null;
+  const range  = priceRange(price);
+  const bnpl   = range && range.high >= 200 ? Math.ceil(range.high / 12) : null;
 
   // Build a label from all selected services
   const svcLabel = S.selectedServices.map(svc => {
@@ -923,10 +935,10 @@ function renderReview() {
 
     <div class="q-price-footer">
       <div class="q-price-footer-label">
-        Final Estimated Cost${svcLabel ? ` &mdash; ${escHtml(svcLabel)}` : ""}
+        Estimated Price Range${svcLabel ? ` &mdash; ${escHtml(svcLabel)}` : ""}
       </div>
       <div class="q-price-footer-amount">
-        $${price != null ? Number(price).toLocaleString() : "0.00"}
+        ${range ? range.label : "&mdash;"}
       </div>
       ${(() => {
         const equip = getEquipServices();
@@ -949,9 +961,9 @@ function renderReview() {
         return lines ? `<div class="q-price-footer-equip">${lines}</div>` : "";
       })()}
       <div class="q-price-footer-sub">
-        &#128205; A $25 travel fee may apply once your address is confirmed.
+        &#128205; Range reflects typical job variation. Final price confirmed on-site.
         ${S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
-        ${bnpl ? ` &bull; As low as $${bnpl}/mo.` : ""}
+        ${bnpl ? ` &bull; As low as $${bnpl}/mo with financing.` : ""}
       </div>
     </div>
 
@@ -976,6 +988,7 @@ function renderReview() {
 // ── Step 6: Confirm — lead form ────────────────────────────────────────────────
 function renderConfirm() {
   const price       = S.lock?.final_price ?? S.pricing?.final_price ?? null;
+  const range       = priceRange(price);
   const blockDisplay = S.selectedBlock?.display      || "";
   const blockWindow  = S.selectedBlock?.window_label || "";
 
@@ -992,10 +1005,10 @@ function renderConfirm() {
       <div class="q-confirm-row">
         <span class="q-confirm-icon">${_SVG_BOLT}</span>
         <div>
-          <div class="q-confirm-key">Estimated Price</div>
+          <div class="q-confirm-key">Estimated Price Range</div>
           <div class="q-confirm-val">
-            $${price != null ? Number(price).toLocaleString() : "&mdash;"}
-            <span class="q-confirm-note">&mdash; travel fee applied with address</span>
+            ${range ? range.label : "&mdash;"}
+            <span class="q-confirm-note">&mdash; final price confirmed on-site</span>
           </div>
         </div>
       </div>
@@ -1189,8 +1202,8 @@ function renderBooked() {
           <span class="q-booking-val">${escHtml(bk?.address || "")}</span>
         </div>
         <div class="q-booking-row">
-          <span class="q-booking-key">${_SVG_BOLT} Price</span>
-          <span class="q-booking-val">$${Number(displayPrice || 0).toLocaleString()} locked</span>
+          <span class="q-booking-key">${_SVG_BOLT} Estimate</span>
+          <span class="q-booking-val">${(() => { const r = priceRange(displayPrice); return r ? r.label : "&mdash;"; })()}</span>
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">${_SVG_TAG} ID</span>
@@ -2231,7 +2244,8 @@ async function reprice(zip) {
       const delta = data.travel_fee > 0
         ? ` (includes $${data.travel_fee} travel fee)`
         : " (no travel fee for this area)";
-      updateEl.innerHTML = `Updated price: <strong>$${Number(data.final_price).toLocaleString()}</strong>${escHtml(delta)}`;
+      const _r = priceRange(data.final_price);
+      updateEl.innerHTML = `Updated estimate: <strong>${_r ? _r.label : `$${Number(data.final_price).toLocaleString()}`}</strong>${escHtml(delta)}`;
       S.lock = data;
     }
   } catch {
