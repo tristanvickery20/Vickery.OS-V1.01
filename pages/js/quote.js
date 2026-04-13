@@ -124,10 +124,11 @@ const MODULE_OVERRIDES = {
   },
   "CEILING_HEIGHT": {
     options: [
-      { option_id: "standard", label: "Standard — 8 to 10 ft" },
-      { option_id: "tall",     label: "Tall — 10 to 15 ft" },
-      { option_id: "vaulted",  label: "Vaulted — 15 to 20 ft" },
-      { option_id: "extreme",  label: "Very high — over 20 ft" },
+      { option_id: "lt9",   label: "Standard — under 9 ft" },
+      { option_id: "9_12",  label: "Tall — 9 to 12 ft" },
+      { option_id: "12_14", label: "Vaulted — 12 to 14 ft" },
+      { option_id: "15_20", label: "Very high — 15 to 20 ft" },
+      { option_id: "gt20",  label: "Extreme — over 20 ft" },
     ],
   },
   "DISTANCE_FROM_PANEL": {
