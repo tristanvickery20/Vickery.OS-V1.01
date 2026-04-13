@@ -122,15 +122,6 @@ const MODULE_OVERRIDES = {
       { option_id: "_unsure",         label: "Not sure — I'd like your advice on-site", _injected: true },
     ],
   },
-  "CEILING_HEIGHT": {
-    options: [
-      { option_id: "lt9",   label: "Standard — under 9 ft" },
-      { option_id: "9_12",  label: "Tall — 9 to 12 ft" },
-      { option_id: "12_14", label: "Vaulted — 12 to 14 ft" },
-      { option_id: "15_20", label: "Very high — 15 to 20 ft" },
-      { option_id: "gt20",  label: "Extreme — over 20 ft" },
-    ],
-  },
   "DISTANCE_FROM_PANEL": {
     prompt: "How far is your electrical panel from the work area?",
   },
@@ -1286,10 +1277,10 @@ function renderSiteVisit() {
         <div class="q-field">
           <label class="q-label">Preferred Availability</label>
           <select id="consult_best_time" class="q-input">
-            <option value="">Any time works</option>
-            <option value="morning">Mornings (8 am – 12 pm)</option>
-            <option value="afternoon">Afternoons (12 pm – 5 pm)</option>
-            <option value="weekend">Weekends preferred</option>
+            <option value="">Select preferred time…</option>
+            <option value="morning">Mornings</option>
+            <option value="afternoon">Afternoons</option>
+            <option value="anytime">Any time</option>
           </select>
         </div>
         <div id="consultErr" class="q-error-box" style="display:none;"></div>
@@ -1458,10 +1449,10 @@ function renderConsult() {
         <div class="q-field">
           <label class="q-label">Preferred Availability</label>
           <select id="consult_best_time" class="q-input">
-            <option value="">Any time works</option>
-            <option value="morning">Mornings (8 am – 12 pm)</option>
-            <option value="afternoon">Afternoons (12 pm – 5 pm)</option>
-            <option value="weekend">Weekends preferred</option>
+            <option value="">Select preferred time…</option>
+            <option value="morning">Mornings</option>
+            <option value="afternoon">Afternoons</option>
+            <option value="anytime">Any time</option>
           </select>
         </div>
         <div id="consultErr" class="q-error-box" style="display:none;"></div>
@@ -1747,10 +1738,13 @@ function bindEvents() {
         if (!S.consultData) {
           const firstSvc = S.selectedServices[0];
           const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === firstSvc?.job_type_id);
+          const ballparkRange = firstSvc
+            ? (S.config?.serviceBallparkRanges?.[firstSvc.job_type_id] || null)
+            : null;
           S.consultData = {
             service_id:    firstSvc?.job_type_id || null,
             service_name:  jt?.name_public || firstSvc?.job_type_id || "this service",
-            ballparkRange: null,
+            ballparkRange,
             reason:        "disqualified",
           };
         }
