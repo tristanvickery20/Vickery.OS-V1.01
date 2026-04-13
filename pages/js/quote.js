@@ -122,6 +122,20 @@ const MODULE_OVERRIDES = {
       { option_id: "_unsure",         label: "Not sure — I'd like your advice on-site", _injected: true },
     ],
   },
+  "CEILING_HEIGHT": {
+    options: [
+      { option_id: "standard", label: "Standard — 8 to 10 ft" },
+      { option_id: "tall",     label: "Tall — 10 to 15 ft" },
+      { option_id: "vaulted",  label: "Vaulted — 15 to 20 ft" },
+      { option_id: "extreme",  label: "Very high — over 20 ft" },
+    ],
+  },
+  "DISTANCE_FROM_PANEL": {
+    prompt: "How far is your electrical panel from the work area?",
+  },
+  "DEDICATED_CIRCUIT_DISTANCE": {
+    prompt: "How far is your electrical panel from where the appliance will be installed?",
+  },
 };
 
 const PRODUCT_CATALOG = {
@@ -548,13 +562,14 @@ function back() {
     return;
   }
   const prev = {
-    categories:  "segment",
-    services:    "categories",
-    questions:   "services",
-    sitevisit:   "questions",
-    confirm:     "review",
-    photo:       "confirm",
-    consult:     "questions",
+    categories:      "segment",
+    commercial_soon: "segment",
+    services:        "categories",
+    questions:       "services",
+    sitevisit:       "questions",
+    confirm:         "review",
+    photo:           "confirm",
+    consult:         "questions",
   };
   if (prev[S.step]) go(prev[S.step]);
 }
@@ -580,9 +595,10 @@ function renderStep() {
     case "confirm":     clone.innerHTML = renderConfirm();    break;
     case "photo":       clone.innerHTML = renderPhoto();      break;
     case "photo_gate":  clone.innerHTML = renderPhotoGate();  break;
-    case "consult":     clone.innerHTML = renderConsult();    break;
-    case "booked":      clone.innerHTML = renderBooked();     break;
-    default:            clone.innerHTML = errHTML("Unknown step."); break;
+    case "consult":          clone.innerHTML = renderConsult();         break;
+    case "commercial_soon":  clone.innerHTML = renderCommercialSoon(); break;
+    case "booked":           clone.innerHTML = renderBooked();          break;
+    default:                 clone.innerHTML = errHTML("Unknown step."); break;
   }
   bindEvents();
 }
@@ -1190,25 +1206,99 @@ function renderBooked() {
     </div>`;
 }
 
-// ── Step: Site Visit Required ─────────────────────────────────────────────────
-function renderSiteVisit() {
+// ── Step: Commercial Coming Soon ──────────────────────────────────────────────
+function renderCommercialSoon() {
   return `
-    ${stepHeader(3, "Site Visit Required")}
-    <div class="q-card-section" style="text-align:center;padding:32px 20px;">
-      <div style="font-size:52px;margin-bottom:16px;">&#128203;</div>
-      <h3 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:12px;letter-spacing:-0.01em;">
-        An On-Site Estimate is Needed
+    ${stepHeader(2, "Commercial Services")}
+    <div class="q-card-section" style="text-align:center;padding:36px 20px 28px;">
+      <svg width="56" height="56" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="color:hsl(var(--primary));display:block;margin:0 auto 18px;">
+        <rect x="8" y="4" width="32" height="40" rx="2"/>
+        <path d="M16 4v40M32 4v40"/>
+        <path d="M8 16h32M8 28h32"/>
+        <circle cx="24" cy="22" r="4" fill="currentColor" stroke="none" opacity=".35"/>
+      </svg>
+      <h3 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin:0 0 12px;letter-spacing:-0.01em;">
+        Commercial Quoting — Coming Soon
       </h3>
-      <p class="q-muted" style="max-width:400px;margin:0 auto 20px;">
-        Based on your answers, this project requires an in-person evaluation before we can give you an accurate price. Don't worry &mdash; the consultation is free!
+      <p class="q-muted" style="max-width:400px;margin:0 auto 20px;font-size:14px;line-height:1.6;">
+        We're a residential-focused team right now. Commercial estimating is on our roadmap — we'll be adding it soon.
+        In the meantime, call us for commercial inquiries and we'll do our best to help.
       </p>
       <a href="tel:+14095550100"
-        style="display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:16px;font-weight:700;text-decoration:none;margin-bottom:12px;">
+        style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:15px;font-weight:700;text-decoration:none;">
         &#128222; Call (409) 555-0100
       </a>
-      <p class="q-muted" style="font-size:13px;">We'll schedule your free consultation right away.</p>
     </div>
     <div class="q-nav-row">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <div></div>
+    </div>
+    ${NOTE}`;
+}
+
+// ── Step: Site Visit Required (disqualified answer) ───────────────────────────
+function renderSiteVisit() {
+  const d     = S.consultData || {};
+  const range = d.ballparkRange
+    ? `$${Number(d.ballparkRange.low).toLocaleString()} \u2013 $${Number(d.ballparkRange.high).toLocaleString()}`
+    : null;
+  const svcName = d.service_name || "this service";
+
+  return `
+    ${stepHeader(3, "Free Site Visit Needed")}
+    <div class="q-card-section" style="padding:28px 20px 24px;">
+      <div style="text-align:center;margin-bottom:18px;">
+        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><path d="M24 4C15.16 4 8 11.16 8 20c0 12 16 24 16 24s16-12 16-24c0-8.84-7.16-16-16-16z"/><circle cx="24" cy="20" r="5"/></svg>
+      </div>
+      <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
+        ${escHtml(svcName)} Needs an On-Site Estimate
+      </h3>
+      <p class="q-muted" style="max-width:420px;margin:0 auto 16px;text-align:center;font-size:14px;">
+        Based on your answers, this project needs an in-person look before we can give you an accurate price. Don't worry &mdash; the site visit is free!
+      </p>
+      ${range ? `
+      <div style="background:hsl(var(--primary) / 0.08);border:1px solid hsl(var(--primary) / 0.25);border-radius:10px;padding:14px 18px;text-align:center;margin:0 auto 20px;max-width:340px;">
+        <div class="q-muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ballpark Range</div>
+        <div style="font-size:24px;font-weight:900;font-family:var(--font-display);color:hsl(var(--primary));letter-spacing:-0.02em;">${escHtml(range)}</div>
+        <div class="q-muted" style="font-size:11px;margin-top:4px;">Final price confirmed after site visit</div>
+        ${d.ballparkRange?.note ? `<div class="q-muted" style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid hsl(var(--primary) / 0.2);font-style:italic;">${escHtml(d.ballparkRange.note)}</div>` : ""}
+      </div>` : ""}
+    </div>
+
+    <div class="q-card-section" style="margin-top:12px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Book Your Free Site Visit</div>
+      <div class="q-form">
+        <div class="q-field">
+          <label class="q-label">Your Name <span class="q-req">*</span></label>
+          <input type="text" id="consult_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Phone Number <span class="q-req">*</span></label>
+          <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Property Address <span class="q-req">*</span></label>
+          <input type="text" id="consult_address" class="q-input" placeholder="123 Main St, Beaumont, TX" autocomplete="street-address">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Preferred Availability</label>
+          <select id="consult_best_time" class="q-input">
+            <option value="">Any time works</option>
+            <option value="morning">Mornings (8 am – 12 pm)</option>
+            <option value="afternoon">Afternoons (12 pm – 5 pm)</option>
+            <option value="weekend">Weekends preferred</option>
+          </select>
+        </div>
+        <div id="consultErr" class="q-error-box" style="display:none;"></div>
+        <button class="q-btn-next" id="submitConsultBtn" onclick="submitConsultRequest()" style="width:100%;margin-top:8px;">
+          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+          <span>Book My Free Site Visit</span>
+        </button>
+      </div>
+    </div>
+    <div class="q-nav-row" style="margin-top:16px;">
       <button class="q-btn-back" onclick="back()">&#8592; Back to Questions</button>
       <div></div>
     </div>
@@ -1322,35 +1412,35 @@ function renderPhotoGate() {
 // ── Step: Consult CTA ─────────────────────────────────────────────────────────
 // Shown when the quote engine returns manual_review_required: true.
 function renderConsult() {
-  const d = S.consultData || {};
+  const d       = S.consultData || {};
   const svcName = d.service_name || "this service";
   const range   = d.ballparkRange
-    ? `$${Number(d.ballparkRange.low).toLocaleString()} – $${Number(d.ballparkRange.high).toLocaleString()}`
+    ? `$${Number(d.ballparkRange.low).toLocaleString()} \u2013 $${Number(d.ballparkRange.high).toLocaleString()}`
     : null;
 
   return `
-    ${stepHeader(3, "Custom Quote Needed")}
+    ${stepHeader(3, "Free Site Visit Needed")}
     <div class="q-card-section" style="padding:28px 20px 24px;">
-      <div style="text-align:center;margin-bottom:20px;">
-        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><circle cx="24" cy="24" r="20"/><line x1="24" y1="16" x2="24" y2="24" stroke-width="2.8"/><circle cx="24" cy="32" r="2" fill="currentColor" stroke="none"/></svg>
+      <div style="text-align:center;margin-bottom:18px;">
+        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--primary));display:block;margin:0 auto;"><path d="M24 4C15.16 4 8 11.16 8 20c0 12 16 24 16 24s16-12 16-24c0-8.84-7.16-16-16-16z"/><circle cx="24" cy="20" r="5"/></svg>
       </div>
       <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;letter-spacing:-0.01em;text-align:center;">
-        ${escHtml(svcName)} Needs a Personal Quote
+        ${escHtml(svcName)} Needs an On-Site Estimate
       </h3>
       <p class="q-muted" style="max-width:420px;margin:0 auto 16px;text-align:center;font-size:14px;">
-        Every installation for this service involves unique site conditions that our online estimator cannot fully account for. One of our electricians will review your project and give you an accurate price — usually within a few hours.
+        Every project like this has unique site conditions our online estimator can't fully account for. An electrician will come out, take a look, and give you an accurate price — the visit is completely free.
       </p>
       ${range ? `
       <div style="background:hsl(var(--primary) / 0.08);border:1px solid hsl(var(--primary) / 0.25);border-radius:10px;padding:14px 18px;text-align:center;margin:0 auto 20px;max-width:340px;">
         <div class="q-muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ballpark Range</div>
         <div style="font-size:24px;font-weight:900;font-family:var(--font-display);color:hsl(var(--primary));letter-spacing:-0.02em;">${escHtml(range)}</div>
-        <div class="q-muted" style="font-size:11px;margin-top:4px;">Final price confirmed after site review</div>
+        <div class="q-muted" style="font-size:11px;margin-top:4px;">Final price confirmed after site visit</div>
         ${d.ballparkRange?.note ? `<div class="q-muted" style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid hsl(var(--primary) / 0.2);font-style:italic;">${escHtml(d.ballparkRange.note)}</div>` : ""}
       </div>` : ""}
     </div>
 
     <div class="q-card-section" style="margin-top:12px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Request a Free Quote Call</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Book Your Free Site Visit</div>
       <div class="q-form">
         <div class="q-field">
           <label class="q-label">Your Name <span class="q-req">*</span></label>
@@ -1361,18 +1451,22 @@ function renderConsult() {
           <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
         </div>
         <div class="q-field">
-          <label class="q-label">Best Time to Reach You</label>
+          <label class="q-label">Property Address <span class="q-req">*</span></label>
+          <input type="text" id="consult_address" class="q-input" placeholder="123 Main St, Beaumont, TX" autocomplete="street-address">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Preferred Availability</label>
           <select id="consult_best_time" class="q-input">
-            <option value="">Any time</option>
-            <option value="morning">Morning (8 am – 12 pm)</option>
-            <option value="afternoon">Afternoon (12 pm – 5 pm)</option>
-            <option value="evening">Evening (5 pm – 7 pm)</option>
+            <option value="">Any time works</option>
+            <option value="morning">Mornings (8 am – 12 pm)</option>
+            <option value="afternoon">Afternoons (12 pm – 5 pm)</option>
+            <option value="weekend">Weekends preferred</option>
           </select>
         </div>
         <div id="consultErr" class="q-error-box" style="display:none;"></div>
         <button class="q-btn-next" id="submitConsultBtn" onclick="submitConsultRequest()" style="width:100%;margin-top:8px;">
           <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-          <span>Request My Quote</span>
+          <span>Book My Free Site Visit</span>
         </button>
       </div>
     </div>
@@ -1550,6 +1644,7 @@ function bindEvents() {
 
   document.getElementById("nextSegment")?.addEventListener("click", () => {
     if (!S.segment) return;
+    if (S.segment === "Commercial") { go("commercial_soon"); return; }
     S.selectedCategories = [];
     S.selectedServices = []; S.answers = {}; S.addons = [];
     go("categories");
@@ -1648,6 +1743,16 @@ function bindEvents() {
       }
 
       if (label?.dataset.dis === "1") {
+        if (!S.consultData) {
+          const firstSvc = S.selectedServices[0];
+          const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === firstSvc?.job_type_id);
+          S.consultData = {
+            service_id:    firstSvc?.job_type_id || null,
+            service_name:  jt?.name_public || firstSvc?.job_type_id || "this service",
+            ballparkRange: null,
+            reason:        "disqualified",
+          };
+        }
         go("sitevisit");
         return;
       }
@@ -2340,19 +2445,21 @@ async function uploadGatePhotos(files, mod) {
 
 // ── Consult request submit ─────────────────────────────────────────────────────
 async function submitConsultRequest() {
-  const name      = (document.getElementById("consult_name")?.value  || "").trim();
-  const phone     = (document.getElementById("consult_phone")?.value || "").trim();
+  const name      = (document.getElementById("consult_name")?.value    || "").trim();
+  const phone     = (document.getElementById("consult_phone")?.value   || "").trim();
+  const address   = (document.getElementById("consult_address")?.value || "").trim();
   const best_time = document.getElementById("consult_best_time")?.value || "";
 
   const errEl = document.getElementById("consultErr");
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
   if (errEl) errEl.style.display = "none";
 
-  if (!name)  return show("Please enter your name.");
-  if (!phone) return show("Please enter your phone number.");
+  if (!name)    return show("Please enter your name.");
+  if (!phone)   return show("Please enter your phone number.");
+  if (!address) return show("Please enter the property address where we'll be visiting.");
 
   const btn = document.getElementById("submitConsultBtn");
-  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "Sending\u2026"; }
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "Booking\u2026"; }
 
   try {
     const r = await fetch("/api/quote/consult-request", {
@@ -2361,6 +2468,7 @@ async function submitConsultRequest() {
       body: JSON.stringify({
         name,
         phone,
+        address,
         best_time,
         service_id:   S.consultData?.service_id   || null,
         service_name: S.consultData?.service_name || null,
@@ -2370,17 +2478,16 @@ async function submitConsultRequest() {
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || "Submission failed.");
 
-    // Show success inline (replace form content)
     const card = document.querySelector(".q-card-section:last-of-type");
     if (card) {
       card.innerHTML = `
         <div style="text-align:center;padding:28px 16px;">
           <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(120 60% 40%);display:block;margin:0 auto 16px;"><circle cx="24" cy="24" r="20"/><polyline points="14 24 21 31 34 17" stroke-width="2.8"/></svg>
-          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;">Request Received!</h3>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;">Site Visit Booked!</h3>
           <p class="q-muted" style="font-size:14px;max-width:360px;margin:0 auto;">
-            We got your request for a custom quote on <strong>${escHtml(S.consultData?.service_name || "this service")}</strong>.
-            Someone from the Vickery Electric team will call you at <strong>${escHtml(phone)}</strong>
-            ${best_time ? ` during your preferred time` : ""} — usually within a few hours on business days.
+            We'll send one of our electricians out to <strong>${escHtml(address)}</strong> to take a look at your
+            <strong>${escHtml(S.consultData?.service_name || "project")}</strong> and give you an accurate price.
+            We'll reach out at <strong>${escHtml(phone)}</strong> to confirm your appointment — usually within a few hours on business days.
           </p>
         </div>`;
     }
@@ -2388,7 +2495,7 @@ async function submitConsultRequest() {
     show(e.message);
     if (btn) {
       btn.disabled = false;
-      btn.querySelector("span").textContent = "Request My Quote";
+      btn.querySelector("span").textContent = "Book My Free Site Visit";
     }
   }
 }

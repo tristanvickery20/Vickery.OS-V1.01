@@ -599,7 +599,7 @@ async function handleQuoteLock(req, res) {
 async function handleConsultRequest(req, res) {
   try {
     const body = await parseBody(req);
-    const { name, phone, best_time, service_id, service_name, quote_id } = body;
+    const { name, phone, address, best_time, service_id, service_name, quote_id } = body;
 
     if (!name || !String(name).trim())  return json(res, 400, { ok: false, error: "name required" });
     if (!phone || !String(phone).trim()) return json(res, 400, { ok: false, error: "phone required" });
@@ -627,7 +627,8 @@ async function handleConsultRequest(req, res) {
     set("lead_type",   "consult_request");
     set("notes",       [
       service_name ? `Service: ${service_name}` : "",
-      best_time    ? `Best time to call: ${best_time}` : "",
+      address      ? `Address: ${address}`       : "",
+      best_time    ? `Availability: ${best_time}` : "",
       quote_id     ? `Quote session: ${quote_id}` : "",
     ].filter(Boolean).join(" | "));
     set("estimated_value", "");
@@ -648,7 +649,8 @@ async function handleConsultRequest(req, res) {
         name:       name        || "Unknown",
         phone:      phone       || "",
         service:    svcLabel,
-        best_time:  best_time   || "Not specified",
+        address:    address     || "Not provided",
+        best_time:  best_time   || "Any time",
       });
       sendSms(ownerPhone, msg).catch(err => console.error("[consult-request] SMS error:", err.message));
     }
