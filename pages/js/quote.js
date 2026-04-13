@@ -122,11 +122,20 @@ const MODULE_OVERRIDES = {
       { option_id: "_unsure",         label: "Not sure — I'd like your advice on-site", _injected: true },
     ],
   },
+  "CEILING_HEIGHT": {
+    options: [
+      { option_id: "lt9",   label: "Standard — 8 to 10 ft" },
+      { option_id: "9_12",  label: "Tall — 10 to 15 ft" },
+      { option_id: "12_14", label: "Vaulted — 12 to 14 ft" },
+      { option_id: "15_20", label: "Very high — 15 to 20 ft" },
+      { option_id: "gt20",  label: "Extreme — over 20 ft", disqualify: true },
+    ],
+  },
   "DISTANCE_FROM_PANEL": {
-    prompt: "How far is your electrical panel from the work area?",
+    prompt: "How far is your electrical panel from the work area? (from the work area)",
   },
   "DEDICATED_CIRCUIT_DISTANCE": {
-    prompt: "How far is your electrical panel from where the appliance will be installed?",
+    prompt: "How far is your electrical panel from the work area? (from the work area)",
   },
 };
 
@@ -175,7 +184,7 @@ const PRODUCT_CATALOG = {
     icon:  _ICON_FAN,
     qualifiers: [
       // Tall / vaulted ceiling → note about downrod hardware
-      { test: () => ["tall","vaulted","extreme"].includes(S.answers["CEILING_HEIGHT"]),
+      { test: () => ["tall","vaulted","extreme","9_12","12_14","15_20","gt20"].includes(S.answers["CEILING_HEIGHT"]),
         notice: "For ceilings over 10 ft your fan will need a longer downrod or angled mount adapter — we'll bring the right hardware.",
         type: "info" },
       // Very heavy fixture → fan-rated box note
