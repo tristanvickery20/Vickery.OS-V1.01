@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Operational Protocols &bull; Vickery Electric</title>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    .proto-wrap { max-width: 860px; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .page-header h1 { font-size: 1.35rem; font-weight: 800; }
+    .page-header .sub { font-size: 0.82rem; color: hsl(var(--muted-foreground)); margin-top: 4px; max-width: 560px; line-height: 1.55; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn-primary {
+      padding: 8px 18px;
+      background: hsl(var(--primary));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.83rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 8px 18px;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      font-size: 0.83rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-secondary:hover { background: hsl(var(--muted)); }
+
+    .drive-msg {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 6px;
+    }
+    .drive-msg.ok  { color: #16a34a; }
+    .drive-msg.err { color: #dc2626; }
+
+    /* Tabs */
+    .tabs-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid hsl(var(--border));
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .tab-btn:hover { color: hsl(var(--foreground)); }
+    .tab-btn.active { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Section card */
+    .proto-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .proto-card-header {
+      background: hsl(var(--primary));
+      color: #fff;
+      padding: 13px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .proto-card-title { font-size: 1rem; font-weight: 800; }
+    .proto-card-meta { font-size: 11px; opacity: 0.75; }
+    .proto-card-body { padding: 0; }
+
+    /* Checklist items */
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      font-size: 0.88rem;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: hsl(var(--muted));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: hsl(var(--muted-foreground));
+      margin-top: 1px;
+    }
+    .check-box-wrap {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .check-box-wrap input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: hsl(var(--primary));
+      cursor: pointer;
+    }
+    .check-content { flex: 1; min-width: 0; }
+    .check-label { font-weight: 700; margin-bottom: 2px; }
+    .check-sub { font-size: 0.78rem; color: hsl(var(--muted-foreground)); line-height: 1.5; }
+
+    .check-tag {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tag-legal  { background: #ede9fe; color: #5b21b6; }
+    .tag-fin    { background: #d1fae5; color: #065f46; }
+    .tag-ops    { background: #dbeafe; color: #1e40af; }
+    .tag-comms  { background: #fef3c7; color: #92400e; }
+
+    /* Protocol blocks */
+    .proto-block {
+      padding: 16px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .proto-block:last-child { border-bottom: none; }
+    .proto-block-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .scenario-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tag-red    { background: #fee2e2; color: #991b1b; }
+    .tag-orange { background: #ffedd5; color: #9a3412; }
+    .tag-yellow { background: #fef9c3; color: #854d0e; }
+
+    .step-list { list-style: none; padding: 0; margin: 0; }
+    .step-list li {
+      display: flex;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      border-bottom: 1px solid hsl(var(--border));
+      align-items: flex-start;
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-num {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 900;
+      margin-top: 1px;
+    }
+    .step-text { flex: 1; min-width: 0; line-height: 1.5; }
+    .step-text b { font-weight: 700; }
+    .step-text em { color: hsl(var(--muted-foreground)); font-style: normal; font-size: 0.82rem; }
+
+    /* Policy rows */
+    .policy-row {
+      padding: 13px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      font-size: 0.88rem;
+    }
+    .policy-row:last-child { border-bottom: none; }
+    .policy-row-title { font-weight: 700; margin-bottom: 4px; }
+    .policy-row-body { color: hsl(var(--muted-foreground)); line-height: 1.55; }
+    .policy-verdict {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .verdict-yes { background: #fee2e2; color: #991b1b; }
+    .verdict-no  { background: #d1fae5; color: #065f46; }
+
+    .script-box {
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: hsl(var(--muted));
+      border-left: 3px solid hsl(var(--primary));
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      font-style: italic;
+      line-height: 1.55;
+      color: hsl(var(--foreground));
+    }
+
+    /* Review step rows */
+    .review-step {
+      padding: 14px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      font-size: 0.88rem;
+    }
+    .review-step:last-child { border-bottom: none; }
+    .review-step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      margin-top: 1px;
+    }
+    .review-step-content { flex: 1; }
+    .review-step-title { font-weight: 800; margin-bottom: 4px; }
+    .review-step-body { color: hsl(var(--muted-foreground)); line-height: 1.55; }
+    .review-step-body b { color: hsl(var(--foreground)); font-weight: 700; }
+    .threshold-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 8px;
+    }
+    .threshold-table th {
+      background: hsl(var(--secondary));
+      padding: 5px 10px;
+      text-align: left;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: hsl(var(--muted-foreground));
+    }
+    .threshold-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .threshold-table tr:last-child td { border-bottom: none; }
+    .threshold-table .flag-red  { color: #dc2626; font-weight: 700; }
+    .threshold-table .flag-yellow { color: #d97706; font-weight: 700; }
+    .threshold-table .flag-green  { color: #16a34a; font-weight: 700; }
+
+    /* Print */
+    @media print {
+      .sidebar, .shell-topbar, .header-actions, .tabs-bar, .drive-msg { display: none !important; }
+      .tab-panel { display: block !important; }
+      .shell-main { padding: 0 !important; }
+      .proto-card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="shell-main">
+    <div class="shell-topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="topbar-title">Operational Protocols &amp; Playbook</span>
+    </div>
+    <div class="shell-content">
+      <div class="proto-wrap">
+
+        <div class="page-header">
+          <div>
+            <h1>Vickery Electric &mdash; Operational Protocols</h1>
+            <p class="sub">Go/no-go checklist, staffing contingency, refund policy, and weekly review process. This is the canonical reference. Keep it current.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" onclick="window.print()">Print / Save PDF</button>
+            <button class="btn-primary" id="driveBtn">Push to Google Drive</button>
+          </div>
+        </div>
+        <div class="drive-msg" id="driveMsg"></div>
+
+        <!-- Tabs -->
+        <div class="tabs-bar">
+          <button class="tab-btn active" data-tab="gonogo">Go/No-Go Checklist</button>
+          <button class="tab-btn" data-tab="staffing">Staffing Contingency</button>
+          <button class="tab-btn" data-tab="refunds">Refund &amp; Dispute Policy</button>
+          <button class="tab-btn" data-tab="weekly">Weekly Review</button>
+        </div>
+
+        <!-- ── TAB 1: Go/No-Go Checklist ───────────────────────────────── -->
+        <div class="tab-panel active" id="tab-gonogo">
+
+          <div class="proto-card">
+            <div class="proto-card-header">
+              <div class="proto-card-title">Section 1 — Go/No-Go Launch Checklist</div>
+              <div class="proto-card-meta">Last reviewed: April 2026</div>
+            </div>
+            <div class="proto-card-body">
+
+              <div style="padding:12px 20px 10px;font-size:0.82rem;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">
+                Every item below must be true before Crew 1 rolls on its first paying job. No partial credit. If any item is unchecked, the launch clock does not start.
+              </div>
+
+              <!-- Legal -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Legal &amp; Compliance</div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Texas Electrical Contractor License (TECL) confirmed active <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Verify TECL # on TDLR website. Not a copy of the card — the live database. Print or screenshot with date.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Master Electrician license confirmed active and covers the service area <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Verify Master license on TDLR. Confirm it is tied to the active TECL and the entity doing business.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">General liability insurance policy is active — minimum $1M per occurrence <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Have the certificate of insurance in hand. Know the insurer name and policy number. Know the renewal date.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Business entity is registered and in good standing with the State of Texas <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Confirm with Texas Secretary of State. Annual report filed if due. Registered agent on file.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">At least one customer-facing service agreement is finalized and in use <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Not a draft — the actual agreement used for real jobs. Customer signs before work starts. Version on file.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Contractor / technician agreement is signed <span class="check-tag tag-legal">Legal</span></div>
+                  <div class="check-sub">Any tech performing work under the Vickery Electric TECL has a signed agreement covering scope, compensation, ownership, and non-compete terms.</div>
+                </div>
+              </div>
+
+              <!-- Financial -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Financial &amp; Invoicing</div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Business bank account is open and linked to the entity <span class="check-tag tag-fin">Financial</span></div>
+                  <div class="check-sub">Personal and business money are separate. Account can receive transfers and checks made out to the business name.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Invoice system is live and tested end-to-end <span class="check-tag tag-fin">Financial</span></div>
+                  <div class="check-sub">Generate a test invoice from the crew portal. Confirm the customer SMS arrives with a real link. Confirm the invoice page renders correctly. Record a test payment in the CRM.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Pricing reviewed for all launch services — no $0 or placeholder prices <span class="check-tag tag-fin">Financial</span></div>
+                  <div class="check-sub">Run each launch service through the estimator. Every result produces a real dollar range. No error states or blank outputs.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">At least 4 weeks of operating cash on hand <span class="check-tag tag-fin">Financial</span></div>
+                  <div class="check-sub">Enough to cover: fuel + supplies for 20 jobs, any tool/equipment replacement under $500, and owner draw for one month at reduced rate. Do not launch cash-negative.</div>
+                </div>
+              </div>
+
+              <!-- Operations -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Operations &amp; Equipment</div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Service truck is titled, registered, insured, and fully equipped <span class="check-tag tag-ops">Ops</span></div>
+                  <div class="check-sub">Registration current. Commercial auto insurance active. Tool loadout complete for all launch services. GPS tracker installed and confirmed reporting in CRM fleet view.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">CRM is operational — crew can log in, view today's jobs, and generate invoices <span class="check-tag tag-ops">Ops</span></div>
+                  <div class="check-sub">Tech logs into crew portal from their phone. Confirm job cards appear, GPS clock-in works, generate invoice works, and invoice SMS fires.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Standard material kit is stocked for first 5 jobs <span class="check-tag tag-ops">Ops</span></div>
+                  <div class="check-sub">Boxes, connectors, wire, GFCI devices, wire nuts, staples, breakers in standard sizes, tape, labels. Know the supply house account number and hours.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Customer confirmation workflow is operational <span class="check-tag tag-ops">Ops</span></div>
+                  <div class="check-sub">After booking, customer receives a confirmation SMS. The day before, customer receives a reminder. Tech is notified of their next-day schedule by 5 PM the prior day.</div>
+                </div>
+              </div>
+
+              <!-- Communications -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Communication &amp; Market</div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Google Business Profile is claimed, verified, and correctly categorized <span class="check-tag tag-comms">Comms</span></div>
+                  <div class="check-sub">Category: Electrician. Address or service area set to Orange, TX. Hours match reality. Phone number matches the SMS/CRM number. At least 1 real photo uploaded.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Instant quote / booking flow is live and tested from a real phone <span class="check-tag tag-comms">Comms</span></div>
+                  <div class="check-sub">Complete a full test booking end-to-end on a real mobile device. Confirm the quote page loads, the quote generates, and the booking SMS goes to the right number.</div>
+                </div>
+              </div>
+
+              <div class="check-item">
+                <div class="check-box-wrap"><input type="checkbox" /></div>
+                <div class="check-content">
+                  <div class="check-label">Owner knows exactly what to say when the first call comes in <span class="check-tag tag-comms">Comms</span></div>
+                  <div class="check-sub">Can handle: "How much does it cost?", "Are you licensed?", "Can you come today?", "Do you give free estimates?" without hesitation. Have a script for each.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── TAB 2: Staffing Contingency ─────────────────────────────── -->
+        <div class="tab-panel" id="tab-staffing">
+          <div class="proto-card">
+            <div class="proto-card-header">
+              <div class="proto-card-title">Section 2 — Staffing Contingency Protocol</div>
+              <div class="proto-card-meta">Last reviewed: April 2026</div>
+            </div>
+            <div class="proto-card-body">
+
+              <div style="padding:12px 20px 10px;font-size:0.82rem;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">
+                Three failure modes. Each one has a numbered response sequence. <strong>Owner decides</strong> means this cannot be delegated. Act within the time window listed — do not wait and see.
+              </div>
+
+              <!-- Scenario A: Quits with notice -->
+              <div class="proto-block">
+                <div class="proto-block-title">
+                  Scenario A &mdash; Technician Gives Notice (Planned Departure)
+                  <span class="scenario-tag tag-orange">Notice Given</span>
+                </div>
+                <ul class="step-list">
+                  <li>
+                    <div class="step-num">1</div>
+                    <div class="step-text"><b>Same day — Owner decides:</b> Is this recoverable (counter-offer) or irreversible? Make the call within 24 hours. Do not enter a multi-week "wait and see" loop. <em>If recoverable: go to step 2. If not: go to step 3.</em></div>
+                  </li>
+                  <li>
+                    <div class="step-num">2</div>
+                    <div class="step-text"><b>Counter-offer window (optional):</b> One conversation. One offer. If declined, accept the departure and proceed to step 3. Do not negotiate beyond one attempt.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">3</div>
+                    <div class="step-text"><b>Within 48 hours of confirmed departure:</b> Freeze new bookings beyond the last day the tech will work. Do not book jobs you cannot staff. Update the schedule view to reflect actual capacity.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">4</div>
+                    <div class="step-text"><b>Notify booked customers proactively:</b> If any jobs fall after the tech's last day, contact those customers immediately. Offer reschedule or cancellation. Do not let them find out the day of. <em>Script: "We have a staffing change and want to make sure we can still take great care of you. [Offer reschedule options]."</em></div>
+                  </li>
+                  <li>
+                    <div class="step-num">5</div>
+                    <div class="step-text"><b>Start replacement pipeline same week:</b> Post the role. Tap personal network. Contact any formerly-vetted applicants. Owner handles all vetting — do not skip this step because of optimism about the timeline.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">6</div>
+                    <div class="step-text"><b>Exit procedure:</b> Confirm all CRM accounts are deactivated on the last day. Keys, equipment, uniforms returned. Final pay processed per agreement. Get written confirmation of last day.</div>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Scenario B: Sick day-of -->
+              <div class="proto-block">
+                <div class="proto-block-title">
+                  Scenario B &mdash; Tech Calls In Sick (Day-Of)
+                  <span class="scenario-tag tag-yellow">Same-Day Crisis</span>
+                </div>
+                <ul class="step-list">
+                  <li>
+                    <div class="step-num">1</div>
+                    <div class="step-text"><b>Immediately (within 15 minutes of call-in):</b> Owner pulls today's schedule in the CRM. Identify which jobs can wait 1–2 days vs. which are time-sensitive (no-power situations, commercial customer, same-day SLA promised).</div>
+                  </li>
+                  <li>
+                    <div class="step-num">2</div>
+                    <div class="step-text"><b>Decision — can owner self-perform?</b> If owner holds a valid license and has the tools: self-perform the highest-priority job. Mark remaining as rescheduled. If no: go to step 3.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">3</div>
+                    <div class="step-text"><b>Call your backup list:</b> Maintain a list of at least 2 licensed electricians who have agreed to take overflow work. Call them in order. Do not text — call. This list must exist before launch.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">4</div>
+                    <div class="step-text"><b>Customer communication — every affected job, within 2 hours of sick call:</b> Call or text each customer. Offer same-week reschedule as first option. Offer full cancellation with no fee as second option. Do not make them wait for a call that never comes. <em>Script: "Good morning — I'm Joshua Vickery. We have a tech out sick today and need to reschedule your appointment. I can get you in [date/time] — does that work?"</em></div>
+                  </li>
+                  <li>
+                    <div class="step-num">5</div>
+                    <div class="step-text"><b>Update CRM:</b> Reschedule or cancel bookings in the scheduler. Do not leave "completed" jobs on today's schedule that weren't done. Keep records clean.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">6</div>
+                    <div class="step-text"><b>If this happens more than 2 times in 30 days:</b> Treat as a staffing reliability issue. Owner decides whether to add a second tech or restructure the scheduling model. Do not keep absorbing it.</div>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Scenario C: License loss -->
+              <div class="proto-block">
+                <div class="proto-block-title">
+                  Scenario C &mdash; Technician Loses License or Legal Authority to Work
+                  <span class="scenario-tag tag-red">Critical / Immediate</span>
+                </div>
+                <ul class="step-list">
+                  <li>
+                    <div class="step-num">1</div>
+                    <div class="step-text"><b>Immediately upon learning:</b> That tech does not perform any electrical work under the Vickery Electric TECL until status is resolved. This is non-negotiable. Working with an unlicensed tech under your TECL is your legal exposure.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">2</div>
+                    <div class="step-text"><b>Within 24 hours — Owner verifies:</b> Check TDLR directly. Do not rely on what the tech tells you. Get the facts from the regulatory body.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">3</div>
+                    <div class="step-text"><b>Freeze all jobs that require licensed work:</b> If the tech's license was the only licensed authority on a job type, freeze those bookings. Do not perform the work with an unlicensed tech, regardless of how the tech or customer pushes.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">4</div>
+                    <div class="step-text"><b>Contact an employment/business attorney if license was revoked for cause:</b> Understand whether there is a disclosure obligation. Do not assume — get a professional answer within 72 hours.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">5</div>
+                    <div class="step-text"><b>If license is restorable:</b> Work with the tech on the reinstatement timeline. Keep them on in non-licensed roles (driving, materials, customer-facing tasks) only if the agreement allows it. Do not pay idle-tech rates indefinitely — set a clear deadline.</div>
+                  </li>
+                  <li>
+                    <div class="step-num">6</div>
+                    <div class="step-text"><b>If license is not restorable:</b> Treat as a resignation. Follow Scenario A steps 3–6. Begin replacement pipeline immediately.</div>
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 3: Refund & Dispute Policy ──────────────────────────── -->
+        <div class="tab-panel" id="tab-refunds">
+          <div class="proto-card">
+            <div class="proto-card-header">
+              <div class="proto-card-title">Section 3 — Refund &amp; Dispute Handling Policy</div>
+              <div class="proto-card-meta">Last reviewed: April 2026</div>
+            </div>
+            <div class="proto-card-body">
+
+              <div style="padding:12px 20px 10px;font-size:0.82rem;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">
+                Refunds are executed via the invoice system's change-order deduct flow. Open the invoice in the CRM, add a change order with type "Deduct," enter the refund amount and description. This automatically adjusts the balance and creates a record. Below defines <em>when</em> to do that and what language to use.
+              </div>
+
+              <!-- Warrants a refund -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Situations That Warrant a Refund or Adjustment</div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-yes">Refund</span>Workmanship defect — reported within 30 days</div>
+                <div class="policy-row-body">If work performed by Vickery Electric fails due to our error (loose connection, wrong circuit, fixture falls from box we installed) within 30 days of job date, we return to fix it at no charge. If we cannot fix it within 5 business days, we issue a partial or full refund for that line item. Amount is pro-rated based on scope of failure.</div>
+              </div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-yes">Refund</span>No-show by Vickery Electric — we missed the appointment</div>
+                <div class="policy-row-body">If we fail to show for a confirmed appointment and did not contact the customer at least 2 hours in advance, customer is owed a $50 credit toward their next service, applied automatically. No questions asked.</div>
+              </div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-yes">Partial Refund</span>Scope mismatch — we over-billed for work not performed</div>
+                <div class="policy-row-body">If a customer was billed for a line item that was not completed (e.g., we quoted 3 fixtures but only installed 2), the unperformed work is deducted from the invoice as a change order. No argument. Fix it immediately.</div>
+              </div>
+
+              <!-- Does NOT warrant a refund -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Situations That Do NOT Warrant a Refund</div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-no">No Refund</span>Customer changed their mind after work began</div>
+                <div class="policy-row-body">Once the tech has opened walls, pulled wire, or removed existing fixtures, labor cost is earned. We will stop work at that point and charge for work completed to date. Customer is responsible for any additional cost to restore the prior state if they want work halted.
+                </div>
+                <div class="script-box">"I understand this isn't what you expected. Once we opened the wall and pulled the wire, that labor is complete — I'm not able to refund work that's been done. We're happy to finish the job at the quoted price, or stop here and charge for what we've completed today."</div>
+              </div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-no">No Refund</span>Permit delays or inspection failures not caused by our work</div>
+                <div class="policy-row-body">Permit processing time is outside our control. If an inspection fails due to pre-existing conditions in the customer's home (not our installation), additional work to correct those conditions is billable. We will explain this in writing before performing additional work.</div>
+              </div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-no">No Refund</span>Customer complaints about price after work is complete</div>
+                <div class="policy-row-body">The price was provided before work began. If customer accepted the quote and work is complete as scoped, the price is owed. We do not negotiate post-completion prices under pressure.
+                </div>
+                <div class="script-box">"The quote you approved was $[X]. The work is complete as described. I'm not able to reduce the price after the job is done, but I'd be happy to talk through any specific concern you have."</div>
+              </div>
+
+              <div class="policy-row">
+                <div class="policy-row-title"><span class="policy-verdict verdict-no">No Refund</span>Customer-supplied materials that fail or are incompatible</div>
+                <div class="policy-row-body">If a customer provides a fixture, device, or component that fails or doesn't fit their existing wiring, we are not responsible for the failure. We will inform the customer of incompatibility before installation if identified. If we could not reasonably identify it before installation, the labor is still owed.</div>
+              </div>
+
+              <!-- Dispute process -->
+              <div style="padding:8px 20px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:hsl(var(--muted-foreground));background:hsl(var(--muted));border-bottom:1px solid hsl(var(--border));">Written Dispute Process (Disputes Over $300)</div>
+
+              <div class="policy-row">
+                <div class="policy-row-body" style="color:hsl(var(--foreground));">
+                  <p style="margin:0 0 8px;">For any dispute involving more than $300, the following process applies before any refund decision is made:</p>
+                  <ol style="margin:0;padding-left:18px;line-height:2;">
+                    <li>Customer submits concern in writing (text or email) stating what went wrong and what resolution they expect.</li>
+                    <li>Owner responds within 2 business days with either: (a) agreement to refund with amount and timeline, or (b) explanation of why refund is not warranted, with supporting detail.</li>
+                    <li>If customer disagrees with response, Owner schedules a phone call within 3 business days. One call, documented.</li>
+                    <li>If still unresolved after the call, the matter is escalated to small claims court or mediation per the service agreement. We do not pay dispute settlements to avoid conflict — we pay them when we are wrong.</li>
+                  </ol>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 4: Weekly Review ─────────────────────────────────────── -->
+        <div class="tab-panel" id="tab-weekly">
+          <div class="proto-card">
+            <div class="proto-card-header">
+              <div class="proto-card-title">Section 4 — Weekly Business Review Process</div>
+              <div class="proto-card-meta">Last reviewed: April 2026 &mdash; Every Monday morning, under 20 minutes</div>
+            </div>
+            <div class="proto-card-body">
+
+              <div style="padding:12px 20px 10px;font-size:0.82rem;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">
+                Five steps, every Monday before 9 AM. Use the <a href="/crm/weekly" style="color:hsl(var(--primary));font-weight:700;">Weekly Pulse page</a> for the data. This is not optional when the business is running — it's how you know if you're winning or bleeding before it's too late to act.
+              </div>
+
+              <div class="review-step">
+                <div class="review-step-num">1</div>
+                <div class="review-step-content">
+                  <div class="review-step-title">Check Revenue Collected Last Week</div>
+                  <div class="review-step-body">
+                    Open Weekly Pulse. Look at "Revenue Collected This Week" (paid invoices). Compare to your baseline target.
+                    <table class="threshold-table">
+                      <thead><tr><th>Status</th><th>What it means</th><th>Action</th></tr></thead>
+                      <tbody>
+                        <tr><td class="flag-green">$2,000+</td><td>On track for a $100K+ annual run rate</td><td>No action — keep the pipeline full</td></tr>
+                        <tr><td class="flag-yellow">$1,000–$1,999</td><td>Below pace — check pipeline and booking rate</td><td>Review leads from last week — what quotes didn't convert? Follow up on 2+ day old quotes.</td></tr>
+                        <tr><td class="flag-red">Under $1,000</td><td>Pipeline problem or execution problem</td><td>Owner decides: is it a marketing gap, a scheduling gap, or a capacity problem? Address the root cause this week, not next.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-step">
+                <div class="review-step-num">2</div>
+                <div class="review-step-content">
+                  <div class="review-step-title">Review Aged Invoices — Anything Over 10 Days Unpaid</div>
+                  <div class="review-step-body">
+                    Weekly Pulse shows any invoice sent more than 10 days ago that hasn't been paid. Each one gets a direct action this week.
+                    <table class="threshold-table">
+                      <thead><tr><th>Age</th><th>Action</th></tr></thead>
+                      <tbody>
+                        <tr><td class="flag-yellow">10–20 days</td><td>Send one follow-up SMS: "Hi [Name] — just checking in on your Vickery Electric invoice for $[X]. Let me know if you have any questions." One message, no more.</td></tr>
+                        <tr><td class="flag-red">20+ days</td><td>Call directly. Not text. If no answer, leave a voicemail and send one final SMS. If still no response by day 30, Owner decides: write off, collections, or small claims.</td></tr>
+                        <tr><td class="flag-red">Customer says they won't pay</td><td>Do not perform any additional work for this customer. Document the conversation. Consult the refund policy — if we owe them something, settle it and close it.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-step">
+                <div class="review-step-num">3</div>
+                <div class="review-step-content">
+                  <div class="review-step-title">Check Next 7 Days of Scheduled Jobs</div>
+                  <div class="review-step-body">
+                    Look at Upcoming Jobs on the Weekly Pulse. For each job this week:
+                    <ul style="margin:8px 0 0;padding-left:18px;line-height:2;font-size:0.85rem;">
+                      <li>Is the address correct and reachable? (Service area check if in doubt)</li>
+                      <li>Does the tech have all required parts/materials for that job type?</li>
+                      <li>Has the customer received a confirmation? (Should be automatic — verify in CRM)</li>
+                      <li>Is there any job flagged as needing a permit? If so, has it been pulled?</li>
+                    </ul>
+                    If any job has a gap, fix it <strong>before Wednesday</strong>. Do not let problems surface the morning of the job.
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-step">
+                <div class="review-step-num">4</div>
+                <div class="review-step-content">
+                  <div class="review-step-title">Scan Expenses and Margins</div>
+                  <div class="review-step-body">
+                    Look at expenses logged this week. Two questions:
+                    <ul style="margin:8px 0 0;padding-left:18px;line-height:2;font-size:0.85rem;">
+                      <li><b>Anything over $200 that wasn't expected?</b> — Tool replacement, supplier price jump, extra material run. Log it. If it's recurring, adjust pricing or markup.</li>
+                      <li><b>Are jobs being invoiced at or above the quoted price?</b> — If change orders are consistently going up (you're adding work), that's good. If they're consistently going down (you're giving discounts), investigate why.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-step">
+                <div class="review-step-num">5</div>
+                <div class="review-step-content">
+                  <div class="review-step-title">Make One Decision Before Closing the Review</div>
+                  <div class="review-step-body">
+                    Every weekly review ends with one concrete decision. Not "think about it" — a decision with a deadline.
+                    <table class="threshold-table">
+                      <thead><tr><th>Trigger</th><th>Decision to make</th></tr></thead>
+                      <tbody>
+                        <tr><td>No jobs completed last week</td><td>Is it a marketing problem, a conversion problem, or a scheduling problem? Pick one and fix it this week.</td></tr>
+                        <tr><td>3+ invoices past 15 days</td><td>Start collections process on the oldest. Don't let receivables grow.</td></tr>
+                        <tr><td>Revenue above $3,000 two weeks in a row</td><td>Consider adding a second booking slot, second tech, or adjacent service.</td></tr>
+                        <tr><td>Revenue below $800 two weeks in a row</td><td>Owner personally makes 5 outreach calls to past customers this week. Not email. Calls.</td></tr>
+                        <tr><td>Tech called in sick twice in 30 days</td><td>Have the staffing reliability conversation this week per the Contingency Protocol.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+"use strict";
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    const panel = document.getElementById("tab-" + tab);
+    if (panel) panel.classList.add("active");
+  });
+});
+
+// ── Push to Google Drive ───────────────────────────────────────────────────────
+document.getElementById("driveBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("driveBtn");
+  const msg = document.getElementById("driveMsg");
+  btn.disabled = true;
+  btn.textContent = "Pushing to Drive...";
+  msg.className = "drive-msg";
+  msg.textContent = "Connecting to Google Drive...";
+  try {
+    const r = await fetch("/api/admin/protocols-to-drive", { method: "POST" });
+    const data = await r.json();
+    if (data.ok) {
+      msg.className = "drive-msg ok";
+      msg.textContent = "Saved to Google Drive." + (data.doc_url ? " " : "") + (data.doc_url ? "" : "");
+      if (data.doc_url) {
+        msg.innerHTML = 'Saved to Google Drive. <a href="' + data.doc_url + '" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700;text-decoration:underline;">Open Doc</a>';
+      }
+    } else {
+      msg.className = "drive-msg err";
+      msg.textContent = (data.error || "Drive export failed.") + " The CRM page is the canonical reference.";
+    }
+  } catch (e) {
+    msg.className = "drive-msg err";
+    msg.textContent = "Drive connection failed. The CRM page is the canonical reference.";
+  }
+  btn.disabled = false;
+  btn.textContent = "Push to Google Drive";
+});
+</script>
+</body>
+</html>

@@ -71,6 +71,8 @@ const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize"
 const { handleMapboxConfig } = require("./api/config-mapbox");
 const { handleGetPositions, handleGetTrips, startPolling: startTraccarPolling } = require("./api/traccar");
 const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/reschedule");
+const { handleProtocolsToDrive } = require("./api/protocols");
+const { handleWeeklyPulse } = require("./api/weekly-pulse");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -442,6 +444,17 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Protocols → Google Drive export (admin, auth required) ────────────────
+  if (_epath === "/api/admin/protocols-to-drive" && req.method === "POST") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
+    return handleProtocolsToDrive(req, res);
+  }
+
+  // ── Weekly Pulse (auth required) ───────────────────────────────────────────
+  if (_epath === "/api/weekly-pulse" && req.method === "GET") {
+    return handleWeeklyPulse(req, res);
+  }
+
   // ── Zone check — public, no auth required ─────────────────────────────────
   // GET /api/zone/check?zip=77630 or ?zip=77657&estimated_total=500&batched=false
   if (_epath === "/api/zone/check" && req.method === "GET") {
@@ -630,6 +643,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/crm/vprs") {
     return serveFile(res, path.join(__dirname, "pages/crm-vprs.html"), "text/html");
+  }
+
+  if (req.url === "/crm/protocols") {
+    return serveFile(res, path.join(__dirname, "pages/crm-protocols.html"), "text/html");
+  }
+
+  if (req.url === "/crm/weekly") {
+    return serveFile(res, path.join(__dirname, "pages/crm-weekly.html"), "text/html");
   }
 
   if (req.url === "/crm/calculator") {
