@@ -20,7 +20,7 @@ const { sendSms } = require("../lib/sms");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
-const SITE_VISIT_MINS = 90;
+const SITE_VISIT_MINS = 30;
 
 const WINDOW_LABELS = {
   Morning:   "8 AM – 12 PM",
@@ -69,7 +69,7 @@ function blockStartIso(dateStr, block, tz) {
 async function handleSiteVisitBook(req, res) {
   try {
     const body = await parseBody(req);
-    const { name, phone, address, service_id, service_name, block, date, quote_id } = body;
+    const { name, phone, address, service_id, service_name, block, date, quote_id, email, lead_source } = body;
 
     if (!name    || !String(name).trim())    return json(res, 400, { ok: false, error: "name required" });
     if (!phone   || !String(phone).trim())   return json(res, 400, { ok: false, error: "phone required" });
@@ -154,6 +154,7 @@ async function handleSiteVisitBook(req, res) {
       created_at:     now,
       name:           String(name).trim(),
       phone:          cleanPhone,
+      email:          String(email || "").trim(),
       job_type:       service_id || "",
       status:         "Site Visit Scheduled",
       lead_type:      "site_visit",
@@ -164,7 +165,7 @@ async function handleSiteVisitBook(req, res) {
         quote_id      ? `Quote session: ${quote_id}` : "",
       ].filter(Boolean).join(" | "),
       estimated_value:  "",
-      lead_source:      "Website",
+      lead_source:      lead_source || "Website",
       last_quote_id:    quote_id || "",
       scheduled_date:   startIso.slice(0, 16),
       schedule_window:  block,

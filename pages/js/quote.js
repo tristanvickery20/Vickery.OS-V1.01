@@ -549,6 +549,14 @@ function back() {
   const hasAddons = (S.config?.addonsByType?.[pid]?.length   || 0) > 0;
 
   if (S.step === "review") {
+    if (S.isSiteVisit) {
+      // Clear site-visit state and go back to questions
+      S.isSiteVisit = false;
+      S.pricing     = null;
+      S.consultData = null;
+      go("questions");
+      return;
+    }
     if (hasEquipmentCatalog()) { go("equipment"); return; }
     go(hasQs || hasAddons ? "questions" : "services");
     return;
@@ -586,7 +594,13 @@ function renderStep() {
     case "categories": clone.innerHTML = renderCategories(); break;
     case "services":   clone.innerHTML = renderServices();   break;
     case "questions":  clone.innerHTML = renderQuestions();  break;
-    case "sitevisit":  clone.innerHTML = renderSiteVisit();  break;
+    case "sitevisit":
+    case "consult":
+      _setupSiteVisitReview();
+      S.step = "review";
+      clone.innerHTML = renderReview();
+      loadBlocksForReview();
+      break;
     case "equipment":  clone.innerHTML = renderEquipment();  break;
     case "review":
       clone.innerHTML = renderReview();
@@ -595,7 +609,6 @@ function renderStep() {
     case "confirm":     clone.innerHTML = renderConfirm();    break;
     case "photo":       clone.innerHTML = renderPhoto();      break;
     case "photo_gate":  clone.innerHTML = renderPhotoGate();  break;
-    case "consult":          clone.innerHTML = renderConsult();         break;
     case "commercial_soon":  clone.innerHTML = renderCommercialSoon(); break;
     case "booked":           clone.innerHTML = renderBooked();          break;
     default:                 clone.innerHTML = errHTML("Unknown step."); break;
@@ -915,16 +928,34 @@ function priceRange(price) {
   };
 }
 
+// Site-visit review setup — called instead of renderSiteVisit/renderConsult.
+// Uses the ballparkRange from S.consultData if available; otherwise falls back
+// to 30 min of crew labor at $125/hr as a rough starting point.
+function _setupSiteVisitReview() {
+  if (S.isSiteVisit) return; // already set
+  const br      = S.consultData?.ballparkRange;
+  const HOURLY  = S.config?.crew_loaded_hourly || 125;
+  const midpoint = (br?.low != null && br?.high != null)
+    ? (Number(br.low) + Number(br.high)) / 2
+    : (30 / 60) * HOURLY;
+  S.isSiteVisit = true;
+  S.pricing = { ok: true, final_price: midpoint, isSiteVisit: true };
+  S.selectedSlot  = null;
+  S.selectedBlock = null;
+}
+
 function renderReview() {
   const price  = S.pricing?.final_price ?? null;
   const range  = priceRange(price);
   const bnpl   = range && range.high >= 200 ? Math.ceil(range.high / 12) : null;
 
-  // Build a label from all selected services
-  const svcLabel = S.selectedServices.map(svc => {
-    const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
-    return svc.qty > 1 ? `${svc.qty}× ${jt?.name_public || svc.job_type_id}` : (jt?.name_public || svc.job_type_id);
-  }).join(", ");
+  // Build a label from all selected services (or a site-visit label)
+  const svcLabel = S.isSiteVisit
+    ? `Free Site Visit \u2014 ${S.consultData?.service_name || "your project"}`
+    : S.selectedServices.map(svc => {
+        const jt = (S.config?.jobTypes || []).find(j => j.job_type_id === svc.job_type_id);
+        return svc.qty > 1 ? `${svc.qty}\u00d7 ${jt?.name_public || svc.job_type_id}` : (jt?.name_public || svc.job_type_id);
+      }).join(", ");
 
   const slotLabel = S.selectedBlock
     ? `${escHtml(S.selectedBlock.display)} &bull; ${escHtml(S.selectedBlock.window_label)}`
@@ -961,9 +992,11 @@ function renderReview() {
         return lines ? `<div class="q-price-footer-equip">${lines}</div>` : "";
       })()}
       <div class="q-price-footer-sub">
-        &#128205; Range reflects typical job variation. Final price confirmed on-site.
-        ${S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
-        ${bnpl ? ` &bull; As low as $${bnpl}/mo with financing.` : ""}
+        ${S.isSiteVisit
+          ? "&#128205; Site visit is free &bull; An electrician will visit your property and give you a firm price."
+          : "&#128205; Range reflects typical job variation. Final price confirmed on-site."}
+        ${!S.isSiteVisit && S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
+        ${!S.isSiteVisit && bnpl ? ` &bull; As low as $${bnpl}/mo with financing.` : ""}
       </div>
     </div>
 
@@ -1005,10 +1038,10 @@ function renderConfirm() {
       <div class="q-confirm-row">
         <span class="q-confirm-icon">${_SVG_BOLT}</span>
         <div>
-          <div class="q-confirm-key">Estimated Price Range</div>
+          <div class="q-confirm-key">${S.isSiteVisit ? "Ballpark Range" : "Estimated Price Range"}</div>
           <div class="q-confirm-val">
             ${range ? range.label : "&mdash;"}
-            <span class="q-confirm-note">&mdash; final price confirmed on-site</span>
+            <span class="q-confirm-note">&mdash; ${S.isSiteVisit ? "free visit · firm price quoted on-site" : "final price confirmed on-site"}</span>
           </div>
         </div>
       </div>
@@ -1189,8 +1222,8 @@ function renderBooked() {
       <div class="q-booked-icon">
         <img src="${veLogoSrc}" class="booked-ve-logo" alt="Vickery Electric">
       </div>
-      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;">You're Booked!</h2>
-      <p class="q-muted" style="margin-bottom:24px;">Here's your confirmation. We'll see you soon.</p>
+      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;">${S.isSiteVisit ? "Site Visit Booked!" : "You're Booked!"}</h2>
+      <p class="q-muted" style="margin-bottom:24px;">${S.isSiteVisit ? "An electrician will come out and give you an accurate price — the visit is free." : "Here's your confirmation. We'll see you soon."}</p>
       <div class="q-booking-card">
         <div class="q-booking-row">
           <span class="q-booking-key">${_SVG_DATE} Date</span>
@@ -2281,6 +2314,13 @@ async function submitLock() {
   if (btn) { btn.disabled = true; btn.textContent = "Locking\u2026"; }
 
   try {
+    // ── Site-visit path: skip quote lock, book directly ──────────────────────
+    if (S.isSiteVisit) {
+      S.lock = { customer_name: name, phone, email, address, zip, final_price: S.pricing?.final_price };
+      await submitSiteVisitBooking(name, phone, email, address, source);
+      return;
+    }
+
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems() }),
@@ -2531,6 +2571,52 @@ async function submitBooking() {
     if (btn) {
       btn.disabled = false;
       const sw = document.documentElement.classList.contains('dark') ? '/pages/img/sword-dark-mode.png' : '/pages/img/sword-light.png';
+      btn.innerHTML = `<img src="${sw}" class="sword-icon" alt=""><span>Confirm &amp; Book</span>`;
+    }
+  }
+}
+
+// ── Site-visit booking (bypasses quote lock — books directly) ─────────────────
+async function submitSiteVisitBooking(name, phone, email, address, lead_source) {
+  const errEl = document.getElementById("leadErr");
+  const showErr = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
+  const btn = document.getElementById("submitLockBtn");
+
+  try {
+    const r = await fetch("/api/quote/site-visit-book", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        phone,
+        email:        email || "",
+        address,
+        lead_source:  lead_source || "Website",
+        service_id:   S.consultData?.service_id   || null,
+        service_name: S.consultData?.service_name || null,
+        block:        S.selectedBlock?.block      || null,
+        date:         S.selectedBlock?.date        || null,
+        quote_id:     S.quoteId || null,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Booking failed.");
+
+    S.booking = {
+      booking_id:          d.booking_id,
+      customer_name:       name,
+      address,
+      scheduled_datetime:  d.start_iso,
+      schedule_block:      d.block,
+      window_label:        d.window_label,
+      final_price:         S.pricing?.final_price,
+    };
+    go("booked");
+  } catch (e) {
+    showErr(e.message);
+    if (btn) {
+      btn.disabled = false;
+      const sw = document.documentElement.classList.contains("dark") ? "/pages/img/sword-dark-mode.png" : "/pages/img/sword-light.png";
       btn.innerHTML = `<img src="${sw}" class="sword-icon" alt=""><span>Confirm &amp; Book</span>`;
     }
   }
