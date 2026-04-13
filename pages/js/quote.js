@@ -127,8 +127,7 @@ const MODULE_OVERRIDES = {
       { option_id: "lt9",   label: "Standard — 8 to 10 ft" },
       { option_id: "9_12",  label: "Tall — 10 to 15 ft" },
       { option_id: "12_14", label: "Vaulted — 15 to 20 ft" },
-      { option_id: "15_20", label: "Very high — over 20 ft" },
-      { option_id: "gt20",  label: "Extreme — over 20 ft", disqualify: true },
+      { option_id: "15_20", label: "Very high — over 20 ft", disqualify: true },
     ],
   },
   "DISTANCE_FROM_PANEL": {
