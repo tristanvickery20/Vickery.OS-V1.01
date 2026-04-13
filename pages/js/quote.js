@@ -1238,6 +1238,43 @@ function renderCommercialSoon() {
     ${NOTE}`;
 }
 
+// ── Site-visit booking form (shared by renderSiteVisit + renderConsult) ───────
+function _renderSiteVisitForm() {
+  return `
+    <div class="q-card-section" style="margin-top:12px;" id="svFormCard">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Book Your Free Site Visit</div>
+      <div class="q-form">
+        <div class="q-field">
+          <label class="q-label">Your Name <span class="q-req">*</span></label>
+          <input type="text" id="consult_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Phone Number <span class="q-req">*</span></label>
+          <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Property Address <span class="q-req">*</span></label>
+          <input type="text" id="consult_address" class="q-input" placeholder="123 Main St, Beaumont, TX" autocomplete="street-address">
+        </div>
+        <div id="svContactErr" class="q-error-box" style="display:none;"></div>
+        <button class="q-btn-next" id="svCheckBtn" onclick="svCheckAvailability()" style="width:100%;margin-top:8px;">
+          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+          <span>See Available Times \u2192</span>
+        </button>
+      </div>
+      <div id="svSlotSection" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid hsl(var(--border));">
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px;">Select a Time</div>
+        <div id="svBlocks"></div>
+        <div id="svSlotErr" class="q-error-box" style="display:none;margin-top:8px;"></div>
+        <button class="q-btn-next" id="svConfirmBtn" onclick="svConfirmBooking()"
+          style="width:100%;margin-top:12px;display:none;">
+          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+          <span>Confirm Site Visit</span>
+        </button>
+      </div>
+    </div>`;
+}
+
 // ── Step: Site Visit Required (disqualified answer) ───────────────────────────
 function renderSiteVisit() {
   const d     = S.consultData || {};
@@ -1267,37 +1304,7 @@ function renderSiteVisit() {
       </div>` : ""}
     </div>
 
-    <div class="q-card-section" style="margin-top:12px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Book Your Free Site Visit</div>
-      <div class="q-form">
-        <div class="q-field">
-          <label class="q-label">Your Name <span class="q-req">*</span></label>
-          <input type="text" id="consult_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Phone Number <span class="q-req">*</span></label>
-          <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Property Address <span class="q-req">*</span></label>
-          <input type="text" id="consult_address" class="q-input" placeholder="123 Main St, Beaumont, TX" autocomplete="street-address">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Preferred Availability</label>
-          <select id="consult_best_time" class="q-input">
-            <option value="">Select preferred time…</option>
-            <option value="morning">Mornings</option>
-            <option value="afternoon">Afternoons</option>
-            <option value="anytime">Any time</option>
-          </select>
-        </div>
-        <div id="consultErr" class="q-error-box" style="display:none;"></div>
-        <button class="q-btn-next" id="submitConsultBtn" onclick="submitConsultRequest()" style="width:100%;margin-top:8px;">
-          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-          <span>Book My Free Site Visit</span>
-        </button>
-      </div>
-    </div>
+    ${_renderSiteVisitForm()}
     <div class="q-nav-row" style="margin-top:16px;">
       <button class="q-btn-back" onclick="back()">&#8592; Back to Questions</button>
       <div></div>
@@ -1439,37 +1446,7 @@ function renderConsult() {
       </div>` : ""}
     </div>
 
-    <div class="q-card-section" style="margin-top:12px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">Book Your Free Site Visit</div>
-      <div class="q-form">
-        <div class="q-field">
-          <label class="q-label">Your Name <span class="q-req">*</span></label>
-          <input type="text" id="consult_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Phone Number <span class="q-req">*</span></label>
-          <input type="tel" id="consult_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Property Address <span class="q-req">*</span></label>
-          <input type="text" id="consult_address" class="q-input" placeholder="123 Main St, Beaumont, TX" autocomplete="street-address">
-        </div>
-        <div class="q-field">
-          <label class="q-label">Preferred Availability</label>
-          <select id="consult_best_time" class="q-input">
-            <option value="">Select preferred time…</option>
-            <option value="morning">Mornings</option>
-            <option value="afternoon">Afternoons</option>
-            <option value="anytime">Any time</option>
-          </select>
-        </div>
-        <div id="consultErr" class="q-error-box" style="display:none;"></div>
-        <button class="q-btn-next" id="submitConsultBtn" onclick="submitConsultRequest()" style="width:100%;margin-top:8px;">
-          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-          <span>Book My Free Site Visit</span>
-        </button>
-      </div>
-    </div>
+    ${_renderSiteVisitForm()}
     <div class="q-nav-row" style="margin-top:16px;">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
       <div></div>
@@ -2551,6 +2528,164 @@ function escHtml(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+// ── Site-visit slot picker ─────────────────────────────────────────────────────
+let _svSelectedBlock = null; // { date, block, start_iso, window_label, display }
+
+async function svCheckAvailability() {
+  const name    = (document.getElementById("consult_name")?.value    || "").trim();
+  const phone   = (document.getElementById("consult_phone")?.value   || "").trim();
+  const address = (document.getElementById("consult_address")?.value || "").trim();
+
+  const errEl = document.getElementById("svContactErr");
+  const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
+  if (errEl) errEl.style.display = "none";
+
+  if (!name)    return show("Please enter your name.");
+  if (!phone)   return show("Please enter your phone number.");
+  if (!address) return show("Please enter the property address for the visit.");
+
+  const btn = document.getElementById("svCheckBtn");
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "Loading times\u2026"; }
+
+  try {
+    const r = await fetch("/api/schedule/blocks?days=14");
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Could not load availability.");
+
+    const SITE_VISIT_MINS = 90;
+    const available = (d.blocks || []).filter(b =>
+      b.available !== false &&
+      (b.hours_remaining == null || b.hours_remaining * 60 >= SITE_VISIT_MINS)
+    ).slice(0, 10);
+
+    _svSelectedBlock = null;
+    const slotSection = document.getElementById("svSlotSection");
+    const blocksEl    = document.getElementById("svBlocks");
+    const confirmBtn  = document.getElementById("svConfirmBtn");
+    if (confirmBtn) confirmBtn.style.display = "none";
+
+    if (!slotSection || !blocksEl) return;
+
+    if (!available.length) {
+      blocksEl.innerHTML = `<p class="q-muted" style="font-size:13px;margin:0 0 8px;">
+        No availability found in the next 14 days — please call us to schedule.
+      </p>`;
+    } else {
+      blocksEl.innerHTML = available.map(b => `
+        <button class="sv-block-btn"
+          style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+            background:#fff;border:1.5px solid hsl(var(--border));border-radius:10px;
+            padding:12px 14px;margin-bottom:8px;cursor:pointer;font-size:14px;font-family:inherit;"
+          data-date="${escHtml(b.date)}"
+          data-block="${escHtml(b.block)}"
+          data-start-iso="${escHtml(b.start_iso)}"
+          data-window-label="${escHtml(b.window_label)}"
+          data-display="${escHtml(b.display)}"
+          onclick="svSelectBlock(this)">
+          <span style="font-size:22px;line-height:1;">${b.block === "Morning" ? "&#9728;" : "&#9734;"}</span>
+          <span>
+            <span style="font-weight:700;display:block;">${escHtml(b.display)}</span>
+            <span style="color:hsl(var(--muted-fg));font-size:12px;">${escHtml(b.window_label)}</span>
+          </span>
+        </button>`).join("");
+    }
+
+    slotSection.style.display = "block";
+    slotSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "See Available Times \u2192"; }
+  } catch (e) {
+    show(e.message);
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "See Available Times \u2192"; }
+  }
+}
+
+function svSelectBlock(btn) {
+  _svSelectedBlock = {
+    date:         btn.dataset.date,
+    block:        btn.dataset.block,
+    start_iso:    btn.dataset.startIso,
+    window_label: btn.dataset.windowLabel,
+    display:      btn.dataset.display,
+  };
+  document.querySelectorAll(".sv-block-btn").forEach(b => {
+    const sel = b === btn;
+    b.style.borderColor = sel ? "hsl(var(--primary))" : "hsl(var(--border))";
+    b.style.background  = sel ? "hsl(var(--primary) / 0.07)" : "#fff";
+  });
+  const confirmBtn = document.getElementById("svConfirmBtn");
+  if (confirmBtn) confirmBtn.style.display = "";
+}
+
+async function svConfirmBooking() {
+  if (!_svSelectedBlock) return;
+
+  const name    = (document.getElementById("consult_name")?.value    || "").trim();
+  const phone   = (document.getElementById("consult_phone")?.value   || "").trim();
+  const address = (document.getElementById("consult_address")?.value || "").trim();
+
+  const errEl = document.getElementById("svSlotErr");
+  const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
+  if (errEl) errEl.style.display = "none";
+
+  const btn = document.getElementById("svConfirmBtn");
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "Booking\u2026"; }
+
+  try {
+    const r = await fetch("/api/quote/site-visit-book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        phone,
+        address,
+        service_id:   S.consultData?.service_id   || null,
+        service_name: S.consultData?.service_name || null,
+        block:        _svSelectedBlock.block,
+        date:         _svSelectedBlock.date,
+        quote_id:     S.quoteId || null,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Booking failed.");
+
+    const dayLong = new Intl.DateTimeFormat("en-US", {
+      weekday: "long", month: "long", day: "numeric",
+    }).format(new Date(_svSelectedBlock.date + "T12:00:00"));
+
+    const blockIcon = _svSelectedBlock.block === "Morning" ? "&#9728;" : "&#9734;";
+    const formCard  = document.getElementById("svFormCard");
+    if (formCard) {
+      formCard.innerHTML = `
+        <div style="text-align:center;padding:28px 16px;">
+          <svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"
+            style="color:hsl(120 60% 40%);display:block;margin:0 auto 16px;">
+            <circle cx="24" cy="24" r="20"/><polyline points="14 24 21 31 34 17" stroke-width="2.8"/>
+          </svg>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin:0 0 10px;">
+            Site Visit Booked!
+          </h3>
+          <div style="display:inline-flex;align-items:center;gap:8px;
+            background:hsl(var(--primary)/0.08);border:1px solid hsl(var(--primary)/0.25);
+            color:hsl(var(--primary));font-weight:700;font-size:14px;
+            border-radius:8px;padding:8px 16px;margin-bottom:14px;">
+            ${blockIcon}&nbsp;${escHtml(dayLong)} &bull; ${escHtml(_svSelectedBlock.window_label)}
+          </div>
+          <p class="q-muted" style="font-size:13px;max-width:360px;margin:0 auto;">
+            We'll send an electrician to <strong>${escHtml(address)}</strong> to look at your
+            <strong>${escHtml(S.consultData?.service_name || "project")}</strong>
+            and give you an accurate price &mdash; free of charge.
+            We'll call <strong>${escHtml(phone)}</strong> to confirm.
+          </p>
+        </div>`;
+    }
+  } catch (e) {
+    show(e.message);
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Confirm Site Visit"; }
+  }
+}
+
 function val(id) { return (document.getElementById(id)?.value || "").trim(); }
 function loadingHTML(msg) {
   return `<div class="q-loading"><div class="q-spinner"></div><p class="q-muted" style="margin-top:16px;">${msg}</p></div>`;

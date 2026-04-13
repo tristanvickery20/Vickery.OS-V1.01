@@ -5,6 +5,7 @@ const path = require("path");
 const { handleQuoteApi } = require("./api/quote");
 const { handleQuoteConfig } = require("./api/quote-config");
 const { handleQuoteStart, handleQuoteCalc, handleQuoteLock, handleConsultRequest } = require("./api/quote-engine");
+const { handleSiteVisitBook } = require("./api/site-visit-book");
 const { handlePhotoUpload } = require("./api/photo-upload");
 const { handleGetSlots }    = require("./api/schedule-slots");
 const { handleGetBlocks }   = require("./api/schedule-blocks");
@@ -379,6 +380,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/quote/consult-request" && req.method === "POST") {
     return handleConsultRequest(req, res);
+  }
+  if (req.url === "/api/quote/site-visit-book" && req.method === "POST") {
+    return handleSiteVisitBook(req, res);
   }
 
   if (req.url.startsWith("/api/schedule/slots") && req.method === "GET") {
