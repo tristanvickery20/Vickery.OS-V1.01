@@ -1,20 +1,11 @@
-const { google } = require("googleapis");
+// api/protocols.js
+// Uses the Replit Google Drive connector proxy for authenticated Drive API calls.
+// Connector ID: conn_google-drive_01KP1HTXPPG278SZF68ZTZTVA3
 
-function getServiceAccountWithDriveScope() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
-  const creds = JSON.parse(raw);
-  return new google.auth.JWT({
-    email:  creds.client_email,
-    key:    creds.private_key,
-    scopes: [
-      "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/documents",
-    ],
-  });
-}
+const { ReplitConnectors } = require("@replit/connectors-sdk");
 
-const PROTOCOLS_TEXT = `VICKERY ELECTRIC — OPERATIONAL PROTOCOLS
+function buildProtocolsText() {
+  return `VICKERY ELECTRIC — OPERATIONAL PROTOCOLS
 Last updated: ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
 Orange, TX | (409) 554-3392
 ==========================================================================
@@ -137,27 +128,26 @@ STEP 5 — MAKE ONE DECISION BEFORE CLOSING
 ==========================================================================
 End of Operational Protocols — Vickery Electric
 `;
+}
 
 async function handleProtocolsToDrive(req, res) {
-  const json = (code, body) => {
+  const jsonOut = (code, body) => {
     res.writeHead(code, { "Content-Type": "application/json" });
     res.end(JSON.stringify(body));
   };
 
   try {
-    const auth = getServiceAccountWithDriveScope();
-    const tokenRes = await auth.getAccessToken();
-    const token = tokenRes.token;
-    if (!token) throw new Error("Could not obtain access token");
+    // Use the Replit Google Drive connector proxy — handles OAuth token refresh automatically.
+    const connectors = new ReplitConnectors();
 
     const boundary = "protoboundary_" + Date.now();
     const metadata = JSON.stringify({
       name:     "Vickery Electric — Operational Protocols",
       mimeType: "application/vnd.google-apps.document",
     });
-    const textContent = PROTOCOLS_TEXT;
+    const textContent = buildProtocolsText();
 
-    const body = [
+    const multipartBody = [
       `--${boundary}`,
       "Content-Type: application/json; charset=UTF-8",
       "",
@@ -169,34 +159,32 @@ async function handleProtocolsToDrive(req, res) {
       `--${boundary}--`,
     ].join("\r\n");
 
-    const uploadRes = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    const uploadResp = await connectors.proxy(
+      "google-drive",
+      "/upload/drive/v3/files?uploadType=multipart",
       {
-        method: "POST",
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          "Content-Type": `multipart/related; boundary=${boundary}`,
-        },
-        body,
+        method:  "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+        body:    multipartBody,
       }
     );
 
-    const uploadData = await uploadRes.json();
+    const uploadData = await uploadResp.json();
 
-    if (!uploadRes.ok) {
+    if (!uploadResp.ok) {
       const errMsg = uploadData?.error?.message || "Drive upload failed";
       console.error("[protocols-to-drive] Drive error:", errMsg);
-      return json(500, { ok: false, error: errMsg });
+      return jsonOut(500, { ok: false, error: errMsg });
     }
 
-    const docId = uploadData.id;
+    const docId  = uploadData.id;
     const docUrl = `https://docs.google.com/document/d/${docId}/edit`;
-    console.log(`[protocols-to-drive] Created Google Doc: ${docId} — ${docUrl}`);
+    console.log(`[protocols-to-drive] Created Google Doc: ${docId}`);
 
-    return json(200, { ok: true, doc_id: docId, doc_url: docUrl });
+    return jsonOut(200, { ok: true, doc_id: docId, doc_url: docUrl });
   } catch (err) {
     console.error("[protocols-to-drive] Error:", err.message);
-    return json(500, { ok: false, error: err.message });
+    return jsonOut(500, { ok: false, error: err.message });
   }
 }
 

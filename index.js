@@ -452,6 +452,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Weekly Pulse (auth required) ───────────────────────────────────────────
   if (_epath === "/api/weekly-pulse" && req.method === "GET") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
     return handleWeeklyPulse(req, res);
   }
 

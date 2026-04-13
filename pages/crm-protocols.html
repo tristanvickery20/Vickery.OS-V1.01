@@ -101,7 +101,21 @@
       gap: 12px;
     }
     .proto-card-title { font-size: 1rem; font-weight: 800; }
-    .proto-card-meta { font-size: 11px; opacity: 0.75; }
+    .proto-card-meta { font-size: 11px; opacity: 0.85; display: flex; align-items: center; gap: 6px; }
+    .reviewed-label { opacity: 0.75; white-space: nowrap; }
+    .reviewed-input {
+      font-size: 11px;
+      font-family: inherit;
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+    .reviewed-input:focus { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 1px; }
+    .reviewed-saved { font-size: 10px; opacity: 0; transition: opacity .4s; }
+    .reviewed-saved.show { opacity: 0.75; }
     .proto-card-body { padding: 0; }
 
     /* Checklist items */
@@ -346,7 +360,11 @@
           <div class="proto-card">
             <div class="proto-card-header">
               <div class="proto-card-title">Section 1 — Go/No-Go Launch Checklist</div>
-              <div class="proto-card-meta">Last reviewed: April 2026</div>
+              <div class="proto-card-meta">
+                <span class="reviewed-label">Last reviewed:</span>
+                <input class="reviewed-input" type="date" data-section="gonogo" />
+                <span class="reviewed-saved" id="saved-gonogo">Saved</span>
+              </div>
             </div>
             <div class="proto-card-body">
 
@@ -512,7 +530,11 @@
           <div class="proto-card">
             <div class="proto-card-header">
               <div class="proto-card-title">Section 2 — Staffing Contingency Protocol</div>
-              <div class="proto-card-meta">Last reviewed: April 2026</div>
+              <div class="proto-card-meta">
+                <span class="reviewed-label">Last reviewed:</span>
+                <input class="reviewed-input" type="date" data-section="staffing" />
+                <span class="reviewed-saved" id="saved-staffing">Saved</span>
+              </div>
             </div>
             <div class="proto-card-body">
 
@@ -631,7 +653,11 @@
           <div class="proto-card">
             <div class="proto-card-header">
               <div class="proto-card-title">Section 3 — Refund &amp; Dispute Handling Policy</div>
-              <div class="proto-card-meta">Last reviewed: April 2026</div>
+              <div class="proto-card-meta">
+                <span class="reviewed-label">Last reviewed:</span>
+                <input class="reviewed-input" type="date" data-section="refunds" />
+                <span class="reviewed-saved" id="saved-refunds">Saved</span>
+              </div>
             </div>
             <div class="proto-card-body">
 
@@ -708,7 +734,12 @@
           <div class="proto-card">
             <div class="proto-card-header">
               <div class="proto-card-title">Section 4 — Weekly Business Review Process</div>
-              <div class="proto-card-meta">Last reviewed: April 2026 &mdash; Every Monday morning, under 20 minutes</div>
+              <div class="proto-card-meta">
+                <span class="reviewed-label">Last reviewed:</span>
+                <input class="reviewed-input" type="date" data-section="weekly" />
+                <span class="reviewed-saved" id="saved-weekly">Saved</span>
+                <span class="reviewed-label">&mdash; Every Monday before 9 AM</span>
+              </div>
             </div>
             <div class="proto-card-body">
 
@@ -827,6 +858,27 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     if (panel) panel.classList.add("active");
   });
 });
+
+// ── Last Reviewed Dates — persist to localStorage ─────────────────────────────
+const SECTIONS = ["gonogo", "staffing", "refunds", "weekly"];
+
+function loadReviewedDates() {
+  SECTIONS.forEach(sec => {
+    const inp = document.querySelector(`input[data-section="${sec}"]`);
+    if (!inp) return;
+    const stored = localStorage.getItem("proto_reviewed_" + sec);
+    if (stored) inp.value = stored;
+    inp.addEventListener("change", () => {
+      localStorage.setItem("proto_reviewed_" + sec, inp.value);
+      const saved = document.getElementById("saved-" + sec);
+      if (saved) {
+        saved.classList.add("show");
+        setTimeout(() => saved.classList.remove("show"), 2000);
+      }
+    });
+  });
+}
+loadReviewedDates();
 
 // ── Push to Google Drive ───────────────────────────────────────────────────────
 document.getElementById("driveBtn").addEventListener("click", async () => {
