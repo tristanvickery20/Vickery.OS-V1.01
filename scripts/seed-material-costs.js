@@ -163,13 +163,15 @@ async function run() {
     console.log("  Appending:", toAppend.join(", "));
   }
 
-  // ── Batch update existing rows ────────────────────────────────────────────
+  // ── Batch update existing rows (all 7 mutable fields) ────────────────────
   if (toUpdate.length > 0) {
     const data = [];
     for (const matId of toUpdate) {
       const info = MATERIAL_PRICES[matId];
       const row  = rowByMatId[matId];
+      data.push({ range: `Materials!${colLetter(nameIdx)}${row}`, values: [[info.name]] });
       data.push({ range: `Materials!${colLetter(unitIdx)}${row}`, values: [[info.unit]] });
+      data.push({ range: `Materials!${colLetter(vendIdx)}${row}`, values: [[VENDOR]] });
       data.push({ range: `Materials!${colLetter(costIdx)}${row}`, values: [[info.cost]] });
       data.push({ range: `Materials!${colLetter(srcIdx)}${row}`,  values: [[SRC]] });
       data.push({ range: `Materials!${colLetter(lastIdx)}${row}`, values: [[today]] });
