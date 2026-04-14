@@ -928,6 +928,22 @@ function priceRange(price) {
   };
 }
 
+// For site visits: prefer the real ballparkRange from the service classification.
+// Falls back to ±15% of the midpoint if no real range is available.
+function siteVisitPriceLabel() {
+  const br = S.consultData?.ballparkRange;
+  if (br?.low != null && br?.high != null) {
+    return `$${Number(br.low).toLocaleString()} \u2013 $${Number(br.high).toLocaleString()}`;
+  }
+  const r = priceRange(S.pricing?.final_price);
+  return r ? r.label : "\u2014";
+}
+
+// For instant quotes: firm calculated price, no range.
+function exactPriceLabel(price) {
+  return price != null ? `$${Math.round(price).toLocaleString()}` : "\u2014";
+}
+
 // Site-visit review setup — called instead of renderSiteVisit/renderConsult.
 // Uses the ballparkRange from S.consultData if available; otherwise falls back
 // to 30 min of crew labor at $125/hr as a rough starting point.
@@ -945,9 +961,9 @@ function _setupSiteVisitReview() {
 }
 
 function renderReview() {
-  const price  = S.pricing?.final_price ?? null;
-  const range  = priceRange(price);
-  const bnpl   = range && range.high >= 200 ? Math.ceil(range.high / 12) : null;
+  const price     = S.pricing?.final_price ?? null;
+  const priceDisp = S.isSiteVisit ? siteVisitPriceLabel() : exactPriceLabel(price);
+  const bnpl      = !S.isSiteVisit && price != null && price >= 200 ? Math.ceil(price / 12) : null;
 
   // Build a label from all selected services (or a site-visit label)
   const svcLabel = S.isSiteVisit
@@ -966,10 +982,10 @@ function renderReview() {
 
     <div class="q-price-footer">
       <div class="q-price-footer-label">
-        Estimated Price Range${svcLabel ? ` &mdash; ${escHtml(svcLabel)}` : ""}
+        ${S.isSiteVisit ? "Ballpark Range" : "Your Quote"}${svcLabel ? ` &mdash; ${escHtml(svcLabel)}` : ""}
       </div>
       <div class="q-price-footer-amount">
-        ${range ? range.label : "&mdash;"}
+        ${priceDisp}
       </div>
       ${(() => {
         const equip = getEquipServices();
@@ -994,7 +1010,7 @@ function renderReview() {
       <div class="q-price-footer-sub">
         ${S.isSiteVisit
           ? "&#128205; Site visit is free &bull; An electrician will visit your property and give you a firm price."
-          : "&#128205; Range reflects typical job variation. We always do our best to stay as close to this number as possible \u2014 if anything unexpected comes up on-site, we\u2019ll let you know before doing any additional work."}
+          : "&#128205; This is your firm quote. If anything unexpected comes up on-site, we\u2019ll let you know before doing any additional work."}
         ${!S.isSiteVisit && S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
         ${!S.isSiteVisit && bnpl ? ` &bull; As low as $${bnpl}/mo with financing.` : ""}
       </div>
@@ -1021,7 +1037,7 @@ function renderReview() {
 // ── Step 6: Confirm — lead form ────────────────────────────────────────────────
 function renderConfirm() {
   const price       = S.lock?.final_price ?? S.pricing?.final_price ?? null;
-  const range       = priceRange(price);
+  const priceDisp   = S.isSiteVisit ? siteVisitPriceLabel() : exactPriceLabel(price);
   const blockDisplay = S.selectedBlock?.display      || "";
   const blockWindow  = S.selectedBlock?.window_label || "";
 
@@ -1038,10 +1054,10 @@ function renderConfirm() {
       <div class="q-confirm-row">
         <span class="q-confirm-icon">${_SVG_BOLT}</span>
         <div>
-          <div class="q-confirm-key">${S.isSiteVisit ? "Ballpark Range" : "Estimated Price Range"}</div>
+          <div class="q-confirm-key">${S.isSiteVisit ? "Ballpark Range" : "Your Quote"}</div>
           <div class="q-confirm-val">
-            ${range ? range.label : "&mdash;"}
-            <span class="q-confirm-note">&mdash; ${S.isSiteVisit ? "free visit · firm price quoted on-site" : "final price confirmed on-site"}</span>
+            ${priceDisp}
+            <span class="q-confirm-note">&mdash; ${S.isSiteVisit ? "free visit · firm price quoted on-site" : "materials confirmed on-site · not a binding contract"}</span>
           </div>
         </div>
       </div>
@@ -1242,7 +1258,7 @@ function renderBooked() {
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">${_SVG_BOLT} Estimate</span>
-          <span class="q-booking-val">${(() => { const r = priceRange(displayPrice); return r ? r.label : "&mdash;"; })()}</span>
+          <span class="q-booking-val">${S.isSiteVisit ? siteVisitPriceLabel() : exactPriceLabel(displayPrice)}</span>
         </div>
         <div class="q-booking-row">
           <span class="q-booking-key">${_SVG_TAG} ID</span>
@@ -2283,8 +2299,7 @@ async function reprice(zip) {
       const delta = data.travel_fee > 0
         ? ` (includes $${data.travel_fee} travel fee)`
         : " (no travel fee for this area)";
-      const _r = priceRange(data.final_price);
-      updateEl.innerHTML = `Updated estimate: <strong>${_r ? _r.label : `$${Number(data.final_price).toLocaleString()}`}</strong>${escHtml(delta)}`;
+      updateEl.innerHTML = `Updated quote: <strong>${exactPriceLabel(data.final_price)}</strong>${escHtml(delta)}`;
       S.lock = data;
     }
   } catch {
