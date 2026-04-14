@@ -107,7 +107,7 @@ body{
 }
 .sidebar .sidebar-brand{ font-size:11px; font-weight:600; color:var(--muted2); letter-spacing:0.08em; text-transform:uppercase; }
 .sidebar .sidebar-brand small{ display:none; }
-.sidebar-crm-logo{ width:48px; height:48px; object-fit:contain; flex-shrink:0; }
+.sidebar-crm-logo{ width:auto; height:56px; object-fit:contain; flex-shrink:0; }
 
 .sidebar .mobile-toggle{ display:none !important; } /* we use drawer menu instead */
 
