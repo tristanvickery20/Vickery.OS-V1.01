@@ -1145,13 +1145,14 @@ function renderConfirm() {
         </button>
       </div>
     </div>
-    <p class="q-muted" style="font-size:11px;text-align:center;margin-top:16px;line-height:1.6;padding:0 8px;">
-      This estimate is provided in good faith based on the information you submitted.
-      We will make every effort to complete your job at or near this price.
-      If unexpected site conditions require a change, your technician will discuss it with you before any additional work is done.
-      This estimate is not a binding contract.
-    </p>
-    <p class="q-muted" style="font-size:12px;text-align:center;margin-top:8px;">
+    <div style="margin-top:20px;padding:14px 16px;border:1px solid rgba(45,106,224,0.3);border-radius:10px;background:rgba(45,106,224,0.06);display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:20px;flex-shrink:0;margin-top:1px;">&#9432;</span>
+      <div style="font-size:12px;line-height:1.7;color:var(--q-muted,#8899bb);">
+        <strong style="display:block;font-size:13px;color:inherit;margin-bottom:4px;">About this estimate</strong>
+        This quote is provided in good faith based on the information you submitted. We will make every effort to complete your job at or near this price. If unexpected site conditions require a change, your technician will discuss it with you <strong>before any additional work is done</strong>. This is not a binding contract.
+      </div>
+    </div>
+    <p class="q-muted" style="font-size:12px;text-align:center;margin-top:14px;">
       Secure booking &bull; No payment due now
     </p>`;
 }
