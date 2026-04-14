@@ -994,7 +994,7 @@ function renderReview() {
       <div class="q-price-footer-sub">
         ${S.isSiteVisit
           ? "&#128205; Site visit is free &bull; An electrician will visit your property and give you a firm price."
-          : "&#128205; Range reflects typical job variation. Final price confirmed on-site."}
+          : "&#128205; Range reflects typical job variation. We always do our best to stay as close to this number as possible \u2014 if anything unexpected comes up on-site, we\u2019ll let you know before doing any additional work."}
         ${!S.isSiteVisit && S.pricing?.evaluation_flag ? " An in-person evaluation may be needed first." : ""}
         ${!S.isSiteVisit && bnpl ? ` &bull; As low as $${bnpl}/mo with financing.` : ""}
       </div>
@@ -1129,7 +1129,13 @@ function renderConfirm() {
         </button>
       </div>
     </div>
-    <p class="q-muted" style="font-size:12px;text-align:center;margin-top:16px;">
+    <p class="q-muted" style="font-size:11px;text-align:center;margin-top:16px;line-height:1.6;padding:0 8px;">
+      This estimate is provided in good faith based on the information you submitted.
+      We will make every effort to complete your job at or near this price.
+      If unexpected site conditions require a change, your technician will discuss it with you before any additional work is done.
+      This estimate is not a binding contract.
+    </p>
+    <p class="q-muted" style="font-size:12px;text-align:center;margin-top:8px;">
       Secure booking &bull; No payment due now
     </p>`;
 }
