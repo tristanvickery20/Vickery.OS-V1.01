@@ -1,0 +1,26 @@
+Using 60 completed jobs/month across 2 crews, the formula is simple:
+
+required average ticket = total monthly cost ÷ 60
+
+Here’s the clean answer.
+
+With all 4 field people effectively full-time / guaranteed under the economics we used earlier, your non-marketing monthly load is about $33,131. Add $10,000 marketing in month 1 and $8,000 in month 2, and total monthly cost becomes about $43,131 in month 1 and $41,131 in month 2. That means bare break-even average ticket is about $719 in month 1 and $686 in month 2.
+
+That is just survival. For it to be actually good, I would not target bare break-even. I’d target at least $5,000/month operating profit before the usual slippage. Under that standard, you want about $802 average ticket in month 1 and about $769 average ticket in month 2. If you want a stronger month with about $10,000 operating profit, you’re looking at about $886 in month 1 and about $852 in month 2.
+
+So for a fully loaded 2-crew launch, my blunt answer is:
+
+You want a real collected average ticket of roughly $800+ for 60 jobs/month to feel good.
+
+Now, if only the two masters are truly guaranteed and the apprentice hours flex with actual work, the fixed load is much lighter: about $20,998/month before launch marketing. With your $10,000 and $8,000 marketing months, bare break-even average ticket drops to about $517 in month 1 and $483 in month 2.
+
+Under that lighter structure, a good target is about $600 average ticket in month 1 and about $567 in month 2 for roughly $5,000/month of operating profit. A stronger target is about $683 in month 1 and about $650 in month 2 for roughly $10,000/month.
+
+So the practical answer is:
+	•	Heavy 2-crew launch with everybody effectively guaranteed: aim for $800–$850+ average ticket
+	•	Lighter 2-crew launch with only masters guaranteed: aim for $650–$700+ average ticket
+
+And because those numbers still do not include the usual messiness like real fuel burn, materials drift, card fees, callbacks, and underbilled travel, I would personally treat $800 as the real comfort number for a true 2-crew launch.
+
+At $303, 60 jobs/month is not good.
+At around $800, 60 jobs/month starts looking like a real business.
