@@ -410,12 +410,14 @@ const server = http.createServer(async (req, res) => {
           const [gcalEventId, calendarId] = gcalEventIdRaw.split("|");
           if (!gcalEventId || !calendarId) return;
           const { updateGCalEvent } = require("./lib/googleCalendar");
+          // Use due_date (row[3]) at 8:00–8:30 AM — same convention as api/tasks.js
+          const dueDateStr = (String(row[3] || "")).slice(0, 10) || new Date().toISOString().slice(0, 10);
           await updateGCalEvent({
             calendarId, gcalEventId,
             title:   row[1] || "Task",
             type:    "task",
-            startDT: row[5] || "",
-            endDT:   row[6] || "",
+            startDT: dueDateStr + "T08:00:00",
+            endDT:   dueDateStr + "T08:30:00",
             notes:   `[${row[8] || ""}] ${row[7] || ""}`.trim(),
             isAllDay: false,
           });
