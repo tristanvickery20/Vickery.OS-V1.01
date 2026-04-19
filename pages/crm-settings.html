@@ -384,45 +384,97 @@
       });
 
       // ── GCal deletion review list ──────────────────────────────
+      async function resolveTask(taskId, newStatus, btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = "…";
+        try {
+          const r = await fetch("/api/tasks/" + taskId, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: newStatus }),
+          });
+          if (r.ok) await loadReviewList();
+          else btnEl.textContent = "Error";
+        } catch { btnEl.textContent = "Error"; }
+      }
+
       async function loadReviewList() {
         const el = document.getElementById("gcalReviewList");
+        el.innerHTML = '<div style="font-size:12px;color:hsl(var(--muted-foreground));">Loading…</div>';
         try {
-          const [tasksR, eventsR] = await Promise.all([
+          const [tasksR, eventsR, leadsR] = await Promise.all([
             fetch("/api/tasks?status=flagged"),
             fetch("/api/events"),
+            fetch("/api/leads"),
           ]);
           const tasksD  = tasksR.ok  ? await tasksR.json()  : { tasks: [] };
           const eventsD = eventsR.ok ? await eventsR.json() : { events: [] };
+          const leadsD  = leadsR.ok  ? await leadsR.json()  : [];
 
+          const leadsArr = Array.isArray(leadsD) ? leadsD : (leadsD.leads || []);
           const flaggedTasks  = (tasksD.tasks  || []).filter(t => t.notes && t.notes.includes("[GCal]"));
-          const cancelledEvts = (eventsD.events || []).filter(e =>
-            e.status === "Cancelled" && e.notes && e.notes.includes("[GCal]")
-          );
+          const cancelledEvts = (eventsD.events || []).filter(e => e.status === "Cancelled" && e.notes && e.notes.includes("[GCal]"));
+          const unschedLeads  = leadsArr.filter(l => l.status === "Unscheduled" && l.notes && l.notes.includes("[GCal]"));
 
-          const items = [
-            ...flaggedTasks.map(t => ({ type: "task", id: t.task_id, label: t.title, due: t.due_date, href: "/clients" })),
-            ...cancelledEvts.map(e => ({ type: "event", id: e.event_id, label: e.title, due: e.start_datetime, href: "/crm/schedule" })),
-          ];
+          const totalItems = flaggedTasks.length + cancelledEvts.length + unschedLeads.length;
 
-          if (!items.length) {
+          if (!totalItems) {
             el.innerHTML = '<div style="font-size:12px;color:hsl(var(--muted-foreground));">No items pending review — all clear.</div>';
             return;
           }
 
-          el.innerHTML = items.map(item => `
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;
-                 padding:8px 10px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px;">
-              <div>
-                <span style="font-weight:700;">${item.label}</span>
-                <span style="color:hsl(var(--muted-foreground));margin-left:6px;">${item.type} · ${item.due ? item.due.slice(0,10) : "—"}</span>
-              </div>
-              <a href="${item.href}" style="font-size:11px;font-weight:700;color:hsl(var(--primary));
-                   text-decoration:none;padding:3px 8px;border:1px solid hsl(var(--primary)/0.4);
-                   border-radius:5px;white-space:nowrap;">
-                Open in CRM →
-              </a>
-            </div>
-          `).join("");
+          const itemStyle = `display:flex;align-items:center;justify-content:space-between;gap:8px;
+            padding:8px 10px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px;`;
+          const btnStyleRestore = `font-size:11px;font-weight:700;cursor:pointer;color:#166534;
+            padding:3px 8px;border:1px solid #86efac;border-radius:5px;background:#dcfce7;white-space:nowrap;`;
+          const btnStyleCancel  = `font-size:11px;font-weight:700;cursor:pointer;color:#7f1d1d;
+            padding:3px 8px;border:1px solid #fca5a5;border-radius:5px;background:#fee2e2;white-space:nowrap;`;
+          const linkStyle = `font-size:11px;font-weight:700;color:hsl(var(--primary));
+            text-decoration:none;padding:3px 8px;border:1px solid hsl(var(--primary)/0.4);
+            border-radius:5px;white-space:nowrap;`;
+
+          el.innerHTML = "";
+
+          // Tasks — direct restore/cancel via API
+          for (const t of flaggedTasks) {
+            const div = document.createElement("div");
+            div.style.cssText = itemStyle;
+            div.innerHTML = `
+              <div><span style="font-weight:700;">${t.title}</span>
+              <span style="color:hsl(var(--muted-foreground));margin-left:6px;">task · ${t.due_date ? t.due_date.slice(0,10) : "—"}</span></div>
+              <div style="display:flex;gap:6px;">
+                <button style="${btnStyleRestore}" data-id="${t.task_id}" data-action="Open">Restore</button>
+                <button style="${btnStyleCancel}" data-id="${t.task_id}" data-action="Cancelled">Cancel</button>
+              </div>`;
+            div.querySelectorAll("button").forEach(btn => {
+              btn.addEventListener("click", () => resolveTask(btn.dataset.id, btn.dataset.action, btn));
+            });
+            el.appendChild(div);
+          }
+
+          // Events — link to schedule page to reschedule
+          for (const e of cancelledEvts) {
+            const div = document.createElement("div");
+            div.style.cssText = itemStyle;
+            div.innerHTML = `
+              <div><span style="font-weight:700;">${e.title || "Event"}</span>
+              <span style="color:hsl(var(--muted-foreground));margin-left:6px;">event · ${e.start_datetime ? e.start_datetime.slice(0,10) : "—"}</span></div>
+              <a href="/crm/schedule" style="${linkStyle}">Reschedule →</a>`;
+            el.appendChild(div);
+          }
+
+          // Leads — link to clients/lead detail to reschedule
+          for (const l of unschedLeads) {
+            const leadId = l.id || l.lead_id || "";
+            const href   = leadId ? `/crm/lead?id=${leadId}` : "/clients";
+            const div = document.createElement("div");
+            div.style.cssText = itemStyle;
+            div.innerHTML = `
+              <div><span style="font-weight:700;">${l.name || l.client_name || "Lead"}</span>
+              <span style="color:hsl(var(--muted-foreground));margin-left:6px;">job · unscheduled</span></div>
+              <a href="${href}" style="${linkStyle}">Reschedule →</a>`;
+            el.appendChild(div);
+          }
         } catch (err) {
           el.innerHTML = '<div style="font-size:12px;color:#7f1d1d;">Could not load review list: ' + err.message + '</div>';
         }
