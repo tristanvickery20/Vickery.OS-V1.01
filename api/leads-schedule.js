@@ -1,4 +1,4 @@
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient, colToLetter } = require("../lib/sheets");
 const { logAuditBatch, genRequestId } = require("../lib/audit");
 
 function readBody(req) {
@@ -49,7 +49,7 @@ async function handleScheduleLead(req, res) {
 
     const getResp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Leads!A1:T2000",
+      range: "Leads!A1:AZ5000", // AZ includes gcal_event_id at col AE (index 30)
     });
 
     const values = getResp.data.values || [];
@@ -89,12 +89,16 @@ async function handleScheduleLead(req, res) {
     row[18] = String(Math.max(0, Math.min(1440, Math.round(Number(data.duration_minutes || 0)))));
     row[19] = String(depositOverride);
 
+    const headers = values[0] || [];
+    while (row.length < headers.length) row.push(""); // ensure row covers all columns
+
     const sheetRow = foundIdx + 1;
+    const endColLetter = colToLetter(Math.max(headers.length - 1, 19)); // at least T (index 19)
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Leads!A${sheetRow}:T${sheetRow}`,
+      range: `Leads!A${sheetRow}:${endColLetter}${sheetRow}`,
       valueInputOption: "RAW",
-      requestBody: { majorDimension: "ROWS", values: [row.slice(0, 20)] },
+      requestBody: { majorDimension: "ROWS", values: [row.slice(0, headers.length)] },
     });
 
     const lead = {
@@ -105,6 +109,70 @@ async function handleScheduleLead(req, res) {
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, lead }));
+
+    // ── Fire-and-forget: Google Calendar push ─────────────────────
+    setImmediate(async () => {
+      try {
+        const { createJobGCalEvent, updateGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
+        const gcalColIdx = headers.indexOf("gcal_event_id");
+        const existing   = gcalColIdx >= 0 ? String(oldSnap[gcalColIdx] || "") : "";
+        const schedDate  = row[13];
+        const durMins    = Math.max(30, Number(row[18]) || 120);
+        const leadName   = String(row[2]  || "");
+        const leadAddr   = String(row[4]  || "");
+        const jobType    = String(row[5]  || "");
+        const leadNotes  = String(row[15] || "");
+
+        // Determine title prefix: estimate if old status contained "estimate"/"quote"
+        const oldStatus = String(oldSnap[8] || "").toLowerCase();
+        const isEstimate = oldStatus.includes("estimate") || oldStatus.includes("quote");
+        const titlePrefix = isEstimate ? "Estimate" : "Job";
+        const titleSuffix = jobType ? `${jobType} – ${leadName}` : leadName;
+        const gcalTitle = `${titlePrefix} – ${titleSuffix}${leadAddr ? " – " + leadAddr.split(",")[0] : ""}`;
+
+        if (existing) {
+          const [gcalEventId, calendarId] = existing.split("|");
+          if (gcalEventId && calendarId && schedDate) {
+            const startMs = new Date(schedDate).getTime();
+            const endDT   = isNaN(startMs) ? null
+              : new Date(startMs + durMins * 60 * 1000).toISOString().slice(0, 16);
+            const updated = await updateGCalEvent({
+              calendarId, gcalEventId,
+              title: gcalTitle, type: titlePrefix.toLowerCase(),
+              startDT: schedDate, endDT, notes: leadNotes, isAllDay: false,
+            });
+            if (!updated) {
+              // Event missing from GCal — create fresh
+              const freshResult = await createJobGCalEvent({
+                title: gcalTitle, status: "Scheduled",
+                scheduledDate: schedDate, durationMinutes: durMins,
+                address: leadAddr, notes: leadNotes,
+              });
+              if (freshResult && freshResult.gcalEventId && gcalColIdx >= 0) {
+                await writeGCalEventIdToSheet({
+                  tab: "Leads", idCol: 0, idValue: id,
+                  gcalCol: gcalColIdx, gcalEventId: freshResult.gcalEventId, calendarId: freshResult.calendarId,
+                });
+              }
+            }
+          }
+        } else if (schedDate) {
+          const result = await createJobGCalEvent({
+            title: gcalTitle, status: "Scheduled",
+            scheduledDate: schedDate, durationMinutes: durMins,
+            address: leadAddr, notes: leadNotes,
+          });
+          if (result && result.gcalEventId && gcalColIdx >= 0) {
+            await writeGCalEventIdToSheet({
+              tab: "Leads", idCol: 0, idValue: id,
+              gcalCol: gcalColIdx, gcalEventId: result.gcalEventId, calendarId: result.calendarId,
+            });
+          }
+        }
+      } catch (gcalErr) {
+        console.error("[leads-schedule] GCal push error:", gcalErr.message);
+      }
+    });
 
     // Audit: log changed schedule fields
     const schedFields = { 8: "status", 13: "scheduled_date", 14: "assigned_to", 18: "duration_minutes", 19: "deposit_override" };

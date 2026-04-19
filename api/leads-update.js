@@ -493,8 +493,9 @@ async function handleUpdateLead(req, res) {
         const durMins     = Number(row[i_duration]      || 120);
         const gcalColIdx  = idx("gcal_event_id");
         const existing    = gcalColIdx >= 0 ? String(row[gcalColIdx] || "") : "";
-        const isEstimate  = ["Estimate", "Quote", "Quoted"].includes(String(oldSnap[i_status] || "")) ||
-                            String(data.status || "").includes("Estimate");
+        // Case-insensitive estimate detection covers "Estimate", "Requested Estimate", "Quote", "Quoted", etc.
+        const oldStatusStr = String(oldSnap[i_status] || "").toLowerCase();
+        const isEstimate = oldStatusStr.includes("estimate") || oldStatusStr.includes("quote");
 
         const titlePrefix = isEstimate ? "Estimate" : "Job";
         const titleSuffix = jobType ? `${jobType} – ${leadName}` : leadName;
