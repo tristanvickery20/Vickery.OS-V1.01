@@ -240,12 +240,17 @@
               <div class="settings-card">
                 <div class="settings-card-title">Share Calendars with Your Google Account</div>
                 <div class="settings-card-sub">
-                  To see CRM jobs on your iPhone, share the two managed calendars with your personal Google account:
+                  <strong>How this works:</strong> The CRM uses a Google service account (not a per-user OAuth login)
+                  to own and manage the "Vickery Jobs" and "Vickery Internal" calendars.
+                  To see those calendars on your iPhone, share them with your personal Google account:
                   <ol style="margin:8px 0 0 18px;line-height:1.8;font-size:12px;">
-                    <li>Run <strong>Bootstrap Calendars</strong> above.</li>
-                    <li>Open <a href="https://calendar.google.com" target="_blank" rel="noopener" style="color:hsl(var(--primary));">Google Calendar</a> while signed in as the service account, or ask your admin to share "Vickery Jobs" and "Vickery Internal" with your personal Google account.</li>
-                    <li>Accept the sharing invite — the calendars will appear on your iPhone automatically via Google Calendar app.</li>
+                    <li>Run <strong>Bootstrap Calendars</strong> above to create/verify the managed calendars.</li>
+                    <li>Ask your admin to share "Vickery Jobs" and "Vickery Internal" with your personal Google account (the service account owns them, so this is done via the Google Workspace admin or service-account calendar settings).</li>
+                    <li>Accept the sharing invite — both calendars will appear on your iPhone via the Google Calendar app.</li>
                   </ol>
+                  <em style="font-size:11px;color:hsl(var(--muted-foreground));">
+                    Note: This is a service-account-based integration. There is no per-user "Connect your Google account" OAuth flow.
+                  </em>
                 </div>
               </div>
 
@@ -579,11 +584,17 @@
             div.querySelector(".evt-cancel-btn").addEventListener("click", async (ev) => {
               const btn = ev.currentTarget;
               btn.disabled = true; btn.textContent = "Saving…";
-              // Mark notes as resolved so item no longer appears in review
+              // Fetch current event to preserve existing notes — only append resolution marker
+              let existingNotes = "";
+              try {
+                const g = await fetch(`/api/events/${btn.dataset.id}`);
+                if (g.ok) { const gd = await g.json(); existingNotes = (gd.notes || gd.event?.notes || "").trim(); }
+              } catch { /* proceed with empty */ }
+              const resolvedNotes = (existingNotes ? existingNotes + "\n" : "") + "[GCal-Resolved] Kept cancelled.";
               const r = await fetch(`/api/events/${btn.dataset.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "Cancelled", notes: "[GCal-Resolved] Kept cancelled" }),
+                body: JSON.stringify({ status: "Cancelled", notes: resolvedNotes }),
               });
               if (r.ok) { div.remove(); } else { btn.textContent = "Error"; btn.disabled = false; }
             });
