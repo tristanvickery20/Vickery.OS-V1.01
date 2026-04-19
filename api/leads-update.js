@@ -510,19 +510,19 @@ async function handleUpdateLead(req, res) {
                 const startMs = new Date(schedDate).getTime();
                 const endDT   = isNaN(startMs) ? null
                   : new Date(startMs + durMins * 60 * 1000).toISOString().slice(0, 16);
-                try {
-                  await updateGCalEvent({
-                    calendarId, gcalEventId,
-                    title:   gcalTitle,
-                    type:    titlePrefix.toLowerCase(),
-                    startDT: schedDate,
-                    endDT,
-                    notes:   leadNotes,
-                    isAllDay: false,
-                  });
-                } catch (updateErr) {
-                  // Event was deleted externally — fall back to creating a fresh one
-                  console.warn("[leads-update] GCal update failed, creating new event:", updateErr.message);
+                const updated = await updateGCalEvent({
+                  calendarId, gcalEventId,
+                  title:   gcalTitle,
+                  type:    titlePrefix.toLowerCase(),
+                  startDT: schedDate,
+                  endDT,
+                  notes:   leadNotes,
+                  isAllDay: false,
+                });
+                if (!updated) {
+                  // updateGCalEvent returns false when event is missing/deleted on GCal side.
+                  // Fall back to creating a fresh event so the lead stays linked.
+                  console.warn("[leads-update] GCal update returned false — creating fresh event for lead", id);
                   const freshResult = await createJobGCalEvent({
                     title: gcalTitle, status: newStatus,
                     scheduledDate: schedDate, durationMinutes: durMins,
