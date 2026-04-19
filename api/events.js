@@ -26,8 +26,9 @@ async function handleGetEvents(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
     const url = new URL("http://x" + req.url);
-    const filterAssigned = (url.searchParams.get("assigned_to") || "").toLowerCase();
-    const filterType     = (url.searchParams.get("type") || "").toLowerCase();
+    const filterAssigned    = (url.searchParams.get("assigned_to") || "").toLowerCase();
+    const filterType        = (url.searchParams.get("type") || "").toLowerCase();
+    const includeCancelled  = url.searchParams.get("include_cancelled") === "1";
 
     let values = [];
     try {
@@ -44,7 +45,8 @@ async function handleGetEvents(req, res) {
       .filter(r => r && r.length && String(r[0]||"").trim() !== "")
       .filter(r => !filterAssigned || String(r[5]||"").toLowerCase() === filterAssigned)
       .filter(r => !filterType     || String(r[2]||"").toLowerCase() === filterType)
-      .filter(r => String(r[7]||"").toLowerCase() !== "cancelled")
+      // Default: hide cancelled events. Pass include_cancelled=1 (admin review only) to include them.
+      .filter(r => includeCancelled || String(r[7]||"").toLowerCase() !== "cancelled")
       .map(r => ({
         event_id:       r[0]||"",
         title:          r[1]||"",

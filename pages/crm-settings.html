@@ -445,7 +445,7 @@
         try {
           const [tasksR, eventsR, leadsR] = await Promise.all([
             fetch("/api/tasks?status=flagged"),
-            fetch("/api/events"),
+            fetch("/api/events?include_cancelled=1"), // include_cancelled=1 shows GCal-deleted events for review
             fetch("/api/leads"),
           ]);
           const tasksD  = tasksR.ok  ? await tasksR.json()  : { tasks: [] };
