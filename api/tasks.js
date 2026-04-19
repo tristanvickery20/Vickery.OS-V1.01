@@ -204,8 +204,10 @@ async function handleUpdateTask(req, res, taskId) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
 
-    // Fire-and-forget: update GCal if we have a gcal_event_id
-    const gcalRaw = String(row[11] || "");
+    // Fire-and-forget: sync to GCal
+    const gcalRaw    = String(row[11] || "");
+    const taskId     = String(row[0] || "");
+    const restoredOpen = body.status === "Open" && !gcalRaw;
     if (gcalRaw && (body.due_date !== undefined || body.title !== undefined || body.status !== undefined)) {
       setImmediate(async () => {
         try {
@@ -223,6 +225,29 @@ async function handleUpdateTask(req, res, taskId) {
             isAllDay: false,
           });
         } catch (err) { console.error("[tasks] GCal update error:", err.message); }
+      });
+    } else if (restoredOpen) {
+      // Task was restored from deleted/flagged state — gcal_event_id was cleared; recreate the event.
+      setImmediate(async () => {
+        try {
+          const { createGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
+          const dueDate = (String(row[3]) || "").slice(0, 10);
+          if (!dueDate) return;
+          const result = await createGCalEvent({
+            title:   String(row[1]),
+            type:    String(row[2]) || "task",
+            startDT: dueDate + "T08:00:00",
+            endDT:   dueDate + "T08:30:00",
+            notes:   String(row[7]),
+            isAllDay: false,
+          });
+          if (result) {
+            await writeGCalEventIdToSheet({
+              tab: "Tasks", idCol: 0, idValue: taskId, gcalCol: 11,
+              gcalEventId: result.gcalEventId, calendarId: result.calendarId,
+            });
+          }
+        } catch (err) { console.error("[tasks] GCal restore push error:", err.message); }
       });
     }
   } catch (err) {

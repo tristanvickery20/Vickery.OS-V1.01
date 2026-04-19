@@ -246,8 +246,8 @@ async function handleRestoreEvent(req, res, eventId) {
     const row = [...values[rowIndex]];
     while (row.length < 11) row.push("");
 
-    // Restore to Active and clear any leftover cancelled gcal_event_id
-    row[7]  = "Active";
+    // Restore to Scheduled and clear any leftover stale gcal_event_id
+    row[7]  = "Scheduled";
     row[10] = "";
 
     const sheetRow = rowIndex + 1;
