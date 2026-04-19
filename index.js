@@ -74,6 +74,7 @@ const { handleGetPositions, handleGetTrips, startPolling: startTraccarPolling } 
 const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/reschedule");
 const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
+const { handleGetTasks, handleCreateTask, handleUpdateTask } = require("./api/tasks");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -316,6 +317,61 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: err.message }));
     }
+  }
+
+  // Crew tasks — crew-auth, accessed from crew portal
+  if (req.url.startsWith("/api/crew/tasks") && req.method === "GET") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    try {
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: "Tasks!A1:K5000",
+      });
+      const techId = `${crewSess.firstName} ${crewSess.lastName}`;
+      const values = resp.data.values || [];
+      const tasks = values.slice(1)
+        .filter(r => r && r.length && String(r[0]||"").trim() !== "" &&
+                     String(r[8]||"").toLowerCase() !== "done" &&
+                     String(r[4]||"").toLowerCase().includes(crewSess.firstName.toLowerCase()))
+        .map(r => ({
+          task_id: r[0]||"", title: r[1]||"", type: r[2]||"Task",
+          due_date: r[3]||"", assigned_to: r[4]||"",
+          priority: r[6]||"med", notes: r[7]||"", status: r[8]||"Open",
+        }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true, tasks }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
+  }
+
+  if (req.url.startsWith("/api/crew/tasks/") && req.method === "PATCH") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    const taskId = req.url.replace("/api/crew/tasks/", "").split("?")[0];
+    return handleUpdateTask(req, res, taskId);
+  }
+
+  // Crew task creation (from crew portal FAB)
+  if (req.url === "/api/crew/tasks" && req.method === "POST") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    // Inject created_by from crew session, then use shared handler
+    const { handleCreateTask } = require("./api/tasks");
+    return handleCreateTask(req, res);
   }
 
   if (req.url === "/crm") {
@@ -713,6 +769,18 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/expenses" && req.method === "POST") {
     return handleCreateExpense(req, res);
+  }
+
+  // Tasks API (GET /api/tasks, POST /api/tasks, PATCH /api/tasks/:id)
+  if (_epath === "/api/tasks" && req.method === "GET") {
+    return handleGetTasks(req, res);
+  }
+  if (_epath === "/api/tasks" && req.method === "POST") {
+    return handleCreateTask(req, res);
+  }
+  if (_epath.startsWith("/api/tasks/") && req.method === "PATCH") {
+    const taskId = _epath.replace("/api/tasks/", "");
+    return handleUpdateTask(req, res, taskId);
   }
 
   if (req.url === "/api/notes" && req.method === "POST") {

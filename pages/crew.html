@@ -1009,6 +1009,13 @@
       <strong>No jobs scheduled today</strong>
       You can still log time or expenses below.
     </div>
+
+    <!-- My Tasks -->
+    <div class="section-label" style="margin-top:24px;display:flex;align-items:center;justify-content:space-between;">
+      <span>My Tasks</span>
+      <button onclick="window.VE_QuickAdd&&window.VE_QuickAdd.open()" style="font-size:11px;font-weight:700;color:hsl(217 80% 70%);background:none;border:none;cursor:pointer;font-family:inherit;padding:0;text-transform:none;letter-spacing:0;">+ Add</button>
+    </div>
+    <div id="ve-mytasks-section" class="qa-task-list" style="margin-bottom:16px;"></div>
   </div>
 
   <!-- Map tab -->
@@ -1198,6 +1205,7 @@
 
 <div class="toast" id="toast"></div>
 <script src="/pages/js/crew.js"></script>
+<script src="/pages/js/quick-add.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});

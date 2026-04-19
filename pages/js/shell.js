@@ -160,6 +160,13 @@ function initShell() {
   });
 }
 
+function loadQuickAdd() {
+  if (document.getElementById("ve-qa-modal")) return;
+  var s = document.createElement("script");
+  s.src = "/pages/js/quick-add.js";
+  document.body.appendChild(s);
+}
+
 function loadSidebar() {
   var mount = document.getElementById("sidebarMount");
   if (!mount) return;
@@ -169,10 +176,12 @@ function loadSidebar() {
     .then(function(html) {
       mount.innerHTML = html;
       initShell();
+      loadQuickAdd();
     })
     .catch(function(err) {
       console.error("Sidebar load error:", err);
       initShell();
+      loadQuickAdd();
     });
 }
 
