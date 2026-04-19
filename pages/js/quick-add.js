@@ -262,6 +262,11 @@
       html += fld("Notes", textarea("qa-f-notes", "Add any notes…"));
 
     } else if (currentType === "Estimate") {
+      html += fld("Link Existing Lead (optional)",
+        '<div style="display:flex;gap:6px;align-items:center;">' +
+          inp("qa-f-lead-link", "text", "LEAD-xxxxx", "", "autocomplete='off' style='flex:1'") +
+          '<button type="button" id="qa-lead-lookup" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#94a3b8;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;">Auto-fill ↗</button>' +
+        '</div>');
       html += fld("Client Name *", inp("qa-f-name", "text", "Full name…", "", "autocomplete='off'"));
       html += '<div class="qa-row">' +
         fld("Phone", inp("qa-f-phone", "tel", "(555) 000-0000")) +
@@ -277,6 +282,11 @@
       html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders auto-scheduled: 24h before and morning-of.</div>';
 
     } else if (currentType === "Job") {
+      html += fld("Link Existing Lead (optional)",
+        '<div style="display:flex;gap:6px;align-items:center;">' +
+          inp("qa-f-lead-link", "text", "LEAD-xxxxx", "", "autocomplete='off' style='flex:1'") +
+          '<button type="button" id="qa-lead-lookup" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#94a3b8;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;">Auto-fill ↗</button>' +
+        '</div>');
       html += fld("Client Name *", inp("qa-f-name", "text", "Full name…", "", "autocomplete='off'"));
       html += '<div class="qa-row">' +
         fld("Phone", inp("qa-f-phone", "tel", "(555) 000-0000")) +
@@ -340,6 +350,45 @@
     if (assignEl) {
       loadTechs(function () {
         if (assignEl.parentNode) assignEl.innerHTML = techOptionsHtml("");
+      });
+    }
+
+    // Lead auto-fill for Estimate / Job
+    var leadLookupBtn = document.getElementById("qa-lead-lookup");
+    if (leadLookupBtn) {
+      leadLookupBtn.addEventListener("click", function () {
+        var leadId = (document.getElementById("qa-f-lead-link") || {}).value || "";
+        leadId = leadId.trim();
+        if (!leadId) return;
+        leadLookupBtn.textContent = "Loading…";
+        leadLookupBtn.disabled = true;
+        fetch("/api/leads/lookup?id=" + encodeURIComponent(leadId))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            leadLookupBtn.textContent = "Auto-fill ↗";
+            leadLookupBtn.disabled = false;
+            if (!data || !data.lead) { showErr("Lead not found."); return; }
+            var lead = data.lead;
+            var nameEl   = document.getElementById("qa-f-name");
+            var phoneEl  = document.getElementById("qa-f-phone");
+            var addrEl   = document.getElementById("qa-f-addr");
+            var assignEl2 = document.getElementById("qa-f-assign");
+            if (nameEl  && lead.name)    nameEl.value  = lead.name;
+            if (phoneEl && lead.phone)   phoneEl.value = lead.phone;
+            if (addrEl  && lead.address) addrEl.value  = lead.address;
+            if (assignEl2 && lead.assigned_to) {
+              loadTechs(function () {
+                if (assignEl2.parentNode) {
+                  assignEl2.innerHTML = techOptionsHtml(lead.assigned_to);
+                }
+              });
+            }
+          })
+          .catch(function () {
+            leadLookupBtn.textContent = "Auto-fill ↗";
+            leadLookupBtn.disabled = false;
+            showErr("Could not load lead.");
+          });
       });
     }
 

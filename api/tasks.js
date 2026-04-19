@@ -79,10 +79,12 @@ async function handleGetTasks(req, res) {
   }
 }
 
-async function handleCreateTask(req, res) {
+async function handleCreateTask(req, res, serverOverrides = {}) {
   try {
     const body = await readBody(req);
-    const { title, type, due_date, assigned_to, related_lead_id, priority, notes, created_by } = body;
+    const { title, type, due_date, assigned_to, related_lead_id, priority, notes } = body;
+    // created_by always comes from server (session), never from client body
+    const created_by = serverOverrides.created_by || body.created_by || "";
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -112,7 +114,7 @@ async function handleCreateTask(req, res) {
           String(notes       || ""),
           "Open",
           created_at,
-          String(created_by  || ""),
+          String(created_by),
         ]],
       },
     });

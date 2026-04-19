@@ -392,9 +392,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
-    // Inject created_by from crew session, then use shared handler
+    // Inject created_by from crew session server-side (never trust client body)
     const { handleCreateTask } = require("./api/tasks");
-    return handleCreateTask(req, res);
+    return handleCreateTask(req, res, {
+      created_by: `${crewSess.firstName} ${crewSess.lastName}`,
+    });
   }
 
   if (req.url === "/crm") {
@@ -756,6 +758,48 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/api/leads" && req.method === "GET") {
     return handleGetLeads(req, res);
+  }
+
+  // Lightweight single-lead lookup for Quick Add auto-fill
+  if (req.url.startsWith("/api/leads/lookup") && req.method === "GET") {
+    try {
+      const qp  = new URL("http://x" + req.url).searchParams;
+      const lid = (qp.get("id") || "").trim();
+      if (!lid) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "id required" }));
+      }
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const spreadsheetId = process.env.CRM_SHEET_ID;
+      // Try Clients tab first (lead_id column), then Leads tab
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Clients!A1:AZ5000",
+      });
+      const vals = resp.data.values || [];
+      const hdr  = vals[0] || [];
+      const col  = (name) => hdr.indexOf(name);
+      const row  = vals.slice(1).find(r => String(r[col("lead_id")]||"") === lid);
+      if (!row) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "Lead not found" }));
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({
+        ok: true,
+        lead: {
+          name:        String(row[col("name")]||""),
+          phone:       String(row[col("phone")]||""),
+          address:     String(row[col("primary_address")]||row[col("address")]||""),
+          assigned_to: String(row[col("assigned_to")]||""),
+          job_type:    String(row[col("job_type")]||""),
+        },
+      }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
   }
 
   if (req.url.startsWith("/api/lead-snapshot") && req.method === "GET") {
