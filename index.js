@@ -400,7 +400,30 @@ const server = http.createServer(async (req, res) => {
         requestBody: { majorDimension: "ROWS", values: [row] },
       });
       res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: true }));
+      res.end(JSON.stringify({ ok: true }));
+
+      // Fire-and-forget: sync status/notes change to GCal if task has a linked event
+      setImmediate(async () => {
+        try {
+          const gcalEventIdRaw = row[11] || "";
+          if (!gcalEventIdRaw) return;
+          const [gcalEventId, calendarId] = gcalEventIdRaw.split("|");
+          if (!gcalEventId || !calendarId) return;
+          const { updateGCalEvent } = require("./lib/googleCalendar");
+          await updateGCalEvent({
+            calendarId, gcalEventId,
+            title:   row[1] || "Task",
+            type:    "task",
+            startDT: row[5] || "",
+            endDT:   row[6] || "",
+            notes:   `[${row[8] || ""}] ${row[7] || ""}`.trim(),
+            isAllDay: false,
+          });
+        } catch (gcalErr) {
+          console.error("[crew-tasks-patch] GCal update error:", gcalErr.message);
+        }
+      });
+      return;
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: err.message }));
@@ -694,14 +717,25 @@ const server = http.createServer(async (req, res) => {
     const channelId     = req.headers["x-goog-channel-id"];
     const resourceId    = req.headers["x-goog-resource-id"];
     const resourceState = req.headers["x-goog-resource-state"];
-    // Require all three Google-specific headers to be present — guards against
-    // arbitrary POST requests triggering a sync
+    const channelToken  = req.headers["x-goog-channel-token"] || "";
+    // Require all three Google-specific headers — guards against arbitrary POSTs
     const validGoogleNotification = channelId && resourceId && resourceState;
     if (validGoogleNotification && resourceState !== "sync") {
-      setImmediate(() => {
-        const { runReverseSync } = require("./lib/googleCalendar");
-        runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
-      });
+      // Verify channel token if one is configured: if a stored token exists and
+      // the notification carries a non-matching token, reject silently (200 to
+      // stop Google retrying) but do not run sync.
+      const { loadCalendarIds } = require("./lib/googleCalendar");
+      const ids = await loadCalendarIds().catch(() => ({}));
+      const storedToken = ids.webhookToken || "";
+      const tokenOk = !storedToken || !channelToken || channelToken === storedToken;
+      if (tokenOk) {
+        setImmediate(() => {
+          const { runReverseSync } = require("./lib/googleCalendar");
+          runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
+        });
+      } else {
+        console.warn("[gcal-webhook] Rejected: channel token mismatch");
+      }
     }
     res.writeHead(200);
     return res.end();
