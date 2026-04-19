@@ -386,22 +386,6 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateTask(req, res, taskId);
   }
 
-  // Crew identity endpoint — returns session info for the logged-in crew member
-  if (req.url === "/api/crew/me" && req.method === "GET") {
-    const crewSess = getCrewSession(req);
-    if (!crewSess) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
-    }
-    res.writeHead(200, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify({
-      ok: true,
-      firstName: crewSess.firstName,
-      lastName:  crewSess.lastName,
-      fullName:  `${crewSess.firstName} ${crewSess.lastName}`,
-    }));
-  }
-
   // Crew calendar events (timed: Meeting, Callback, Personal Block)
   if (req.url === "/api/crew/events" && req.method === "GET") {
     const crewSess = getCrewSession(req);
@@ -441,8 +425,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
+    const crewFullNameEv = `${crewSess.firstName} ${crewSess.lastName}`;
     return handleCreateEvent(req, res, {
-      created_by: `${crewSess.firstName} ${crewSess.lastName}`,
+      created_by:  crewFullNameEv,
+      assigned_to: crewFullNameEv,  // default; body.assigned_to takes precedence
     });
   }
 
@@ -452,10 +438,12 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
-    // Inject created_by from crew session server-side (never trust client body)
+    // Inject created_by and default assigned_to from crew session server-side
     const { handleCreateTask } = require("./api/tasks");
+    const crewFullName = `${crewSess.firstName} ${crewSess.lastName}`;
     return handleCreateTask(req, res, {
-      created_by: `${crewSess.firstName} ${crewSess.lastName}`,
+      created_by:  crewFullName,
+      assigned_to: crewFullName,  // default; body.assigned_to takes precedence
     });
   }
 

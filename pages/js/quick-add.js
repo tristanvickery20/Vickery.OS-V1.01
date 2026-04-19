@@ -145,10 +145,15 @@
   var EVENTS_BASE = IS_CREW ? "/api/crew/events" : "/api/events";
 
   // Fetch crew identity on page load (used to auto-assign tasks/events)
+  // /api/crew/me returns { ok, staff: { firstName, lastName, ... } }
   if (IS_CREW) {
     fetch("/api/crew/me")
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && d.ok) crewMemberName = d.fullName; })
+      .then(function (d) {
+        if (d && d.ok && d.staff) {
+          crewMemberName = (d.staff.firstName + " " + d.staff.lastName).trim();
+        }
+      })
       .catch(function () {});
   }
 

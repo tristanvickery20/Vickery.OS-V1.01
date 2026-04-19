@@ -70,8 +70,9 @@ async function handleGetEvents(req, res) {
 async function handleCreateEvent(req, res, serverOverrides = {}) {
   try {
     const body = await readBody(req);
-    const { title, type, start_datetime, end_datetime, assigned_to, notes } = body;
-    const created_by = serverOverrides.created_by || "admin";
+    const { title, type, start_datetime, end_datetime, notes } = body;
+    const created_by  = serverOverrides.created_by  || "admin";
+    const assigned_to = body.assigned_to || serverOverrides.assigned_to || "";
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });

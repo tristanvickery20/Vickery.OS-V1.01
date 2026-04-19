@@ -82,9 +82,10 @@ async function handleGetTasks(req, res) {
 async function handleCreateTask(req, res, serverOverrides = {}) {
   try {
     const body = await readBody(req);
-    const { title, type, due_date, assigned_to, related_lead_id, priority, notes } = body;
-    // created_by always comes from server; client body value is never trusted
-    const created_by = serverOverrides.created_by || "admin";
+    const { title, type, due_date, related_lead_id, priority, notes } = body;
+    // created_by and assigned_to defaults come from server overrides (e.g. crew session)
+    const created_by  = serverOverrides.created_by  || "admin";
+    const assigned_to = body.assigned_to || serverOverrides.assigned_to || "";
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });
