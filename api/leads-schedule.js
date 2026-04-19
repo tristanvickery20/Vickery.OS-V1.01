@@ -133,9 +133,8 @@ async function handleScheduleLead(req, res) {
         if (existing) {
           const [gcalEventId, calendarId] = existing.split("|");
           if (gcalEventId && calendarId && schedDate) {
-            const startMs = new Date(schedDate).getTime();
-            const endDT   = isNaN(startMs) ? null
-              : new Date(startMs + durMins * 60 * 1000).toISOString().slice(0, 16);
+            const { addMinutesToISO } = require("../lib/googleCalendar");
+            const endDT = addMinutesToISO(schedDate.slice(0, 16), durMins) || null;
             const updated = await updateGCalEvent({
               calendarId, gcalEventId,
               title: gcalTitle, type: titlePrefix.toLowerCase(),
