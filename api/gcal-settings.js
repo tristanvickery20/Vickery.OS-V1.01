@@ -5,6 +5,7 @@ const {
   bootstrapCalendars,
   runReverseSync,
   verifyPersonalCalendar,
+  registerWatchChannels,
 } = require("../lib/googleCalendar");
 
 async function readBody(req) {
@@ -77,10 +78,25 @@ async function handleGCalVerifyPersonal(req, res) {
   }
 }
 
+// POST /api/gcal/watch-channels — register push-notification watch channels for Jobs + Internal
+// Body: { webhookAddress: "https://your-domain/api/gcal-webhook" }
+async function handleGCalRegisterWatchChannels(req, res) {
+  try {
+    const body = await readBody(req);
+    const address = (body.webhookAddress || "").trim();
+    const results = await registerWatchChannels(address);
+    const allOk = results.every(r => r.ok);
+    json(res, allOk ? 200 : 207, { ok: allOk, results });
+  } catch (err) {
+    json(res, 400, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGCalStatus,
   handleGCalSaveSettings,
   handleGCalBootstrap,
   handleGCalSync,
   handleGCalVerifyPersonal,
+  handleGCalRegisterWatchChannels,
 };

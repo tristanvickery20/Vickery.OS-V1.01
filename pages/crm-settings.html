@@ -215,6 +215,27 @@
                 </div>
               </div>
 
+              <div class="section-hdr">Real-Time Sync</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Activate Real-Time Sync</div>
+                <div class="settings-card-sub">
+                  By default, calendar changes (deletes, moves) are detected within 15 minutes via polling.
+                  Registering Google push-notification channels makes reverse sync <strong>instant</strong>.
+                  Channels expire after ~7 days — click this button to re-register before expiry.
+                  <br><br>
+                  Enter the public HTTPS URL of this CRM (e.g. your published domain or Replit dev URL):
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="gcalWebhookAddr">Webhook Address (public HTTPS URL)</label>
+                  <input class="form-input" type="url" id="gcalWebhookAddr"
+                    placeholder="https://your-app.replit.app/api/gcal-webhook" />
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                  <button class="btn-secondary" id="gcalWatchBtn">Register Watch Channels</button>
+                  <span id="gcalWatchMsg" style="font-size:12px;"></span>
+                </div>
+              </div>
+
               <div class="section-hdr">iPhone / Google Account Setup</div>
               <div class="settings-card">
                 <div class="settings-card-title">Share Calendars with Your Google Account</div>
@@ -412,6 +433,32 @@
           msg.textContent = "Error: " + err.message;
           msg.style.color = "#7f1d1d";
         }
+      });
+
+      document.getElementById("gcalWatchBtn").addEventListener("click", async () => {
+        const addr = document.getElementById("gcalWebhookAddr").value.trim();
+        const msg  = document.getElementById("gcalWatchMsg");
+        const btn  = document.getElementById("gcalWatchBtn");
+        msg.textContent = "Registering…"; msg.style.color = ""; btn.disabled = true;
+        try {
+          const r = await fetch("/api/gcal/watch-channels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ webhookAddress: addr }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            const expiries = (d.results || []).map(r => r.calType + (r.expiry ? " expires " + r.expiry.slice(0, 10) : "")).join(", ");
+            msg.textContent = "✓ Channels registered — " + (expiries || "check logs");
+            msg.style.color = "#166534";
+          } else {
+            const errs = (d.results || []).filter(r => !r.ok).map(r => r.calType + ": " + r.error).join("; ");
+            msg.textContent = "✗ " + (d.error || errs || "Failed");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        } finally { btn.disabled = false; }
       });
 
       document.getElementById("gcalVerifyPersonalBtn").addEventListener("click", async () => {
