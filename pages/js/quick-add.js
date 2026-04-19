@@ -134,13 +134,23 @@
   document.body.appendChild(modal);
 
   // ── State ─────────────────────────────────────────────────────────────────
-  var currentType = "Task";
-  var techList    = [];
-  var loadingTechs = false;
+  var currentType    = "Task";
+  var techList       = [];
+  var loadingTechs   = false;
+  var crewMemberName = "";  // filled on init for crew context
 
   // Detect crew portal (no sidebar) vs CRM pages
-  var IS_CREW = !document.getElementById("sidebarMount");
+  var IS_CREW    = !document.getElementById("sidebarMount");
   var TASKS_BASE = IS_CREW ? "/api/crew/tasks" : "/api/tasks";
+  var EVENTS_BASE = IS_CREW ? "/api/crew/events" : "/api/events";
+
+  // Fetch crew identity on page load (used to auto-assign tasks/events)
+  if (IS_CREW) {
+    fetch("/api/crew/me")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.ok) crewMemberName = d.fullName; })
+      .catch(function () {});
+  }
 
   var TYPES_CRM  = [
     { id: "Task",           label: "Task",           cls: ""    },
@@ -203,6 +213,25 @@
   function loadTechs(cb) {
     if (techList.length) { cb(techList); return; }
     if (loadingTechs) { setTimeout(function () { loadTechs(cb); }, 200); return; }
+    // Crew mode: can't call CRM-auth-gated /api/techs; use crew member's own identity
+    if (IS_CREW) {
+      if (crewMemberName) {
+        techList = [{ name: crewMemberName }];
+        cb(techList);
+      } else {
+        // crewMemberName may still be loading — poll briefly then proceed
+        var waited = 0;
+        var poll = setInterval(function () {
+          waited += 100;
+          if (crewMemberName || waited >= 1500) {
+            clearInterval(poll);
+            techList = crewMemberName ? [{ name: crewMemberName }] : [];
+            cb(techList);
+          }
+        }, 100);
+      }
+      return;
+    }
     loadingTechs = true;
     fetch("/api/techs")
       .then(function (r) { return r.json(); })
@@ -211,7 +240,7 @@
   }
 
   function techOptionsHtml(selected) {
-    var opts = '<option value="">— Unassigned —</option>';
+    var opts = IS_CREW ? "" : '<option value="">— Unassigned —</option>';
     techList.forEach(function (t) {
       var name = t.name || t.firstName + " " + t.lastName;
       opts += '<option value="' + esc(name) + '"' + (name === selected ? ' selected' : '') + '>' + esc(name) + '</option>';
@@ -421,11 +450,12 @@
       var title = g("qa-f-title");
       if (!title) { showErr("Title is required."); btn.disabled = false; btn.textContent = "Add Task"; return; }
       var due = g("qa-f-due");
+      var taskAssign = g("qa-f-assign") || (IS_CREW ? crewMemberName : "");
       promise = fetch(TASKS_BASE, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title, type: "Task", due_date: due,
-          assigned_to: g("qa-f-assign"), related_lead_id: g("qa-f-lead"),
+          assigned_to: taskAssign, related_lead_id: g("qa-f-lead"),
           priority: getPri(), notes: g("qa-f-notes"),
         }),
       }).then(function (r) { return r.json(); });
@@ -480,27 +510,35 @@
       }).then(function (r) { return r.json(); });
 
     } else {
-      // Meeting | Callback | Personal Block → Tasks sheet
+      // Meeting | Callback | Personal Block → Events sheet (timed calendar entries)
       var title2 = g("qa-f-title");
       if (!title2) { showErr("Title is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
-      var dueDT = g("qa-f-due");
-      var timeVal = g("qa-f-time");
-      if (timeVal) dueDT = dueDT + "T" + timeVal;
-      var taskNotes = g("qa-f-notes");
+      var evDate  = g("qa-f-due");
+      var evStart = g("qa-f-time");
+      var startDT = evDate + (evStart ? "T" + evStart : "T00:00");
+      // Compute end datetime
+      var endDT = "";
       if (currentType === "Personal Block") {
         var endTime = g("qa-f-time-end");
-        if (endTime) taskNotes = ("End: " + endTime + (taskNotes ? " — " + taskNotes : ""));
+        endDT = evDate + (endTime ? "T" + endTime : "");
+      } else if (currentType === "Meeting") {
+        var durMins = parseInt(g("qa-f-dur") || "30", 10);
+        var startMs = new Date(startDT).getTime();
+        endDT = !isNaN(startMs) ? new Date(startMs + durMins * 60000).toISOString().slice(0, 16) : "";
+      } else if (currentType === "Callback") {
+        // 15-minute default for callbacks
+        var startMs2 = new Date(startDT).getTime();
+        endDT = !isNaN(startMs2) ? new Date(startMs2 + 15 * 60000).toISOString().slice(0, 16) : "";
       }
-      if (currentType === "Meeting") {
-        var durMin2 = g("qa-f-dur") || "30";
-        taskNotes = ("Duration: " + durMin2 + " min" + (taskNotes ? " — " + taskNotes : ""));
-      }
-      promise = fetch(TASKS_BASE, {
+      // Auto-assign to crew member in crew context; else use form selection
+      var evAssign = g("qa-f-assign") || (IS_CREW ? crewMemberName : "");
+      var evNotes  = g("qa-f-notes") || "";
+      promise = fetch(EVENTS_BASE, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: title2, type: currentType, due_date: dueDT,
-          assigned_to: g("qa-f-assign") || "",
-          priority: getPri(), notes: taskNotes,
+          title: title2, type: currentType,
+          start_datetime: startDT, end_datetime: endDT,
+          assigned_to: evAssign, notes: evNotes,
         }),
       }).then(function (r) { return r.json(); });
     }

@@ -18,6 +18,7 @@ const { handleCreateLead, handleGetLeads, handleGetLeadSnapshot } = require("./a
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
+const { handleGetEvents, handleCreateEvent, handleUpdateEvent } = require("./api/events");
 const { handleDashboard, handleDashboardFinancials } = require("./api/dashboard");
 const { handleBonusEligibility } = require("./api/bonus-eligibility");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
@@ -385,7 +386,66 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateTask(req, res, taskId);
   }
 
-  // Crew task creation (from crew portal FAB)
+  // Crew identity endpoint — returns session info for the logged-in crew member
+  if (req.url === "/api/crew/me" && req.method === "GET") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({
+      ok: true,
+      firstName: crewSess.firstName,
+      lastName:  crewSess.lastName,
+      fullName:  `${crewSess.firstName} ${crewSess.lastName}`,
+    }));
+  }
+
+  // Crew calendar events (timed: Meeting, Callback, Personal Block)
+  if (req.url === "/api/crew/events" && req.method === "GET") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    const techFullName = `${crewSess.firstName} ${crewSess.lastName}`.toLowerCase();
+    try {
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: "Events!A1:J5000",
+      });
+      const values = resp.data.values || [];
+      const events = values.slice(1)
+        .filter(r => r && r.length && String(r[0]||"").trim() !== "" &&
+                     String(r[5]||"").toLowerCase() === techFullName &&
+                     String(r[7]||"").toLowerCase() !== "cancelled")
+        .map(r => ({
+          event_id: r[0]||"", title: r[1]||"", type: r[2]||"Meeting",
+          start_datetime: r[3]||"", end_datetime: r[4]||"",
+          assigned_to: r[5]||"", notes: r[6]||"", status: r[7]||"Scheduled",
+        }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true, events }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
+  }
+
+  if (req.url === "/api/crew/events" && req.method === "POST") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    return handleCreateEvent(req, res, {
+      created_by: `${crewSess.firstName} ${crewSess.lastName}`,
+    });
+  }
+
   if (req.url === "/api/crew/tasks" && req.method === "POST") {
     const crewSess = getCrewSession(req);
     if (!crewSess) {
@@ -803,6 +863,18 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: err.message }));
     }
+  }
+
+  // Calendar events API (timed: Meeting, Callback, Personal Block)
+  if (req.url === "/api/events" && req.method === "GET") {
+    return handleGetEvents(req, res);
+  }
+  if (req.url === "/api/events" && req.method === "POST") {
+    return handleCreateEvent(req, res, { created_by: "admin" });
+  }
+  if (req.url.startsWith("/api/events/") && req.method === "PATCH") {
+    const eventId = req.url.replace("/api/events/", "").split("?")[0];
+    return handleUpdateEvent(req, res, eventId);
   }
 
   if (req.url.startsWith("/api/lead-snapshot") && req.method === "GET") {
