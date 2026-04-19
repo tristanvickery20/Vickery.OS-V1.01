@@ -76,6 +76,7 @@ const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/resc
 const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
 const { handleGetTasks, handleCreateTask, handleUpdateTask } = require("./api/tasks");
+const { handleGCalStatus, handleGCalSaveSettings, handleGCalBootstrap, handleGCalSync } = require("./api/gcal-settings");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -332,7 +333,7 @@ const server = http.createServer(async (req, res) => {
       const sheets = await getSheetsClient();
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.CRM_SHEET_ID,
-        range: "Tasks!A1:K5000",
+        range: "Tasks!A1:L5000",
       });
       const techId = `${crewSess.firstName} ${crewSess.lastName}`.toLowerCase();
       const values = resp.data.values || [];
@@ -367,7 +368,7 @@ const server = http.createServer(async (req, res) => {
       const sheets = await getSheetsClient();
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.CRM_SHEET_ID,
-        range: "Tasks!A1:K5000",
+        range: "Tasks!A1:L5000",
       });
       const values = resp.data.values || [];
       const taskRow = values.find((r, i) => i > 0 && String(r[0]||"") === taskId);
@@ -387,14 +388,14 @@ const server = http.createServer(async (req, res) => {
         req.on("error", reject);
       });
       const row = [...taskRow];
-      while (row.length < 11) row.push("");
+      while (row.length < 12) row.push("");
       if (body.status !== undefined) row[8] = String(body.status);
       if (body.notes  !== undefined) row[7] = String(body.notes);
       const rowIndex = values.findIndex((r, i) => i > 0 && String(r[0]||"") === taskId);
       const sheetRow = rowIndex + 1;
       await sheets.spreadsheets.values.update({
         spreadsheetId: process.env.CRM_SHEET_ID,
-        range: `Tasks!A${sheetRow}:K${sheetRow}`,
+        range: `Tasks!A${sheetRow}:L${sheetRow}`,
         valueInputOption: "RAW",
         requestBody: { majorDimension: "ROWS", values: [row] },
       });
@@ -419,7 +420,7 @@ const server = http.createServer(async (req, res) => {
       const sheets = await getSheetsClient();
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.CRM_SHEET_ID,
-        range: "Events!A1:J5000",
+        range: "Events!A1:K5000",
       });
       const values = resp.data.values || [];
       const events = values.slice(1)
@@ -933,6 +934,27 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateTask(req, res, taskId);
   }
 
+  // Google Calendar sync API (Task #23)
+  if (_epath === "/api/gcal/status" && req.method === "GET") return handleGCalStatus(req, res);
+  if (_epath === "/api/gcal/settings" && req.method === "POST") return handleGCalSaveSettings(req, res);
+  if (_epath === "/api/gcal/bootstrap" && req.method === "POST") return handleGCalBootstrap(req, res);
+  if (_epath === "/api/gcal/sync"      && req.method === "POST") return handleGCalSync(req, res);
+
+  // Google Calendar push webhook (receives change notifications from Google)
+  if (_epath === "/api/gcal-webhook" && req.method === "POST") {
+    // Validate Google push notification headers
+    const channelId = req.headers["x-goog-channel-id"];
+    const resourceState = req.headers["x-goog-resource-state"];
+    if (channelId && resourceState !== "sync") {
+      setImmediate(() => {
+        const { runReverseSync } = require("./lib/googleCalendar");
+        runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
+      });
+    }
+    res.writeHead(200);
+    return res.end();
+  }
+
   if (req.url === "/api/notes" && req.method === "POST") {
     return handleCreateNote(req, res);
   }
@@ -1099,6 +1121,15 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())
     .catch((err) => console.error("[Startup]", err.message));
+
+  // Google Calendar: bootstrap managed calendars on startup (non-blocking)
+  const { bootstrapCalendars, runReverseSync } = require("./lib/googleCalendar");
+  bootstrapCalendars().catch((err) => console.error("[gcal/bootstrap]", err.message));
+
+  // Reverse sync polling — every 15 minutes
+  setInterval(() => {
+    runReverseSync().catch((err) => console.error("[gcal/poll]", err.message));
+  }, 15 * 60 * 1000);
 
   // Start Traccar fleet tracking polls (no-op if env vars absent)
   startTraccarPolling();

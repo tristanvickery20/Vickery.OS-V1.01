@@ -479,6 +479,13 @@
                 <option value="cancelled">Cancelled</option>
               </select>
               <label class="toggle-lbl"><input type="checkbox" id="hideWeekends"> Hide weekends</label>
+              <a id="gcalSyncBadge" href="/crm/settings?tab=gcal" title="Google Calendar Sync"
+                 style="display:none;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 8px;
+                 border-radius:6px;border:1px solid var(--line);text-decoration:none;color:var(--text);
+                 background:rgba(100,150,255,0.08);">
+                <span id="gcalSyncDot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
+                <span id="gcalSyncLabel">GCal</span>
+              </a>
               <button class="cal-btn" id="drawerToggle" style="display:flex;align-items:center;gap:5px;">
                 Unscheduled <span class="unsched-badge" id="unschedBadge">0</span>
               </button>
@@ -2335,6 +2342,27 @@
 
       // Refresh every 5 minutes
       setInterval(loadData, 300000);
+
+      // ── Google Calendar sync badge ────────────────────────────
+      (async function loadGCalBadge() {
+        try {
+          const r = await fetch("/api/gcal/status");
+          if (!r.ok) return;
+          const d = await r.json();
+          const badge = document.getElementById("gcalSyncBadge");
+          const dot   = document.getElementById("gcalSyncDot");
+          const lbl   = document.getElementById("gcalSyncLabel");
+          if (!badge) return;
+          badge.style.display = "flex";
+          if (d.syncEnabled && d.jobsCalendarId) {
+            dot.style.background = "#4ade80";
+            lbl.textContent = "GCal ✓";
+          } else {
+            dot.style.background = "#f97316";
+            lbl.textContent = "GCal off";
+          }
+        } catch { /* skip if endpoint unavailable */ }
+      })();
     })();
     </script>
   </body>

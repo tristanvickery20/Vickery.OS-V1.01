@@ -147,7 +147,15 @@
       <div class="sidebar" id="sidebarMount"></div>
       <main class="main-area">
         <div class="main-content">
-          <a class="ld-back" href="/clients">&#8592; Back to Clients</a>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+            <a class="ld-back" href="/clients">&#8592; Back to Clients</a>
+            <a id="gcalLeadBadge" href="/crm/settings?tab=gcal" title="Google Calendar Sync"
+               style="display:none;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 8px;
+               border-radius:6px;border:1px solid #d1d5db;text-decoration:none;color:#374151;background:#f3f4f6;">
+              <span id="gcalLeadDot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
+              <span id="gcalLeadLabel">GCal</span>
+            </a>
+          </div>
 
           <div id="ldRoot">
             <div class="ld-loading">Loading lead&hellip;</div>
@@ -159,5 +167,26 @@
     <script src="/pages/js/api.js"></script>
     <script src="/pages/js/crm-lead-detail.js"></script>
     <script src="/pages/js/shell.js"></script>
+    <script>
+      (async function loadGCalLeadBadge() {
+        try {
+          const r = await fetch("/api/gcal/status");
+          if (!r.ok) return;
+          const d = await r.json();
+          const badge = document.getElementById("gcalLeadBadge");
+          const dot   = document.getElementById("gcalLeadDot");
+          const lbl   = document.getElementById("gcalLeadLabel");
+          if (!badge) return;
+          badge.style.display = "flex";
+          if (d.syncEnabled && d.jobsCalendarId) {
+            dot.style.background = "#4ade80";
+            lbl.textContent = "GCal syncing";
+          } else {
+            dot.style.background = "#f97316";
+            lbl.textContent = "GCal off";
+          }
+        } catch { /* skip if unavailable */ }
+      })();
+    </script>
   </body>
 </html>

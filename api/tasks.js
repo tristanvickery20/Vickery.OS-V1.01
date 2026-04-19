@@ -1,7 +1,9 @@
 // api/tasks.js — Task object CRUD (Tasks sheet in CRM_SHEET_ID)
+// Task #23: After creation, push to Google Calendar (Vickery Internal) async
 const { getSheetsClient } = require("../lib/sheets");
 
-const COL_COUNT = 11;
+const COL_COUNT = 12; // includes gcal_event_id (col 11)
+const RANGE     = "Tasks!A1:L5000";
 
 function newTaskId() {
   return "TSK-" + Date.now();
@@ -9,19 +11,20 @@ function newTaskId() {
 
 function mapRowToTask(row) {
   const [task_id, title, type, due_date, assigned_to,
-         related_lead_id, priority, notes, status, created_at, created_by] = row;
+         related_lead_id, priority, notes, status, created_at, created_by, gcal_event_id] = row;
   return {
-    task_id:        task_id || "",
-    title:          title || "",
-    type:           type || "Task",
-    due_date:       due_date || "",
-    assigned_to:    assigned_to || "",
-    related_lead_id:related_lead_id || "",
-    priority:       priority || "medium",
-    notes:          notes || "",
-    status:         status || "Open",
-    created_at:     created_at || "",
-    created_by:     created_by || "",
+    task_id:         task_id || "",
+    title:           title || "",
+    type:            type || "Task",
+    due_date:        due_date || "",
+    assigned_to:     assigned_to || "",
+    related_lead_id: related_lead_id || "",
+    priority:        priority || "medium",
+    notes:           notes || "",
+    status:          status || "Open",
+    created_at:      created_at || "",
+    created_by:      created_by || "",
+    gcal_event_id:   gcal_event_id || "",
   };
 }
 
@@ -47,10 +50,7 @@ async function handleGetTasks(req, res) {
 
     let values;
     try {
-      const resp = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Tasks!A1:K5000",
-      });
+      const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: RANGE });
       values = resp.data.values || [];
     } catch {
       values = [];
@@ -84,7 +84,6 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
     const body = await readBody(req);
     const { title, type, due_date, related_lead_id, priority, notes } = body;
     // created_by and assigned_to always come from server overrides when provided
-    // (crew routes force these from session — body values for these fields are ignored)
     const created_by  = serverOverrides.created_by  || "admin";
     const assigned_to = serverOverrides.assigned_to != null ? serverOverrides.assigned_to
                       : (body.assigned_to || "");
@@ -118,12 +117,38 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
           "Open",
           created_at,
           String(created_by),
+          "",  // gcal_event_id — written back async after GCal push
         ]],
       },
     });
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, task_id }));
+
+    // Fire-and-forget: push to Google Calendar (Vickery Internal)
+    const taskType = String(type || "Task");
+    const taskTitle = String(title).trim();
+    setImmediate(async () => {
+      try {
+        const { createGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
+        const result = await createGCalEvent({
+          title:    taskTitle,
+          type:     taskType,
+          startDT:  due_date || new Date().toISOString().slice(0, 10),
+          endDT:    due_date || new Date().toISOString().slice(0, 10),
+          notes:    notes || "",
+          isAllDay: !due_date || due_date.length <= 10,
+        });
+        if (result && result.gcalEventId) {
+          await writeGCalEventIdToSheet({
+            tab: "Tasks", idCol: 0, idValue: task_id,
+            gcalCol: 11, gcalEventId: result.gcalEventId, calendarId: result.calendarId,
+          });
+        }
+      } catch (err) {
+        console.error("[tasks] GCal push error:", err.message);
+      }
+    });
   } catch (err) {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: err.message }));
@@ -138,10 +163,7 @@ async function handleUpdateTask(req, res, taskId) {
 
     let values;
     try {
-      const resp = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Tasks!A1:K5000",
-      });
+      const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: RANGE });
       values = resp.data.values || [];
     } catch {
       values = [];
@@ -157,26 +179,48 @@ async function handleUpdateTask(req, res, taskId) {
     while (row.length < COL_COUNT) row.push("");
 
     // Columns: task_id(0), title(1), type(2), due_date(3), assigned_to(4),
-    //          related_lead_id(5), priority(6), notes(7), status(8), created_at(9), created_by(10)
-    if (body.title          !== undefined) row[1] = String(body.title);
-    if (body.type           !== undefined) row[2] = String(body.type);
-    if (body.due_date       !== undefined) row[3] = String(body.due_date);
-    if (body.assigned_to    !== undefined) row[4] = String(body.assigned_to);
-    if (body.related_lead_id!== undefined) row[5] = String(body.related_lead_id);
-    if (body.priority       !== undefined) row[6] = String(body.priority);
-    if (body.notes          !== undefined) row[7] = String(body.notes);
-    if (body.status         !== undefined) row[8] = String(body.status);
+    //          related_lead_id(5), priority(6), notes(7), status(8), created_at(9),
+    //          created_by(10), gcal_event_id(11)
+    if (body.title          !== undefined) row[1]  = String(body.title);
+    if (body.type           !== undefined) row[2]  = String(body.type);
+    if (body.due_date       !== undefined) row[3]  = String(body.due_date);
+    if (body.assigned_to    !== undefined) row[4]  = String(body.assigned_to);
+    if (body.related_lead_id!== undefined) row[5]  = String(body.related_lead_id);
+    if (body.priority       !== undefined) row[6]  = String(body.priority);
+    if (body.notes          !== undefined) row[7]  = String(body.notes);
+    if (body.status         !== undefined) row[8]  = String(body.status);
 
     const sheetRow = rowIndex + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Tasks!A${sheetRow}:K${sheetRow}`,
+      range: `Tasks!A${sheetRow}:L${sheetRow}`,
       valueInputOption: "RAW",
       requestBody: { majorDimension: "ROWS", values: [row] },
     });
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
+
+    // Fire-and-forget: update GCal if we have a gcal_event_id
+    const gcalRaw = String(row[11] || "");
+    if (gcalRaw && (body.due_date !== undefined || body.title !== undefined || body.status !== undefined)) {
+      setImmediate(async () => {
+        try {
+          const [gcalEventId, calendarId] = gcalRaw.split("|");
+          if (!gcalEventId || !calendarId) return;
+          const { updateGCalEvent } = require("../lib/googleCalendar");
+          await updateGCalEvent({
+            calendarId, gcalEventId,
+            title:   String(row[1]),
+            type:    String(row[2]),
+            startDT: String(row[3]),
+            endDT:   String(row[3]),
+            notes:   String(row[7]),
+            isAllDay: !row[3] || String(row[3]).length <= 10,
+          });
+        } catch (err) { console.error("[tasks] GCal update error:", err.message); }
+      });
+    }
   } catch (err) {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: err.message }));

@@ -482,6 +482,62 @@ async function handleUpdateLead(req, res) {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
 
+      // Fire-and-forget: Google Calendar push when lead becomes Scheduled/In Progress
+      const newStatus = String(row[i_status] || "");
+      if (newStatus === "Scheduled" || newStatus === "In Progress") {
+        const leadName    = String(row[idx("name")]     || "");
+        const leadAddress = String(row[idx("address")]  || "");
+        const jobType     = String(row[idx("job_type")] || "");
+        const leadNotes   = String(row[i_notes]         || "");
+        const schedDate   = String(row[i_scheduled_date]|| "");
+        const durMins     = Number(row[i_duration]      || 120);
+        const gcalColIdx  = idx("gcal_event_id");
+        const existing    = gcalColIdx >= 0 ? String(row[gcalColIdx] || "") : "";
+        const isEstimate  = ["Estimate", "Quote", "Quoted"].includes(String(oldSnap[i_status] || "")) ||
+                            String(data.status || "").includes("Estimate");
+
+        const titlePrefix = isEstimate ? "Estimate" : "Job";
+        const titleSuffix = jobType ? `${jobType} – ${leadName}` : leadName;
+        const gcalTitle = `${titlePrefix} – ${titleSuffix}${leadAddress ? " – " + leadAddress.split(",")[0] : ""}`;
+
+        setImmediate(async () => {
+          try {
+            const { createJobGCalEvent, updateGCalEvent, writeGCalEventIdToSheet, loadCalendarIds } = require("../lib/googleCalendar");
+            if (existing) {
+              const [gcalEventId, calendarId] = existing.split("|");
+              if (gcalEventId && calendarId && schedDate) {
+                await updateGCalEvent({
+                  calendarId, gcalEventId,
+                  title:   gcalTitle,
+                  type:    titlePrefix.toLowerCase(),
+                  startDT: schedDate,
+                  endDT:   null,
+                  notes:   leadNotes,
+                  isAllDay: false,
+                });
+              }
+            } else {
+              const result = await createJobGCalEvent({
+                title:           gcalTitle,
+                status:          newStatus,
+                scheduledDate:   schedDate,
+                durationMinutes: durMins,
+                address:         leadAddress,
+                notes:           leadNotes,
+              });
+              if (result && result.gcalEventId && gcalColIdx >= 0) {
+                await writeGCalEventIdToSheet({
+                  tab: "Leads", idCol: idx("id"), idValue: id,
+                  gcalCol: gcalColIdx, gcalEventId: result.gcalEventId, calendarId: result.calendarId,
+                });
+              }
+            }
+          } catch (gcalErr) {
+            console.error("[leads-update] GCal push error:", gcalErr.message);
+          }
+        });
+      }
+
       // Audit (only changed fields we care about)
       const fieldNames = [
         "status",
