@@ -731,13 +731,25 @@ const server = http.createServer(async (req, res) => {
       const tokenOk = storedToken
         ? channelToken === storedToken
         : !ids.enabled;
-      if (tokenOk) {
+      // Additionally validate channel ID against stored watch-channel metadata to
+      // block spoofed requests that know the token but use an unrecognised channel.
+      let channelIdOk = false;
+      for (const key of ["gcal_watch_channel_jobs", "gcal_watch_channel_internal"]) {
+        try {
+          const meta = ids[key] ? JSON.parse(ids[key]) : null;
+          if (meta && meta.channelId && meta.channelId === channelId) { channelIdOk = true; break; }
+        } catch { /* ignore parse errors */ }
+      }
+      // If no watch channels are stored yet, skip channel-ID check so polling still works.
+      const storedChannelExists = ["gcal_watch_channel_jobs", "gcal_watch_channel_internal"].some(k => ids[k]);
+      if (tokenOk && (!storedChannelExists || channelIdOk)) {
         setImmediate(() => {
           const { runReverseSync } = require("./lib/googleCalendar");
           runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
         });
       } else {
-        console.warn("[gcal-webhook] Rejected: channel token mismatch");
+        if (!tokenOk) console.warn("[gcal-webhook] Rejected: channel token mismatch");
+        if (storedChannelExists && !channelIdOk) console.warn("[gcal-webhook] Rejected: unknown channel ID", channelId);
       }
     }
     res.writeHead(200);
