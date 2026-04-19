@@ -281,7 +281,7 @@
       '</div>';
       html += fld("Duration (min)", inp("qa-f-dur", "number", "60", "60", "min='15' max='480' step='15'"));
       html += fld("Notes", textarea("qa-f-notes", "What work is needed?"));
-      html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders auto-scheduled: 24h before and morning-of.</div>';
+      html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders flagged: 24h before and 1h before.</div>';
 
     } else if (currentType === "Job") {
       html += fld("Link Existing Lead (optional)",
@@ -430,7 +430,8 @@
         }),
       }).then(function (r) { return r.json(); });
 
-    } else if (currentType === "Estimate" || currentType === "Job") {
+    } else if ((currentType === "Estimate" || currentType === "Job") && !IS_CREW) {
+      // CRM context: create a proper lead record
       var name = g("qa-f-name");
       if (!name) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
       var durMin = g("qa-f-dur") || (currentType === "Estimate" ? "60" : "120");
@@ -439,6 +440,9 @@
       var schedDT = schedDate + (schedTime ? "T" + schedTime : "");
       var baseNotes = g("qa-f-notes");
       var notesWithDur = (baseNotes ? baseNotes + "\n" : "") + "Duration: " + durMin + " min";
+      if (currentType === "Estimate") {
+        notesWithDur += "\nreminders:24h,1h";
+      }
       promise = fetch("/api/leads", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -447,6 +451,31 @@
           status: "New", notes: notesWithDur,
           scheduled_date: schedDT,
           assigned_to: currentType === "Job" ? g("qa-f-assign") : "",
+        }),
+      }).then(function (r) { return r.json(); });
+
+    } else if ((currentType === "Estimate" || currentType === "Job") && IS_CREW) {
+      // Crew context: post to crew task endpoint as a flagged work item
+      // (CRM admin converts to full lead — crew cannot access /api/leads directly)
+      var name2 = g("qa-f-name");
+      if (!name2) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
+      var durMin2 = g("qa-f-dur") || (currentType === "Estimate" ? "60" : "120");
+      var sDate = g("qa-f-due");
+      var sTime = g("qa-f-time");
+      var sDT = sDate + (sTime ? "T" + sTime : "");
+      var crewNotesBase = "Client: " + name2;
+      if (g("qa-f-phone")) crewNotesBase += " | Ph: " + g("qa-f-phone");
+      if (g("qa-f-addr"))  crewNotesBase += " | Addr: " + g("qa-f-addr");
+      crewNotesBase += " | Duration: " + durMin2 + " min";
+      if (currentType === "Estimate") crewNotesBase += "\nreminders:24h,1h";
+      if (g("qa-f-notes")) crewNotesBase += "\n" + g("qa-f-notes");
+      promise = fetch(TASKS_BASE, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: currentType + " — " + name2,
+          type: currentType, due_date: sDT,
+          assigned_to: g("qa-f-assign") || "",
+          priority: getPri(), notes: crewNotesBase,
         }),
       }).then(function (r) { return r.json(); });
 
