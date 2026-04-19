@@ -379,11 +379,31 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(403, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ ok: false, error: "Not authorized to update this task" }));
       }
+      // Crew can only update status and notes — no other field mutations allowed
+      const body = await new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on("data", (c) => chunks.push(c));
+        req.on("end", () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString() || "{}")); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const row = [...taskRow];
+      while (row.length < 11) row.push("");
+      if (body.status !== undefined) row[8] = String(body.status);
+      if (body.notes  !== undefined) row[7] = String(body.notes);
+      const rowIndex = values.findIndex((r, i) => i > 0 && String(r[0]||"") === taskId);
+      const sheetRow = rowIndex + 1;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: `Tasks!A${sheetRow}:K${sheetRow}`,
+        valueInputOption: "RAW",
+        requestBody: { majorDimension: "ROWS", values: [row] },
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true }));
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: err.message }));
     }
-    return handleUpdateTask(req, res, taskId);
   }
 
   // Crew calendar events (timed: Meeting, Callback, Personal Block)

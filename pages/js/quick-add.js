@@ -175,6 +175,24 @@
   ];
   var TYPES = IS_CREW ? TYPES_CREW : TYPES_CRM;
 
+  // Add minutes to a local naive datetime string (YYYY-MM-DDTHH:MM) without UTC conversion
+  function addMinutesToLocalDT(localDT, minutes) {
+    var parts = localDT.split("T");
+    if (parts.length < 2 || !parts[0] || !parts[1]) return "";
+    var datePart = parts[0]; var timePart = parts[1];
+    var hm = timePart.split(":"); if (hm.length < 2) return "";
+    var totalMins = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10) + minutes;
+    var extraDays = Math.floor(totalMins / 1440); totalMins = totalMins % 1440;
+    var endH = Math.floor(totalMins / 60); var endM = totalMins % 60;
+    var endDate = datePart;
+    if (extraDays > 0) {
+      var d = new Date(datePart + "T00:00:00");
+      d.setDate(d.getDate() + extraDays);
+      endDate = d.toISOString().slice(0, 10);
+    }
+    return endDate + "T" + String(endH).padStart(2,"0") + ":" + String(endM).padStart(2,"0");
+  }
+
   function tomorrowStr() {
     const d = new Date(); d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
@@ -528,12 +546,9 @@
         endDT = evDate + (endTime ? "T" + endTime : "");
       } else if (currentType === "Meeting") {
         var durMins = parseInt(g("qa-f-dur") || "30", 10);
-        var startMs = new Date(startDT).getTime();
-        endDT = !isNaN(startMs) ? new Date(startMs + durMins * 60000).toISOString().slice(0, 16) : "";
+        endDT = addMinutesToLocalDT(startDT, durMins);
       } else if (currentType === "Callback") {
-        // 15-minute default for callbacks
-        var startMs2 = new Date(startDT).getTime();
-        endDT = !isNaN(startMs2) ? new Date(startMs2 + 15 * 60000).toISOString().slice(0, 16) : "";
+        endDT = addMinutesToLocalDT(startDT, 15);
       }
       // Auto-assign to crew member in crew context; else use form selection
       var evAssign = g("qa-f-assign") || (IS_CREW ? crewMemberName : "");
