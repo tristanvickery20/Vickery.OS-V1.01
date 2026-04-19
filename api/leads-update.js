@@ -1,5 +1,5 @@
 // api/leads-update.js
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient, colToLetter } = require("../lib/sheets");
 const { logAuditBatch, genRequestId } = require("../lib/audit");
 
 // Promotion: when a Lead enters any of these stages, it becomes a "Client" record.
@@ -109,7 +109,7 @@ async function readTabRaw(sheets, spreadsheetId, tabName) {
   try {
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${tabName}!A1:Z5000`,
+      range: `${tabName}!A1:AZ5000`, // AZ covers 52 columns — handles all schema extensions
     });
     const values = resp.data.values || [];
     const headers = values[0] || [];
@@ -288,7 +288,7 @@ async function generateJobNumberFromLeads(sheets, spreadsheetId) {
   // Look at Leads job_number column values to find next J-####
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: "Leads!A1:Z5000",
+    range: "Leads!A1:AZ5000",
   });
   const values = resp.data.values || [];
   if (values.length < 2) return "J-0001";
@@ -320,7 +320,7 @@ async function handleUpdateLead(req, res) {
 
       const getResp = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Leads!A1:Z5000",
+        range: "Leads!A1:AZ5000",
       });
 
       const values = getResp.data.values || [];
@@ -469,7 +469,7 @@ async function handleUpdateLead(req, res) {
 
       // Write back full row width (to include new columns)
       const sheetRowNumber = foundIdx + 1;
-      const endColLetter = String.fromCharCode("A".charCodeAt(0) + Math.min(headers.length - 1, 25)); // up to Z
+      const endColLetter = colToLetter(headers.length - 1); // handles AA, AE, etc.
       const range = `Leads!A${sheetRowNumber}:${endColLetter}${sheetRowNumber}`;
 
       await sheets.spreadsheets.values.update({
@@ -578,7 +578,7 @@ async function handleUpdateLead(req, res) {
               }
               // Always persist the cleared gcal_event_id to the sheet regardless of delete outcome
               try {
-                const gcalColLetter = String.fromCharCode("A".charCodeAt(0) + gcalColIdx);
+                const gcalColLetter = colToLetter(gcalColIdx); // handles AE and beyond
                 await sheets.spreadsheets.values.update({
                   spreadsheetId,
                   range: `Leads!${gcalColLetter}${sheetRowNumber}`,
