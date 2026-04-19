@@ -506,12 +506,16 @@ async function handleUpdateLead(req, res) {
             if (existing) {
               const [gcalEventId, calendarId] = existing.split("|");
               if (gcalEventId && calendarId && schedDate) {
+                // Compute endDT from startDT + durMins to preserve event duration on update
+                const startMs = new Date(schedDate).getTime();
+                const endDT   = isNaN(startMs) ? null
+                  : new Date(startMs + durMins * 60 * 1000).toISOString().slice(0, 16);
                 await updateGCalEvent({
                   calendarId, gcalEventId,
                   title:   gcalTitle,
                   type:    titlePrefix.toLowerCase(),
                   startDT: schedDate,
-                  endDT:   null,
+                  endDT,
                   notes:   leadNotes,
                   isAllDay: false,
                 });
