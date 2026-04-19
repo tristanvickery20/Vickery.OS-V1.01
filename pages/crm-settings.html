@@ -609,7 +609,7 @@
               const r = await fetch("/api/leads/status", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lead_id: btn.dataset.id, status: "Cancelled" }),
+                body: JSON.stringify({ id: btn.dataset.id, status: "Cancelled" }),
               });
               if (r.ok) { div.remove(); } else { btn.textContent = "Error"; btn.disabled = false; }
             });

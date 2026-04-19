@@ -430,7 +430,7 @@ async function handleUpdateLeadStatus(req, res) {
         data = {};
       }
 
-      const id = String(data.id || "").trim();
+      const id = String(data.id || data.lead_id || "").trim();
       const newStatus = String(data.status || "").trim();
 
       if (!id) return json(res, 400, { ok: false, error: "Missing id" });
