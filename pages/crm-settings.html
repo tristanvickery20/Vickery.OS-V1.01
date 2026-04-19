@@ -573,7 +573,9 @@
               <span style="color:hsl(var(--muted-foreground));margin-left:6px;">event · ${e.start_datetime ? e.start_datetime.slice(0,10) : "—"}</span></div>
               <div style="display:flex;gap:6px;">
                 <button style="${btnStyleRestore}" data-id="${e.event_id}" class="evt-restore-btn">Restore</button>
-                <button style="${btnStyleCancel}"  data-id="${e.event_id}" class="evt-cancel-btn">Keep Cancelled</button>
+                <button style="${btnStyleCancel}"  data-id="${e.event_id}"
+                  data-notes="${(e.notes || "").replace(/"/g, "&quot;")}"
+                  class="evt-cancel-btn">Keep Cancelled</button>
               </div>`;
             div.querySelector(".evt-restore-btn").addEventListener("click", async (ev) => {
               const btn = ev.currentTarget;
@@ -584,12 +586,8 @@
             div.querySelector(".evt-cancel-btn").addEventListener("click", async (ev) => {
               const btn = ev.currentTarget;
               btn.disabled = true; btn.textContent = "Saving…";
-              // Fetch current event to preserve existing notes — only append resolution marker
-              let existingNotes = "";
-              try {
-                const g = await fetch(`/api/events/${btn.dataset.id}`);
-                if (g.ok) { const gd = await g.json(); existingNotes = (gd.notes || gd.event?.notes || "").trim(); }
-              } catch { /* proceed with empty */ }
+              // Append resolution marker to existing notes (from data attribute — no extra fetch needed)
+              const existingNotes = (btn.dataset.notes || "").trim();
               const resolvedNotes = (existingNotes ? existingNotes + "\n" : "") + "[GCal-Resolved] Kept cancelled.";
               const r = await fetch(`/api/events/${btn.dataset.id}`, {
                 method: "PATCH",
