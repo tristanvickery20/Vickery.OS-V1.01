@@ -542,6 +542,31 @@ async function handleUpdateLead(req, res) {
         });
       }
 
+      // GCal cleanup: if lead is moving OUT of Scheduled/In Progress → remove GCal event
+      const oldStatus = String(oldSnap[i_status] || "").trim();
+      const wasScheduled = oldStatus === "Scheduled" || oldStatus === "In Progress";
+      const isNowUnscheduled = newStatus !== "Scheduled" && newStatus !== "In Progress" && newStatus !== "";
+      if (wasScheduled && isNowUnscheduled) {
+        const gcalColIdx = idx("gcal_event_id");
+        const existing = gcalColIdx >= 0 ? String(oldSnap[gcalColIdx] || "") : "";
+        if (existing) {
+          const [gcalEventId, calendarId] = existing.split("|");
+          if (gcalEventId && calendarId) {
+            setImmediate(async () => {
+              try {
+                const { deleteGCalEvent } = require("../lib/googleCalendar");
+                await deleteGCalEvent({ calendarId, gcalEventId });
+                // Clear the stored event ID in the sheet row
+                if (gcalColIdx >= 0) row[gcalColIdx] = "";
+                console.log(`[leads-update] Lead ${id} → ${newStatus}: GCal event deleted`);
+              } catch (gcalErr) {
+                console.error("[leads-update] GCal delete error:", gcalErr.message);
+              }
+            });
+          }
+        }
+      }
+
       // Audit (only changed fields we care about)
       const fieldNames = [
         "status",
