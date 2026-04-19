@@ -333,16 +333,16 @@ const server = http.createServer(async (req, res) => {
         spreadsheetId: process.env.CRM_SHEET_ID,
         range: "Tasks!A1:K5000",
       });
-      const techId = `${crewSess.firstName} ${crewSess.lastName}`;
+      const techId = `${crewSess.firstName} ${crewSess.lastName}`.toLowerCase();
       const values = resp.data.values || [];
       const tasks = values.slice(1)
         .filter(r => r && r.length && String(r[0]||"").trim() !== "" &&
                      String(r[8]||"").toLowerCase() !== "done" &&
-                     String(r[4]||"").toLowerCase().includes(crewSess.firstName.toLowerCase()))
+                     String(r[4]||"").toLowerCase() === techId)
         .map(r => ({
           task_id: r[0]||"", title: r[1]||"", type: r[2]||"Task",
           due_date: r[3]||"", assigned_to: r[4]||"",
-          priority: r[6]||"med", notes: r[7]||"", status: r[8]||"Open",
+          priority: r[6]||"medium", notes: r[7]||"", status: r[8]||"Open",
         }));
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: true, tasks }));
@@ -358,7 +358,30 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
     }
-    const taskId = req.url.replace("/api/crew/tasks/", "").split("?")[0];
+    const taskId  = req.url.replace("/api/crew/tasks/", "").split("?")[0];
+    const techId  = `${crewSess.firstName} ${crewSess.lastName}`.toLowerCase();
+    // Verify task is assigned to this crew member before allowing update
+    try {
+      const { getSheetsClient } = require("./lib/sheets");
+      const sheets = await getSheetsClient();
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.CRM_SHEET_ID,
+        range: "Tasks!A1:K5000",
+      });
+      const values = resp.data.values || [];
+      const taskRow = values.find((r, i) => i > 0 && String(r[0]||"") === taskId);
+      if (!taskRow) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "Task not found" }));
+      }
+      if (String(taskRow[4]||"").toLowerCase() !== techId) {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "Not authorized to update this task" }));
+      }
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: err.message }));
+    }
     return handleUpdateTask(req, res, taskId);
   }
 

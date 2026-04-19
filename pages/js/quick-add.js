@@ -60,7 +60,7 @@
     "background:rgba(255,255,255,.04);color:#64748b;font-size:12px;font-weight:700;",
     "cursor:pointer;text-align:center;font-family:inherit;transition:all .15s;}",
     ".qa-pri.sel.low{background:rgba(100,116,139,.25);border-color:#64748b;color:#94a3b8;}",
-    ".qa-pri.sel.med{background:rgba(234,179,8,.2);border-color:#ca8a04;color:#fbbf24;}",
+    ".qa-pri.sel.medium{background:rgba(234,179,8,.2);border-color:#ca8a04;color:#fbbf24;}",
     ".qa-pri.sel.high{background:rgba(239,68,68,.2);border-color:#dc2626;color:#f87171;}",
     /* Submit */
     ".qa-submit{width:100%;padding:13px;border-radius:12px;border:none;background:#2d6ae0;",
@@ -95,7 +95,7 @@
     ".qa-type-badge.Personal\\\ Block{background:rgba(71,85,105,.35);color:#94a3b8;}",
     ".qa-pri-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}",
     ".qa-pri-dot.high{background:#f87171;}",
-    ".qa-pri-dot.med{background:#fbbf24;}",
+    ".qa-pri-dot.medium{background:#fbbf24;}",
     ".qa-pri-dot.low{background:#94a3b8;}",
     ".qa-tasks-empty{color:#475569;font-size:13px;text-align:center;padding:16px 0;}",
     ".qa-tasks-loading{color:#475569;font-size:13px;padding:12px 0;}",
@@ -158,6 +158,15 @@
   ];
   var TYPES = IS_CREW ? TYPES_CREW : TYPES_CRM;
 
+  function tomorrowStr() {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function nextHourEndStr() {
+    const d = new Date(); d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() + 2);
+    return `${String(d.getHours()).padStart(2,"0")}:00`;
+  }
   function todayStr() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -244,7 +253,7 @@
         fld("Due Date", inp("qa-f-due", "date", "", todayStr())) +
         fld("Priority", '<div class="qa-priority-row">' +
           '<button type="button" class="qa-pri low" data-pri="low">Low</button>' +
-          '<button type="button" class="qa-pri med sel" data-pri="med">Med</button>' +
+          '<button type="button" class="qa-pri medium sel" data-pri="medium">Medium</button>' +
           '<button type="button" class="qa-pri high" data-pri="high">High</button>' +
         '</div>') +
       '</div>';
@@ -259,7 +268,13 @@
         fld("Job Type", '<select id="qa-f-jtype" class="qa-select"><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Panel Upgrade">Panel Upgrade</option><option value="EV Charger">EV Charger</option><option value="Other">Other</option></select>') +
       '</div>';
       html += fld("Address", inp("qa-f-addr", "text", "Street address…", ""));
+      html += '<div class="qa-row">' +
+        fld("Est. Date", inp("qa-f-due", "date", "", tomorrowStr())) +
+        fld("Time", inp("qa-f-time", "time", "", "09:00")) +
+      '</div>';
+      html += fld("Duration (min)", inp("qa-f-dur", "number", "60", "60", "min='15' max='480' step='15'"));
       html += fld("Notes", textarea("qa-f-notes", "What work is needed?"));
+      html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders auto-scheduled: 24h before and morning-of.</div>';
 
     } else if (currentType === "Job") {
       html += fld("Client Name *", inp("qa-f-name", "text", "Full name…", "", "autocomplete='off'"));
@@ -270,6 +285,10 @@
       html += fld("Address", inp("qa-f-addr", "text", "Street address…", ""));
       html += '<div class="qa-row">' +
         fld("Scheduled Date", inp("qa-f-due", "date", "", todayStr())) +
+        fld("Time", inp("qa-f-time", "time", "", "08:00")) +
+      '</div>';
+      html += '<div class="qa-row">' +
+        fld("Duration (min)", inp("qa-f-dur", "number", "120", "120", "min='15' max='960' step='15'")) +
         fld("Assign To", '<select id="qa-f-assign" class="qa-select"><option value="">Loading…</option></select>') +
       '</div>';
       html += fld("Notes", textarea("qa-f-notes", "Additional notes…"));
@@ -278,8 +297,9 @@
       html += fld("Meeting Title *", inp("qa-f-title", "text", "e.g. Site walkthrough with Smith…", "", "autocomplete='off'"));
       html += '<div class="qa-row">' +
         fld("Date *", inp("qa-f-due", "date", "", todayStr())) +
-        fld("Time", inp("qa-f-time", "time", "", nextHourStr())) +
+        fld("Start Time", inp("qa-f-time", "time", "", nextHourStr())) +
       '</div>';
+      html += fld("Duration (min)", inp("qa-f-dur", "number", "30", "30", "min='15' max='480' step='15'"));
       html += fld("Assign To", '<select id="qa-f-assign" class="qa-select"><option value="">Loading…</option></select>');
       html += fld("Notes / Attendees", textarea("qa-f-notes", "Who is attending? Any agenda items?"));
 
@@ -293,9 +313,10 @@
 
     } else if (currentType === "Personal Block") {
       html += fld("Description *", inp("qa-f-title", "text", "e.g. Dentist, Family event…", "", "autocomplete='off'"));
+      html += fld("Date *", inp("qa-f-due", "date", "", todayStr()));
       html += '<div class="qa-row">' +
-        fld("Date *", inp("qa-f-due", "date", "", todayStr())) +
         fld("Start Time", inp("qa-f-time", "time", "", nextHourStr())) +
+        fld("End Time", inp("qa-f-time-end", "time", "", nextHourEndStr())) +
       '</div>';
       html += fld("Notes", textarea("qa-f-notes", "Any extra details…"));
     }
@@ -340,7 +361,7 @@
     var g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
     var getPri = function () {
       var sel = document.querySelector(".qa-pri.sel");
-      return sel ? sel.dataset.pri : "med";
+      return sel ? sel.dataset.pri : "medium";
     };
 
     var promise;
@@ -361,13 +382,19 @@
     } else if (currentType === "Estimate" || currentType === "Job") {
       var name = g("qa-f-name");
       if (!name) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
+      var durMin = g("qa-f-dur") || (currentType === "Estimate" ? "60" : "120");
+      var schedDate = g("qa-f-due");
+      var schedTime = g("qa-f-time");
+      var schedDT = schedDate + (schedTime ? "T" + schedTime : "");
+      var baseNotes = g("qa-f-notes");
+      var notesWithDur = (baseNotes ? baseNotes + "\n" : "") + "Duration: " + durMin + " min";
       promise = fetch("/api/leads", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name, phone: g("qa-f-phone"),
           address: g("qa-f-addr"), job_type: g("qa-f-jtype"),
-          status: "New", notes: g("qa-f-notes"),
-          scheduled_date: currentType === "Job" ? g("qa-f-due") : "",
+          status: "New", notes: notesWithDur,
+          scheduled_date: schedDT,
           assigned_to: currentType === "Job" ? g("qa-f-assign") : "",
         }),
       }).then(function (r) { return r.json(); });
@@ -379,12 +406,21 @@
       var dueDT = g("qa-f-due");
       var timeVal = g("qa-f-time");
       if (timeVal) dueDT = dueDT + "T" + timeVal;
+      var taskNotes = g("qa-f-notes");
+      if (currentType === "Personal Block") {
+        var endTime = g("qa-f-time-end");
+        if (endTime) taskNotes = ("End: " + endTime + (taskNotes ? " — " + taskNotes : ""));
+      }
+      if (currentType === "Meeting") {
+        var durMin2 = g("qa-f-dur") || "30";
+        taskNotes = ("Duration: " + durMin2 + " min" + (taskNotes ? " — " + taskNotes : ""));
+      }
       promise = fetch(TASKS_BASE, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title2, type: currentType, due_date: dueDT,
           assigned_to: g("qa-f-assign") || "",
-          priority: "med", notes: g("qa-f-notes"),
+          priority: getPri(), notes: taskNotes,
         }),
       }).then(function (r) { return r.json(); });
     }
@@ -484,7 +520,7 @@
 
   function renderTaskItem(t) {
     var isDone = t.status === "Done";
-    var priDot = '<span class="qa-pri-dot ' + (t.priority||"med") + '"></span>';
+    var priDot = '<span class="qa-pri-dot ' + (t.priority||"medium") + '"></span>';
     var badge  = '<span class="qa-type-badge ' + esc(t.type) + '">' + esc(t.type) + '</span>';
     var dueLabel = t.due_date ? formatDueLabel(t.due_date) : "";
     var meta = badge + priDot + esc(t.assigned_to || "Unassigned");
