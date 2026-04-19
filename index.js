@@ -729,7 +729,10 @@ const server = http.createServer(async (req, res) => {
       const { loadCalendarIds } = require("./lib/googleCalendar");
       const ids = await loadCalendarIds().catch(() => ({}));
       const storedToken = ids.webhookToken || "";
-      const tokenOk = !storedToken || !channelToken || channelToken === storedToken;
+      // If a webhook token has been generated, the notification MUST carry a matching
+      // x-goog-channel-token.  A missing or mismatched token is rejected (silent 200 to
+      // prevent Google retrying).  Pre-bootstrap (no storedToken) all notifications pass.
+      const tokenOk = !storedToken || channelToken === storedToken;
       if (tokenOk) {
         setImmediate(() => {
           const { runReverseSync } = require("./lib/googleCalendar");
