@@ -689,6 +689,20 @@ const server = http.createServer(async (req, res) => {
     return handleMapboxConfig(req, res);
   }
 
+  // Google Calendar push webhook — must be BEFORE auth guard (Google doesn't send CRM cookies)
+  if (_epath === "/api/gcal-webhook" && req.method === "POST") {
+    const channelId     = req.headers["x-goog-channel-id"];
+    const resourceState = req.headers["x-goog-resource-state"];
+    if (channelId && resourceState && resourceState !== "sync") {
+      setImmediate(() => {
+        const { runReverseSync } = require("./lib/googleCalendar");
+        runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
+      });
+    }
+    res.writeHead(200);
+    return res.end();
+  }
+
   // AUTH GUARD: protected pages + remaining /api/*
   if (
     req.url === "/clients" ||
@@ -943,21 +957,6 @@ const server = http.createServer(async (req, res) => {
   if (_epath === "/api/gcal/settings" && req.method === "POST") return handleGCalSaveSettings(req, res);
   if (_epath === "/api/gcal/bootstrap" && req.method === "POST") return handleGCalBootstrap(req, res);
   if (_epath === "/api/gcal/sync"      && req.method === "POST") return handleGCalSync(req, res);
-
-  // Google Calendar push webhook (receives change notifications from Google)
-  if (_epath === "/api/gcal-webhook" && req.method === "POST") {
-    // Validate Google push notification headers
-    const channelId = req.headers["x-goog-channel-id"];
-    const resourceState = req.headers["x-goog-resource-state"];
-    if (channelId && resourceState !== "sync") {
-      setImmediate(() => {
-        const { runReverseSync } = require("./lib/googleCalendar");
-        runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
-      });
-    }
-    res.writeHead(200);
-    return res.end();
-  }
 
   if (req.url === "/api/notes" && req.method === "POST") {
     return handleCreateNote(req, res);
