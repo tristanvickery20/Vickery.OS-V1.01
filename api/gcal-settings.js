@@ -4,6 +4,7 @@ const {
   saveGCalSettings,
   bootstrapCalendars,
   runReverseSync,
+  verifyPersonalCalendar,
 } = require("../lib/googleCalendar");
 
 async function readBody(req) {
@@ -64,9 +65,22 @@ async function handleGCalSync(req, res) {
   }
 }
 
+// POST /api/gcal/verify-personal — test service account freebusy access to personal calendar
+async function handleGCalVerifyPersonal(req, res) {
+  try {
+    const body = await readBody(req);
+    const calId = body.calendarId || "";
+    const result = await verifyPersonalCalendar(calId);
+    json(res, 200, { ok: true, ...result });
+  } catch (err) {
+    json(res, 400, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGCalStatus,
   handleGCalSaveSettings,
   handleGCalBootstrap,
   handleGCalSync,
+  handleGCalVerifyPersonal,
 };

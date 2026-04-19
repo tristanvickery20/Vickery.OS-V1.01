@@ -178,12 +178,23 @@
           const lbl   = document.getElementById("gcalLeadLabel");
           if (!badge) return;
           badge.style.display = "flex";
-          if (d.enabled && d.jobsCalId) {
-            dot.style.background = "#4ade80";
-            lbl.textContent = "GCal syncing";
-          } else {
-            dot.style.background = "#f97316";
+          if (!d.enabled) {
+            dot.style.background = "#94a3b8";
             lbl.textContent = "GCal off";
+            badge.title = "Google Calendar sync is disabled — click to configure";
+          } else if (d.enabled && !d.jobsCalId) {
+            dot.style.background = "#ef4444";
+            lbl.textContent = "GCal Error";
+            badge.title = "Sync enabled but calendars not bootstrapped — click to fix";
+          } else {
+            dot.style.background = "#4ade80";
+            let ago = "";
+            if (d.lastSyncAt) {
+              const mins = Math.round((Date.now() - new Date(d.lastSyncAt).getTime()) / 60000);
+              ago = mins < 2 ? " · just now" : mins < 60 ? ` · ${mins}m ago` : ` · ${Math.round(mins/60)}h ago`;
+            }
+            lbl.textContent = "GCal syncing" + ago;
+            badge.title = d.lastSyncAt ? ("Last synced: " + new Date(d.lastSyncAt).toLocaleString()) : "Google Calendar sync active";
           }
         } catch { /* skip if unavailable */ }
       })();

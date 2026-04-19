@@ -76,7 +76,7 @@ const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/resc
 const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
 const { handleGetTasks, handleCreateTask, handleUpdateTask } = require("./api/tasks");
-const { handleGCalStatus, handleGCalSaveSettings, handleGCalBootstrap, handleGCalSync } = require("./api/gcal-settings");
+const { handleGCalStatus, handleGCalSaveSettings, handleGCalBootstrap, handleGCalSync, handleGCalVerifyPersonal } = require("./api/gcal-settings");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -953,10 +953,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Google Calendar sync API (Task #23)
-  if (_epath === "/api/gcal/status" && req.method === "GET") return handleGCalStatus(req, res);
-  if (_epath === "/api/gcal/settings" && req.method === "POST") return handleGCalSaveSettings(req, res);
-  if (_epath === "/api/gcal/bootstrap" && req.method === "POST") return handleGCalBootstrap(req, res);
-  if (_epath === "/api/gcal/sync"      && req.method === "POST") return handleGCalSync(req, res);
+  if (_epath === "/api/gcal/status"          && req.method === "GET")  return handleGCalStatus(req, res);
+  if (_epath === "/api/gcal/settings"        && req.method === "POST") return handleGCalSaveSettings(req, res);
+  if (_epath === "/api/gcal/bootstrap"       && req.method === "POST") return handleGCalBootstrap(req, res);
+  if (_epath === "/api/gcal/sync"            && req.method === "POST") return handleGCalSync(req, res);
+  if (_epath === "/api/gcal/verify-personal" && req.method === "POST") return handleGCalVerifyPersonal(req, res);
 
   if (req.url === "/api/notes" && req.method === "POST") {
     return handleCreateNote(req, res);

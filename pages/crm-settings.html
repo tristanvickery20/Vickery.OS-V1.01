@@ -140,15 +140,27 @@
               </div>
 
               <div class="settings-card">
-                <div class="settings-card-title">Personal Calendar ID</div>
+                <div class="settings-card-title">Connect Personal Calendar</div>
                 <div class="settings-card-sub">
-                  Share your personal Google Calendar with the service account email above, then paste your
-                  personal calendar ID here. Used to block out unavailable times when suggesting job slots.
-                  Find it in Google Calendar → Settings → your calendar → Calendar ID.
+                  The Personal calendar is your own Google Calendar — the service account reads it as <em>read-only</em>
+                  to block out your unavailable times when suggesting job slots. Google does not allow service accounts
+                  to create or own personal calendars, so you connect it in three steps:
+                  <ol style="margin:10px 0 4px 16px;padding:0;line-height:1.7;">
+                    <li>Copy the <strong>Service Account Email</strong> shown in the status grid above.</li>
+                    <li>In <a href="https://calendar.google.com" target="_blank" rel="noopener" style="color:hsl(var(--primary));">Google Calendar</a>
+                        → Settings → your personal calendar → <em>Share with specific people</em> → add that email
+                        with <strong>See only free/busy (hide details)</strong> permission.</li>
+                    <li>Copy your personal Calendar ID (Settings → your calendar → scroll to bottom) and paste it below,
+                        then click <strong>Test Connection</strong>.</li>
+                  </ol>
                 </div>
                 <div class="form-row">
                   <label class="form-label" for="gcalPersonalId">Personal Calendar ID</label>
                   <input class="form-input" type="text" id="gcalPersonalId" placeholder="yourname@gmail.com or long-id@group.calendar.google.com" />
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                  <button class="btn-secondary" id="gcalVerifyPersonalBtn" style="font-size:12px;padding:5px 12px;">Test Connection</button>
+                  <span id="gcalVerifyPersonalMsg" style="font-size:12px;"></span>
                 </div>
               </div>
 
@@ -380,6 +392,35 @@
         } catch (err) {
           msg.textContent = "Error: " + err.message;
           msg.style.color = "#7f1d1d";
+        }
+      });
+
+      document.getElementById("gcalVerifyPersonalBtn").addEventListener("click", async () => {
+        const calId = document.getElementById("gcalPersonalId").value.trim();
+        const msg   = document.getElementById("gcalVerifyPersonalMsg");
+        const btn   = document.getElementById("gcalVerifyPersonalBtn");
+        btn.disabled = true;
+        msg.textContent = "Testing…";
+        msg.style.color = "";
+        try {
+          const r = await fetch("/api/gcal/verify-personal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ calendarId: calId }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "✓ Connected — service account can read this calendar.";
+            msg.style.color = "#166534";
+          } else {
+            msg.textContent = "✗ " + (d.error || "Access denied — check sharing settings.");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message;
+          msg.style.color = "#7f1d1d";
+        } finally {
+          btn.disabled = false;
         }
       });
 
