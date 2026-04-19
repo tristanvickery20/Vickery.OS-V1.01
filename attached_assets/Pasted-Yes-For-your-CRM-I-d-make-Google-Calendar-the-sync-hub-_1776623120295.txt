@@ -1,0 +1,315 @@
+Yes. For your CRM, I’d make Google Calendar the sync hub and let your iPhone read it through either the Google Calendar app or the built-in Apple Calendar app. Google officially supports syncing Google Calendar to iPhone/iPad, Apple Calendar can display Google Calendar events, and Google Calendar has documented APIs for creating events, reminders, push notifications, and incremental sync.  ￼
+
+For your setup, the cleanest rule is:
+
+CRM is the source of truth for business.
+Google Calendar is the phone-facing mirror.
+Your personal calendar stays separate but visible in the same phone app.
+
+That gives you:
+
+* business reminders on your phone
+* a clean daily view of work + personal together
+* less chaos than trying to make Apple Calendar itself run the business
+
+What I’d build
+
+1) Use 3 calendars
+
+Inside one Google account:
+
+* Vickery Jobs
+    * booked jobs
+    * estimates
+    * service calls
+* Vickery Internal
+    * meetings
+    * callbacks
+    * supplier runs
+    * admin blocks
+* Personal
+    * family, appointments, personal time
+
+Then on iPhone, show all 3 at once. That lets you plan life around work without mixing the raw data model together. Google’s iPhone support and Apple Calendar integration make that workable.  ￼
+
+2) Make every “thing” in CRM one of only two objects
+
+Do not have 8 different weird scheduling systems.
+
+Use only:
+
+Event
+
+Has a start and end time.
+Examples:
+
+* estimate appointment
+* booked job
+* meeting
+* school event
+* lunch block
+* parts pickup
+
+Task
+
+No hard time unless assigned.
+Examples:
+
+* call customer back
+* send quote
+* order material
+* review photos
+* follow up unpaid invoice
+
+Then a task can become:
+
+* scheduled task → turns into an event
+* unscheduled task → stays on a task list
+
+That is the cleanest structure.
+
+3) Add one dead-simple “Quick Add” box
+
+This matters more than almost anything.
+
+At the top of CRM, put one button:
+
++ Add
+
+When tapped, it opens a tiny fast form:
+
+* Type: Task / Event
+* Title
+* Date
+* Time optional
+* Related to: lead / quote / job / client / none
+* Assigned to
+* Notes
+
+That’s it.
+
+Then use smart defaults:
+
+* choose Estimate → auto sets 1 hour, location from lead, reminder 1 day + 1 hour before
+* choose Job → auto sets service address, crew, job status link
+* choose Meeting → auto sets 30 minutes
+* choose Task → no time required, due date optional
+
+The screen should feel like:
+tap, type, save
+not
+open giant form, scroll forever, hate life
+
+4) Add “type chips” so it feels clean on phone
+
+On iPhone-first CRM, use big tap targets:
+
+* Estimate
+* Job
+* Meeting
+* Task
+* Callback
+* Personal block
+
+When you tap one, the form changes only as needed.
+
+Example:
+
+* Task shows due date, assignee, priority
+* Estimate shows client, address, date/time
+* Job shows client, address, crew, duration
+* Meeting shows participants and notes
+
+That makes it feel clean without removing flexibility.
+
+5) Sync rules
+
+Use these exact rules:
+
+CRM → Google Calendar
+
+When created or changed in CRM:
+
+* create/update matching Google event
+* store Google event ID in CRM
+* set reminders automatically
+* keep title standardized
+
+Example title format:
+
+* Estimate – Smith – 123 Main
+* Job – Panel Swap – Johnson
+* Callback – Williams
+* Meeting – Supplier
+
+Google’s API supports event creation, reminders, push notifications, and sync patterns that help keep a local database aligned without duplicating events.  ￼
+
+Google Calendar → CRM
+
+Do limited reverse sync only.
+
+Good reverse sync:
+
+* if you move a CRM-created event on your phone, CRM updates
+* if you mark yourself busy with a personal event, CRM can read that for availability
+* if an event is deleted on phone, CRM asks whether to unschedule or restore
+
+Bad reverse sync:
+
+* random personal events creating jobs in CRM
+* all calendar edits changing business records with no safeguards
+
+So:
+
+* business calendars = two-way for CRM-owned events
+* personal calendar = read-only for availability
+
+6) Reminders that actually help
+
+Set default reminders by type:
+
+Estimate
+
+* 24 hours before
+* 1 hour before
+
+Job
+
+* 1 day before
+* 30 minutes before
+
+Meeting
+
+* 30 minutes before
+
+Task
+
+* due at 8 AM on due date
+* overdue warning next morning
+
+Google Calendar’s API supports reminders/notifications for events.  ￼
+
+7) Show one clean daily view in CRM
+
+Your CRM home screen should have:
+
+Today
+
+* time-blocked events in order
+* overdue tasks at top
+* unscheduled tasks below
+* personal busy blocks shaded lightly
+* one tap to reschedule anything
+
+This Week
+
+* simple week strip
+* drag estimate/job to another day
+* tap empty space to add
+
+Quick filters
+
+* Me
+* Business
+* Personal
+* Estimates
+* Jobs
+* Tasks
+
+That gives you “what do I have today” instantly.
+
+8) Make tasks frictionless
+
+Your current CRM should probably treat tasks more like tiny commitments, not mini-projects.
+
+Each task only needs:
+
+* title
+* due date optional
+* assigned to
+* related record optional
+* priority
+* note optional
+
+Avoid requiring:
+
+* category
+* subcategory
+* location
+* duration
+* status reason
+* 8 dropdowns
+
+Tasks should be stupid easy to enter.
+
+9) Add these power features later
+
+Not first.
+
+After the basics work, add:
+
+* recurring tasks
+    * weekly review
+    * restock truck
+    * unpaid invoice check
+* natural-language quick add
+    * “estimate Tuesday 3pm for Smith”
+    * “call Johnson tomorrow 8am”
+* conflict warnings
+    * overlapping estimates/jobs
+* travel buffer
+    * auto block 15–30 min before/after
+* route grouping
+    * group nearby estimates/jobs same day
+
+10) Best operating logic for you personally
+
+Because you want to plan personal life around work, I’d do this:
+
+* personal events block availability
+* business events always visible on phone
+* CRM schedule changes instantly push to Google Calendar
+* your phone notifications come from calendar reminders, not just CRM
+
+That way your phone becomes the live dashboard, but the CRM still controls the system.
+
+If I were cleaning up the CRM right now
+
+I would do these in order:
+
+1. Build one universal Activity creator
+
+* Task or Event
+* one modal
+* fast save
+
+2. Separate timed events from untimed tasks
+
+* huge cleanup win
+
+3. Add Google Calendar sync
+
+* CRM-owned business calendars first
+
+4. Show “Today / Upcoming / Overdue” on home
+
+* makes it actually usable
+
+5. Add personal calendar overlay
+
+* availability only, not full CRM logic
+
+The best final setup
+
+My recommendation for Vickery:
+
+* CRM backend: source of truth
+* Google Calendar: sync layer
+* iPhone app: Apple Calendar or Google Calendar, whichever you like better
+* Personal calendar: separate but visible
+* Task entry: one universal quick-add
+* Scheduling: events for timed things, tasks for everything else
+
+That is the least chaotic version and the most scalable.
+
+If you want, next I’ll turn this into a very exact CRM build spec with the fields, buttons, statuses, and sync logic so you can hand it straight to Replit.
