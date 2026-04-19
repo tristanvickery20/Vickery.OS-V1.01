@@ -493,9 +493,10 @@ async function handleUpdateLead(req, res) {
         const durMins     = Number(row[i_duration]      || 120);
         const gcalColIdx  = idx("gcal_event_id");
         const existing    = gcalColIdx >= 0 ? String(row[gcalColIdx] || "") : "";
-        // Case-insensitive estimate detection covers "Estimate", "Requested Estimate", "Quote", "Quoted", etc.
-        const oldStatusStr = String(oldSnap[i_status] || "").toLowerCase();
-        const isEstimate = oldStatusStr.includes("estimate") || oldStatusStr.includes("quote");
+        // Estimate detection: check both old and new status so transitions in either direction are caught.
+        // Covers "Estimate", "Requested Estimate", "Quote", "Quoted", "Estimate Scheduled", etc.
+        const combinedStatus = (String(oldSnap[i_status] || "") + " " + String(newStatus || "")).toLowerCase();
+        const isEstimate = combinedStatus.includes("estimate") || combinedStatus.includes("quote");
 
         const titlePrefix = isEstimate ? "Estimate" : "Job";
         const titleSuffix = jobType ? `${jobType} – ${leadName}` : leadName;

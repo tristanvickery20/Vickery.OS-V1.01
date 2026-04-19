@@ -123,9 +123,9 @@ async function handleScheduleLead(req, res) {
         const jobType    = String(row[5]  || "");
         const leadNotes  = String(row[15] || "");
 
-        // Determine title prefix: estimate if old status contained "estimate"/"quote"
-        const oldStatus = String(oldSnap[8] || "").toLowerCase();
-        const isEstimate = oldStatus.includes("estimate") || oldStatus.includes("quote");
+        // Estimate detection: union of old + new status so transitions in either direction are caught.
+        const combinedStatus = (String(oldSnap[8] || "") + " " + String(row[8] || "")).toLowerCase();
+        const isEstimate = combinedStatus.includes("estimate") || combinedStatus.includes("quote");
         const titlePrefix = isEstimate ? "Estimate" : "Job";
         const titleSuffix = jobType ? `${jobType} – ${leadName}` : leadName;
         const gcalTitle = `${titlePrefix} – ${titleSuffix}${leadAddr ? " – " + leadAddr.split(",")[0] : ""}`;
