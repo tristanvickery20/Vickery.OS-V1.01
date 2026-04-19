@@ -1188,10 +1188,16 @@ server.listen(5000, "0.0.0.0", () => {
   const { bootstrapCalendars, runReverseSync, scheduleDailyOverdueAlerts } = require("./lib/googleCalendar");
   bootstrapCalendars().catch((err) => console.error("[gcal/bootstrap]", err.message));
 
-  // Reverse sync polling — every 15 minutes
+  // Reverse sync polling — every 15 minutes (20-minute lookback window)
   setInterval(() => {
     runReverseSync().catch((err) => console.error("[gcal/poll]", err.message));
   }, 15 * 60 * 1000);
+
+  // Daily full reconciliation — every 24 hours with a 25-hour lookback window.
+  // Catches any GCal changes that were missed during downtime/outage gaps.
+  setInterval(() => {
+    runReverseSync(25 * 60 * 60 * 1000).catch((err) => console.error("[gcal/daily-reconcile]", err.message));
+  }, 24 * 60 * 60 * 1000);
 
   // Overdue task alerts — runs at 8:05 AM in CRM timezone (scheduleDailyOverdueAlerts
   // reads ids.timezone from Config, falls back to America/Chicago)
