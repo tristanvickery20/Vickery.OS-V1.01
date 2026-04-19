@@ -83,9 +83,11 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
   try {
     const body = await readBody(req);
     const { title, type, due_date, related_lead_id, priority, notes } = body;
-    // created_by and assigned_to defaults come from server overrides (e.g. crew session)
+    // created_by and assigned_to always come from server overrides when provided
+    // (crew routes force these from session — body values for these fields are ignored)
     const created_by  = serverOverrides.created_by  || "admin";
-    const assigned_to = body.assigned_to || serverOverrides.assigned_to || "";
+    const assigned_to = serverOverrides.assigned_to != null ? serverOverrides.assigned_to
+                      : (body.assigned_to || "");
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });
