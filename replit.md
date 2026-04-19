@@ -227,8 +227,8 @@ CRM syncs to Google Calendar via the **service account** in `GOOGLE_SERVICE_ACCO
 | Calendar | Owner | Purpose |
 |---|---|---|
 | **Vickery Jobs** | Service account | Lead estimates + jobs (Scheduled/In Progress leads) |
-| **Vickery Internal** | Service account | Meetings, callbacks, tasks, **Personal Blocks** |
-| **Personal** | Owner (read-only) | Owner's personal availability — blocks job slot suggestions (read-only; service account has free/busy access only) |
+| **Vickery Internal** | Service account | Meetings, callbacks, tasks |
+| **Personal** | Owner (writer access required) | Owner's personal calendar — read for availability blocking, written for Personal Block events created in CRM |
 
 ### First-Time Setup
 1. **Enable Google Calendar API** in GCP for the project in `GOOGLE_SERVICE_ACCOUNT_JSON`.
