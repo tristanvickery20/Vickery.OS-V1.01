@@ -692,8 +692,12 @@ const server = http.createServer(async (req, res) => {
   // Google Calendar push webhook — must be BEFORE auth guard (Google doesn't send CRM cookies)
   if (_epath === "/api/gcal-webhook" && req.method === "POST") {
     const channelId     = req.headers["x-goog-channel-id"];
+    const resourceId    = req.headers["x-goog-resource-id"];
     const resourceState = req.headers["x-goog-resource-state"];
-    if (channelId && resourceState && resourceState !== "sync") {
+    // Require all three Google-specific headers to be present — guards against
+    // arbitrary POST requests triggering a sync
+    const validGoogleNotification = channelId && resourceId && resourceState;
+    if (validGoogleNotification && resourceState !== "sync") {
       setImmediate(() => {
         const { runReverseSync } = require("./lib/googleCalendar");
         runReverseSync().catch((e) => console.error("[gcal-webhook]", e.message));
