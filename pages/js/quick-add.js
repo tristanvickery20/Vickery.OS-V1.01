@@ -152,6 +152,8 @@
   ];
   var TYPES_CREW = [
     { id: "Task",           label: "Task",           cls: ""    },
+    { id: "Estimate",       label: "Estimate",       cls: "est" },
+    { id: "Job",            label: "Job",            cls: "job" },
     { id: "Meeting",        label: "Meeting",        cls: "mtg" },
     { id: "Callback",       label: "Callback",       cls: "cb"  },
     { id: "Personal Block", label: "Personal Block", cls: "blk" },

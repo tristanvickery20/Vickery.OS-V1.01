@@ -772,30 +772,33 @@ const server = http.createServer(async (req, res) => {
       const { getSheetsClient } = require("./lib/sheets");
       const sheets = await getSheetsClient();
       const spreadsheetId = process.env.CRM_SHEET_ID;
-      // Try Clients tab first (lead_id column), then Leads tab
-      const resp = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Clients!A1:AZ5000",
-      });
-      const vals = resp.data.values || [];
-      const hdr  = vals[0] || [];
-      const col  = (name) => hdr.indexOf(name);
-      const row  = vals.slice(1).find(r => String(r[col("lead_id")]||"") === lid);
-      if (!row) {
+      // Helper to find lead in a given sheet tab
+      const findInTab = async (tabRange, idColName, addrColName) => {
+        try {
+          const r = await sheets.spreadsheets.values.get({ spreadsheetId, range: tabRange });
+          const v = r.data.values || [];
+          const h = v[0] || [];
+          const c = (name) => h.indexOf(name);
+          const row = v.slice(1).find(r2 => String(r2[c(idColName)]||"") === lid);
+          if (!row) return null;
+          return {
+            name:        String(row[c("name")]||""),
+            phone:       String(row[c("phone")]||""),
+            address:     String(row[c(addrColName)]||row[c("address")]||""),
+            assigned_to: String(row[c("assigned_to")]||""),
+            job_type:    String(row[c("job_type")]||""),
+          };
+        } catch { return null; }
+      };
+      // Try Clients tab first (has lead_id + primary_address), then Leads tab
+      let lead = await findInTab("Clients!A1:AZ5000", "lead_id", "primary_address");
+      if (!lead) lead = await findInTab("Leads!A1:AZ5000", "id", "address");
+      if (!lead) {
         res.writeHead(404, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ ok: false, error: "Lead not found" }));
       }
       res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({
-        ok: true,
-        lead: {
-          name:        String(row[col("name")]||""),
-          phone:       String(row[col("phone")]||""),
-          address:     String(row[col("primary_address")]||row[col("address")]||""),
-          assigned_to: String(row[col("assigned_to")]||""),
-          job_type:    String(row[col("job_type")]||""),
-        },
-      }));
+      return res.end(JSON.stringify({ ok: true, lead }));
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: false, error: err.message }));

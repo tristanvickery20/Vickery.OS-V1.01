@@ -83,8 +83,8 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
   try {
     const body = await readBody(req);
     const { title, type, due_date, assigned_to, related_lead_id, priority, notes } = body;
-    // created_by always comes from server (session), never from client body
-    const created_by = serverOverrides.created_by || body.created_by || "";
+    // created_by always comes from server; client body value is never trusted
+    const created_by = serverOverrides.created_by || "admin";
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });
