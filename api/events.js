@@ -189,7 +189,23 @@ async function handleUpdateEvent(req, res, eventId) {
 
           if (body.status === "Cancelled") {
             const { deleteGCalEvent } = require("../lib/googleCalendar");
-            await deleteGCalEvent({ calendarId, gcalEventId });
+            try {
+              await deleteGCalEvent({ calendarId, gcalEventId });
+            } catch (delErr) {
+              console.error("[events] GCal delete error:", delErr.message);
+            }
+            // Always clear the stored event ID in the sheet regardless of delete outcome
+            // so that rescheduling later creates a fresh GCal event (not a broken update)
+            try {
+              await sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: `Events!K${sheetRow}`,  // K = col 10 = gcal_event_id
+                valueInputOption: "RAW",
+                requestBody: { values: [[""]] },
+              });
+            } catch (clearErr) {
+              console.error("[events] GCal ID clear error:", clearErr.message);
+            }
           } else {
             const { updateGCalEvent } = require("../lib/googleCalendar");
             await updateGCalEvent({

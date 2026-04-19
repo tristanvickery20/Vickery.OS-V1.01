@@ -510,15 +510,31 @@ async function handleUpdateLead(req, res) {
                 const startMs = new Date(schedDate).getTime();
                 const endDT   = isNaN(startMs) ? null
                   : new Date(startMs + durMins * 60 * 1000).toISOString().slice(0, 16);
-                await updateGCalEvent({
-                  calendarId, gcalEventId,
-                  title:   gcalTitle,
-                  type:    titlePrefix.toLowerCase(),
-                  startDT: schedDate,
-                  endDT,
-                  notes:   leadNotes,
-                  isAllDay: false,
-                });
+                try {
+                  await updateGCalEvent({
+                    calendarId, gcalEventId,
+                    title:   gcalTitle,
+                    type:    titlePrefix.toLowerCase(),
+                    startDT: schedDate,
+                    endDT,
+                    notes:   leadNotes,
+                    isAllDay: false,
+                  });
+                } catch (updateErr) {
+                  // Event was deleted externally — fall back to creating a fresh one
+                  console.warn("[leads-update] GCal update failed, creating new event:", updateErr.message);
+                  const freshResult = await createJobGCalEvent({
+                    title: gcalTitle, status: newStatus,
+                    scheduledDate: schedDate, durationMinutes: durMins,
+                    address: leadAddress, notes: leadNotes,
+                  });
+                  if (freshResult && freshResult.gcalEventId && gcalColIdx >= 0) {
+                    await writeGCalEventIdToSheet({
+                      tab: "Leads", idCol: idx("id"), idValue: id,
+                      gcalCol: gcalColIdx, gcalEventId: freshResult.gcalEventId, calendarId: freshResult.calendarId,
+                    });
+                  }
+                }
               }
             } else {
               const result = await createJobGCalEvent({
@@ -556,11 +572,22 @@ async function handleUpdateLead(req, res) {
               try {
                 const { deleteGCalEvent } = require("../lib/googleCalendar");
                 await deleteGCalEvent({ calendarId, gcalEventId });
-                // Clear the stored event ID in the sheet row
-                if (gcalColIdx >= 0) row[gcalColIdx] = "";
-                console.log(`[leads-update] Lead ${id} → ${newStatus}: GCal event deleted`);
               } catch (gcalErr) {
+                // Log but still clear the sheet ID so next schedule creates a fresh event
                 console.error("[leads-update] GCal delete error:", gcalErr.message);
+              }
+              // Always persist the cleared gcal_event_id to the sheet regardless of delete outcome
+              try {
+                const gcalColLetter = String.fromCharCode("A".charCodeAt(0) + gcalColIdx);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId,
+                  range: `Leads!${gcalColLetter}${sheetRowNumber}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[""]] },
+                });
+                console.log(`[leads-update] Lead ${id} → ${newStatus}: GCal event deleted + ID cleared`);
+              } catch (sheetErr) {
+                console.error("[leads-update] GCal ID clear error:", sheetErr.message);
               }
             });
           }
