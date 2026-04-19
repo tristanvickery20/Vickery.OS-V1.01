@@ -131,13 +131,16 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
     setImmediate(async () => {
       try {
         const { createGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
+        // Tasks always push as timed 8 AM events (not all-day) so the 0-minute
+        // popup reminder fires at exactly 8 AM on the due date.
+        const dueDateStr = (due_date || new Date().toISOString().slice(0, 10)).slice(0, 10);
         const result = await createGCalEvent({
           title:    taskTitle,
           type:     taskType,
-          startDT:  due_date || new Date().toISOString().slice(0, 10),
-          endDT:    due_date || new Date().toISOString().slice(0, 10),
+          startDT:  dueDateStr + "T08:00:00",
+          endDT:    dueDateStr + "T08:30:00",
           notes:    notes || "",
-          isAllDay: !due_date || due_date.length <= 10,
+          isAllDay: false,
         });
         if (result && result.gcalEventId) {
           await writeGCalEventIdToSheet({
@@ -209,14 +212,15 @@ async function handleUpdateTask(req, res, taskId) {
           const [gcalEventId, calendarId] = gcalRaw.split("|");
           if (!gcalEventId || !calendarId) return;
           const { updateGCalEvent } = require("../lib/googleCalendar");
+          const dueDateUpd = (String(row[3]) || "").slice(0, 10) || new Date().toISOString().slice(0, 10);
           await updateGCalEvent({
             calendarId, gcalEventId,
             title:   String(row[1]),
             type:    String(row[2]),
-            startDT: String(row[3]),
-            endDT:   String(row[3]),
+            startDT: dueDateUpd + "T08:00:00",
+            endDT:   dueDateUpd + "T08:30:00",
             notes:   String(row[7]),
-            isAllDay: !row[3] || String(row[3]).length <= 10,
+            isAllDay: false,
           });
         } catch (err) { console.error("[tasks] GCal update error:", err.message); }
       });

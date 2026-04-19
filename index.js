@@ -1127,13 +1127,32 @@ server.listen(5000, "0.0.0.0", () => {
     .catch((err) => console.error("[Startup]", err.message));
 
   // Google Calendar: bootstrap managed calendars on startup (non-blocking)
-  const { bootstrapCalendars, runReverseSync } = require("./lib/googleCalendar");
+  const { bootstrapCalendars, runReverseSync, runOverdueTaskAlerts } = require("./lib/googleCalendar");
   bootstrapCalendars().catch((err) => console.error("[gcal/bootstrap]", err.message));
 
   // Reverse sync polling — every 15 minutes
   setInterval(() => {
     runReverseSync().catch((err) => console.error("[gcal/poll]", err.message));
   }, 15 * 60 * 1000);
+
+  // Overdue task alerts — runs at 8:05 AM daily
+  (function scheduleOverdueAlerts() {
+    const now  = new Date();
+    const next = new Date(now);
+    // If it's already past 8:05 AM today, schedule for tomorrow
+    if (now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() >= 5)) {
+      next.setDate(next.getDate() + 1);
+    }
+    next.setHours(8, 5, 0, 0);
+    const msUntil = next - now;
+    setTimeout(function fireDailyOverdue() {
+      runOverdueTaskAlerts().catch((e) => console.error("[gcal/overdue]", e.message));
+      setInterval(() => {
+        runOverdueTaskAlerts().catch((e) => console.error("[gcal/overdue]", e.message));
+      }, 24 * 60 * 60 * 1000);
+    }, msUntil);
+    console.log(`[gcal] Overdue alert cron scheduled — next run in ${Math.round(msUntil / 60000)} min`);
+  })();
 
   // Start Traccar fleet tracking polls (no-op if env vars absent)
   startTraccarPolling();

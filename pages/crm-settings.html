@@ -186,6 +186,18 @@
                 <div id="gcalActionMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
               </div>
 
+              <div class="section-hdr">Calendar Deletion Review</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Items Removed from Google Calendar</div>
+                <div class="settings-card-sub">
+                  When a job or task is deleted from your phone calendar, the CRM automatically reverts it
+                  and flags it for review. Choose to reschedule or cancel each item below.
+                </div>
+                <div id="gcalReviewList" style="margin-top:4px;">
+                  <div style="font-size:12px;color:hsl(var(--muted-foreground));">Loading…</div>
+                </div>
+              </div>
+
               <div class="section-hdr">iPhone / Google Account Setup</div>
               <div class="settings-card">
                 <div class="settings-card-title">Share Calendars with Your Google Account</div>
@@ -265,8 +277,8 @@
           }
 
           const internalEl = document.getElementById("gcalInternalCal");
-          if (d.internalCalId) {
-            internalEl.innerHTML = '<span class="dot-ok"></span>' + d.internalCalId.slice(0, 28) + "…";
+          if (d.internalId) {
+            internalEl.innerHTML = '<span class="dot-ok"></span>' + d.internalId.slice(0, 28) + (d.internalId.length > 28 ? "…" : "");
           } else {
             internalEl.innerHTML = '<span class="dot-na"></span>Not created';
           }
@@ -370,6 +382,53 @@
           msg.style.color = "#7f1d1d";
         }
       });
+
+      // ── GCal deletion review list ──────────────────────────────
+      async function loadReviewList() {
+        const el = document.getElementById("gcalReviewList");
+        try {
+          const [tasksR, eventsR] = await Promise.all([
+            fetch("/api/tasks?status=flagged"),
+            fetch("/api/events"),
+          ]);
+          const tasksD  = tasksR.ok  ? await tasksR.json()  : { tasks: [] };
+          const eventsD = eventsR.ok ? await eventsR.json() : { events: [] };
+
+          const flaggedTasks  = (tasksD.tasks  || []).filter(t => t.notes && t.notes.includes("[GCal]"));
+          const cancelledEvts = (eventsD.events || []).filter(e =>
+            e.status === "Cancelled" && e.notes && e.notes.includes("[GCal]")
+          );
+
+          const items = [
+            ...flaggedTasks.map(t => ({ type: "task", id: t.task_id, label: t.title, due: t.due_date, href: "/clients" })),
+            ...cancelledEvts.map(e => ({ type: "event", id: e.event_id, label: e.title, due: e.start_datetime, href: "/crm/schedule" })),
+          ];
+
+          if (!items.length) {
+            el.innerHTML = '<div style="font-size:12px;color:hsl(var(--muted-foreground));">No items pending review — all clear.</div>';
+            return;
+          }
+
+          el.innerHTML = items.map(item => `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;
+                 padding:8px 10px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px;">
+              <div>
+                <span style="font-weight:700;">${item.label}</span>
+                <span style="color:hsl(var(--muted-foreground));margin-left:6px;">${item.type} · ${item.due ? item.due.slice(0,10) : "—"}</span>
+              </div>
+              <a href="${item.href}" style="font-size:11px;font-weight:700;color:hsl(var(--primary));
+                   text-decoration:none;padding:3px 8px;border:1px solid hsl(var(--primary)/0.4);
+                   border-radius:5px;white-space:nowrap;">
+                Open in CRM →
+              </a>
+            </div>
+          `).join("");
+        } catch (err) {
+          el.innerHTML = '<div style="font-size:12px;color:#7f1d1d;">Could not load review list: ' + err.message + '</div>';
+        }
+      }
+
+      loadReviewList();
     </script>
   </body>
 </html>
