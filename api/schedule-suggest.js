@@ -1,5 +1,5 @@
 const { getSheetsClient } = require("../lib/sheets");
-const { suggest } = require("../lib/schedule");
+const { suggestWithPersonalCalendar } = require("../lib/schedule");
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -41,7 +41,7 @@ async function handleScheduleSuggest(req, res) {
       return obj;
     });
 
-    const result = suggest(techs, leads, target_date, duration_minutes || 60, preference || "");
+    const result = await suggestWithPersonalCalendar(techs, leads, target_date, duration_minutes || 60, preference || "");
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(result));

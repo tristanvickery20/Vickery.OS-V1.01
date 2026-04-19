@@ -178,7 +178,7 @@
           const lbl   = document.getElementById("gcalLeadLabel");
           if (!badge) return;
           badge.style.display = "flex";
-          if (d.syncEnabled && d.jobsCalendarId) {
+          if (d.enabled && d.jobsCalId) {
             dot.style.background = "#4ade80";
             lbl.textContent = "GCal syncing";
           } else {

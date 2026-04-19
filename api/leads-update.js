@@ -502,7 +502,7 @@ async function handleUpdateLead(req, res) {
 
         setImmediate(async () => {
           try {
-            const { createJobGCalEvent, updateGCalEvent, writeGCalEventIdToSheet, loadCalendarIds } = require("../lib/googleCalendar");
+            const { createJobGCalEvent, updateGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
             if (existing) {
               const [gcalEventId, calendarId] = existing.split("|");
               if (gcalEventId && calendarId && schedDate) {
