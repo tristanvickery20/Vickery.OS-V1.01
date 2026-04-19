@@ -816,6 +816,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-lead.html"), "text/html");
   }
 
+  if (req.url === "/crm/settings" || req.url.startsWith("/crm/settings?")) {
+    return serveFile(res, path.join(__dirname, "pages/crm-settings.html"), "text/html");
+  }
+
   // PROTECTED API ROUTES
   if (req.url === "/api/schedule/suggest" && req.method === "POST") {
     return handleScheduleSuggest(req, res);

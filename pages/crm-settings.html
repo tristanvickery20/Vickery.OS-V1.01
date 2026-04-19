@@ -1,0 +1,375 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings &bull; Vickery CRM</title>
+    <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+    <link rel="stylesheet" href="/pages/css/brand.css" />
+    <link rel="stylesheet" href="/pages/css/shell.css" />
+    <style>
+      .settings-wrap { max-width: 680px; margin: 0 auto; padding-bottom: 60px; }
+      .settings-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; margin-bottom: 24px; }
+
+      .tab-bar { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 28px; }
+      .tab-btn {
+        padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; background: none;
+        cursor: pointer; color: hsl(var(--muted-foreground)); border-bottom: 2px solid transparent;
+        margin-bottom: -2px; transition: color .15s, border-color .15s;
+      }
+      .tab-btn.active { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); }
+
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; }
+
+      .section-hdr {
+        font-size: 11px; font-weight: 700; letter-spacing: .06em;
+        text-transform: uppercase; color: hsl(var(--muted-foreground));
+        margin: 28px 0 12px;
+      }
+      .settings-card {
+        border: 1px solid var(--line); border-radius: 10px;
+        padding: 20px; margin-bottom: 14px;
+        background: hsl(var(--card));
+      }
+      .settings-card-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+      .settings-card-sub { font-size: 12px; color: hsl(var(--muted-foreground)); margin-bottom: 14px; }
+
+      .form-row { margin-bottom: 14px; }
+      .form-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: hsl(var(--muted-foreground)); }
+      .form-input {
+        width: 100%; box-sizing: border-box;
+        padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
+        font-size: 13px; font-family: inherit; background: hsl(var(--background));
+        color: hsl(var(--foreground));
+      }
+      .form-input:focus { outline: 2px solid hsl(var(--primary) / .45); border-color: hsl(var(--primary)); }
+
+      .toggle-row { display: flex; align-items: center; gap: 10px; }
+      .toggle-switch {
+        position: relative; width: 42px; height: 24px; flex-shrink: 0;
+      }
+      .toggle-switch input { opacity: 0; width: 0; height: 0; }
+      .toggle-track {
+        position: absolute; inset: 0; background: hsl(var(--muted)); border-radius: 24px;
+        cursor: pointer; transition: background .2s;
+      }
+      .toggle-track::after {
+        content: ""; position: absolute; top: 3px; left: 3px;
+        width: 18px; height: 18px; border-radius: 50%; background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s;
+      }
+      .toggle-switch input:checked + .toggle-track { background: hsl(var(--primary)); }
+      .toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
+      .toggle-label { font-size: 13px; font-weight: 600; }
+
+      .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+      .btn-primary {
+        padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+        font-size: 13px; font-weight: 700; font-family: inherit;
+        background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+        transition: opacity .15s;
+      }
+      .btn-primary:hover { opacity: .88; }
+      .btn-secondary {
+        padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); cursor: pointer;
+        font-size: 13px; font-weight: 600; font-family: inherit;
+        background: hsl(var(--card)); color: hsl(var(--foreground));
+        transition: background .15s;
+      }
+      .btn-secondary:hover { background: hsl(var(--muted) / .5); }
+
+      .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+      .status-item { background: hsl(var(--muted) / .3); border-radius: 8px; padding: 10px 12px; }
+      .status-item-label { font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+      .status-item-val { font-size: 12px; font-weight: 600; word-break: break-all; }
+      .dot-ok  { display: inline-block; width:7px; height:7px; border-radius:50%; background:#4ade80; margin-right:4px; vertical-align:middle; }
+      .dot-off { display: inline-block; width:7px; height:7px; border-radius:50%; background:#f97316; margin-right:4px; vertical-align:middle; }
+      .dot-na  { display: inline-block; width:7px; height:7px; border-radius:50%; background:#94a3b8; margin-right:4px; vertical-align:middle; }
+
+      .alert { padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
+      .alert-warn { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
+      .alert-ok   { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+      .alert-err  { background: #fee2e2; border: 1px solid #fca5a5; color: #7f1d1d; }
+
+      #gcalMsg { font-size: 12px; font-weight: 600; margin-top: 8px; min-height: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sidebar" id="sidebarMount"></div>
+      <main class="main-area">
+        <div class="main-content">
+          <div class="settings-wrap">
+            <div class="settings-title">Settings</div>
+
+            <div class="tab-bar">
+              <button class="tab-btn active" data-tab="gcal">Google Calendar</button>
+            </div>
+
+            <!-- ── Google Calendar Tab ─────────────────────────── -->
+            <div class="tab-panel active" id="tab-gcal">
+
+              <div id="gcalStatusAlert" class="alert alert-warn" style="display:none;"></div>
+
+              <div class="section-hdr">Sync Status</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Calendar Connection</div>
+                <div class="settings-card-sub">Status of Google Calendar sync for Vickery Electric.</div>
+                <div class="status-grid" id="gcalStatusGrid">
+                  <div class="status-item"><div class="status-item-label">Service Account</div><div class="status-item-val" id="gcalSaEmail">Loading…</div></div>
+                  <div class="status-item"><div class="status-item-label">Sync</div><div class="status-item-val" id="gcalSyncStatus">Loading…</div></div>
+                  <div class="status-item"><div class="status-item-label">Jobs Calendar</div><div class="status-item-val" id="gcalJobsCal">Loading…</div></div>
+                  <div class="status-item"><div class="status-item-label">Internal Calendar</div><div class="status-item-val" id="gcalInternalCal">Loading…</div></div>
+                  <div class="status-item"><div class="status-item-label">Last Sync</div><div class="status-item-val" id="gcalLastSync">—</div></div>
+                  <div class="status-item"><div class="status-item-label">Personal Calendar</div><div class="status-item-val" id="gcalPersonalStatus">Not set</div></div>
+                </div>
+              </div>
+
+              <div class="section-hdr">Sync Settings</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Enable Google Calendar Sync</div>
+                <div class="settings-card-sub">When enabled, jobs, tasks, and events are automatically pushed to Google Calendar.</div>
+                <div class="toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="gcalEnabled" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Sync enabled</span>
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <div class="settings-card-title">Personal Calendar ID</div>
+                <div class="settings-card-sub">
+                  Share your personal Google Calendar with the service account email above, then paste your
+                  personal calendar ID here. Used to block out unavailable times when suggesting job slots.
+                  Find it in Google Calendar → Settings → your calendar → Calendar ID.
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="gcalPersonalId">Personal Calendar ID</label>
+                  <input class="form-input" type="text" id="gcalPersonalId" placeholder="yourname@gmail.com or long-id@group.calendar.google.com" />
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <div class="settings-card-title">Timezone</div>
+                <div class="settings-card-sub">Timezone used when creating all-day events and scheduling jobs.</div>
+                <div class="form-row">
+                  <label class="form-label" for="gcalTimezone">Timezone</label>
+                  <input class="form-input" type="text" id="gcalTimezone" placeholder="America/Chicago" />
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <button class="btn-primary" id="gcalSaveBtn">Save Settings</button>
+              </div>
+              <div id="gcalMsg"></div>
+
+              <div class="section-hdr">Calendar Setup</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Bootstrap Managed Calendars</div>
+                <div class="settings-card-sub">
+                  Creates the "Vickery Jobs" and "Vickery Internal" calendars under the service account if they
+                  don't already exist, and saves their IDs. Run once after enabling the Google Calendar API.
+                  <br><br>
+                  <strong>Prerequisite:</strong> Enable the Google Calendar API at
+                  <a href="https://console.developers.google.com/apis/api/calendar-json.googleapis.com/overview"
+                     target="_blank" rel="noopener" style="color:hsl(var(--primary));">
+                    Google Cloud Console → Calendar API
+                  </a>.
+                </div>
+                <div class="btn-row">
+                  <button class="btn-secondary" id="gcalBootstrapBtn">Bootstrap Calendars</button>
+                  <button class="btn-secondary" id="gcalSyncBtn">Run Sync Now</button>
+                </div>
+                <div id="gcalActionMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+              </div>
+
+              <div class="section-hdr">iPhone / Google Account Setup</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Share Calendars with Your Google Account</div>
+                <div class="settings-card-sub">
+                  To see CRM jobs on your iPhone, share the two managed calendars with your personal Google account:
+                  <ol style="margin:8px 0 0 18px;line-height:1.8;font-size:12px;">
+                    <li>Run <strong>Bootstrap Calendars</strong> above.</li>
+                    <li>Open <a href="https://calendar.google.com" target="_blank" rel="noopener" style="color:hsl(var(--primary));">Google Calendar</a> while signed in as the service account, or ask your admin to share "Vickery Jobs" and "Vickery Internal" with your personal Google account.</li>
+                    <li>Accept the sharing invite — the calendars will appear on your iPhone automatically via Google Calendar app.</li>
+                  </ol>
+                </div>
+              </div>
+
+            </div><!-- /tab-gcal -->
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/pages/js/api.js"></script>
+    <script src="/pages/js/shell.js"></script>
+    <script>
+      // ── Tab switching ──────────────────────────────────────────
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+          document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          const panel = document.getElementById("tab-" + btn.dataset.tab);
+          if (panel) panel.classList.add("active");
+        });
+      });
+
+      // ── Activate tab from URL ?tab=gcal ───────────────────────
+      (function activateTabFromUrl() {
+        const tab = new URLSearchParams(location.search).get("tab");
+        if (tab) {
+          const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+          if (btn) btn.click();
+        }
+      })();
+
+      // ── GCal status loader ─────────────────────────────────────
+      async function loadGCalStatus() {
+        try {
+          const r = await fetch("/api/gcal/status");
+          const d = await r.json();
+
+          const alertEl = document.getElementById("gcalStatusAlert");
+
+          if (d.error) {
+            alertEl.style.display = "block";
+            alertEl.className = "alert alert-err";
+            alertEl.textContent = "Google Calendar API error: " + d.error +
+              " — Enable the Calendar API in Google Cloud Console and run Bootstrap Calendars.";
+          } else {
+            alertEl.style.display = "none";
+          }
+
+          // Service account email
+          document.getElementById("gcalSaEmail").textContent = d.saEmail || "Unknown";
+
+          // Sync status
+          const syncEl = document.getElementById("gcalSyncStatus");
+          if (d.enabled) {
+            syncEl.innerHTML = '<span class="dot-ok"></span>Enabled';
+          } else {
+            syncEl.innerHTML = '<span class="dot-off"></span>Disabled';
+          }
+
+          // Calendar IDs
+          const jobsEl = document.getElementById("gcalJobsCal");
+          if (d.jobsCalId) {
+            jobsEl.innerHTML = '<span class="dot-ok"></span>' + d.jobsCalId.slice(0, 28) + "…";
+          } else {
+            jobsEl.innerHTML = '<span class="dot-na"></span>Not created';
+          }
+
+          const internalEl = document.getElementById("gcalInternalCal");
+          if (d.internalCalId) {
+            internalEl.innerHTML = '<span class="dot-ok"></span>' + d.internalCalId.slice(0, 28) + "…";
+          } else {
+            internalEl.innerHTML = '<span class="dot-na"></span>Not created';
+          }
+
+          // Last sync
+          document.getElementById("gcalLastSync").textContent = d.lastSyncAt
+            ? new Date(d.lastSyncAt).toLocaleString() : "Never";
+
+          // Personal calendar
+          const personalEl = document.getElementById("gcalPersonalStatus");
+          if (d.personalId) {
+            personalEl.innerHTML = '<span class="dot-ok"></span>' + d.personalId.slice(0, 28) + (d.personalId.length > 28 ? "…" : "");
+          } else {
+            personalEl.innerHTML = '<span class="dot-na"></span>Not set';
+          }
+
+          // Populate form fields
+          document.getElementById("gcalEnabled").checked = !!d.enabled;
+          document.getElementById("gcalPersonalId").value = d.personalId || "";
+          document.getElementById("gcalTimezone").value   = d.timezone   || "America/Chicago";
+
+        } catch (err) {
+          const alertEl = document.getElementById("gcalStatusAlert");
+          alertEl.style.display = "block";
+          alertEl.className = "alert alert-warn";
+          alertEl.textContent = "Could not load Google Calendar status: " + err.message;
+        }
+      }
+
+      loadGCalStatus();
+
+      // ── Save settings ──────────────────────────────────────────
+      document.getElementById("gcalSaveBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("gcalMsg");
+        msg.textContent = "Saving…";
+        msg.style.color = "";
+        try {
+          const r = await fetch("/api/gcal/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              enabled:    document.getElementById("gcalEnabled").checked,
+              personalId: document.getElementById("gcalPersonalId").value.trim(),
+              timezone:   document.getElementById("gcalTimezone").value.trim() || "America/Chicago",
+            }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "Settings saved.";
+            msg.style.color = "#166534";
+            await loadGCalStatus();
+          } else {
+            msg.textContent = "Error: " + (d.error || "unknown");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message;
+          msg.style.color = "#7f1d1d";
+        }
+      });
+
+      // ── Bootstrap ──────────────────────────────────────────────
+      document.getElementById("gcalBootstrapBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("gcalActionMsg");
+        msg.textContent = "Bootstrapping calendars…";
+        msg.style.color = "";
+        try {
+          const r = await fetch("/api/gcal/bootstrap", { method: "POST" });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "Calendars created/verified. Reloading status…";
+            msg.style.color = "#166534";
+            await loadGCalStatus();
+          } else {
+            msg.textContent = "Error: " + (d.error || "unknown");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message;
+          msg.style.color = "#7f1d1d";
+        }
+      });
+
+      // ── Manual sync ────────────────────────────────────────────
+      document.getElementById("gcalSyncBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("gcalActionMsg");
+        msg.textContent = "Triggering reverse sync…";
+        msg.style.color = "";
+        try {
+          const r = await fetch("/api/gcal/sync", { method: "POST" });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "Sync triggered. Check server logs for details.";
+            msg.style.color = "#166534";
+          } else {
+            msg.textContent = "Error: " + (d.error || "unknown");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message;
+          msg.style.color = "#7f1d1d";
+        }
+      });
+    </script>
+  </body>
+</html>
