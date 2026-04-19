@@ -218,6 +218,38 @@ Per the Master Electrician of Record employment agreement, each completed job is
 
 **Cost:** $0. BLS v1 API is a public US government endpoint, no registration or API key needed.
 
+## Google Calendar Sync (Task #23)
+
+### Architecture: Service-Account Model
+CRM syncs to Google Calendar via the **service account** in `GOOGLE_SERVICE_ACCOUNT_JSON`. This is not OAuth-per-user — there is no "connect Google account" chooser. The service account owns the two managed calendars and reads the owner's personal calendar as read-only when the personal calendar ID is configured.
+
+### Three Calendars
+| Calendar | Owner | Purpose |
+|---|---|---|
+| **Vickery Jobs** | Service account | Lead estimates + jobs (Scheduled/In Progress leads) |
+| **Vickery Internal** | Service account | Meetings, callbacks, tasks |
+| **Personal** | Owner (read-only) | Owner's personal availability — blocks job slot suggestions |
+
+### First-Time Setup
+1. **Enable Google Calendar API** in GCP for the project in `GOOGLE_SERVICE_ACCOUNT_JSON`.
+2. Go to `/crm/settings` → GCal tab → click **Bootstrap Calendars** — creates Vickery Jobs + Internal under the service account, generates a webhook channel token.
+3. **Share managed calendars with your iPhone Google account**: in Google Calendar web (signed in as service account, or via admin), share "Vickery Jobs" and "Vickery Internal" with your personal email — set access to "Make changes and manage sharing." They will appear on your phone.
+4. **Personal calendar** (optional, for slot blocking): share your personal Google Calendar with the service account email (shown in Settings), then paste your personal Calendar ID into the Settings form and click **Test Connection**.
+
+### Sync Behavior
+- **CRM → GCal (push)**: Fires after lead scheduling (both `/api/leads/schedule` and `/api/leads/update`), task creation/update, and timed event creation/update. Uses `gcal_event_id` stored in Leads col AE, Tasks col L, Events col K.
+- **GCal → CRM (reverse, polling)**: Runs every 15 minutes; also triggered by webhook. Detects CRM-owned events moved or deleted from the phone calendar. Moved events update CRM start/end times; deleted events revert lead to Unscheduled (or flag tasks/events) and add a `[GCal]` review note.
+- **Personal calendar**: Read-only freebusy query at slot suggestion time (`suggestWithPersonalCalendar`). All times are converted to the CRM timezone (`gcal_timezone` Config key, default `America/Chicago`) — not server UTC.
+
+### Push Notifications (Real-Time Sync)
+The webhook handler at `/api/gcal-webhook` is ready to receive Google Calendar push notifications. To activate real-time sync instead of 15-min polling:
+1. From Settings, copy the **Webhook Token**.
+2. Create a watch channel for each managed calendar: `POST https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events/watch` with body `{ id, type: "web_hook", address: "https://<your-replit-domain>/api/gcal-webhook", token: "<webhookToken>" }`.
+3. The webhook handler verifies the token; once bootstrapped, requests without a matching token are rejected.
+
+### Config Sheet Keys (auto-managed)
+`gcal_vickery_jobs_id`, `gcal_vickery_internal_id`, `gcal_personal_calendar_id`, `gcal_sync_enabled`, `gcal_last_sync_at`, `gcal_service_account_email`, `gcal_timezone`, `gcal_webhook_token`
+
 ## Recent Changes
 - 2026-04-11: Estimator full audit + fixes — confirmed V2 pricing engine fully operational through both `/api/quote/calc` (UI path) and `/api/estimator/quote` (instant-estimate wizard). All 56 assemblies have real blended_labor_hours (0.38–6.86 hrs). Module multipliers verified: ATTIC_ACCESS=no(1.9×), HOME_AGE=pre_1950(1.45×), CIRCUIT_SCOPE=new_circuit(1.5×), CEILING_HEIGHT=vaulted(1.55×). Stack caps working (RECESSED_LIGHTING capped 3.0×, CEILING_FAN capped 3.0×). Compound disqualify working (no-attic+vaulted = needs_site_visit; extreme ceiling = needs_site_visit). Sample prices: ceiling fan standard $230, worst-case recessed (pre-1950/no-attic/new-circuit) $3,105–$3,965 range. Fixes applied: (a) `answers` accepted as alias for `answersByModule` in `/api/estimator/quote`; (b) all 8 READY_WITH_REVIEW_FLAG material disclosure strings updated from "$0 (placeholder data)" to customer-appropriate "Material estimate included in price"; (c) instant-estimate.html header fixed — removed broken stray div, added Vickery Electric logo SVG + "Vickery Electric" text + "Schedule Now" CTA replacing placeholder tel: link.
 - 2026-04-08: Traccar GPS improvements — departure detection (auto-stamps departed_at + job_duration_minutes when NO truck within 500ft after 5+ min on site), customer arrival SMS (sends "Your tech is here" to customer phone via we_are_here template when truck arrives), SVG truck marker replacing emoji on schedule map, On site/Left after X min GPS badges on crew job cards, GPS arrival row in job detail overlay. New Bookings schema fields: departed_at, job_duration_minutes, customer_sms_sent_at (auto-added to live sheet on startup).
