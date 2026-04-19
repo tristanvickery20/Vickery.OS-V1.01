@@ -375,7 +375,12 @@
           const r = await fetch("/api/gcal/bootstrap", { method: "POST" });
           const d = await r.json();
           if (d.ok) {
-            msg.textContent = "Calendars created/verified. Reloading status…";
+            const ps = d.result && d.result.personalStatus;
+            const personalNote = ps === "connected"         ? " · Personal calendar verified ✓"
+                               : ps === "not_configured"   ? " · Personal calendar not configured (enter ID above)"
+                               : ps                        ? ` · Personal: ${ps}`
+                               :                             "";
+            msg.textContent = "Calendars created/verified." + personalNote + " Reloading status…";
             msg.style.color = "#166534";
             await loadGCalStatus();
           } else {
@@ -507,18 +512,38 @@
             el.appendChild(div);
           }
 
-          // Events — link to schedule page to reschedule
+          // Events — Restore (re-push to GCal) or Cancel (keep cancelled)
           for (const e of cancelledEvts) {
             const div = document.createElement("div");
             div.style.cssText = itemStyle;
             div.innerHTML = `
               <div><span style="font-weight:700;">${e.title || "Event"}</span>
               <span style="color:hsl(var(--muted-foreground));margin-left:6px;">event · ${e.start_datetime ? e.start_datetime.slice(0,10) : "—"}</span></div>
-              <a href="/crm/schedule" style="${linkStyle}">Reschedule →</a>`;
+              <div style="display:flex;gap:6px;">
+                <button style="${btnStyleRestore}" data-id="${e.event_id}" class="evt-restore-btn">Restore</button>
+                <button style="${btnStyleCancel}"  data-id="${e.event_id}" class="evt-cancel-btn">Keep Cancelled</button>
+              </div>`;
+            div.querySelector(".evt-restore-btn").addEventListener("click", async (ev) => {
+              const btn = ev.currentTarget;
+              btn.disabled = true; btn.textContent = "Restoring…";
+              const r = await fetch(`/api/events/${btn.dataset.id}/restore`, { method: "POST" });
+              if (r.ok) { div.remove(); } else { btn.textContent = "Error"; btn.disabled = false; }
+            });
+            div.querySelector(".evt-cancel-btn").addEventListener("click", async (ev) => {
+              const btn = ev.currentTarget;
+              btn.disabled = true; btn.textContent = "Saving…";
+              // Mark notes as resolved so item no longer appears in review
+              const r = await fetch(`/api/events/${btn.dataset.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Cancelled", notes: "[GCal-Resolved] Kept cancelled" }),
+              });
+              if (r.ok) { div.remove(); } else { btn.textContent = "Error"; btn.disabled = false; }
+            });
             el.appendChild(div);
           }
 
-          // Leads — link to clients/lead detail to reschedule
+          // Leads — Reschedule link + Cancel button
           for (const l of unschedLeads) {
             const leadId = l.id || l.lead_id || "";
             const href   = leadId ? `/crm/lead?id=${leadId}` : "/clients";
@@ -527,7 +552,20 @@
             div.innerHTML = `
               <div><span style="font-weight:700;">${l.name || l.client_name || "Lead"}</span>
               <span style="color:hsl(var(--muted-foreground));margin-left:6px;">job · unscheduled</span></div>
-              <a href="${href}" style="${linkStyle}">Reschedule →</a>`;
+              <div style="display:flex;gap:6px;align-items:center;">
+                <a href="${href}" style="${linkStyle}">Reschedule →</a>
+                <button style="${btnStyleCancel}" data-id="${leadId}" class="lead-cancel-btn">Cancel Job</button>
+              </div>`;
+            div.querySelector(".lead-cancel-btn").addEventListener("click", async (ev) => {
+              const btn = ev.currentTarget;
+              btn.disabled = true; btn.textContent = "Cancelling…";
+              const r = await fetch("/api/leads/status", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lead_id: btn.dataset.id, status: "Cancelled" }),
+              });
+              if (r.ok) { div.remove(); } else { btn.textContent = "Error"; btn.disabled = false; }
+            });
             el.appendChild(div);
           }
         } catch (err) {

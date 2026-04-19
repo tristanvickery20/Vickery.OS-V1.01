@@ -18,7 +18,7 @@ const { handleCreateLead, handleGetLeads, handleGetLeadSnapshot } = require("./a
 const { handleUpdateLeadStatus } = require("./api/leads-status");
 const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
-const { handleGetEvents, handleCreateEvent, handleUpdateEvent } = require("./api/events");
+const { handleGetEvents, handleCreateEvent, handleUpdateEvent, handleRestoreEvent } = require("./api/events");
 const { handleDashboard, handleDashboardFinancials } = require("./api/dashboard");
 const { handleBonusEligibility } = require("./api/bonus-eligibility");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
@@ -941,6 +941,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.url === "/api/events" && req.method === "POST") {
     return handleCreateEvent(req, res, { created_by: "admin" });
+  }
+  if (req.url.startsWith("/api/events/") && req.url.endsWith("/restore") && req.method === "POST") {
+    const eventId = req.url.replace("/api/events/", "").replace("/restore", "");
+    return handleRestoreEvent(req, res, eventId);
   }
   if (req.url.startsWith("/api/events/") && req.method === "PATCH") {
     const eventId = req.url.replace("/api/events/", "").split("?")[0];

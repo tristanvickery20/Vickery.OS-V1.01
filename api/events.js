@@ -229,4 +229,61 @@ async function handleUpdateEvent(req, res, eventId) {
   }
 }
 
-module.exports = { handleGetEvents, handleCreateEvent, handleUpdateEvent, TIMED_TYPES };
+// Restore an event that was removed from GCal (reverse sync deletion).
+// Re-activates the event in the sheet and re-pushes to GCal.
+async function handleRestoreEvent(req, res, eventId) {
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: RANGE });
+    const values = resp.data.values || [];
+    const rowIndex = values.findIndex((r, i) => i > 0 && String(r[0]||"") === eventId);
+    if (rowIndex === -1) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Event not found" }));
+    }
+    const row = [...values[rowIndex]];
+    while (row.length < 11) row.push("");
+
+    // Restore to Active and clear any leftover cancelled gcal_event_id
+    row[7]  = "Active";
+    row[10] = "";
+
+    const sheetRow = rowIndex + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Events!A${sheetRow}:K${sheetRow}`,
+      valueInputOption: "RAW",
+      requestBody: { majorDimension: "ROWS", values: [row] },
+    });
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+
+    // Fire-and-forget: re-push to GCal as a fresh create
+    setImmediate(async () => {
+      try {
+        const { createGCalEvent, writeGCalEventIdToSheet } = require("../lib/googleCalendar");
+        const newEventId = await createGCalEvent({
+          title:   String(row[1]),
+          type:    String(row[2]),
+          startDT: String(row[3]),
+          endDT:   String(row[4]),
+          notes:   String(row[6]),
+          isAllDay: false,
+        });
+        if (newEventId) {
+          await writeGCalEventIdToSheet({ tab: "Events", idCol: 0, idValue: eventId, gcalCol: 10, gcalEventId: newEventId.gcalEventId, calendarId: newEventId.calendarId });
+        }
+      } catch (err) {
+        console.error("[events] GCal restore push error:", err.message);
+      }
+    });
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: err.message }));
+  }
+}
+
+module.exports = { handleGetEvents, handleCreateEvent, handleUpdateEvent, handleRestoreEvent, TIMED_TYPES };
