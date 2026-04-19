@@ -139,9 +139,11 @@
   var loadingTechs   = false;
   var crewMemberName = "";  // filled on init for crew context
 
-  // Detect crew portal (no sidebar) vs CRM pages
-  var IS_CREW    = !document.getElementById("sidebarMount");
-  var TASKS_BASE = IS_CREW ? "/api/crew/tasks" : "/api/tasks";
+  // Detect context by URL path — crew page is /crew, all CRM pages are /crm/*
+  // This is reliable even on CRM pages that lack a sidebar mount element
+  var _path = window.location.pathname;
+  var IS_CREW = _path === "/crew" || _path.startsWith("/crew/");
+  var TASKS_BASE  = IS_CREW ? "/api/crew/tasks"  : "/api/tasks";
   var EVENTS_BASE = IS_CREW ? "/api/crew/events" : "/api/events";
 
   // Fetch crew identity on page load (used to auto-assign tasks/events)
