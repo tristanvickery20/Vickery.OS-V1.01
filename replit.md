@@ -250,6 +250,17 @@ The webhook handler at `/api/gcal-webhook` is ready to receive Google Calendar p
 ### Config Sheet Keys (auto-managed)
 `gcal_vickery_jobs_id`, `gcal_vickery_internal_id`, `gcal_personal_calendar_id`, `gcal_sync_enabled`, `gcal_last_sync_at`, `gcal_service_account_email`, `gcal_timezone`, `gcal_webhook_token`
 
+### Integration Test Checklist (run after enabling Calendar API)
+1. **Bootstrap** → Click Bootstrap Calendars in Settings → confirm Jobs + Internal calendars appear in Google Calendar web under the service account.
+2. **Lead schedule push** → Schedule a lead in CRM → verify a GCal event appears in Vickery Jobs with correct title/time → confirm `gcal_event_id` cell in Leads sheet is populated.
+3. **Lead reschedule update** → Change the scheduled date → verify GCal event start/end updates; do not create a duplicate.
+4. **Lead unschedule / delete from phone** → Delete the GCal job event from your phone → wait 15 min (or manual sync) → verify lead reverts to Unscheduled with `[GCal]` note in CRM.
+5. **Task create push** → Create a task via Quick Add → verify GCal event in Vickery Internal at 8:00–8:30 AM on due date.
+6. **Crew task update sync** → As crew, update task status/notes → verify GCal event description updates.
+7. **Personal calendar blocking** → Add a personal event 9–11 AM → use Schedule Suggest for that day → verify 9–11 AM is not offered as a slot.
+8. **Cross-midnight personal block** → Add a personal event 10 PM yesterday – 2 AM today → verify 12–2 AM today is blocked in slot suggestions.
+9. **Overdue alert** → Advance a task's due_date to yesterday → wait for 8:05 AM → verify a GCal ⚠ Overdue alert event appears in Vickery Internal.
+
 ## Recent Changes
 - 2026-04-11: Estimator full audit + fixes — confirmed V2 pricing engine fully operational through both `/api/quote/calc` (UI path) and `/api/estimator/quote` (instant-estimate wizard). All 56 assemblies have real blended_labor_hours (0.38–6.86 hrs). Module multipliers verified: ATTIC_ACCESS=no(1.9×), HOME_AGE=pre_1950(1.45×), CIRCUIT_SCOPE=new_circuit(1.5×), CEILING_HEIGHT=vaulted(1.55×). Stack caps working (RECESSED_LIGHTING capped 3.0×, CEILING_FAN capped 3.0×). Compound disqualify working (no-attic+vaulted = needs_site_visit; extreme ceiling = needs_site_visit). Sample prices: ceiling fan standard $230, worst-case recessed (pre-1950/no-attic/new-circuit) $3,105–$3,965 range. Fixes applied: (a) `answers` accepted as alias for `answersByModule` in `/api/estimator/quote`; (b) all 8 READY_WITH_REVIEW_FLAG material disclosure strings updated from "$0 (placeholder data)" to customer-appropriate "Material estimate included in price"; (c) instant-estimate.html header fixed — removed broken stray div, added Vickery Electric logo SVG + "Vickery Electric" text + "Schedule Now" CTA replacing placeholder tel: link.
 - 2026-04-08: Traccar GPS improvements — departure detection (auto-stamps departed_at + job_duration_minutes when NO truck within 500ft after 5+ min on site), customer arrival SMS (sends "Your tech is here" to customer phone via we_are_here template when truck arrives), SVG truck marker replacing emoji on schedule map, On site/Left after X min GPS badges on crew job cards, GPS arrival row in job detail overlay. New Bookings schema fields: departed_at, job_duration_minutes, customer_sms_sent_at (auto-added to live sheet on startup).

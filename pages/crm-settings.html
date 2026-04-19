@@ -115,7 +115,11 @@
               <div class="section-hdr">Sync Status</div>
               <div class="settings-card">
                 <div class="settings-card-title">Calendar Connection</div>
-                <div class="settings-card-sub">Status of Google Calendar sync for Vickery Electric.</div>
+                <div class="settings-card-sub">
+                  Google Calendar sync uses the <strong>service account</strong> in your Google credentials — this is not
+                  per-user OAuth. The service account owns the Vickery Jobs and Vickery Internal calendars; your personal
+                  Google Account connects by sharing your calendar with the service account email and entering the calendar ID below.
+                </div>
                 <div class="status-grid" id="gcalStatusGrid">
                   <div class="status-item"><div class="status-item-label">Service Account</div><div class="status-item-val" id="gcalSaEmail">Loading…</div></div>
                   <div class="status-item"><div class="status-item-label">Webhook Token</div><div class="status-item-val"><code id="gcalWebhookToken" style="font-size:0.82em;word-break:break-all">Loading…</code></div></div>
