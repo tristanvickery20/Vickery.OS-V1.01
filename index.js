@@ -20,6 +20,7 @@ const { handleUpdateLead } = require("./api/leads-update");
 const { handleGetTechs } = require("./api/techs");
 const { handleGetEvents, handleCreateEvent, handleUpdateEvent, handleRestoreEvent } = require("./api/events");
 const { handleDashboard, handleDashboardFinancials } = require("./api/dashboard");
+const { handleToday, handleWeekDay } = require("./api/today");
 const { handleBonusEligibility } = require("./api/bonus-eligibility");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
 const { handleScheduleLead } = require("./api/leads-schedule");
@@ -1048,6 +1049,15 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/dashboard") && req.method === "GET") {
     if (_epath === "/api/dashboard/financials") return handleDashboardFinancials(req, res);
     return handleDashboard(req, res);
+  }
+
+  if (_epath === "/api/today" && req.method === "GET") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
+    return handleToday(req, res);
+  }
+  if (_epath === "/api/week" && req.method === "GET") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
+    return handleWeekDay(req, res);
   }
 
   if (req.url.startsWith("/api/audit") && req.method === "GET") {

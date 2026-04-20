@@ -10,52 +10,193 @@
   <style>
     .dash-section { margin-bottom: 28px; }
 
-    /* Today strip */
-    .today-strip {
-      background: rgba(59,130,246,0.08);
-      border: 1px solid rgba(59,130,246,0.22);
-      border-radius: 18px;
-      padding: 22px 24px 18px;
+    /* ── Filter chips ── */
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
     }
-    .today-strip .strip-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: #60a5fa;
-      margin-bottom: 6px;
-    }
-    .today-strip .strip-big {
-      font-size: 22px;
-      font-weight: 900;
-      line-height: 1.2;
-      margin-bottom: 4px;
-    }
-    .today-strip .strip-sub {
+    .fchip {
+      padding: 7px 16px;
+      border-radius: 99px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: rgba(230,238,252,0.65);
       font-size: 13px;
-      opacity: .7;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .fchip.active {
+      background: rgba(59,130,246,0.2);
+      border-color: rgba(96,165,250,0.5);
+      color: #93c5fd;
+    }
+    .fchip:hover:not(.active) { border-color: rgba(255,255,255,0.2); color: rgba(230,238,252,0.85); }
+
+    /* ── Today header ── */
+    .today-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 14px;
     }
-    .progress-track {
-      height: 6px;
-      border-radius: 99px;
-      background: rgba(255,255,255,0.08);
-      overflow: hidden;
+    .today-header-left { display: flex; flex-direction: column; gap: 2px; }
+    .today-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .09em;
+      text-transform: uppercase; color: #60a5fa;
     }
-    .progress-fill {
-      height: 100%;
-      border-radius: 99px;
-      background: #60a5fa;
-      transition: width .4s ease;
-      min-width: 0;
+    .today-date {
+      font-size: 20px; font-weight: 900; line-height: 1.1;
     }
-    .progress-label {
-      margin-top: 6px;
-      font-size: 11px;
-      opacity: .55;
+    .today-meta { font-size: 13px; opacity: .6; }
+    .today-refresh {
+      font-size: 12px; opacity: .4; font-weight: 600;
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-family: inherit; padding: 0;
+    }
+    .today-refresh:hover { opacity: .8; }
+
+    /* ── Overdue section ── */
+    .overdue-section {
+      background: rgba(251,113,133,0.08);
+      border: 1px solid rgba(251,113,133,0.25);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .overdue-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: #fda4af; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .overdue-count-badge {
+      background: rgba(251,113,133,0.2);
+      border: 1px solid rgba(251,113,133,0.4);
+      border-radius: 99px;
+      padding: 1px 8px;
+      font-size: 11px; font-weight: 800; color: #fda4af;
     }
 
-    /* KPI grid */
+    /* ── Event/task rows ── */
+    .event-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .event-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px;
+      border-radius: 13px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      text-decoration: none; color: inherit;
+      transition: border-color .15s;
+    }
+    .event-row:hover { border-color: rgba(96,165,250,0.3); }
+    .event-row.overdue-row {
+      background: rgba(251,113,133,0.05);
+      border-color: rgba(251,113,133,0.15);
+    }
+    .event-row.task-row {
+      background: rgba(167,139,250,0.05);
+      border-color: rgba(167,139,250,0.12);
+    }
+
+    .ev-time {
+      flex: 0 0 44px;
+      font-size: 11px; font-weight: 700;
+      color: rgba(230,238,252,0.45);
+      text-align: right; white-space: nowrap;
+    }
+    .ev-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px;
+    }
+    .ev-mid { flex: 1; min-width: 0; }
+    .ev-name {
+      font-size: 14px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ev-sub { font-size: 12px; opacity: .55; margin-top: 1px; }
+    .ev-right { flex: 0 0 auto; text-align: right; }
+    .ev-badge {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 99px;
+      white-space: nowrap;
+    }
+    .ev-val { font-size: 13px; font-weight: 700; margin-top: 2px; opacity: .8; }
+
+    /* type colors */
+    .dot-blue   { background: #60a5fa; }
+    .dot-green  { background: #4ade80; }
+    .dot-yellow { background: #fbbf24; }
+    .dot-red    { background: #fb7185; }
+    .dot-purple { background: #a78bfa; }
+    .dot-gray   { background: #94a3b8; }
+
+    .badge-job      { background: rgba(96,165,250,.12);  border: 1px solid rgba(96,165,250,.3);  color:#93c5fd; }
+    .badge-est      { background: rgba(251,191,36,.1);   border: 1px solid rgba(251,191,36,.25); color:#fcd34d; }
+    .badge-task     { background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.3); color:#c4b5fd; }
+    .badge-booking  { background: rgba(74,222,128,.1);   border: 1px solid rgba(74,222,128,.25); color:#86efac; }
+    .badge-overdue  { background: rgba(251,113,133,.15); border: 1px solid rgba(251,113,133,.3); color:#fda4af; }
+
+    /* ── Priority dots ── */
+    .priority-high   { color: #fb7185; }
+    .priority-medium { color: #fbbf24; }
+    .priority-low    { color: #4ade80; }
+
+    /* ── Week strip ── */
+    .week-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .week-strip::-webkit-scrollbar { display: none; }
+    .week-day {
+      flex: 0 0 auto;
+      min-width: 60px;
+      padding: 10px 6px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      text-align: center;
+      cursor: pointer;
+      transition: all .15s;
+      user-select: none;
+    }
+    .week-day:hover { border-color: rgba(96,165,250,0.3); }
+    .week-day.active {
+      background: rgba(59,130,246,0.18);
+      border-color: rgba(96,165,250,0.45);
+    }
+    .week-day.today-marker {
+      border-color: rgba(96,165,250,0.35);
+    }
+    .wd-label { font-size: 11px; font-weight: 700; opacity: .5; text-transform: uppercase; letter-spacing: .06em; }
+    .wd-num { font-size: 18px; font-weight: 900; margin: 2px 0; }
+    .wd-counts { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+    .wd-pip {
+      font-size: 10px; font-weight: 700;
+      padding: 1px 5px; border-radius: 99px;
+    }
+    .wd-pip-ev  { background: rgba(96,165,250,.15);  color: #93c5fd; }
+    .wd-pip-task{ background: rgba(167,139,250,.15); color: #c4b5fd; }
+
+    .week-day-detail {
+      margin-top: 14px;
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(96,165,250,0.18);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .week-day-detail-title {
+      font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: #60a5fa; margin-bottom: 12px;
+    }
+
+    /* ── KPI grid ── */
     .kpi-cards {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -69,81 +210,31 @@
       border: 1px solid rgba(255,255,255,0.09);
       border-radius: 16px;
       padding: 18px 20px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
+      display: flex; flex-direction: column;
     }
     .kpi-card2 .card-title {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-      opacity: .55;
-      margin-bottom: 12px;
+      font-size: 11px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; opacity: .55; margin-bottom: 12px;
     }
     .kpi-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      gap: 8px;
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 8px;
     }
     .kpi-row:last-child { border-bottom: none; }
     .kpi-row-label { font-size: 13px; opacity: .7; }
-    .kpi-row-val {
-      font-size: 18px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
+    .kpi-row-val { font-size: 18px; font-weight: 900; white-space: nowrap; }
     .kpi-row-val.big { font-size: 22px; }
     .card-view-link {
-      margin-top: 12px;
-      font-size: 12px;
-      color: #60a5fa;
-      text-decoration: none;
-      opacity: .8;
+      margin-top: 12px; font-size: 12px;
+      color: #60a5fa; text-decoration: none; opacity: .8;
     }
     .card-view-link:hover { opacity: 1; }
 
-    /* Today schedule list */
-    .schedule-list { display: flex; flex-direction: column; gap: 10px; }
-    .schedule-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 16px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      text-decoration: none;
-      color: inherit;
-      transition: border-color .15s;
-    }
-    .schedule-row:hover { border-color: rgba(96,165,250,0.35); }
-    .sch-avatar {
-      width: 38px; height: 38px;
-      border-radius: 50%;
-      background: rgba(59,130,246,0.18);
-      border: 1px solid rgba(59,130,246,0.3);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 14px; color: #fff;
-      flex: 0 0 38px;
-    }
-    .sch-mid { flex: 1; min-width: 0; }
-    .sch-name {
-      font-size: 15px; font-weight: 800;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .sch-sub { font-size: 12px; opacity: .65; margin-top: 2px; }
-    .sch-right { flex: 0 0 auto; text-align: right; }
-    .sch-val { font-size: 14px; font-weight: 700; }
-
+    /* ── Status pills ── */
     .spill {
       display: inline-flex; align-items: center; gap: 6px;
       font-size: 11px; font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 99px;
+      padding: 3px 8px; border-radius: 99px;
       border: 1px solid rgba(255,255,255,0.1);
       background: rgba(255,255,255,0.04);
       white-space: nowrap;
@@ -153,52 +244,35 @@
     .sd-yellow { border-color: rgba(251,191,36,.3);  background: rgba(251,191,36,.1);  color:#fcd34d; }
     .sd-red    { border-color: rgba(251,113,133,.3); background: rgba(251,113,133,.1);  color:#fda4af; }
 
-    /* Recent activity */
+    /* ── Recent activity ── */
     .activity-list { display: flex; flex-direction: column; gap: 0; }
     .activity-row {
       display: flex; align-items: center; gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      text-decoration: none;
-      color: inherit;
+      padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      text-decoration: none; color: inherit;
     }
     .activity-row:last-child { border-bottom: none; }
-    .act-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      flex: 0 0 8px;
-      background: #60a5fa;
-    }
+    .act-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; background: #60a5fa; }
     .act-name { flex: 1; font-size: 14px; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .act-right { font-size: 12px; opacity: .55; white-space: nowrap; flex: 0 0 auto; }
 
     .section-title {
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      opacity: .5;
-      margin: 0 0 12px 2px;
+      font-size: 13px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; opacity: .5; margin: 0 0 12px 2px;
     }
 
     .empty-strip {
-      padding: 18px;
-      border-radius: 12px;
+      padding: 18px; border-radius: 12px;
       border: 1px dashed rgba(255,255,255,0.1);
       color: rgba(255,255,255,0.35);
-      font-size: 13px;
-      text-align: center;
+      font-size: 13px; text-align: center;
     }
 
     .dash-two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
     }
     @media (max-width: 700px) { .dash-two-col { grid-template-columns: 1fr; } }
 
-    .refresh-bar {
-      display: flex; align-items: center; gap: 12px;
-    }
     #statusText { font-size: 12px; opacity: .45; }
   </style>
 </head>
@@ -206,23 +280,65 @@
   <div class="app-shell">
     <div class="sidebar" id="sidebarMount"></div>
     <main class="main-area">
-      <span id="statusText" style="display:none;"></span>
-      <button id="refreshBtn" style="display:none;" type="button">Refresh</button>
-
       <div class="main-content">
 
-        <!-- Section 1: Today strip -->
-        <div class="dash-section" id="todaySection">
-          <div class="today-strip">
-            <div class="strip-label">Today</div>
-            <div class="strip-big" id="todayBig">&mdash;</div>
-            <div class="strip-sub" id="todaySub">&mdash;</div>
-            <div class="progress-track"><div class="progress-fill" id="todayProgress" style="width:0%"></div></div>
-            <div class="progress-label" id="todayProgressLabel"></div>
+        <!-- ═══ TODAY/THIS WEEK SECTION ═══ -->
+        <div class="dash-section">
+
+          <!-- Today header + refresh -->
+          <div class="today-header">
+            <div class="today-header-left">
+              <div class="today-label">Today</div>
+              <div class="today-date" id="todayDateDisplay">&mdash;</div>
+              <div class="today-meta" id="todayMeta">&mdash;</div>
+            </div>
+            <button class="today-refresh" id="refreshBtn" type="button">&#8635; Refresh</button>
           </div>
+
+          <!-- Filter chips -->
+          <div class="filter-chips" id="filterChips">
+            <button class="fchip active" data-filter="all">All</button>
+            <button class="fchip" data-filter="jobs">Jobs</button>
+            <button class="fchip" data-filter="estimates">Estimates</button>
+            <button class="fchip" data-filter="tasks">Tasks</button>
+          </div>
+
+          <!-- Overdue section -->
+          <div class="overdue-section" id="overdueSection" style="display:none;">
+            <div class="overdue-title">
+              Overdue
+              <span class="overdue-count-badge" id="overdueCountBadge">0</span>
+            </div>
+            <div class="event-list" id="overdueList"></div>
+          </div>
+
+          <!-- Timed events (today's schedule) -->
+          <div style="margin-bottom:14px;">
+            <div class="section-title">Today's Schedule</div>
+            <div class="event-list" id="timedEventsList">
+              <div class="empty-strip">Loading&hellip;</div>
+            </div>
+          </div>
+
+          <!-- Unscheduled tasks -->
+          <div id="unscheduledSection" style="margin-bottom:14px;">
+            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Open Tasks</span>
+              <button onclick="window.VE_QuickAdd&&window.VE_QuickAdd.open()" style="font-size:12px;font-weight:700;color:#60a5fa;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">+ Add Task</button>
+            </div>
+            <div class="event-list" id="unscheduledList"></div>
+          </div>
+
         </div>
 
-        <!-- Section 2: 4 KPI cards -->
+        <!-- ═══ THIS WEEK STRIP ═══ -->
+        <div class="dash-section">
+          <div class="section-title">This Week</div>
+          <div class="week-strip" id="weekStrip"></div>
+          <div id="weekDayDetail" style="display:none;"></div>
+        </div>
+
+        <!-- ═══ KPI CARDS ═══ -->
         <div class="dash-section">
           <div class="kpi-cards">
 
@@ -333,7 +449,7 @@
           </div>
         </div>
 
-        <!-- Section: Financials -->
+        <!-- ═══ FINANCIALS ═══ -->
         <div class="dash-section" id="financialsSection">
           <div class="section-title">Financials</div>
           <div class="kpi-cards" id="financialCards">
@@ -422,35 +538,15 @@
           </div>
         </div>
 
-        <!-- Tasks section -->
+        <!-- ═══ RECENT ACTIVITY ═══ -->
         <div class="dash-section">
-          <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
-            <span>Open Tasks</span>
-            <button onclick="window.VE_QuickAdd&&window.VE_QuickAdd.open()" style="font-size:12px;font-weight:700;color:#60a5fa;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">+ Add Task</button>
+          <div class="section-title">Recent Activity</div>
+          <div class="activity-list" id="activityList">
+            <div class="empty-strip">Loading&hellip;</div>
           </div>
-          <div id="ve-tasks-section" class="qa-task-list"></div>
         </div>
 
-        <!-- Section 3 + 4: two columns -->
-        <div class="dash-two-col">
-
-          <!-- Today's schedule -->
-          <div class="dash-section">
-            <div class="section-title">Today's Schedule</div>
-            <div class="schedule-list" id="scheduleList">
-              <div class="empty-strip">Loading&hellip;</div>
-            </div>
-          </div>
-
-          <!-- Recent activity -->
-          <div class="dash-section">
-            <div class="section-title">Recent Activity</div>
-            <div class="activity-list" id="activityList">
-              <div class="empty-strip">Loading&hellip;</div>
-            </div>
-          </div>
-
-        </div>
+        <div style="font-size:12px;opacity:.3;text-align:right;margin-top:-16px;" id="statusText"></div>
 
       </div>
     </main>
