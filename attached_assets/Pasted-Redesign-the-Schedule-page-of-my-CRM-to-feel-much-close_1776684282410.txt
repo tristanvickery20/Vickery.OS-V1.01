@@ -1,0 +1,197 @@
+Redesign the Schedule page of my CRM to feel much closer to Google Calendar on mobile: clean, open, minimal, fast, easy to scan, and not bulky. The current version has too many visible controls competing for space, which makes it hard to actually see the calendar. I want the screen to prioritize the calendar itself, not buttons and filters. Do not rebuild the entire scheduling system from scratch if the existing logic works. Keep the existing scheduling/business logic, data wiring, event rendering, and core functionality wherever possible, but redesign the mobile UI/UX so it feels thoughtfully product-designed instead of crowded. Preserve current data integrity and current behavior unless explicitly changed below.
+
+Main goal:
+Make the calendar view the hero. Reduce button clutter. Use a small number of compact controls and move secondary actions into menus, sheets, or drawers. On mobile, the page should feel more like Google Calendar: mostly open calendar space, a few obvious controls, a floating add button, simple view switching, and hidden complexity until needed.
+
+Problems with current screen:
+1. Too many controls are always visible at once.
+2. The filters and utility buttons take too much vertical space.
+3. The calendar itself does not get enough room.
+4. “Map,” “Unscheduled,” “GCal Error,” refresh/menu buttons, and filter rows all compete visually.
+5. It does not feel calm, obvious, or easy to scan.
+6. It feels like an internal admin tool instead of a polished mobile-first CRM schedule.
+7. I want better information density without making it look cramped.
+
+Design direction:
+Use Google Calendar mobile as the inspiration for layout philosophy, not a literal clone. The philosophy is:
+- the calendar gets most of the screen
+- only primary controls stay visible
+- secondary controls go behind menu/sheet
+- interaction should feel obvious and light
+- one-tap common actions, hidden advanced actions
+- simple typography
+- clear hierarchy
+- compact but readable chips/cards
+- no bulky toolbars
+- no unnecessary framing or giant control blocks
+
+What I want visible by default on mobile:
+1. A compact top bar.
+2. A single date header area.
+3. A compact view switcher.
+4. The calendar grid/list itself.
+5. A floating + button.
+That is the priority. Everything else should be reduced, tucked away, or shown contextually.
+
+Required new mobile layout:
+Top app bar:
+- Left: menu icon or avatar/menu button
+- Center/left: current month/date label
+- Right: search icon and overflow/menu icon
+- Do NOT show large “Schedule” heading taking up extra space if it wastes vertical room
+- Do NOT show a large refresh button in the main canvas
+- Keep this bar slim and clean
+
+Date navigation:
+- Show current month/week/day label clearly
+- Include very compact previous / next controls
+- Include a Today button, but make it compact
+- This row should be much tighter than current implementation
+
+View switcher:
+- Keep Month / Week / Day visible
+- Move Map out of the main segmented control and into secondary actions or a sheet/menu
+- The segmented control should be compact and not oversized
+- Default to whichever existing view is currently active, but make switching fast
+- Do not let the view switcher dominate the screen
+
+Filters:
+- Remove the always-visible large AllTechs and AllStatuses dropdown rows from the main screen
+- Replace them with a single “Filter” icon/button that opens a bottom sheet or modal
+- In that filter sheet, include:
+  - tech filter
+  - status filter
+  - hide weekends
+  - maybe event type filter if already supported
+- The main screen should not permanently sacrifice height for filters
+- If filters are active, show only tiny chips like “1 Tech” or “2 Filters” near the top, not giant controls
+
+Secondary actions:
+- Move Unscheduled into a slide-up bottom sheet, side drawer, or secondary panel opened from a small icon/button
+- Do not keep the unscheduled panel open by default
+- If there are unscheduled jobs, show a small chip/badge button like “Unscheduled (3)”
+- Tapping it opens the list in a clean sheet/panel
+- Move GCal status out of the main primary control row
+- If Google Calendar has an error, show a subtle status dot/icon in the header or overflow menu, not a big error pill stealing space
+- Refresh should live in overflow/pull-to-refresh, not as a giant visible button
+
+Calendar canvas behavior:
+- Give the calendar much more vertical and horizontal room
+- Tighten margins and reduce unnecessary padding around the calendar
+- Improve scanability of appointments in Month, Week, and Day
+- Make event cards/chips clean, compact, and readable
+- For Month view, optimize for “at a glance” load by showing compact visit chips and counts
+- For Week/Day view, maximize time-grid visibility
+- Avoid bulky wrappers, oversized borders, or excessive container chrome
+
+Floating action button:
+- Keep one floating + button
+- Tapping it opens a bottom sheet or speed-dial with the right business actions:
+  - New Job
+  - New Estimate
+  - New Task
+  - Block Time
+- This is much better than scattering add/create buttons all over the page
+
+Business-specific behavior to preserve:
+This is not a generic calendar. It is for a field service CRM. Preserve and support the scheduling logic needed for the business:
+- jobs
+- estimates
+- tasks
+- blocked time
+- technician assignments
+- statuses
+- unscheduled jobs
+- date navigation
+- drag/drop or reschedule behavior if already implemented
+- Google Calendar integration logic if already implemented
+- any existing event loading/rendering pipeline unless it must be adjusted for the redesign
+
+Important product rule:
+The CRM calendar is a business operating screen, but it must present like a consumer-grade app. That means the business power stays under the hood while the main UI stays calm and obvious. We still need all the useful functionality, but not all exposed all the time.
+
+What to remove or reduce from the main screen:
+- oversized page title area
+- always-visible large filter dropdowns
+- large refresh button
+- big error pill for GCal
+- unscheduled side panel shown by default
+- Map as an equal-priority top-level view on mobile
+- any duplicated navigation controls
+- any unnecessary labels that eat vertical space
+- any card containers around controls if they are not adding real value
+
+What the improved information architecture should be:
+Primary layer = navigation + calendar + add
+Secondary layer = filters + unscheduled + sync status + map + advanced actions
+Tertiary layer = detailed job/event actions inside event detail sheet/modal
+
+Event interaction:
+When tapping an event, open a clean detail sheet/modal rather than forcing more persistent on-screen controls.
+The event detail should show:
+- customer/job title
+- type
+- date/time
+- assigned tech
+- status
+- location/address
+- linked job/quote/client actions if already available
+- reschedule/edit action
+This keeps the calendar clean while still letting the user act fast.
+
+Visual design requirements:
+- Mobile-first
+- Clean dark mode
+- Less bulky overall
+- Tighter spacing
+- Better hierarchy
+- Smaller but still tappable controls
+- More whitespace in the right places
+- Fewer visible borders
+- More polished button sizing
+- Strong readability
+- Make it feel intentionally designed, not just functionally assembled
+
+Implementation guidance:
+- Audit the current Schedule page component and identify what can be reused
+- Refactor the layout before rewriting logic
+- Reuse existing event/query/state code where possible
+- Remove only what is necessary to achieve the redesign
+- Keep code modular and clean
+- Do not create giant files
+- Do not break current scheduling logic
+- If current UI state management is messy, clean it up
+- Use bottom sheets/drawers/modals for secondary actions
+- Make the mobile viewport the main target
+- Desktop/tablet can remain functional, but mobile quality is the priority
+- Do not introduce random new design ideas not requested here
+
+Expected final UX:
+When I open Schedule on my phone, I should mostly see the calendar. I should be able to:
+- glance at my day/week/month quickly
+- switch views easily
+- jump date ranges
+- add something fast
+- open filters only when needed
+- access unscheduled work only when needed
+- see Google sync issues without them screaming at me
+- feel like the interface is calm, clean, and obvious
+
+Acceptance criteria:
+1. The main schedule screen shows meaningfully more calendar area than before.
+2. Visible controls on first load are reduced dramatically.
+3. AllTechs and AllStatuses are no longer large always-visible dropdown rows.
+4. Unscheduled is no longer an always-open side panel on mobile.
+5. GCal status is demoted to a subtle secondary indicator.
+6. Map is removed from the primary mobile segmented control and placed in a secondary action location.
+7. There is one clear floating add button.
+8. Month / Week / Day remain fast and easy to switch.
+9. The page feels closer to Google Calendar’s cleanliness and open-screen philosophy.
+10. Existing business scheduling capability still works.
+
+Deliverable:
+Implement the redesign directly in the app. Do not just describe what should change. Make the UI changes, preserve the scheduling/business logic, and clean up the code where needed. After implementation, give me a concise summary of:
+- what you changed
+- what you moved into secondary menus/sheets
+- what logic was preserved
+- any tradeoffs or follow-up recommendations
