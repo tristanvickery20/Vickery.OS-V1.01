@@ -40,3 +40,7 @@ externalPort = 80
 [userenv.shared]
 ADMIN_SEED_TOKEN = "b0c46fde7cd805acb7fb71e24d8ba3c05b7262b69e268e9b"
 TRACCAR_URL = "http://157.230.184.147:8082"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000
