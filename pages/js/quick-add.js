@@ -54,7 +54,15 @@
     ".qa-input::placeholder,.qa-textarea::placeholder{color:#475569;}",
     ".qa-select option{background:#1e293b;color:#e2e8f0;}",
     ".qa-textarea{resize:vertical;min-height:70px;}",
-    ".qa-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}",
+    ".qa-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}",
+    "@media(max-width:400px){.qa-row{grid-template-columns:1fr;}}",
+    ".qa-checks-wrap{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding:2px 0;}",
+    ".qa-check-label{display:flex;align-items:center;gap:9px;cursor:pointer;padding:7px 10px;",
+    "border-radius:9px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);",
+    "font-size:13px;color:#cbd5e1;transition:background .12s;}",
+    ".qa-check-label:hover{background:rgba(255,255,255,.08);}",
+    ".qa-check-label input[type=checkbox]{accent-color:#2d6ae0;width:15px;height:15px;flex-shrink:0;cursor:pointer;}",
+    ".qa-checks-loading{font-size:12px;color:#475569;font-style:italic;padding:4px 0;}",
     ".qa-priority-row{display:flex;gap:7px;}",
     ".qa-pri{flex:1;padding:6px 4px;border-radius:8px;border:1px solid rgba(255,255,255,.1);",
     "background:rgba(255,255,255,.04);color:#64748b;font-size:12px;font-weight:700;",
@@ -273,6 +281,28 @@
     return opts;
   }
 
+  // Render a checkbox list for multi-tech assignment
+  function techCheckboxesHtml(selected) {
+    if (!techList.length) return '<em class="qa-checks-loading">No techs found</em>';
+    var selArr = Array.isArray(selected) ? selected
+               : (selected && typeof selected === "string") ? selected.split(",").map(function(s){ return s.trim(); }).filter(Boolean)
+               : [];
+    return techList.map(function (t) {
+      var name = t.name || (t.firstName + " " + t.lastName);
+      var chk  = selArr.indexOf(name) !== -1 ? " checked" : "";
+      return '<label class="qa-check-label">' +
+        '<input type="checkbox" class="qa-assign-cb" value="' + esc(name) + '"' + chk + '>' +
+        '<span>' + esc(name) + '</span>' +
+      '</label>';
+    }).join("");
+  }
+
+  // Read all checked tech names from the checkbox list
+  function getAssignedNames() {
+    var boxes = document.querySelectorAll("#qa-f-assign-checks .qa-assign-cb:checked");
+    return Array.prototype.map.call(boxes, function (cb) { return cb.value; });
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   function esc(s) {
     return String(s || "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -313,7 +343,7 @@
           '<button type="button" class="qa-pri high" data-pri="high">High</button>' +
         '</div>') +
       '</div>';
-      html += fld("Assign To", '<select id="qa-f-assign" class="qa-select"><option value="">Loading…</option></select>');
+      html += fld("Assign To", '<div id="qa-f-assign-checks" class="qa-checks-wrap"><em class="qa-checks-loading">Loading\u2026</em></div>');
       html += fld("Related Lead ID", inp("qa-f-lead", "text", "LEAD-xxxxx (optional)", "", "autocomplete='off'"));
       html += fld("Notes", textarea("qa-f-notes", "Add any notes…"));
 
@@ -353,10 +383,8 @@
         fld("Scheduled Date", inp("qa-f-due", "date", "", todayStr())) +
         fld("Time", inp("qa-f-time", "time", "", "08:00")) +
       '</div>';
-      html += '<div class="qa-row">' +
-        fld("Duration (min)", inp("qa-f-dur", "number", "120", "120", "min='15' max='960' step='15'")) +
-        fld("Assign To", '<select id="qa-f-assign" class="qa-select"><option value="">Loading…</option></select>') +
-      '</div>';
+      html += fld("Duration (min)", inp("qa-f-dur", "number", "120", "120", "min='15' max='960' step='15'"));
+      html += fld("Assign To", '<div id="qa-f-assign-checks" class="qa-checks-wrap"><em class="qa-checks-loading">Loading\u2026</em></div>');
       html += fld("Notes", textarea("qa-f-notes", "Additional notes…"));
 
     } else if (currentType === "Meeting") {
@@ -366,7 +394,7 @@
         fld("Start Time", inp("qa-f-time", "time", "", nextHourStr())) +
       '</div>';
       html += fld("Duration (min)", inp("qa-f-dur", "number", "30", "30", "min='15' max='480' step='15'"));
-      html += fld("Assign To", '<select id="qa-f-assign" class="qa-select"><option value="">Loading…</option></select>');
+      html += fld("Assign To", '<div id="qa-f-assign-checks" class="qa-checks-wrap"><em class="qa-checks-loading">Loading\u2026</em></div>');
       html += fld("Notes / Attendees", textarea("qa-f-notes", "Who is attending? Any agenda items?"));
 
     } else if (currentType === "Callback") {
@@ -401,11 +429,11 @@
       });
     });
 
-    // Load techs into dropdowns
-    var assignEl = document.getElementById("qa-f-assign");
-    if (assignEl) {
+    // Load techs into checkbox list
+    var checksWrap = document.getElementById("qa-f-assign-checks");
+    if (checksWrap) {
       loadTechs(function () {
-        if (assignEl.parentNode) assignEl.innerHTML = techOptionsHtml("");
+        if (checksWrap.parentNode) checksWrap.innerHTML = techCheckboxesHtml("");
       });
     }
 
@@ -428,14 +456,14 @@
             var nameEl   = document.getElementById("qa-f-name");
             var phoneEl  = document.getElementById("qa-f-phone");
             var addrEl   = document.getElementById("qa-f-addr");
-            var assignEl2 = document.getElementById("qa-f-assign");
+            var checksWrap2 = document.getElementById("qa-f-assign-checks");
             if (nameEl  && lead.name)    nameEl.value  = lead.name;
             if (phoneEl && lead.phone)   phoneEl.value = lead.phone;
             if (addrEl  && lead.address) addrEl.value  = lead.address;
-            if (assignEl2 && lead.assigned_to) {
+            if (checksWrap2 && lead.assigned_to) {
               loadTechs(function () {
-                if (assignEl2.parentNode) {
-                  assignEl2.innerHTML = techOptionsHtml(lead.assigned_to);
+                if (checksWrap2.parentNode) {
+                  checksWrap2.innerHTML = techCheckboxesHtml(lead.assigned_to);
                 }
               });
             }
@@ -475,7 +503,7 @@
       var title = g("qa-f-title");
       if (!title) { showErr("Title is required."); btn.disabled = false; btn.textContent = "Add Task"; return; }
       var due = g("qa-f-due");
-      var taskAssign = g("qa-f-assign") || (IS_CREW ? crewMemberName : "");
+      var taskAssign = getAssignedNames().join(", ") || (IS_CREW ? crewMemberName : "");
       promise = fetch(TASKS_BASE, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -505,7 +533,7 @@
           address: g("qa-f-addr"), job_type: g("qa-f-jtype"),
           status: "New", notes: notesWithDur,
           scheduled_date: schedDT,
-          assigned_to: currentType === "Job" ? g("qa-f-assign") : "",
+          assigned_to: currentType === "Job" ? (getAssignedNames()[0] || "") : "",
         }),
       }).then(function (r) { return r.json(); });
 
@@ -529,7 +557,7 @@
         body: JSON.stringify({
           title: currentType + " — " + name2,
           type: currentType, due_date: sDT,
-          assigned_to: g("qa-f-assign") || "",
+          assigned_to: getAssignedNames()[0] || "",
           priority: getPri(), notes: crewNotesBase,
         }),
       }).then(function (r) { return r.json(); });
@@ -553,7 +581,7 @@
         endDT = addMinutesToLocalDT(startDT, 15);
       }
       // Auto-assign to crew member in crew context; else use form selection
-      var evAssign = g("qa-f-assign") || (IS_CREW ? crewMemberName : "");
+      var evAssign = getAssignedNames()[0] || (IS_CREW ? crewMemberName : "");
       var evNotes  = g("qa-f-notes") || "";
       promise = fetch(EVENTS_BASE, {
         method: "POST", headers: { "Content-Type": "application/json" },

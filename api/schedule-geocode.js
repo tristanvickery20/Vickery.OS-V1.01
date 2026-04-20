@@ -7,6 +7,9 @@ const { ensureTabHeaders } = require("../lib/sheetsSchema");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 const PROXIMITY = "-93.7363,30.0930"; // Orange, TX
+// Restrict geocoding to SE Texas / SW Louisiana service region.
+// This prevents Mapbox from matching streets in distant cities (e.g. Nacogdoches).
+const BBOX = "-95.5,29.2,-92.5,31.1"; // roughly Orange/Beaumont/Port Arthur area
 
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -36,7 +39,7 @@ function geocodeAddress(address) {
   const token = process.env.MAPBOX_TOKEN;
   if (!token) return Promise.reject(new Error("MAPBOX_TOKEN not configured"));
   const encoded = encodeURIComponent(address.trim());
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&proximity=${PROXIMITY}&country=US&limit=1`;
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&proximity=${PROXIMITY}&bbox=${BBOX}&country=US&limit=1`;
   return new Promise((resolve, reject) => {
     https.get(url, (r) => {
       let data = "";
