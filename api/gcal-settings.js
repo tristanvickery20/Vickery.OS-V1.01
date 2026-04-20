@@ -4,6 +4,7 @@ const {
   saveGCalSettings,
   bootstrapCalendars,
   runReverseSync,
+  backfillToGCal,
   verifyPersonalCalendar,
   shareCalendarsWithUser,
   registerWatchChannels,
@@ -97,6 +98,21 @@ async function handleGCalShareWithUser(req, res) {
   }
 }
 
+// POST /api/gcal/backfill — push all existing CRM items with no gcal_event_id to Google Calendar
+async function handleGCalBackfill(req, res) {
+  try {
+    json(res, 200, { ok: true, message: "Backfill started — this may take a minute." });
+    setImmediate(async () => {
+      try {
+        const result = await backfillToGCal();
+        console.log(`[gcal/backfill] Complete — pushed=${result.pushed} skipped=${result.skipped} errors=${result.errors}`);
+      } catch (e) { console.error("[gcal/backfill]", e.message); }
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 // POST /api/gcal/watch-channels — register push-notification watch channels for Jobs + Internal
 // Body: { webhookAddress: "https://your-domain/api/gcal-webhook" }
 async function handleGCalRegisterWatchChannels(req, res) {
@@ -116,6 +132,7 @@ module.exports = {
   handleGCalSaveSettings,
   handleGCalBootstrap,
   handleGCalSync,
+  handleGCalBackfill,
   handleGCalVerifyPersonal,
   handleGCalShareWithUser,
   handleGCalRegisterWatchChannels,

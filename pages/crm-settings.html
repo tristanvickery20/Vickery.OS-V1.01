@@ -199,6 +199,7 @@
                 <div class="btn-row">
                   <button class="btn-secondary" id="gcalBootstrapBtn">Bootstrap Calendars</button>
                   <button class="btn-secondary" id="gcalSyncBtn">Run Sync Now</button>
+                  <button class="btn-secondary" id="gcalBackfillBtn">Push Existing to Calendar</button>
                 </div>
                 <div id="gcalActionMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
               </div>
@@ -455,6 +456,27 @@
           msg.textContent = "Error: " + err.message;
           msg.style.color = "#7f1d1d";
         }
+      });
+
+      // ── Backfill existing events ───────────────────────────────
+      document.getElementById("gcalBackfillBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("gcalActionMsg");
+        const btn = document.getElementById("gcalBackfillBtn");
+        msg.textContent = "Pushing existing jobs/tasks to Google Calendar… (may take 1–2 min)";
+        msg.style.color = ""; btn.disabled = true;
+        try {
+          const r = await fetch("/api/gcal/backfill", { method: "POST" });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "✓ Backfill started! Events will appear on your calendars within a minute or two.";
+            msg.style.color = "#166534";
+          } else {
+            msg.textContent = "✗ " + (d.error || "Backfill failed");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        } finally { btn.disabled = false; }
       });
 
       // ── Share with Gmail ───────────────────────────────────────
