@@ -5,6 +5,7 @@ const {
   bootstrapCalendars,
   runReverseSync,
   verifyPersonalCalendar,
+  shareCalendarsWithUser,
   registerWatchChannels,
 } = require("../lib/googleCalendar");
 
@@ -78,6 +79,24 @@ async function handleGCalVerifyPersonal(req, res) {
   }
 }
 
+// POST /api/gcal/share-with — share Vickery Jobs + Vickery Internal with a user's Gmail
+async function handleGCalShareWithUser(req, res) {
+  try {
+    const body  = await readBody(req);
+    const email = (body.email || "").trim();
+    if (!email) return json(res, 400, { ok: false, error: "email is required" });
+    const results = await shareCalendarsWithUser(email);
+    const allOk   = results.every(r => r.ok);
+    const shared  = results.filter(r => r.ok).map(r => r.label).join(" and ");
+    const message = allOk
+      ? `"${shared}" shared with ${email}. They'll appear in Google Calendar within a minute.`
+      : results.filter(r => !r.ok).map(r => `${r.label}: ${r.error}`).join("; ");
+    json(res, allOk ? 200 : 207, { ok: allOk, results, message });
+  } catch (err) {
+    json(res, 400, { ok: false, error: err.message });
+  }
+}
+
 // POST /api/gcal/watch-channels — register push-notification watch channels for Jobs + Internal
 // Body: { webhookAddress: "https://your-domain/api/gcal-webhook" }
 async function handleGCalRegisterWatchChannels(req, res) {
@@ -98,5 +117,6 @@ module.exports = {
   handleGCalBootstrap,
   handleGCalSync,
   handleGCalVerifyPersonal,
+  handleGCalShareWithUser,
   handleGCalRegisterWatchChannels,
 };

@@ -203,6 +203,23 @@
                 <div id="gcalActionMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
               </div>
 
+              <div class="settings-card">
+                <div class="settings-card-title">Share Calendars with My Phone</div>
+                <div class="settings-card-sub">
+                  After bootstrapping, tap this to share the <strong>Vickery Jobs</strong> and <strong>Vickery Internal</strong>
+                  calendars with your Google account. They'll appear in Google Calendar on your iPhone within a minute —
+                  no manual steps needed.
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="gcalShareEmail">Your Gmail Address</label>
+                  <input class="form-input" type="email" id="gcalShareEmail" placeholder="electric.vickery@gmail.com" />
+                </div>
+                <div class="btn-row" style="margin-top:8px;">
+                  <button class="btn-primary" id="gcalShareBtn">Share with My Gmail</button>
+                </div>
+                <div id="gcalShareMsg" style="font-size:13px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+              </div>
+
               <div class="section-hdr">Calendar Deletion Review</div>
               <div class="settings-card">
                 <div class="settings-card-title">Items Removed from Google Calendar</div>
@@ -438,6 +455,32 @@
           msg.textContent = "Error: " + err.message;
           msg.style.color = "#7f1d1d";
         }
+      });
+
+      // ── Share with Gmail ───────────────────────────────────────
+      document.getElementById("gcalShareBtn").addEventListener("click", async () => {
+        const email = document.getElementById("gcalShareEmail").value.trim();
+        const msg   = document.getElementById("gcalShareMsg");
+        const btn   = document.getElementById("gcalShareBtn");
+        if (!email) { msg.textContent = "Enter your Gmail address first."; msg.style.color = "#7f1d1d"; return; }
+        msg.textContent = "Sharing…"; msg.style.color = ""; btn.disabled = true;
+        try {
+          const r = await fetch("/api/gcal/share-with", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "✓ " + (d.message || "Calendars shared! Open Google Calendar on your phone — they should appear within a minute.");
+            msg.style.color = "#166534";
+          } else {
+            msg.textContent = "✗ " + (d.error || "Something went wrong — see below.");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        } finally { btn.disabled = false; }
       });
 
       document.getElementById("gcalWatchBtn").addEventListener("click", async () => {
