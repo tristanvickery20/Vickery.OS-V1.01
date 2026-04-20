@@ -42,6 +42,8 @@
     ".qa-chip.sel.mtg{background:#7c3aed;border-color:#7c3aed;}",
     ".qa-chip.sel.cb{background:#d97706;border-color:#d97706;}",
     ".qa-chip.sel.blk{background:#475569;border-color:#475569;}",
+    ".qa-chip.sel.time{background:#ea580c;border-color:#ea580c;}",
+    ".qa-chip.sel.exp{background:#e11d48;border-color:#e11d48;}",
     /* Form */
     ".qa-form{display:flex;flex-direction:column;gap:11px;}",
     ".qa-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;",
@@ -174,6 +176,8 @@
     { id: "Meeting",        label: "Meeting",        cls: "mtg" },
     { id: "Callback",       label: "Callback",       cls: "cb"  },
     { id: "Personal Block", label: "Personal Block", cls: "blk" },
+    { id: "Time Entry",     label: "Time Entry",     cls: "time"},
+    { id: "Expense",        label: "Expense",        cls: "exp" },
   ];
   var TYPES_CREW = [
     { id: "Task",           label: "Task",           cls: ""    },
@@ -405,6 +409,29 @@
       '</div>';
       html += fld("Phone / Notes", textarea("qa-f-notes", "(555) 000-0000 — reason for call…"));
 
+    } else if (currentType === "Time Entry") {
+      html += '<div class="qa-row">' +
+        fld("Date *", inp("qa-f-due", "date", "", todayStr())) +
+        fld("Minutes *", inp("qa-f-dur", "number", "60", "60", "min='1' max='960' step='15'")) +
+      '</div>';
+      html += fld("Tech", '<select id="qa-f-tech" class="qa-select"><option value="">— Loading… —</option></select>');
+      html += fld("Category", '<select id="qa-f-cat" class="qa-select"><option value="Labor">Labor</option><option value="Drive">Drive</option><option value="Admin">Admin</option><option value="Materials">Materials</option><option value="Other">Other</option></select>');
+      html += fld("Related Job # (optional)", inp("qa-f-lead", "text", "LEAD-xxxxx", "", "autocomplete='off'"));
+      html += fld("Notes", textarea("qa-f-notes", "What was done?"));
+
+    } else if (currentType === "Expense") {
+      html += '<div class="qa-row">' +
+        fld("Date *", inp("qa-f-due", "date", "", todayStr())) +
+        fld("Amount * ($)", inp("qa-f-amount", "number", "0.00", "", "min='0' step='0.01'")) +
+      '</div>';
+      html += fld("Tech", '<select id="qa-f-tech" class="qa-select"><option value="">— Loading… —</option></select>');
+      html += '<div class="qa-row">' +
+        fld("Type", '<select id="qa-f-exptype" class="qa-select"><option value="Materials">Materials</option><option value="Tools">Tools</option><option value="Fuel">Fuel</option><option value="Permit">Permit</option><option value="Subcontractor">Subcontractor</option><option value="Other">Other</option></select>') +
+        fld("Vendor", inp("qa-f-vendor", "text", "Home Depot, etc.", "")) +
+      '</div>';
+      html += fld("Related Job # (optional)", inp("qa-f-lead", "text", "LEAD-xxxxx", "", "autocomplete='off'"));
+      html += fld("Notes", textarea("qa-f-notes", "What was purchased?"));
+
     } else if (currentType === "Personal Block") {
       html += fld("Description *", inp("qa-f-title", "text", "e.g. Dentist, Family event…", "", "autocomplete='off'"));
       html += fld("Date *", inp("qa-f-due", "date", "", todayStr()));
@@ -473,6 +500,18 @@
             leadLookupBtn.disabled = false;
             showErr("Could not load lead.");
           });
+      });
+    }
+
+    // Populate tech select for Time Entry / Expense
+    var techSelEl = document.getElementById("qa-f-tech");
+    if (techSelEl) {
+      loadTechs(function (list) {
+        var el2 = document.getElementById("qa-f-tech");
+        if (!el2) return;
+        var opts = '<option value="">— Select Tech —</option>';
+        list.forEach(function (t) { opts += '<option value="' + t.name + '">' + t.name + '</option>'; });
+        el2.innerHTML = opts;
       });
     }
 
@@ -591,12 +630,48 @@
           assigned_to: evAssign, notes: evNotes,
         }),
       }).then(function (r) { return r.json(); });
+
+    } else if (currentType === "Time Entry") {
+      var teDate = g("qa-f-due");
+      var teMin  = g("qa-f-dur");
+      if (!teDate || !teMin) { showErr("Date and minutes are required."); btn.disabled = false; btn.textContent = "Save Time Entry"; return; }
+      promise = fetch("/api/time", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date:     teDate,
+          tech_id:  g("qa-f-tech"),
+          minutes:  parseInt(teMin, 10),
+          category: g("qa-f-cat") || "Labor",
+          lead_id:  g("qa-f-lead"),
+          notes:    g("qa-f-notes"),
+        }),
+      }).then(function (r) { return r.json(); });
+
+    } else if (currentType === "Expense") {
+      var exDate   = g("qa-f-due");
+      var exAmount = g("qa-f-amount");
+      if (!exDate || !exAmount) { showErr("Date and amount are required."); btn.disabled = false; btn.textContent = "Save Expense"; return; }
+      promise = fetch("/api/expenses", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date:    exDate,
+          tech_id: g("qa-f-tech"),
+          amount:  parseFloat(exAmount),
+          type:    g("qa-f-exptype") || "Materials",
+          vendor:  g("qa-f-vendor"),
+          lead_id: g("qa-f-lead"),
+          notes:   g("qa-f-notes"),
+        }),
+      }).then(function (r) { return r.json(); });
     }
 
     promise.then(function (data) {
       if (data.ok) {
-        showOk("Created! " + (currentType === "Estimate" || currentType === "Job"
-          ? "Lead saved." : "Task saved."));
+        var okMsg = currentType === "Estimate" || currentType === "Job" ? "Lead saved."
+          : currentType === "Time Entry" ? "Time logged!"
+          : currentType === "Expense" ? "Expense saved!"
+          : "Saved!";
+        showOk("Done — " + okMsg);
         setTimeout(function () {
           closeModal();
           refreshTaskLists();

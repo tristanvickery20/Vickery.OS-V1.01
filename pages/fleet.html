@@ -8,6 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    /* Fleet overrides: kill shell padding, full-height layout */
+    .app-shell { overflow: hidden; height: 100dvh; }
+    .main-area  { padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; }
+    .mobile-bar { margin: 0 !important; border-radius: 0; }
+  </style>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -196,15 +204,16 @@
   </style>
 </head>
 <body>
-<div class="fleet-backdrop" id="fleetBackdrop"></div>
-<div class="main">
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+  <div class="fleet-backdrop" id="fleetBackdrop"></div>
   <div class="fleet-header">
     <button class="fleet-hamburger" id="fleetMenuBtn" aria-label="Open fleet panel">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
-    <a class="fleet-back-btn" href="/crm/dashboard">&#8592; Dashboard</a>
     <h1>Live Fleet</h1>
     <span class="gps-status-pill unknown" id="fleetStatusPill">Connecting…</span>
     <span class="last-update" id="fleetLastUpdate"></span>
@@ -228,8 +237,10 @@
       </div>
     </div>
   </div>
+  </div>
 </div>
 
+<script src="/pages/js/shell.js"></script>
 <script>
 (async function() {
   // ── State ─────────────────────────────────────────────────────────────────

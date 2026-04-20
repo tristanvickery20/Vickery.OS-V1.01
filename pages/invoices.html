@@ -4,9 +4,95 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Invoices • Vickery Electric CRM</title>
-
   <link rel="stylesheet" href="/pages/css/brand.css" />
   <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    /* ── Stats Cards ── */
+    .inv-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .inv-stat-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .inv-stat-card .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+    }
+    .inv-stat-card .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+      letter-spacing: -.02em;
+    }
+    .inv-stat-card.danger .stat-value { color: hsl(var(--destructive)); }
+    .inv-stat-card.success .stat-value { color: #16a34a; }
+    .inv-stat-card.warning .stat-value { color: #ca8a04; }
+
+    /* ── Filters row ── */
+    .inv-filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .inv-filters select,
+    .inv-filters input {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .inv-filters input { min-width: 220px; flex: 1; }
+    .inv-filters select:focus,
+    .inv-filters input:focus { border-color: hsl(var(--primary)); }
+
+    /* ── Status Badges ── */
+    .inv-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      padding: 2px 9px;
+      border-radius: 99px;
+      border: 1px solid transparent;
+    }
+    .inv-badge.draft   { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+    .inv-badge.sent    { background: rgba(59,130,246,.12); color: #3b82f6; border-color: rgba(59,130,246,.3); }
+    .inv-badge.paid    { background: rgba(22,163,74,.12);  color: #16a34a; border-color: rgba(22,163,74,.3); }
+    .inv-badge.overdue { background: rgba(220,38,38,.12);  color: #dc2626; border-color: rgba(220,38,38,.3); }
+    .inv-badge.void    { background: rgba(100,116,139,.1); color: #64748b; border-color: rgba(100,116,139,.25); text-decoration: line-through; }
+
+    /* ── Table enhancements ── */
+    .data-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid hsl(var(--border)); }
+    .data-table-wrap table { min-width: 680px; }
+    .data-table-wrap tbody tr { cursor: pointer; transition: background .1s; }
+    .data-table-wrap tbody tr:hover { background: hsl(var(--muted) / .5); }
+    .data-table-wrap td.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .data-table-wrap td.balance-due { font-weight: 700; color: hsl(var(--foreground)); }
+    .data-table-wrap td.balance-zero { color: hsl(var(--muted-foreground)); font-weight: 400; }
+    .inv-num-link { font-weight: 700; color: hsl(var(--primary)); text-decoration: none; }
+    .inv-num-link:hover { text-decoration: underline; }
+    .addr-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: hsl(var(--muted-foreground)); }
+  </style>
 </head>
 
 <body>
@@ -19,21 +105,30 @@
         <button class="btn-outline" id="refreshBtn" type="button">Refresh</button>
       </div>
 
-      <p class="status-text" id="msg"></p>
+      <p class="status-text" id="msg" style="margin-bottom:10px;"></p>
 
-      <div class="date-filter" style="gap:10px; flex-wrap:wrap;">
+      <!-- Stats cards -->
+      <div class="inv-stats" id="statsRow">
+        <div class="inv-stat-card"><span class="stat-label">Total Invoiced</span><span class="stat-value" id="s-total">—</span></div>
+        <div class="inv-stat-card warning"><span class="stat-label">Outstanding</span><span class="stat-value" id="s-outstanding">—</span></div>
+        <div class="inv-stat-card danger"><span class="stat-label">Overdue</span><span class="stat-value" id="s-overdue">—</span></div>
+        <div class="inv-stat-card success"><span class="stat-label">Paid (all time)</span><span class="stat-value" id="s-paid">—</span></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="inv-filters">
         <select id="statusFilter">
-          <option value="all">All</option>
+          <option value="all">All Statuses</option>
           <option value="draft">Draft</option>
           <option value="sent">Sent</option>
           <option value="overdue">Overdue</option>
           <option value="paid">Paid</option>
           <option value="void">Void</option>
         </select>
-
-        <input id="searchInput" placeholder="Search invoice #, client, address…" />
+        <input id="searchInput" placeholder="Search invoice #, client, address…" autocomplete="off" />
       </div>
 
+      <!-- Table -->
       <div class="data-table-wrap">
         <table>
           <thead>
@@ -42,14 +137,14 @@
               <th>Client</th>
               <th>Address</th>
               <th>Status</th>
-              <th>Total</th>
-              <th>Balance</th>
+              <th style="text-align:right;">Total</th>
+              <th style="text-align:right;">Balance</th>
               <th>Issued</th>
               <th>Due</th>
             </tr>
           </thead>
           <tbody id="rows">
-            <tr><td colspan="8" class="status-text">Loading…</td></tr>
+            <tr><td colspan="8" class="status-text" style="padding:24px;text-align:center;">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -57,89 +152,129 @@
   </div>
 
   <script src="/pages/js/shell.js"></script>
-
   <script>
-    // ---------- utils ----------
-    function money(v){
+    function money(v) {
       const n = Number(v || 0);
-      return isFinite(n)
-        ? n.toLocaleString(undefined, { style:"currency", currency:"USD" })
-        : "$0.00";
+      if (!isFinite(n)) return "$0";
+      return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
-    function fmtDate(val){
-      if (!val || typeof val !== "string") return "";
+    function fmtDate(val) {
+      if (!val || typeof val !== "string") return "—";
       try {
-        const d = new Date(val);
-        if (isNaN(d.getTime())) return "";
-        return d.toLocaleDateString();
-      } catch { return ""; }
+        const d = new Date(val.includes("T") ? val : val + "T00:00:00Z");
+        if (isNaN(d.getTime())) return "—";
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+      } catch { return "—"; }
     }
 
-    function norm(s){ return String(s||"").toLowerCase().trim(); }
-
-    function statusLabel(r){
+    function statusLabel(r) {
       if (r.overdue) return "Overdue";
-      const s = String(r.status_code || "").trim();
-      return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Draft";
+      const s = String(r.status_code || "").toLowerCase().trim();
+      return s || "draft";
     }
 
-    // ---------- load invoices ----------
-    async function loadInvoices(){
+    function badgeCls(label) {
+      const l = label.toLowerCase();
+      if (l === "overdue") return "overdue";
+      if (l === "paid")    return "paid";
+      if (l === "sent")    return "sent";
+      if (l === "void")    return "void";
+      return "draft";
+    }
+
+    function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    let _allInvoices = [];
+
+    function updateStats(list) {
+      let total = 0, outstanding = 0, overdue = 0, paid = 0;
+      list.forEach(r => {
+        const t = Number(r.total || 0);
+        const b = Number(r.balance_due || 0);
+        const lbl = statusLabel(r);
+        total += t;
+        if (lbl === "paid") paid += t;
+        if (lbl === "overdue") { overdue += b; outstanding += b; }
+        else if (lbl !== "paid" && lbl !== "void" && lbl !== "draft") outstanding += b;
+      });
+      document.getElementById("s-total").textContent = money(total);
+      document.getElementById("s-outstanding").textContent = money(outstanding);
+      document.getElementById("s-overdue").textContent = money(overdue);
+      document.getElementById("s-paid").textContent = money(paid);
+    }
+
+    function renderRows(list) {
       const rows = document.getElementById("rows");
-      const msg = document.getElementById("msg");
-      rows.innerHTML = '<tr><td colspan="8" class="status-text">Loading…</td></tr>';
+      if (!list.length) {
+        rows.innerHTML = '<tr><td colspan="8" class="status-text" style="padding:32px;text-align:center;">No invoices found.</td></tr>';
+        return;
+      }
+      rows.innerHTML = list.map(r => {
+        const invNum = r.invoice_number || r.id || "";
+        const lbl    = statusLabel(r);
+        const cls    = badgeCls(lbl);
+        const bal    = Number(r.balance_due || 0);
+        const balCls = bal === 0 ? "balance-zero" : "balance-due";
+        return `<tr onclick="window.location='/invoices/${encodeURIComponent(r.id)}'">
+          <td><a class="inv-num-link" href="/invoices/${encodeURIComponent(r.id)}" onclick="event.stopPropagation()">${invNum}</a></td>
+          <td>${r.client_name || "—"}</td>
+          <td class="addr-cell" title="${r.property_address || ""}">${r.property_address || "—"}</td>
+          <td><span class="inv-badge ${cls}">${capFirst(lbl)}</span></td>
+          <td class="num" style="text-align:right;">${money(r.total)}</td>
+          <td class="num ${balCls}" style="text-align:right;">${bal === 0 ? "—" : money(bal)}</td>
+          <td>${fmtDate(r.issued_at)}</td>
+          <td>${fmtDate(r.due_at)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function applyFilter() {
+      const status = document.getElementById("statusFilter").value;
+      const q      = document.getElementById("searchInput").value.toLowerCase().trim();
+      let list = _allInvoices;
+      if (status && status !== "all") {
+        list = list.filter(r => {
+          const lbl = statusLabel(r).toLowerCase();
+          return lbl === status;
+        });
+      }
+      if (q) {
+        list = list.filter(r =>
+          (r.invoice_number || "").toLowerCase().includes(q) ||
+          (r.client_name || "").toLowerCase().includes(q) ||
+          (r.property_address || "").toLowerCase().includes(q)
+        );
+      }
+      renderRows(list);
+    }
+
+    async function loadInvoices() {
+      const rows = document.getElementById("rows");
+      const msg  = document.getElementById("msg");
+      rows.innerHTML = '<tr><td colspan="8" class="status-text" style="padding:32px;text-align:center;">Loading…</td></tr>';
       msg.textContent = "";
 
-      const status = document.getElementById("statusFilter").value;
-      const q = document.getElementById("searchInput").value.trim();
-
-      const params = new URLSearchParams();
-      if (status && status !== "all") params.set("status", status);
-      if (q) params.set("q", q);
-
-      try{
-        const resp = await fetch("/api/invoices?" + params.toString(), { cache:"no-store" });
+      try {
+        const resp = await fetch("/api/invoices", { cache: "no-store" });
         const data = await resp.json();
-
-        if (!data.ok){
-          rows.innerHTML = '<tr><td colspan="8" class="status-text">Error loading invoices.</td></tr>';
-          msg.textContent = data.error || "Unknown error.";
+        if (!data.ok) {
+          rows.innerHTML = `<tr><td colspan="8" class="status-text" style="padding:32px;text-align:center;">Error: ${data.error || "Unknown error"}</td></tr>`;
           return;
         }
-
-        const list = data.invoices || [];
-        if (!list.length){
-          rows.innerHTML = '<tr><td colspan="8" class="status-text">No invoices found.</td></tr>';
-          return;
-        }
-
-        rows.innerHTML = list.map(r => {
-          const invNum = r.invoice_number || r.id || "";
-          return `
-            <tr>
-              <td><a href="/invoices/${encodeURIComponent(r.id)}">${invNum}</a></td>
-              <td>${r.client_name || ""}</td>
-              <td>${r.property_address || ""}</td>
-              <td>${statusLabel(r)}</td>
-              <td>${money(r.total)}</td>
-              <td>${money(r.balance_due)}</td>
-              <td>${fmtDate(r.issued_at)}</td>
-              <td>${fmtDate(r.due_at)}</td>
-            </tr>
-          `;
-        }).join("");
-      } catch(e){
-        rows.innerHTML = '<tr><td colspan="8" class="status-text">Error loading invoices.</td></tr>';
-        msg.textContent = e.message || String(e);
+        _allInvoices = data.invoices || [];
+        updateStats(_allInvoices);
+        applyFilter();
+      } catch (e) {
+        rows.innerHTML = `<tr><td colspan="8" class="status-text" style="padding:32px;text-align:center;">Network error: ${e.message}</td></tr>`;
       }
     }
 
     document.getElementById("refreshBtn").addEventListener("click", loadInvoices);
-    document.getElementById("statusFilter").addEventListener("change", loadInvoices);
+    document.getElementById("statusFilter").addEventListener("change", applyFilter);
     document.getElementById("searchInput").addEventListener("input", () => {
       clearTimeout(window.__t);
-      window.__t = setTimeout(loadInvoices, 200);
+      window.__t = setTimeout(applyFilter, 180);
     });
 
     loadInvoices();

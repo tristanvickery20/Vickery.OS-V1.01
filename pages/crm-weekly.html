@@ -173,33 +173,27 @@
     @keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:.35} }
 
     @media print {
-      .sidebar, .shell-topbar, .refresh-btn { display: none !important; }
+      .sidebar, .mobile-bar, .refresh-btn { display: none !important; }
     }
   </style>
 </head>
 <body>
-<div class="shell">
+<div class="app-shell">
   <div class="sidebar" id="sidebarMount"></div>
-  <div class="shell-main">
-    <div class="shell-topbar">
-      <button class="menu-toggle" id="menuToggle" aria-label="Menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
-      <span class="topbar-title">Weekly Pulse</span>
-    </div>
-    <div class="shell-content">
-      <div class="pulse-wrap">
+  <div class="main-area">
 
-        <div class="page-header">
-          <div>
-            <h1>Weekly Business Pulse</h1>
-            <p class="sub">Revenue collected, aged receivables, and upcoming jobs — your Monday morning review in one view. Follow the <a href="/crm/protocols#weekly" style="color:hsl(var(--primary));font-weight:700;">Protocol checklist</a> with this data.</p>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-            <span class="week-label-badge" id="weekLabel">Loading...</span>
-            <button class="refresh-btn" id="refreshBtn">Refresh</button>
-          </div>
-        </div>
+    <div class="page-header-row">
+      <div>
+        <h1>Weekly Business Pulse</h1>
+        <p style="font-size:.82rem;color:hsl(var(--muted-foreground));margin-top:4px;max-width:520px;line-height:1.55;">Revenue collected, aged receivables, and upcoming jobs — your Monday morning review in one view. Follow the <a href="/crm/protocols#weekly" style="color:hsl(var(--primary));font-weight:700;">Protocol checklist</a> with this data.</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="week-label-badge" id="weekLabel">Loading...</span>
+        <button class="btn-outline" id="refreshBtn">Refresh</button>
+      </div>
+    </div>
+
+      <div class="pulse-wrap">
 
         <div id="actionBanner" class="action-banner" style="display:none;"></div>
 
@@ -244,7 +238,6 @@
         </div>
 
       </div>
-    </div>
   </div>
 </div>
 
