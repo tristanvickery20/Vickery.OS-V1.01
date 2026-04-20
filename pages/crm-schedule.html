@@ -391,9 +391,13 @@
 
       /* ── MAP VIEW ────────────────────────────────────────────── */
       .map-view-wrap { position: relative; width: 100%; height: 100%; min-height: 400px; }
+      /* Clip (don't scroll) calMain when the map is rendered inside it */
+      .cal-main:has(.map-view-wrap),
+      .cal-main.map-view-active { overflow: hidden; }
       .map-ctrl-panel {
-        position: absolute; top: 12px; left: 12px; z-index: 10;
+        position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10;
         display: flex; flex-direction: column; gap: 6px; pointer-events: all;
+        max-width: 220px;
       }
       .map-status {
         background: var(--panel); border: 1px solid var(--line);
@@ -405,6 +409,14 @@
         background: var(--panel); color: var(--text);
         font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
         transition: background 0.15s; white-space: nowrap;
+      }
+      @media (max-width: 768px) {
+        .map-ctrl-panel {
+          top: 8px; left: 8px; right: 8px;
+          max-width: calc(50vw - 16px);
+        }
+        .map-status, .map-gps-badge { max-width: none; box-sizing: border-box; width: 100%; }
+        .map-btn { width: 100%; box-sizing: border-box; white-space: normal; }
       }
       .map-btn:hover:not(:disabled) { background: rgba(100,150,255,0.18); }
       .map-btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -1272,6 +1284,7 @@
         updateFilterChips();
         renderDrawer();
         updateBulkBar();
+        calMain.classList.toggle("map-view-active", S.view === "map");
         if (S.view === "month") renderMonth();
         else if (S.view === "week") renderWeek();
         else if (S.view === "map") renderMap().catch(e => console.error("renderMap:", e));
