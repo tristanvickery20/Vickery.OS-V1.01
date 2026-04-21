@@ -744,7 +744,14 @@ async function handleUpdateInvoice(req, res) {
       const newSubtotal  = round2(items.reduce((s, it) => s + it.line_total, 0));
       const taxRate      = round2(num(body.tax_rate !== undefined ? body.tax_rate : inv.tax_rate, 0));
       const newTaxAmount = round2(newSubtotal * (taxRate / 100));
-      const newTotal     = round2(newSubtotal + newTaxAmount);
+
+      // Editing line items changes the BASE total (original_total).
+      // Preserve any existing change-order delta so revised total stays correct.
+      const existingCOs = (() => { try { return JSON.parse(inv.change_orders_json || "[]"); } catch { return []; } })();
+      const coDelta     = round2(existingCOs.reduce((s, co) =>
+        s + (co.type === "deduct" ? -Math.abs(num(co.amount, 0)) : Math.abs(num(co.amount, 0))), 0));
+      const newOriginal  = round2(newSubtotal + newTaxAmount);
+      const newTotal     = round2(newOriginal + coDelta);
       const depApplied   = round2(num(inv.deposit_applied, 0));
       const paidAmt      = round2(num(inv.paid_amount,     0));
       const newBalance   = round2(Math.max(0, newTotal - depApplied - paidAmt));
@@ -753,6 +760,7 @@ async function handleUpdateInvoice(req, res) {
       setCell("subtotal",        String(newSubtotal));
       setCell("tax_rate",        String(taxRate));
       setCell("tax_amount",      String(newTaxAmount));
+      setCell("original_total",  String(newOriginal));
       setCell("total",           String(newTotal));
       setCell("balance_due",     String(newBalance));
     }

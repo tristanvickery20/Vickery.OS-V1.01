@@ -469,25 +469,35 @@ function bindTableEvents() {
 
 function recomputeLiveTotals() {
   if (!CURRENT) return;
-  const newSubtotal = Math.round(_lineItems.reduce((s, it) => {
+  const r2 = v => Math.round(v * 100) / 100;
+  const newSubtotal = r2(_lineItems.reduce((s, it) => {
     const qty   = Number(it.quantity   ?? 1);
     const price = Number(it.unit_price ?? 0);
-    return s + Math.round(qty * price * 100) / 100;
-  }, 0) * 100) / 100;
+    return s + r2(qty * price);
+  }, 0));
 
-  const taxRate    = Number(CURRENT.tax_rate || 0);
-  const taxAmt     = Math.round(newSubtotal * taxRate) / 100;
+  const taxRate  = Number(CURRENT.tax_rate || 0);
+  const taxAmt   = r2(newSubtotal * (taxRate / 100));
+
+  // Preserve existing change-order delta (same math as backend handleUpdateInvoice)
+  const coList   = (() => { try { return JSON.parse(CURRENT.change_orders_json || "[]"); } catch { return []; } })();
+  const coDelta  = r2(coList.reduce((s, co) =>
+    s + (co.type === "deduct" ? -Math.abs(Number(co.amount || 0)) : Math.abs(Number(co.amount || 0))), 0));
+  const newBase  = r2(newSubtotal + taxAmt);       // new original_total
+  const newTotal = r2(newBase + coDelta);           // applies any existing COs
+
   const deposit    = Number(CURRENT.deposit_applied || 0);
   const paid       = Number(CURRENT.paid_amount     || 0);
-  const newBalance = Math.max(0, Math.round((newSubtotal + taxAmt - deposit - paid) * 100) / 100);
+  const newBalance = Math.max(0, r2(newTotal - deposit - paid));
 
   const totalsEl = document.getElementById("totalsSection");
   if (!totalsEl) return;
   const rows = [];
   rows.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${money(newSubtotal)}</span></div>`);
-  if (taxAmt > 0) rows.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
-  if (deposit > 0) rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
-  if (paid > 0)    rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
+  if (taxAmt > 0)   rows.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
+  if (coDelta !== 0) rows.push(`<div class="totals-row ${coDelta<0?"totals-credit":""}"><span class="totals-label">Change Orders</span><span class="totals-value">${coDelta>=0?"+":""}${money(coDelta)}</span></div>`);
+  if (deposit > 0)  rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
+  if (paid > 0)     rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
   rows.push(`<div class="totals-row totals-grand"><span class="totals-label">${newBalance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(newBalance)}</span></div>`);
   totalsEl.innerHTML = rows.join("");
 }
