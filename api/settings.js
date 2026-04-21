@@ -164,6 +164,26 @@ async function handleDisconnectQuickBooks(req, res) {
   }
 }
 
+// POST /api/settings/quickbooks/token — OAuth completion: store access token and mark connected.
+// Called once the OAuth exchange completes (via redirect or manual entry).
+// Until a real OAuth flow is wired in, this endpoint allows manually providing a token for testing.
+async function handleSaveQuickBooksToken(req, res) {
+  try {
+    const body = await readBody(req);
+    if (!body.accessToken) {
+      return json(res, 400, { ok: false, error: "accessToken is required" });
+    }
+    await setConfigKeys({
+      qb_access_token: String(body.accessToken),
+      qb_connected:    "true",
+      qb_connected_at: new Date().toISOString(),
+    });
+    json(res, 200, { ok: true, message: "QuickBooks access token saved — sync is now active." });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 // GET /api/settings/quickbooks/test — attempt a live QB API call and report result
 async function handleTestQuickBooks(req, res) {
   try {
@@ -291,8 +311,11 @@ async function pushExpenseToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_expenses !== "true") return;
-    if (cfg.qb_credentials_saved !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB] Expense sync skipped — credentials not configured (${entry.id} $${entry.amount} ${entry.vendor})`);
+    // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
+    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
+      if (cfg.qb_credentials_saved === "true") {
+        console.log(`[QB] Expense queued — credentials saved but OAuth not yet complete (${entry.id})`);
+      }
       return;
     }
     const accessToken = cfg.qb_access_token || "";
@@ -327,8 +350,11 @@ async function pushTimeToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_time !== "true") return;
-    if (cfg.qb_credentials_saved !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB] Time sync skipped — credentials not configured (${entry.id} ${entry.minutes}min tech=${entry.tech_id})`);
+    // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
+    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
+      if (cfg.qb_credentials_saved === "true") {
+        console.log(`[QB] Time entry queued — credentials saved but OAuth not yet complete (${entry.id})`);
+      }
       return;
     }
     const accessToken = cfg.qb_access_token || "";
@@ -364,6 +390,7 @@ module.exports = {
   handleGetQuickBooks,
   handleSaveQuickBooks,
   handleDisconnectQuickBooks,
+  handleSaveQuickBooksToken,
   handleTestQuickBooks,
   handleGetStaffSettings,
   handleSaveStaffSettings,
