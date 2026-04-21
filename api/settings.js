@@ -181,7 +181,7 @@ async function handleSaveQuickBooksToken(req, res) {
   }
 }
 
-// GET /api/settings/quickbooks/test — attempt a live QB API call and report result
+// POST /api/settings/quickbooks/test — attempt a live QB API call and report result
 async function handleTestQuickBooks(req, res) {
   try {
     const cfg = await getConfig();
