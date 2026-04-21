@@ -87,6 +87,15 @@
     .line-table .item-desc{ font-size:11px; opacity:.5; margin-top:2px; }
     .no-items{ padding:12px 0; font-size:13px; opacity:.5; font-style:italic; }
 
+    /* Line-item edit mode */
+    .li-input{ width:100%; padding:5px 7px; border-radius:7px; border:1px solid var(--line2); background:rgba(255,255,255,0.06); color:var(--text); font-family:inherit; font-size:12px; box-sizing:border-box; }
+    .li-input:focus{ border-color:var(--blue); outline:none; }
+    .li-del{ background:none; border:none; color:var(--red); cursor:pointer; font-size:15px; padding:0 4px; opacity:.7; }
+    .li-del:hover{ opacity:1; }
+    .li-edit-controls{ display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+    .line-items-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .line-items-header .card-title{ margin-bottom:0; }
+
     /* Totals */
     .totals-row{ display:flex; justify-content:space-between; gap:16px; padding:7px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
     .totals-row:last-child{ border-bottom:none; }
@@ -184,8 +193,17 @@
 
         <!-- Line items -->
         <div class="card">
-          <div class="card-title">Line Items</div>
+          <div class="line-items-header">
+            <div class="card-title">Line Items</div>
+            <button class="btn secondary" id="editLineItemsBtn" style="font-size:12px;padding:6px 10px;">Edit</button>
+          </div>
           <div id="lineItemsSection"></div>
+          <div id="lineItemsEditControls" style="display:none;" class="li-edit-controls">
+            <button class="btn" id="saveLineItemsBtn">Save Changes</button>
+            <button class="btn secondary" id="cancelLineItemsBtn">Cancel</button>
+            <button class="btn secondary" id="addLineItemBtn" style="margin-left:auto;">+ Add Line Item</button>
+            <div class="status-msg" id="lineItemsMsg" style="width:100%;margin-top:4px;"></div>
+          </div>
           <!-- Totals -->
           <div id="totalsSection" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px;"></div>
         </div>
@@ -315,36 +333,132 @@ function setBadge(status, overdue){
 
 let CURRENT = null;
 
+// ── Line items ──────────────────────────────────────────────────────────────
+let _lineEditMode = false;
+
 function renderLineItems(inv){
   const items = (() => { try { return JSON.parse(inv.line_items_json||"[]"); } catch { return []; } })();
   const el = document.getElementById("lineItemsSection");
-  if (!items.length) {
-    el.innerHTML = `<div class="no-items">No line items recorded.</div>`;
+
+  if (_lineEditMode) {
+    renderLineItemsEdit(items);
   } else {
-    el.innerHTML = `<table class="line-table">
-      <thead><tr>
-        <th>Description</th>
-        <th class="col-r">Qty</th>
-        <th class="col-r">Unit Price</th>
-        <th class="col-r">Amount</th>
-      </tr></thead>
-      <tbody>${items.map(it=>{
-        const qty = Number(it.quantity??1);
-        const price = Number(it.unit_price??it.line_total??0);
-        const amt = Number(it.line_total??(qty*price));
-        return `<tr>
-          <td>
-            <div class="item-title">${esc(it.title||it.description||"Service")}</div>
-            ${it.description&&it.title?`<div class="item-desc">${esc(it.description)}</div>`:""}
-          </td>
-          <td class="col-r">${qty}</td>
-          <td class="col-r">${money(price)}</td>
-          <td class="col-r">${money(amt)}</td>
-        </tr>`;
-      }).join("")}</tbody>
-    </table>`;
+    if (!items.length) {
+      el.innerHTML = `<div class="no-items">No line items recorded.</div>`;
+    } else {
+      el.innerHTML = `<table class="line-table">
+        <thead><tr>
+          <th>Description</th>
+          <th class="col-r">Qty</th>
+          <th class="col-r">Unit Price</th>
+          <th class="col-r">Amount</th>
+        </tr></thead>
+        <tbody>${items.map(it=>{
+          const qty = Number(it.quantity??1);
+          const price = Number(it.unit_price??it.line_total??0);
+          const amt = Number(it.line_total??(qty*price));
+          return `<tr>
+            <td>
+              <div class="item-title">${esc(it.title||it.description||"Service")}</div>
+              ${it.description&&it.title?`<div class="item-desc">${esc(it.description)}</div>`:""}
+            </td>
+            <td class="col-r">${qty}</td>
+            <td class="col-r">${money(price)}</td>
+            <td class="col-r">${money(amt)}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>`;
+    }
   }
-  // Render totals
+  renderTotals(inv);
+}
+
+function renderLineItemsEdit(items) {
+  const el = document.getElementById("lineItemsSection");
+  el.innerHTML = `<table class="line-table" id="liEditTable">
+    <thead><tr>
+      <th style="width:40%">Description</th>
+      <th style="width:13%">Qty</th>
+      <th style="width:20%">Unit Price</th>
+      <th class="col-r" style="width:18%">Amount</th>
+      <th style="width:9%"></th>
+    </tr></thead>
+    <tbody id="liEditBody">
+      ${items.map((it,i) => liEditRow(it, i)).join("")}
+    </tbody>
+  </table>`;
+  bindLiEditCalc();
+}
+
+function liEditRow(it, i) {
+  const qty   = it.quantity   != null ? it.quantity   : 1;
+  const price = it.unit_price != null ? it.unit_price : 0;
+  const amt   = Math.round(Number(qty) * Number(price) * 100) / 100;
+  return `<tr data-li-row="${i}">
+    <td><input class="li-input" data-f="title" value="${esc(it.title||it.description||"")}" placeholder="Description"></td>
+    <td><input class="li-input li-qty" data-f="quantity" type="number" min="0" step="0.01" value="${qty}" style="width:56px"></td>
+    <td><input class="li-input li-price" data-f="unit_price" type="number" min="0" step="0.01" value="${price}" style="width:80px"></td>
+    <td class="col-r"><span class="li-amt-disp">${money(amt)}</span></td>
+    <td><button class="li-del" data-del-row="${i}" title="Remove row">✕</button></td>
+  </tr>`;
+}
+
+function bindLiEditCalc() {
+  const tbody = document.getElementById("liEditBody");
+  if (!tbody) return;
+  tbody.addEventListener("input", e => {
+    const row = e.target.closest("tr[data-li-row]");
+    if (!row) return;
+    const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value || 0) || 0;
+    const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
+    const amt   = Math.round(qty * price * 100) / 100;
+    const disp  = row.querySelector(".li-amt-disp");
+    if (disp) disp.textContent = money(amt);
+  });
+  tbody.addEventListener("click", e => {
+    const btn = e.target.closest("[data-del-row]");
+    if (!btn) return;
+    btn.closest("tr").remove();
+    // Re-index rows
+    Array.from(tbody.querySelectorAll("tr[data-li-row]")).forEach((r,i) => {
+      r.dataset.liRow = i;
+      const d = r.querySelector("[data-del-row]");
+      if (d) d.dataset.delRow = i;
+    });
+  });
+}
+
+function collectLineItems() {
+  const tbody = document.getElementById("liEditBody");
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll("tr[data-li-row]")).map(row => {
+    const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1)  || 1;
+    const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value|| 0) || 0;
+    return {
+      title:      (row.querySelector("[data-f='title']")?.value || "Service").trim(),
+      description:"",
+      quantity:   qty,
+      unit_price: price,
+      line_total: Math.round(qty * price * 100) / 100,
+      taxable:    false,
+      tax_rate:   0,
+    };
+  });
+}
+
+function addBlankLineItem() {
+  const tbody = document.getElementById("liEditBody");
+  if (!tbody) return;
+  const idx = tbody.querySelectorAll("tr[data-li-row]").length;
+  const tr  = document.createElement("tr");
+  tr.setAttribute("data-li-row", idx);
+  tr.innerHTML = liEditRow({ title:"", quantity:1, unit_price:0 }, idx);
+  tbody.appendChild(tr);
+  bindLiEditCalc();
+  tr.querySelector("[data-f='title']")?.focus();
+}
+
+function renderTotals(inv) {
   const coList = (() => { try { return JSON.parse(inv.change_orders_json||"[]"); } catch { return []; } })();
   const subtotal   = Number(inv.subtotal||0);
   const taxAmt     = Number(inv.tax_amount||0);
@@ -595,6 +709,54 @@ document.getElementById("addCoBtn").addEventListener("click", async()=>{
   document.getElementById("coDesc").value = "";
   document.getElementById("coAmount").value = "";
   load();
+});
+
+// ── Line Items Edit Mode ──────────────────────────────────────────────────────
+document.getElementById("editLineItemsBtn").addEventListener("click", () => {
+  _lineEditMode = true;
+  document.getElementById("editLineItemsBtn").style.display = "none";
+  document.getElementById("lineItemsEditControls").style.display = "flex";
+  if (CURRENT) renderLineItemsEdit(
+    (() => { try { return JSON.parse(CURRENT.line_items_json||"[]"); } catch { return []; } })()
+  );
+});
+
+document.getElementById("cancelLineItemsBtn").addEventListener("click", () => {
+  _lineEditMode = false;
+  document.getElementById("editLineItemsBtn").style.display = "";
+  document.getElementById("lineItemsEditControls").style.display = "none";
+  document.getElementById("lineItemsMsg").textContent = "";
+  if (CURRENT) renderLineItems(CURRENT);
+});
+
+document.getElementById("addLineItemBtn").addEventListener("click", () => {
+  addBlankLineItem();
+});
+
+document.getElementById("saveLineItemsBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("lineItemsMsg");
+  const btn = document.getElementById("saveLineItemsBtn");
+  const items = collectLineItems();
+  btn.disabled = true;
+  msg.textContent = "Saving…";
+
+  const r = await api("/api/invoices/"+encodeURIComponent(getId()), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ line_items: items }),
+  });
+
+  btn.disabled = false;
+  if (r?.ok) {
+    msg.textContent = "Saved!";
+    _lineEditMode = false;
+    document.getElementById("editLineItemsBtn").style.display = "";
+    document.getElementById("lineItemsEditControls").style.display = "none";
+    setTimeout(() => { document.getElementById("lineItemsMsg").textContent = ""; }, 2000);
+    load();
+  } else {
+    msg.textContent = r?.error || "Save failed.";
+  }
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

@@ -66,6 +66,7 @@ const {
   handlePublicInvoice,
   handleAddChangeOrder,
 } = require("./api/invoices");
+const { handlePublicPay } = require("./api/invoices-pay");
 const { handleCreatePayment } = require("./api/payments");
 const { handleEstimatorConfig, handleEstimatorHealth, handleEstimatorQuote, handleEstimatorClassification } = require("./api/estimator-config");
 const { handleEstimatorMatrix } = require("./api/estimator-matrix");
@@ -708,6 +709,10 @@ const server = http.createServer(async (req, res) => {
   // GET /api/invoice/public/:token → JSON invoice data (no auth)
   if (_epath.startsWith("/api/invoice/public/") && req.method === "GET") {
     return handlePublicInvoice(req, res);
+  }
+  // POST /api/invoice/pay → Square payment (no auth — public)
+  if (_epath === "/api/invoice/pay" && req.method === "POST") {
+    return handlePublicPay(req, res);
   }
 
   // Mapbox token — accessible by CRM or crew session (handler checks both)

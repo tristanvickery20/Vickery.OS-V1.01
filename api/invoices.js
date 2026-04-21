@@ -715,25 +715,54 @@ async function handleUpdateInvoice(req, res) {
     const sheetRow = rowIndex + 1;
     const updates = [];
 
-    for (const key of ["notes", "status_code"]) {
-      if (body[key] !== undefined) {
-        const col = headers.indexOf(key);
-        if (col >= 0) {
-          updates.push({
-            range: `Invoices!${colLetter(col)}${sheetRow}`,
-            values: [[String(body[key])]],
-          });
-        }
-      }
+    const inv = {};
+    for (let i = 0; i < headers.length; i++) {
+      inv[headers[i]] = values[rowIndex][i] != null ? String(values[rowIndex][i]) : "";
     }
 
+    const setCell = (field, value) => {
+      const col = headers.indexOf(field);
+      if (col >= 0) updates.push({ range: `Invoices!${colLetter(col)}${sheetRow}`, values: [[String(value)]] });
+    };
+
+    for (const key of ["notes", "status_code"]) {
+      if (body[key] !== undefined) setCell(key, body[key]);
+    }
+
+    // ── Line items update ───────────────────────────────────────────────────
+    if (Array.isArray(body.line_items)) {
+      const items = body.line_items.map((it) => ({
+        title:      String(it.title      || it.description || "Service").trim(),
+        description:String(it.description|| "").trim(),
+        quantity:   round2(num(it.quantity,  1)),
+        unit_price: round2(num(it.unit_price, 0)),
+        line_total: round2(num(it.quantity, 1) * num(it.unit_price, 0)),
+        taxable:    !!it.taxable,
+        tax_rate:   round2(num(it.tax_rate, 0)),
+      }));
+
+      const newSubtotal  = round2(items.reduce((s, it) => s + it.line_total, 0));
+      const taxRate      = round2(num(body.tax_rate !== undefined ? body.tax_rate : inv.tax_rate, 0));
+      const newTaxAmount = round2(newSubtotal * (taxRate / 100));
+      const newTotal     = round2(newSubtotal + newTaxAmount);
+      const depApplied   = round2(num(inv.deposit_applied, 0));
+      const paidAmt      = round2(num(inv.paid_amount,     0));
+      const newBalance   = round2(Math.max(0, newTotal - depApplied - paidAmt));
+
+      setCell("line_items_json", JSON.stringify(items));
+      setCell("subtotal",        String(newSubtotal));
+      setCell("tax_rate",        String(taxRate));
+      setCell("tax_amount",      String(newTaxAmount));
+      setCell("total",           String(newTotal));
+      setCell("balance_due",     String(newBalance));
+    }
+
+    const now = new Date().toISOString();
     if (updates.length > 0) {
+      setCell("updated_at", now);
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId,
-        requestBody: {
-          valueInputOption: "RAW",
-          data: updates,
-        },
+        requestBody: { valueInputOption: "RAW", data: updates },
       });
 
       logAudit({
@@ -741,6 +770,7 @@ async function handleUpdateInvoice(req, res) {
         action: "UPDATE_INVOICE",
         entity_type: "invoice",
         entity_id: id,
+        note: body.line_items ? `line_items updated (${body.line_items.length} rows)` : "",
         source: "crm",
         request_id: rid,
       });
@@ -805,9 +835,17 @@ async function handlePublicInvoice(req, res) {
       change_orders_json:inv.change_orders_json || "[]",
     };
 
-    const reviewUrl = config.google_review_url || process.env.GOOGLE_REVIEW_URL || "";
+    const reviewUrl   = config.google_review_url || process.env.GOOGLE_REVIEW_URL || "";
+    const squareAppId = process.env.SQUARE_APP_ID      || "";
+    const squareLocId = process.env.SQUARE_LOCATION_ID || "";
 
-    json(res, 200, { ok: true, invoice: out, review_url: reviewUrl });
+    json(res, 200, {
+      ok: true,
+      invoice: out,
+      review_url:        reviewUrl,
+      square_app_id:     squareAppId,
+      square_location_id:squareLocId,
+    });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
