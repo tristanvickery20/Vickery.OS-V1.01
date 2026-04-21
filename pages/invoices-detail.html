@@ -410,6 +410,12 @@ function bindTableEvents() {
     const amt   = Math.round(qty * price * 100) / 100;
     const amtEl = document.getElementById(`li-amt-${i}`);
     if (amtEl) amtEl.textContent = money(amt);
+    // Sync _lineItems immediately so recomputeLiveTotals uses fresh values
+    if (_lineItems[i]) {
+      _lineItems[i].quantity   = qty;
+      _lineItems[i].unit_price = price;
+      _lineItems[i].line_total = amt;
+    }
     recomputeLiveTotals();
   });
 
@@ -427,14 +433,26 @@ function bindTableEvents() {
     // Confirm (✓) button → save row locally
     const confirmBtn = e.target.closest("[data-confirm-i]");
     if (confirmBtn) {
-      const i   = parseInt(confirmBtn.dataset.confirmI, 10);
-      const row = tbody.querySelector(`tr[data-li-i="${i}"]`);
+      const i    = parseInt(confirmBtn.dataset.confirmI, 10);
+      const row  = tbody.querySelector(`tr[data-li-i="${i}"]`);
       if (!row) return;
       const title = (row.querySelector("[data-f='title']")?.value || "Service").trim();
       const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1) || 1;
       const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
-      _lineItems[i] = { ...(_lineItems[i]||{}), title, description:"", quantity:qty, unit_price:price,
-        line_total: Math.round(qty * price * 100) / 100, taxable:false, tax_rate:0, _editing:false, _isNew:false };
+      const prev  = _lineItems[i] || {};
+      // Carry forward existing metadata not shown in the edit row (description, taxable, tax_rate)
+      _lineItems[i] = {
+        ...prev,
+        title,
+        description: prev.description || "",
+        quantity:    qty,
+        unit_price:  price,
+        line_total:  Math.round(qty * price * 100) / 100,
+        taxable:     prev.taxable  ?? false,
+        tax_rate:    prev.tax_rate ?? 0,
+        _editing:    false,
+        _isNew:      false,
+      };
       renderLineItemsTable();
       recomputeLiveTotals();
       return;
@@ -788,8 +806,18 @@ document.getElementById("saveLineItemsBtn").addEventListener("click", async () =
       const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1) || 1;
       const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
       if (Number.isFinite(i) && _lineItems[i]) {
-        _lineItems[i] = { ...(_lineItems[i]), title, description:"", quantity:qty, unit_price:price,
-          line_total: Math.round(qty * price * 100) / 100, taxable:false, tax_rate:0, _editing:false, _isNew:false };
+        const prev = _lineItems[i];
+        // Preserve existing metadata not surfaced in edit row inputs
+        _lineItems[i] = { ...prev, title,
+          description: prev.description || "",
+          quantity:    qty,
+          unit_price:  price,
+          line_total:  Math.round(qty * price * 100) / 100,
+          taxable:     prev.taxable  ?? false,
+          tax_rate:    prev.tax_rate ?? 0,
+          _editing:    false,
+          _isNew:      false,
+        };
       }
     });
   }
