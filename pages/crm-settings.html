@@ -87,6 +87,19 @@
       .dot-off { display: inline-block; width:7px; height:7px; border-radius:50%; background:#f97316; margin-right:4px; vertical-align:middle; }
       .dot-na  { display: inline-block; width:7px; height:7px; border-radius:50%; background:#94a3b8; margin-right:4px; vertical-align:middle; }
 
+      /* ── Settings toast ── */
+      #settingsToast {
+        position: fixed; bottom: 24px; left: 50%;
+        transform: translateX(-50%) translateY(16px);
+        background: hsl(142 50% 28%); color: #fff;
+        padding: 12px 24px; border-radius: 12px;
+        font-size: 14px; font-weight: 700;
+        opacity: 0; transition: all .25s; z-index: 9999;
+        pointer-events: none; white-space: nowrap;
+      }
+      #settingsToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      #settingsToast.error { background: hsl(0 55% 35%); }
+
       .alert { padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
       .alert-warn { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
       .alert-ok   { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
@@ -511,6 +524,7 @@
       </main>
     </div>
 
+    <div id="settingsToast"></div>
     <script src="/pages/js/api.js"></script>
     <script src="/pages/js/shell.js"></script>
     <style>
@@ -943,6 +957,17 @@
 
       loadReviewList();
 
+      // ── Shared toast ────────────────────────────────────────
+      let _toastTimer;
+      function showToast(msg, isError) {
+        const el = document.getElementById("settingsToast");
+        if (!el) return;
+        el.textContent = msg;
+        el.className = isError ? "error show" : "show";
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => { el.className = ""; }, 3200);
+      }
+
       // ── Notifications tab ───────────────────────────────────
       async function loadNotifSettings() {
         try {
@@ -974,10 +999,10 @@
             }),
           });
           const d = await r.json();
-          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
-          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+          if (d.ok) { msg.textContent = ""; showToast("Notifications saved"); }
+          else { msg.textContent = "✗ " + (d.error || "Error"); msg.style.color = "#7f1d1d"; showToast("Save failed", true); }
         } catch (err) {
-          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d"; showToast("Save failed", true);
         }
       });
 
@@ -1037,17 +1062,19 @@
           });
           const d = await r.json();
           if (d.ok) {
-            msg.textContent = "✓ Credentials saved.";
-            msg.style.color = "#166534";
+            msg.textContent = "";
             document.getElementById("qbClientId").value = "";
             document.getElementById("qbClientSecret").value = "";
+            showToast("QuickBooks credentials saved");
             await loadQBStatus();
           } else {
             msg.textContent = "✗ " + (d.error || "Error");
             msg.style.color = "#7f1d1d";
+            showToast("Save failed", true);
           }
         } catch (err) {
           msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+          showToast("Save failed", true);
         }
       });
 
@@ -1064,10 +1091,10 @@
             }),
           });
           const d = await r.json();
-          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
-          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+          if (d.ok) { msg.textContent = ""; showToast("Auto-sync settings saved"); }
+          else { msg.textContent = "✗ " + (d.error || "Error"); msg.style.color = "#7f1d1d"; showToast("Save failed", true); }
         } catch (err) {
-          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d"; showToast("Save failed", true);
         }
       });
 
@@ -1152,10 +1179,10 @@
             body: JSON.stringify({ defaultPermissions, requireApproval }),
           });
           const d = await r.json();
-          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
-          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+          if (d.ok) { msg.textContent = ""; showToast("Staff settings saved"); }
+          else { msg.textContent = "✗ " + (d.error || "Error"); msg.style.color = "#7f1d1d"; showToast("Save failed", true); }
         } catch (err) {
-          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d"; showToast("Save failed", true);
         }
       });
 
