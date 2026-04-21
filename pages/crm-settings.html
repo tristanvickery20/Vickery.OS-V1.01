@@ -396,35 +396,36 @@
                 </div>
 
                 <div class="btn-row">
-                  <button class="btn-primary" id="qbSaveBtn">Save &amp; Connect</button>
+                  <button class="btn-primary" id="qbSaveBtn">Save Credentials</button>
                   <button class="btn-secondary" id="qbTestBtn">Test Connection</button>
                   <button class="btn-secondary" id="qbDisconnectBtn" style="display:none;color:#7f1d1d;border-color:#fca5a5;">Disconnect</button>
                 </div>
                 <div id="qbMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
               </div>
 
-              <!-- OAuth completion section — shown when credentials saved but not yet connected -->
+              <!-- OAuth connect section — shown when credentials saved but not yet connected -->
               <div id="qbOAuthSection" style="display:none;">
-                <div class="section-hdr">Complete QuickBooks Connection</div>
+                <div class="section-hdr">Authorize QuickBooks</div>
                 <div class="settings-card">
-                  <div class="settings-card-title">Activate Live Sync via OAuth Token</div>
+                  <div class="settings-card-title">Connect with QuickBooks Online</div>
                   <div class="settings-card-sub">
-                    Credentials are saved. To activate live sync, complete the OAuth flow in your QuickBooks developer console
-                    and paste the resulting access token below. Once saved, expenses and time entries will push to QuickBooks automatically.
-                    <br /><br />
-                    <strong>QuickBooks OAuth flow:</strong>
-                    Log in to <a href="https://developer.intuit.com/" target="_blank" rel="noopener" style="color:hsl(var(--primary));">developer.intuit.com</a>
-                    → Your App → OAuth 2.0 Playground → Exchange your authorization code for a token → paste below.
+                    Credentials saved. Click the button below — you'll be sent to QuickBooks to authorize access,
+                    then automatically redirected back here. Tokens are stored encrypted and refresh automatically.
                   </div>
-                  <div class="form-row">
-                    <label class="form-label" for="qbAccessToken">OAuth Access Token</label>
-                    <input class="form-input" type="password" id="qbAccessToken" placeholder="eyJ0eXAiOiJKV1Qi…" autocomplete="new-password" />
-                    <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:3px;">Stored encrypted. Access tokens expire — re-enter when QB reports authorization errors.</div>
-                  </div>
+                  <div id="qbFlashMsg" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;"></div>
                   <div class="btn-row">
-                    <button class="btn-primary" id="qbActivateBtn">Activate Live Sync</button>
+                    <a href="/api/accounting/qb/connect" class="btn-primary" id="qbConnectBtn"
+                      style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+                      <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+                        <circle cx="16" cy="16" r="16" fill="#2CA01C"/>
+                        <path d="M10 16.5L14.5 21L22 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      Connect with QuickBooks
+                    </a>
                   </div>
-                  <div id="qbActivateMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+                  <div style="margin-top:10px;font-size:11px;color:hsl(var(--muted-foreground));">
+                    You'll authorize once and the CRM will refresh tokens automatically. Tokens never appear in the UI.
+                  </div>
                 </div>
               </div>
 
@@ -1019,6 +1020,33 @@
       });
 
       // ── QuickBooks tab ──────────────────────────────────────
+
+      // Show success / error flash if we just returned from an OAuth redirect
+      (function checkQbOAuthReturn() {
+        const sp = new URLSearchParams(window.location.search);
+        const flash = document.getElementById("qbFlashMsg");
+        if (!flash) return;
+        if (sp.get("qb_connected") === "1") {
+          flash.style.display = "";
+          flash.style.background = "#dcfce7";
+          flash.style.color = "#166534";
+          flash.textContent = "✓ QuickBooks connected successfully! Live sync is now active.";
+          // Scroll to billing tab and activate it
+          const billingTab = document.querySelector('[data-tab="billing"]');
+          if (billingTab) billingTab.click();
+          // Clean URL without reloading
+          history.replaceState({}, "", window.location.pathname + "?tab=billing");
+        } else if (sp.get("qb_error")) {
+          flash.style.display = "";
+          flash.style.background = "#fee2e2";
+          flash.style.color = "#7f1d1d";
+          flash.textContent = "✗ QuickBooks connection failed: " + decodeURIComponent(sp.get("qb_error"));
+          const billingTab = document.querySelector('[data-tab="billing"]');
+          if (billingTab) billingTab.click();
+          history.replaceState({}, "", window.location.pathname + "?tab=billing");
+        }
+      })();
+
       async function loadQBStatus() {
         try {
           const r = await fetch("/api/settings/quickbooks");
@@ -1039,9 +1067,9 @@
             if (oauthSection) oauthSection.style.display = "none";
           } else if (d.credentialsSaved) {
             dot.className = "dot-off";
-            lbl.textContent = "Credentials saved — enter OAuth access token below to activate sync";
+            lbl.textContent = "Credentials saved — click Connect to authorize with QuickBooks";
             disco.style.display = "inline-flex";
-            prov.innerHTML = '<span class="dot-off"></span> QuickBooks Online (' + (d.environment || "sandbox") + ') — credentials saved, OAuth token needed';
+            prov.innerHTML = '<span class="dot-off"></span> QuickBooks Online (' + (d.environment || "sandbox") + ') — ready to authorize';
             if (oauthSection) oauthSection.style.display = "";
           } else {
             dot.className = "dot-na";
@@ -1107,32 +1135,6 @@
           else { msg.textContent = "✗ " + (d.error || "Error"); msg.style.color = "#7f1d1d"; showToast("Save failed", true); }
         } catch (err) {
           msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d"; showToast("Save failed", true);
-        }
-      });
-
-      document.getElementById("qbActivateBtn").addEventListener("click", async () => {
-        const msg = document.getElementById("qbActivateMsg");
-        const token = document.getElementById("qbAccessToken").value.trim();
-        if (!token) { msg.textContent = "Paste the OAuth access token first."; msg.style.color = "#7f1d1d"; return; }
-        msg.textContent = "Activating…"; msg.style.color = "";
-        try {
-          const r = await fetch("/api/settings/quickbooks/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accessToken: token }),
-          });
-          const d = await r.json();
-          if (d.ok) {
-            msg.textContent = "✓ " + d.message;
-            msg.style.color = "#166534";
-            document.getElementById("qbAccessToken").value = "";
-            await loadQBStatus();
-          } else {
-            msg.textContent = "✗ " + (d.error || "Error");
-            msg.style.color = "#7f1d1d";
-          }
-        } catch (err) {
-          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
         }
       });
 

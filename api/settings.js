@@ -141,18 +141,35 @@ async function handleSaveQuickBooks(req, res) {
   }
 }
 
-// DELETE /api/settings/quickbooks — disconnect (clear credentials)
+// DELETE /api/settings/quickbooks — disconnect (clear all QB credentials + tokens)
 async function handleDisconnectQuickBooks(req, res) {
   try {
+    // Attempt to revoke tokens with Intuit before clearing locally
+    try {
+      const cfg = await getConfig();
+      const clientId     = cfg.qb_client_id || "";
+      const clientSecret = decryptSecret(cfg.qb_client_secret || "");
+      const accessToken  = decryptSecret(cfg.qb_access_token  || "");
+      const refreshToken = decryptSecret(cfg.qb_refresh_token || "");
+      if (clientId && clientSecret && (accessToken || refreshToken)) {
+        const { revokeToken } = require("../lib/accounting/qb-oauth");
+        await revokeToken(clientId, clientSecret, refreshToken || accessToken);
+      }
+    } catch { /* non-fatal */ }
+
     await setConfigKeys({
-      qb_connected:            "false",
-      qb_credentials_saved:    "false",
-      qb_client_id:            "",
-      qb_client_secret:        "",
-      qb_access_token:         "",
-      qb_realm_id:             "",
-      qb_connected_at:         "",
-      qb_credentials_saved_at: "",
+      qb_connected:              "false",
+      qb_credentials_saved:      "false",
+      qb_client_id:              "",
+      qb_client_secret:          "",
+      qb_access_token:           "",
+      qb_refresh_token:          "",
+      qb_token_expires_at:       "",
+      qb_refresh_expires_at:     "",
+      qb_realm_id:               "",
+      qb_connected_at:           "",
+      qb_credentials_saved_at:   "",
+      qb_oauth_state:            "",
     });
     json(res, 200, { ok: true });
   } catch (err) {
@@ -160,22 +177,25 @@ async function handleDisconnectQuickBooks(req, res) {
   }
 }
 
-// POST /api/settings/quickbooks/token — OAuth completion: store access token and mark connected.
-// Called once the OAuth exchange completes (via redirect or manual entry).
-// Until a real OAuth flow is wired in, this endpoint allows manually providing a token for testing.
+// POST /api/settings/quickbooks/token — internal: store OAuth tokens after code exchange.
+// Called by the OAuth callback handler, not directly by the UI.
 async function handleSaveQuickBooksToken(req, res) {
   try {
     const body = await readBody(req);
     if (!body.accessToken) {
       return json(res, 400, { ok: false, error: "accessToken is required" });
     }
-    // Token is encrypted at rest using the same AES-256 scheme as the client secret
-    await setConfigKeys({
+    const pairs = {
       qb_access_token: encryptSecret(String(body.accessToken)),
       qb_connected:    "true",
       qb_connected_at: new Date().toISOString(),
-    });
-    json(res, 200, { ok: true, message: "QuickBooks access token saved — sync is now active." });
+    };
+    if (body.refreshToken)      pairs.qb_refresh_token      = encryptSecret(String(body.refreshToken));
+    if (body.expiresAt)         pairs.qb_token_expires_at   = String(body.expiresAt);
+    if (body.refreshExpiresAt)  pairs.qb_refresh_expires_at = String(body.refreshExpiresAt);
+    if (body.realmId)           pairs.qb_realm_id           = String(body.realmId);
+    await setConfigKeys(pairs);
+    json(res, 200, { ok: true, message: "QuickBooks connected — sync is now active." });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }

@@ -1,7 +1,7 @@
 # Vickery Electric CRM
 
 ## Overview
-Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, and a universal Task system (Quick Add FAB on all pages). Backed by Google Sheets API.
+Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, a universal Task system (Quick Add FAB on all pages), and full QuickBooks Online OAuth 2.0 integration. Backed by Google Sheets API.
 
 ## Tech Stack
 - **Backend**: Node.js (vanilla `http` module), Express-less
