@@ -119,7 +119,7 @@ async function handleGetInvoices(req, res) {
         status_code: inv.status_code,
         client_id: inv.client_id || "",
         lead_id: inv.lead_id || "",
-        client_name: client.name || "",
+        client_name: client.name || inv.customer_name || "",
         property_address: prop.address_line1 || "",
         total: inv.total || "0",
         paid_amount: inv.paid_amount || "0",

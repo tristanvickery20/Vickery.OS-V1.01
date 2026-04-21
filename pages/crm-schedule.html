@@ -1520,12 +1520,12 @@
         const allDay  = {};
         for (const b of bookings) {
           if (!b.local_date) continue;
-          const hasTime = b.scheduled_datetime && !b.schedule_block;
-          const isBlock = !!b.schedule_block;
-          if (isBlock || !b.scheduled_datetime) {
-            (allDay[b.local_date] = allDay[b.local_date] || []).push(b);
-          } else {
+          // Items with a specific scheduled_datetime go into the time grid;
+          // items with only a schedule_block (no time) go to the all-day row.
+          if (b.scheduled_datetime) {
             (byDate[b.local_date] = byDate[b.local_date] || []).push(b);
+          } else {
+            (allDay[b.local_date] = allDay[b.local_date] || []).push(b);
           }
         }
 
@@ -1807,19 +1807,23 @@
           // No staff data yet — just show unassigned
         }
 
-        // Group bookings by tech — a booking appears under each tech in assigned_tech_ids
+        // Group bookings by tech — primary tech gets the full chip,
+        // secondary techs get a slim ghost to avoid visual duplication.
         const byTech = {};
         for (const b of bookings) {
-          const techList = [];
-          if (b.assigned_tech_id) techList.push(b.assigned_tech_id);
-          if (b.assigned_tech_ids) {
-            b.assigned_tech_ids.split(",").map(s => s.trim()).filter(Boolean).forEach(id => {
-              if (!techList.includes(id)) techList.push(id);
-            });
-          }
-          if (techList.length === 0) techList.push(""); // unassigned bucket
-          for (const key of techList) {
-            (byTech[key] = byTech[key] || []).push(b);
+          const primaryId = b.assigned_tech_id || "";
+          const secondaryIds = b.assigned_tech_ids
+            ? b.assigned_tech_ids.split(",").map(s => s.trim()).filter(id => id && id !== primaryId)
+            : [];
+          const allIds = primaryId ? [primaryId, ...secondaryIds] : [""];
+
+          // Primary bucket — full chip
+          const primaryKey = allIds[0];
+          (byTech[primaryKey] = byTech[primaryKey] || []).push({ ...b, _dvRole: "primary" });
+
+          // Secondary buckets — ghost chip
+          for (const sid of secondaryIds) {
+            (byTech[sid] = byTech[sid] || []).push({ ...b, _dvRole: "secondary" });
           }
         }
 
@@ -1862,8 +1866,6 @@
               // Only render chip at the starting hour to avoid duplicates
               if (b.local_hour !== h) continue;
               const durH = (b.duration_minutes || 60) / 60;
-              const widthPct = Math.min(100, durH * 100);
-              const endHourOffset = b.local_hour - h;
               const leftPx = (b.local_hour + b.local_min / 60 - h) * HOUR_COL_PX;
               const chipW  = Math.min(
                 HOUR_COL_PX * Math.ceil(durH) - 6,
@@ -1875,14 +1877,25 @@
               if (b.assigned_tech_id) _techIds.add(b.assigned_tech_id);
               if (b.assigned_tech_ids) b.assigned_tech_ids.split(",").map(s => s.trim()).filter(Boolean).forEach(id => _techIds.add(id));
               const _multiTech = _techIds.size > 1 ? `<span class="chip-multitechs">${_techIds.size} techs</span>` : "";
-              html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
-                draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
-                style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;position:relative;">
-                <span class="chip-name">${esc(b.customer_name || "—")}</span>${_multiTech}
-                <span class="chip-time" style="font-size:10px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
-                ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
-                <div class="chip-resize-handle-right" title="Drag to resize"></div>
-              </div>`;
+
+              if (b._dvRole === "secondary") {
+                // Ghost chip — secondary tech sees a slim shared-job indicator
+                html += `<div class="dv-chip dv-chip-ghost" data-id="${esc(b.booking_id)}"
+                  style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;position:relative;
+                    opacity:0.45;border-style:dashed;cursor:pointer;">
+                  <span class="chip-name" style="font-size:10px;">↗ ${esc(b.customer_name || "—")}</span>
+                  <span class="chip-time" style="font-size:9px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+                </div>`;
+              } else {
+                html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
+                  draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
+                  style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;position:relative;">
+                  <span class="chip-name">${esc(b.customer_name || "—")}</span>${_multiTech}
+                  <span class="chip-time" style="font-size:10px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+                  ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
+                  <div class="chip-resize-handle-right" title="Drag to resize"></div>
+                </div>`;
+              }
             }
             html += `</div>`;
           }
@@ -2360,8 +2373,9 @@
             style: "mapbox://styles/mapbox/dark-v11",
             center, zoom: withCoords.length > 0 ? 11 : 9,
             scrollZoom: true,
+            touchZoomRotate: true,
           });
-          _map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+          _map.addControl(new mapboxgl.NavigationControl(), "top-right");
           _optOrder = null;
 
           _map.on("load", () => {

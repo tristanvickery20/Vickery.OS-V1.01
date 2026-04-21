@@ -150,7 +150,10 @@
           <td></td><td></td>
           <td>${H.esc(lead.invoice_date)}</td>
           <td>${H.esc(lead.paid_date)}</td>
-          <td><a href="/crm/lead?id=${encodeURIComponent(lead.id)}" style="color:hsl(var(--primary));font-weight:600;">View</a></td>
+          <td>
+            <a href="/crm/lead?id=${encodeURIComponent(lead.id)}" style="color:hsl(var(--primary));font-weight:600;">View</a>
+            ${lead.gcal_event_id ? `<a class="gcal-lead-dot" href="/crm/settings?tab=gcal" title="Synced to Google Calendar">📅</a>` : ""}
+          </td>
           <td></td>
         `;
 

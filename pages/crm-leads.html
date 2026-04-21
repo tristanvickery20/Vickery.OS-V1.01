@@ -7,6 +7,32 @@
   <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
     <link rel="stylesheet" href="/pages/css/brand.css" />
     <link rel="stylesheet" href="/pages/css/shell.css" />
+    <style>
+      .leads-topbar {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .leads-topbar-title { font-size: 20px; font-weight: 800; }
+
+      #gcalSyncBadge {
+        display: none; align-items: center; gap: 5px;
+        font-size: 12px; font-weight: 600; color: rgba(220,232,255,0.7);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(100,150,255,0.15);
+        border-radius: 20px; padding: 4px 10px;
+        text-decoration: none; cursor: pointer;
+        transition: background .15s;
+      }
+      #gcalSyncBadge:hover { background: rgba(255,255,255,0.09); }
+
+      .gcal-lead-dot {
+        display: inline-block; font-size: 12px;
+        margin-left: 4px; opacity: .75;
+        text-decoration: none;
+        vertical-align: middle;
+      }
+      .gcal-lead-dot:hover { opacity: 1; }
+    </style>
   </head>
   <body>
     <div class="app-shell">
@@ -14,6 +40,13 @@
       <main class="main-area">
         <button id="refreshBtn" style="display:none;" type="button">Refresh</button>
         <div class="main-content">
+          <div class="leads-topbar">
+            <span class="leads-topbar-title">Leads</span>
+            <a id="gcalSyncBadge" href="/crm/settings?tab=gcal" title="Google Calendar Sync">
+              <span id="gcalSyncDot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
+              <span id="gcalSyncLabel">GCal</span>
+            </a>
+          </div>
           <p id="status" class="status-text"></p>
 
           <div class="data-table-wrap">
@@ -53,5 +86,41 @@
     <script src="/pages/js/schedule-suggest.js"></script>
     <script src="/pages/js/crm-leads.js"></script>
     <script src="/pages/js/shell.js"></script>
+    <script src="/pages/js/crm-fab.js"></script>
+
+    <script>
+      (async function loadGCalBadge() {
+        try {
+          const r = await fetch("/api/gcal/status");
+          if (!r.ok) return;
+          const d = await r.json();
+          const badge = document.getElementById("gcalSyncBadge");
+          const dot   = document.getElementById("gcalSyncDot");
+          const lbl   = document.getElementById("gcalSyncLabel");
+          if (!badge) return;
+          badge.style.display = "flex";
+          if (!d.enabled) {
+            dot.style.background = "#94a3b8";
+            lbl.textContent = "GCal off";
+            badge.title = "Google Calendar sync is disabled — click to configure";
+          } else if (d.enabled && !d.jobsCalId) {
+            dot.style.background = "#ef4444";
+            lbl.textContent = "GCal Error";
+            badge.title = "Sync enabled but calendars not bootstrapped — click to fix";
+          } else {
+            dot.style.background = "#4ade80";
+            let ago = "";
+            if (d.lastSyncAt) {
+              const mins = Math.round((Date.now() - new Date(d.lastSyncAt).getTime()) / 60000);
+              ago = mins < 2 ? " · just now" : mins < 60 ? ` · ${mins}m ago` : ` · ${Math.round(mins/60)}h ago`;
+            }
+            lbl.textContent = "GCal ✓" + ago;
+            badge.title = d.lastSyncAt
+              ? "Last synced: " + new Date(d.lastSyncAt).toLocaleString()
+              : "Google Calendar sync active";
+          }
+        } catch { /* unavailable */ }
+      })();
+    </script>
   </body>
 </html>
