@@ -1,0 +1,42 @@
+he create button in the sidebar menu and the + bottom right into one. I love the look of the + and the features. For the new estimate feature it should look exactly the same as it does but just be able to go through and give inputs from a dropdown to fill out the full profile just like if you went through the quote wizard but condensed form (pulls the same data) the plus probably also needs to have add time entry thing and expense entry 
+
+The leads page is likely useless might need to just remove it
+
+The weekly pulse’s header and menu is broken 
+
+invoice page needs a face lift right now it looks terrible 
+
+Live fleet needs to have the same header as everywhere else 
+
+Not sure what the vprs 100 is doing inside the crm.
+
+Love the settings but it needs more tabs than just the Google Calendar to actually be useful like having a way to adjust settings for the other pages
+
+Time tracking needs to be better build maybe we do like both gps and clock in/out shit like maybe a mix of gps and nfc tag
+
+The maps can’t zoom in scheduler
+
+In settings I want ways to adjust shit from other tabs too
+
+The add button the bottom scheduler should pretty much be there in every day across the crm
+
+
+The scheduler views need to line up ie the vertical lines look refracted because the boxes with text in them are expanded and the header boxes with the dates in them 
+
+Whenever two texts are scheduled for the same job it looks weird and double blocked on the scheduler page and Dave view, especially
+
+And I just want to make sure that we are ready for the integration of QuickBooks like all I want to do for that is to enter my login account info or the API or whatever but other than the actual credentials I want everything else built out I say that because I just looked at the expense tab and it doesn’t look like it’s going to work whenever QuickBooks gets integrated so I want the expense tab to be automatically populated after we have the QuickBooks integration so I don’t know if that’s possible. I don’t know how that’ll work.
+
+The time tab I’m also gonna have to figure that out because my plan is to have like an NFC chip card reader for the clock in/clock out
+
+The quick add tabs bring me to “not found” and there’s no time or expense
+
+The staff tabs background is fucked up
+
+Inside the invoice tab you should be able too edit invoice not just change orders
+
+Only on the online invoices there should also be a button to pay probably like a square payment I want them to have access to Apple Pay Klarna cards PayPal everything
+
+Invoice page sidebar has the logo fucking huge
+
+Dashboard should be landing page, not clients.
