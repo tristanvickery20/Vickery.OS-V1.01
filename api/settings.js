@@ -150,12 +150,13 @@ async function handleSaveQuickBooks(req, res) {
 async function handleDisconnectQuickBooks(req, res) {
   try {
     await setConfigKeys({
-      qb_connected:          "false",
-      qb_credentials_saved:  "false",
-      qb_client_id:          "",
-      qb_client_secret:      "",
-      qb_realm_id:           "",
-      qb_connected_at:       "",
+      qb_connected:            "false",
+      qb_credentials_saved:    "false",
+      qb_client_id:            "",
+      qb_client_secret:        "",
+      qb_access_token:         "",
+      qb_realm_id:             "",
+      qb_connected_at:         "",
       qb_credentials_saved_at: "",
     });
     json(res, 200, { ok: true });
