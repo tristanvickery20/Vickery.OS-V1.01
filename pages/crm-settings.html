@@ -446,8 +446,20 @@
                   </label>
                   <span class="toggle-label">Auto-sync Time Entries to QuickBooks</span>
                 </div>
+                <div class="section-hdr" style="margin-top:16px;padding-top:0;">QB Account Mapping</div>
+                <div class="settings-card-sub" style="margin-top:-8px;margin-bottom:10px;">
+                  Find these IDs in QuickBooks Online under Chart of Accounts. Hover over an account and look for the ID in the URL.
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="qbBankAccountId">Bank / Checking Account ID</label>
+                  <input class="form-input" type="text" id="qbBankAccountId" placeholder="e.g. 35" style="max-width:120px;" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="qbExpenseAccountId">Expense Category Account ID</label>
+                  <input class="form-input" type="text" id="qbExpenseAccountId" placeholder="e.g. 68" style="max-width:120px;" />
+                </div>
                 <div class="btn-row" style="margin-top:16px;">
-                  <button class="btn-secondary" id="qbSaveTogglesBtn">Save Auto-Sync Settings</button>
+                  <button class="btn-secondary" id="qbSaveTogglesBtn">Save Sync Settings</button>
                 </div>
                 <div id="qbToggleMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
               </div>

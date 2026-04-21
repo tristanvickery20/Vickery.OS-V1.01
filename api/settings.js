@@ -272,23 +272,28 @@ async function handleSaveStaffSettings(req, res) {
 // QB PUSH UTILITIES — called by expenses.js and time.js after save
 // ─────────────────────────────────────────────────────────────
 
-// Build a QuickBooks Purchase payload from an expense entry
+// Build a QuickBooks Purchase payload from an expense entry.
+// Bank/checking account and expense category account IDs come from Config
+// (qb_bank_account_id, qb_expense_account_id) so they match the company's chart of accounts.
 function _buildQbPurchase(entry, cfg) {
+  const bankAccountId    = cfg.qb_bank_account_id    || "1";
+  const expenseAccountId = cfg.qb_expense_account_id || "7";
   return {
     PaymentType: "Cash",
-    AccountRef: { value: "1", name: "Checking" },
+    AccountRef: { value: bankAccountId },
     TotalAmt: Number(entry.amount) || 0,
     TxnDate: entry.date || new Date().toISOString().slice(0, 10),
     PrivateNote: `CRM Expense ${entry.id} — ${entry.vendor || ""} — ${entry.notes || ""}`.trim(),
     Line: [{
       Amount: Number(entry.amount) || 0,
       DetailType: "AccountBasedExpenseLineDetail",
-      AccountBasedExpenseLineDetail: { AccountRef: { value: "7", name: "Expenses" } },
+      AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } },
     }],
   };
 }
 
-// Build a QuickBooks TimeActivity payload from a time entry
+// Build a QuickBooks TimeActivity payload from a time entry.
+// Labor account ID comes from Config (qb_labor_account_id).
 function _buildQbTimeActivity(entry, cfg) {
   const hours   = Math.floor((Number(entry.minutes) || 0) / 60);
   const minutes = (Number(entry.minutes) || 0) % 60;
