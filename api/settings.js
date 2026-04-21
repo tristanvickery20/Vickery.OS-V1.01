@@ -2,18 +2,12 @@
 const crypto = require("crypto");
 const { getConfig, setConfigKeys } = require("../lib/config");
 
-// ─────────────────────────────────────────────────────────────
-// QB SECRET ENCRYPTION — stored in Config sheet encrypted at rest
-// Key is derived from CRM_PIN env var so the raw secret is never
-// visible in the sheet even if someone has the sheet ID.
-// ─────────────────────────────────────────────────────────────
+// QB SECRET ENCRYPTION — fail-closed. CRM_PIN env var is REQUIRED.
+// If CRM_PIN is absent, all QB credential save/token operations are rejected with a 500.
+// This prevents credentials from ever being stored under a guessable fallback key.
 function _encKey() {
   const pin = process.env.CRM_PIN;
-  if (!pin) {
-    // CRM_PIN is required for QB secret encryption. Without it we store the
-    // secret unencrypted but still protected by the Config sheet's access controls.
-    return crypto.createHash("sha256").update("NO_PIN_SET").digest();
-  }
+  if (!pin) throw new Error("CRM_PIN environment variable is required for QuickBooks credential encryption. Set it before saving QB credentials.");
   return crypto.createHash("sha256").update(pin).digest();
 }
 function encryptSecret(text) {
@@ -24,14 +18,15 @@ function encryptSecret(text) {
   return iv.toString("hex") + ":" + enc.toString("hex");
 }
 function decryptSecret(stored) {
-  if (!stored || !stored.includes(":")) return stored;
+  if (!stored || !stored.includes(":")) return "";
+  const key = crypto.createHash("sha256").update(process.env.CRM_PIN || "").digest();
   try {
     const [ivHex, encHex] = stored.split(":");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", _encKey(), Buffer.from(ivHex, "hex"));
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, Buffer.from(ivHex, "hex"));
     const dec = Buffer.concat([decipher.update(Buffer.from(encHex, "hex")), decipher.final()]);
     return dec.toString("utf8");
   } catch {
-    return stored;
+    return "";
   }
 }
 
