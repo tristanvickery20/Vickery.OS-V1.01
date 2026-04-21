@@ -385,7 +385,10 @@ function liEditRowHtml(it, i) {
   const price = it.unit_price != null ? it.unit_price : 0;
   const amt   = Math.round(Number(qty) * Number(price) * 100) / 100;
   return `<tr data-li-i="${i}" class="li-edit-row" style="background:rgba(59,130,246,0.06)">
-    <td><input class="li-input" data-f="title" value="${esc(it.title||it.description||"")}" placeholder="Description" autofocus></td>
+    <td>
+      <input class="li-input" data-f="title" value="${esc(it.title||"")}" placeholder="Title / service name" autofocus>
+      <input class="li-input" data-f="description" value="${esc(it.description||"")}" placeholder="Details (optional)" style="margin-top:4px;font-size:11px;color:var(--text2)">
+    </td>
     <td><input class="li-input" data-f="quantity" type="number" min="0" step="0.01" value="${qty}" style="width:60px"></td>
     <td><input class="li-input" data-f="unit_price" type="number" min="0" step="0.01" value="${price}" style="width:84px"></td>
     <td class="col-r"><span id="li-amt-${i}">${money(amt)}</span></td>
@@ -437,14 +440,15 @@ function bindTableEvents() {
       const row  = tbody.querySelector(`tr[data-li-i="${i}"]`);
       if (!row) return;
       const title = (row.querySelector("[data-f='title']")?.value || "Service").trim();
+      const desc  = (row.querySelector("[data-f='description']")?.value || "").trim();
       const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1) || 1;
       const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
       const prev  = _lineItems[i] || {};
-      // Carry forward existing metadata not shown in the edit row (description, taxable, tax_rate)
+      // Carry forward existing metadata not shown in the edit row (taxable, tax_rate)
       _lineItems[i] = {
         ...prev,
         title,
-        description: prev.description || "",
+        description: desc,
         quantity:    qty,
         unit_price:  price,
         line_total:  Math.round(qty * price * 100) / 100,
@@ -807,9 +811,10 @@ document.getElementById("saveLineItemsBtn").addEventListener("click", async () =
       const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
       if (Number.isFinite(i) && _lineItems[i]) {
         const prev = _lineItems[i];
+        const desc = (row.querySelector("[data-f='description']")?.value || "").trim();
         // Preserve existing metadata not surfaced in edit row inputs
         _lineItems[i] = { ...prev, title,
-          description: prev.description || "",
+          description: desc,
           quantity:    qty,
           unit_price:  price,
           line_total:  Math.round(qty * price * 100) / 100,
