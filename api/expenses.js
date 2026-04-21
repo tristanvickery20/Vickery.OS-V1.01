@@ -1,5 +1,6 @@
 const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
+const { pushExpenseToQuickBooks } = require("./settings");
 
 function mapRowToExpense(row) {
   const [id, created_at, date, tech_id, lead_id, type, vendor, amount, notes, receipt_url] = row;
@@ -100,6 +101,8 @@ async function handleCreateExpense(req, res) {
 
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, entry }));
+
+      setImmediate(() => pushExpenseToQuickBooks(entry).catch(() => {}));
 
       logAudit({
         action: "expense.create",

@@ -1,5 +1,6 @@
 const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
+const { pushTimeToQuickBooks } = require("./settings");
 
 function mapRowToEntry(row) {
   const [id, created_at, date, tech_id, lead_id, minutes, category, notes,
@@ -107,6 +108,8 @@ async function handleCreateTime(req, res) {
 
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, entry }));
+
+      setImmediate(() => pushTimeToQuickBooks(entry).catch(() => {}));
 
       logAudit({
         action: "time.create",

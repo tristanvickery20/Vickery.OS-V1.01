@@ -105,6 +105,9 @@
 
             <div class="tab-bar">
               <button class="tab-btn active" data-tab="gcal">Google Calendar</button>
+              <button class="tab-btn" data-tab="notif">Notifications</button>
+              <button class="tab-btn" data-tab="billing">Billing &amp; Accounting</button>
+              <button class="tab-btn" data-tab="staff">Staff &amp; Access</button>
             </div>
 
             <!-- ── Google Calendar Tab ─────────────────────────── -->
@@ -273,6 +276,210 @@
               </div>
 
             </div><!-- /tab-gcal -->
+
+            <!-- ── Notifications Tab ──────────────────────────── -->
+            <div class="tab-panel" id="tab-notif">
+
+              <div class="section-hdr">SMS Reminders</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Send SMS Job Reminders</div>
+                <div class="settings-card-sub">When enabled, customers receive an automated SMS reminder before their appointment.</div>
+                <div class="toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notifSmsReminder" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">SMS reminders enabled</span>
+                </div>
+              </div>
+
+              <div class="section-hdr">Google Review Requests</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Request Reviews After Job Completion</div>
+                <div class="settings-card-sub">Automatically send a Google Review request SMS when a job is marked complete.</div>
+                <div class="toggle-row" style="margin-bottom:14px;">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notifReviewEnabled" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Review requests enabled</span>
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="notifReviewDelay">Delay after completion (days)</label>
+                  <input class="form-input" type="number" id="notifReviewDelay" min="0" max="30" style="max-width:120px;" />
+                </div>
+              </div>
+
+              <div class="section-hdr">Overdue Task Alerts</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Overdue Alert Timing</div>
+                <div class="settings-card-sub">How many hours before midnight to count a task as overdue. 0 = alert fires the morning the task is due.</div>
+                <div class="form-row">
+                  <label class="form-label" for="notifOverdueHours">Hours before (0–72)</label>
+                  <input class="form-input" type="number" id="notifOverdueHours" min="0" max="72" style="max-width:120px;" />
+                </div>
+              </div>
+
+              <div class="section-hdr">Admin Copies</div>
+              <div class="settings-card">
+                <div class="settings-card-title">CC Owner on All Outbound Messages</div>
+                <div class="settings-card-sub">When enabled, a copy of every outbound SMS or email is also logged as an internal note for the owner's review.</div>
+                <div class="toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notifCcOwner" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">CC owner on sends</span>
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <button class="btn-primary" id="notifSaveBtn">Save Notifications</button>
+              </div>
+              <div id="notifMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+
+            </div><!-- /tab-notif -->
+
+            <!-- ── Billing & Accounting Tab ──────────────────── -->
+            <div class="tab-panel" id="tab-billing">
+
+              <div class="section-hdr">QuickBooks Integration</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Connect QuickBooks Online</div>
+                <div class="settings-card-sub">
+                  Enter your QuickBooks app credentials below to enable automatic expense and time-entry sync.
+                  You'll need a <a href="https://developer.intuit.com/" target="_blank" rel="noopener" style="color:hsl(var(--primary));">QuickBooks developer app</a>
+                  with your Client ID, Client Secret, and your company's Realm ID (company ID shown in your QB Online URL).
+                </div>
+
+                <div id="qbStatusRow" style="margin-bottom:14px;">
+                  <div class="status-item" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;">
+                    <span id="qbDot" class="dot-na"></span>
+                    <span id="qbStatusLabel" style="font-size:13px;font-weight:600;">Loading…</span>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <label class="form-label" for="qbClientId">QuickBooks Client ID</label>
+                  <input class="form-input" type="text" id="qbClientId" placeholder="ABcd1234…" autocomplete="off" />
+                  <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:3px;">Leave blank to keep existing value.</div>
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="qbClientSecret">QuickBooks Client Secret</label>
+                  <input class="form-input" type="password" id="qbClientSecret" placeholder="••••••••" autocomplete="new-password" />
+                  <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:3px;">Leave blank to keep existing value.</div>
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="qbRealmId">Realm ID (Company ID)</label>
+                  <input class="form-input" type="text" id="qbRealmId" placeholder="9341453726" />
+                  <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:3px;">Found in your QuickBooks Online URL: qbo.intuit.com/app/…/companyid=<strong>YOUR_REALM_ID</strong></div>
+                </div>
+                <div class="form-row">
+                  <label class="form-label" for="qbEnvironment">Environment</label>
+                  <select class="form-input" id="qbEnvironment" style="max-width:200px;">
+                    <option value="sandbox">Sandbox (testing)</option>
+                    <option value="production">Production (live)</option>
+                  </select>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn-primary" id="qbSaveBtn">Save &amp; Connect</button>
+                  <button class="btn-secondary" id="qbDisconnectBtn" style="display:none;color:#7f1d1d;border-color:#fca5a5;">Disconnect</button>
+                </div>
+                <div id="qbMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+              </div>
+
+              <div class="section-hdr">Auto-Sync Settings</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Automatic Sync</div>
+                <div class="settings-card-sub">When connected, new records are automatically pushed to QuickBooks after being saved in the CRM.</div>
+                <div class="toggle-row" style="margin-bottom:12px;">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="qbSyncExpenses" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Auto-sync Expenses to QuickBooks</span>
+                </div>
+                <div class="toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="qbSyncTime" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Auto-sync Time Entries to QuickBooks</span>
+                </div>
+                <div class="btn-row" style="margin-top:16px;">
+                  <button class="btn-secondary" id="qbSaveTogglesBtn">Save Auto-Sync Settings</button>
+                </div>
+                <div id="qbToggleMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+              </div>
+
+              <div class="section-hdr">Current Provider</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Accounting Provider</div>
+                <div class="settings-card-sub">This shows what accounting system is currently receiving CRM data.</div>
+                <div id="qbProviderRow" style="font-size:13px;font-weight:600;color:hsl(var(--muted-foreground));">Loading…</div>
+              </div>
+
+            </div><!-- /tab-billing -->
+
+            <!-- ── Staff & Access Tab ─────────────────────────── -->
+            <div class="tab-panel" id="tab-staff">
+
+              <div class="section-hdr">New Account Policy</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Require Approval for New Sign-Ups</div>
+                <div class="settings-card-sub">
+                  When enabled, new crew member accounts created via the crew portal are set to
+                  <strong>Pending</strong> status until you manually approve them on the Staff page.
+                  When disabled, new accounts are immediately active.
+                </div>
+                <div class="toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="staffRequireApproval" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">New signups require approval</span>
+                </div>
+              </div>
+
+              <div class="section-hdr">Default Crew Portal Access</div>
+              <div class="settings-card">
+                <div class="settings-card-title">Default Permissions for New Crew Members</div>
+                <div class="settings-card-sub">
+                  These permissions are applied to new crew member accounts when they sign up.
+                  You can override them per-person on the Staff page.
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;" id="staffPermChips">
+                  <label class="perm-chip-wrap">
+                    <input type="checkbox" class="perm-chip-cb" value="jobs" />
+                    <span class="perm-chip">📋 Jobs &amp; Schedule</span>
+                  </label>
+                  <label class="perm-chip-wrap">
+                    <input type="checkbox" class="perm-chip-cb" value="time" />
+                    <span class="perm-chip">⏱ Log Time</span>
+                  </label>
+                  <label class="perm-chip-wrap">
+                    <input type="checkbox" class="perm-chip-cb" value="expenses" />
+                    <span class="perm-chip">💸 Log Expenses</span>
+                  </label>
+                  <label class="perm-chip-wrap">
+                    <input type="checkbox" class="perm-chip-cb" value="invoices" />
+                    <span class="perm-chip">🧾 View Invoices</span>
+                  </label>
+                  <label class="perm-chip-wrap">
+                    <input type="checkbox" class="perm-chip-cb" value="map" />
+                    <span class="perm-chip">🗺 Map &amp; Fleet</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <button class="btn-primary" id="staffSaveBtn">Save Staff Settings</button>
+              </div>
+              <div id="staffMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
+
+            </div><!-- /tab-staff -->
+
           </div>
         </div>
       </main>
@@ -280,6 +487,20 @@
 
     <script src="/pages/js/api.js"></script>
     <script src="/pages/js/shell.js"></script>
+    <style>
+      .perm-chip-wrap { display:inline-flex; align-items:center; cursor:pointer; }
+      .perm-chip-wrap input { display:none; }
+      .perm-chip {
+        padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        border: 2px solid rgba(100,150,255,0.25);
+        color: rgba(220,232,255,0.6); background: rgba(100,150,255,0.06);
+        cursor: pointer; transition: all .15s; user-select:none;
+      }
+      .perm-chip-wrap input:checked + .perm-chip {
+        border-color: hsl(var(--primary)); color: hsl(var(--primary));
+        background: hsl(var(--primary) / .12);
+      }
+    </style>
     <script>
       // ── Tab switching ──────────────────────────────────────────
       document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -695,6 +916,175 @@
       }
 
       loadReviewList();
+
+      // ── Notifications tab ───────────────────────────────────
+      async function loadNotifSettings() {
+        try {
+          const r = await fetch("/api/settings/notifications");
+          const d = await r.json();
+          if (!d.ok) return;
+          document.getElementById("notifSmsReminder").checked  = !!d.smsReminderEnabled;
+          document.getElementById("notifReviewEnabled").checked = !!d.reviewRequestEnabled;
+          document.getElementById("notifReviewDelay").value     = d.reviewDelayDays ?? 3;
+          document.getElementById("notifOverdueHours").value    = d.overdueHoursBefore ?? 0;
+          document.getElementById("notifCcOwner").checked       = !!d.ccOwnerEnabled;
+        } catch { /* skip */ }
+      }
+      loadNotifSettings();
+
+      document.getElementById("notifSaveBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("notifMsg");
+        msg.textContent = "Saving…"; msg.style.color = "";
+        try {
+          const r = await fetch("/api/settings/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              smsReminderEnabled:   document.getElementById("notifSmsReminder").checked,
+              reviewRequestEnabled: document.getElementById("notifReviewEnabled").checked,
+              reviewDelayDays:      Number(document.getElementById("notifReviewDelay").value) || 3,
+              overdueHoursBefore:   Number(document.getElementById("notifOverdueHours").value) || 0,
+              ccOwnerEnabled:       document.getElementById("notifCcOwner").checked,
+            }),
+          });
+          const d = await r.json();
+          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
+          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
+      // ── QuickBooks tab ──────────────────────────────────────
+      async function loadQBStatus() {
+        try {
+          const r = await fetch("/api/settings/quickbooks");
+          const d = await r.json();
+          if (!d.ok) return;
+
+          const dot   = document.getElementById("qbDot");
+          const lbl   = document.getElementById("qbStatusLabel");
+          const disco = document.getElementById("qbDisconnectBtn");
+          const prov  = document.getElementById("qbProviderRow");
+
+          if (d.connected) {
+            dot.className = "dot-ok";
+            lbl.textContent = "Connected" + (d.connectedAt ? " since " + new Date(d.connectedAt).toLocaleDateString() : "");
+            disco.style.display = "inline-flex";
+            prov.innerHTML = '<span class="dot-ok"></span> QuickBooks Online (' + (d.environment || "sandbox") + ')';
+          } else {
+            dot.className = d.hasClientId ? "dot-off" : "dot-na";
+            lbl.textContent = d.hasClientId ? "Credentials saved — not yet verified" : "Not connected";
+            disco.style.display = "none";
+            prov.innerHTML = '<span class="dot-na"></span> Mock / Manual — no accounting system connected';
+          }
+
+          document.getElementById("qbRealmId").value    = d.realmId || "";
+          document.getElementById("qbEnvironment").value = d.environment || "sandbox";
+          document.getElementById("qbSyncExpenses").checked = !!d.autoSyncExpenses;
+          document.getElementById("qbSyncTime").checked     = !!d.autoSyncTime;
+        } catch { /* skip */ }
+      }
+      loadQBStatus();
+
+      document.getElementById("qbSaveBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("qbMsg");
+        msg.textContent = "Saving…"; msg.style.color = "";
+        const clientId     = document.getElementById("qbClientId").value.trim();
+        const clientSecret = document.getElementById("qbClientSecret").value.trim();
+        const realmId      = document.getElementById("qbRealmId").value.trim();
+        const environment  = document.getElementById("qbEnvironment").value;
+        try {
+          const r = await fetch("/api/settings/quickbooks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId, clientSecret, realmId, environment }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            msg.textContent = "✓ Credentials saved.";
+            msg.style.color = "#166534";
+            document.getElementById("qbClientId").value = "";
+            document.getElementById("qbClientSecret").value = "";
+            await loadQBStatus();
+          } else {
+            msg.textContent = "✗ " + (d.error || "Error");
+            msg.style.color = "#7f1d1d";
+          }
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
+      document.getElementById("qbSaveTogglesBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("qbToggleMsg");
+        msg.textContent = "Saving…"; msg.style.color = "";
+        try {
+          const r = await fetch("/api/settings/quickbooks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              autoSyncExpenses: document.getElementById("qbSyncExpenses").checked,
+              autoSyncTime:     document.getElementById("qbSyncTime").checked,
+            }),
+          });
+          const d = await r.json();
+          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
+          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
+      document.getElementById("qbDisconnectBtn").addEventListener("click", async () => {
+        if (!confirm("Disconnect QuickBooks? Credentials will be cleared.")) return;
+        const msg = document.getElementById("qbMsg");
+        msg.textContent = "Disconnecting…"; msg.style.color = "";
+        try {
+          const r = await fetch("/api/settings/quickbooks", { method: "DELETE" });
+          const d = await r.json();
+          msg.textContent = d.ok ? "✓ Disconnected." : "✗ " + (d.error || "Error");
+          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+          if (d.ok) await loadQBStatus();
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
+      // ── Staff & Access tab ──────────────────────────────────
+      async function loadStaffSettings() {
+        try {
+          const r = await fetch("/api/settings/staff");
+          const d = await r.json();
+          if (!d.ok) return;
+          document.getElementById("staffRequireApproval").checked = !!d.requireApproval;
+          const perms = d.defaultPermissions || [];
+          document.querySelectorAll(".perm-chip-cb").forEach(cb => {
+            cb.checked = perms.includes(cb.value);
+          });
+        } catch { /* skip */ }
+      }
+      loadStaffSettings();
+
+      document.getElementById("staffSaveBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("staffMsg");
+        msg.textContent = "Saving…"; msg.style.color = "";
+        const defaultPermissions = Array.from(document.querySelectorAll(".perm-chip-cb:checked")).map(cb => cb.value);
+        const requireApproval    = document.getElementById("staffRequireApproval").checked;
+        try {
+          const r = await fetch("/api/settings/staff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ defaultPermissions, requireApproval }),
+          });
+          const d = await r.json();
+          msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
+          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
     </script>
   </body>
 </html>
