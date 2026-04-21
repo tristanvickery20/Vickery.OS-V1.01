@@ -1634,8 +1634,11 @@
         const groups = new Map();
         const order  = [];
         for (const b of bookings) {
-          // Key: same customer + same exact datetime (handles one-booking-per-tech duplicates)
-          const key = `${b.customer_name}|${b.scheduled_datetime || b.local_date + "T" + b.local_hour + ":" + String(b.local_min).padStart(2,"0")}`;
+          // Stable job identity: prefer quote_id (shared by all tech-rows for same job),
+          // fall back to address + date + time (avoids merging different jobs for same customer)
+          const key = (b.quote_id)
+            ? `q:${b.quote_id}`
+            : `${b.address || b.customer_name}|${b.local_date}|${b.local_hour}:${String(b.local_min || 0).padStart(2,"0")}`;
           if (groups.has(key)) {
             const g = groups.get(key);
             const addName = n => { if (n && !g._techNames.includes(n)) g._techNames.push(n); };
