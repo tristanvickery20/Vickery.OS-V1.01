@@ -495,7 +495,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === "/crm") {
-    const target = isAuthed(req) ? "/clients" : "/login";
+    const target = isAuthed(req) ? "/crm/dashboard" : "/login";
     res.writeHead(302, { Location: target });
     return res.end();
   }
@@ -821,7 +821,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === "/crm/leads" || req.url.startsWith("/crm/leads?")) {
-    return serveFile(res, path.join(__dirname, "pages/crm-leads.html"), "text/html");
+    res.writeHead(302, { Location: "/crm/dashboard" });
+    return res.end();
   }
 
   if (req.url === "/crm/staff") {
