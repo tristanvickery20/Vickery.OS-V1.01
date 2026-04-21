@@ -173,8 +173,9 @@ async function handleSaveQuickBooksToken(req, res) {
     if (!body.accessToken) {
       return json(res, 400, { ok: false, error: "accessToken is required" });
     }
+    // Token is encrypted at rest using the same AES-256 scheme as the client secret
     await setConfigKeys({
-      qb_access_token: String(body.accessToken),
+      qb_access_token: encryptSecret(String(body.accessToken)),
       qb_connected:    "true",
       qb_connected_at: new Date().toISOString(),
     });
@@ -191,7 +192,7 @@ async function handleTestQuickBooks(req, res) {
     if (!cfg.qb_client_id || !cfg.qb_realm_id) {
       return json(res, 200, { ok: false, error: "No credentials configured. Enter Client ID and Realm ID first." });
     }
-    const accessToken = cfg.qb_access_token || "";
+    const accessToken = decryptSecret(cfg.qb_access_token || "");
     const base = cfg.qb_environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
@@ -318,7 +319,7 @@ async function pushExpenseToQuickBooks(entry) {
       }
       return;
     }
-    const accessToken = cfg.qb_access_token || "";
+    const accessToken = decryptSecret(cfg.qb_access_token || "");
     const base = cfg.qb_environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
@@ -357,7 +358,7 @@ async function pushTimeToQuickBooks(entry) {
       }
       return;
     }
-    const accessToken = cfg.qb_access_token || "";
+    const accessToken = decryptSecret(cfg.qb_access_token || "");
     const base = cfg.qb_environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
