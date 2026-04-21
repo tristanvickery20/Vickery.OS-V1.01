@@ -471,8 +471,24 @@ body {
   .notes-section { padding: 10pt 0; }
 
   .btn-pay-now { display: none !important; }
+  .pay-section  { display: none !important; }
   .invoice-footer { padding: 10pt 0 0; }
   .payment-note { font-size: 9pt; }
+
+  /* Print-only pay-by-phone block shown right after Balance Due */
+  .print-pay-block {
+    display: block !important;
+    border-top: 1pt solid #cbd5e1;
+    padding: 8pt 0 10pt;
+    page-break-inside: avoid;
+  }
+  .print-pay-block-title {
+    font-size: 10pt; font-weight: 700; color: #0f172a; margin-bottom: 3pt;
+  }
+  .print-pay-block-body { font-size: 9pt; color: #475569; margin-bottom: 2pt; }
+  .print-pay-block-phone { font-size: 12pt; font-weight: 800; color: #2563eb;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-pay-block-note  { font-size: 8pt; color: #94a3b8; margin-top: 2pt; }
 
   /* Handwritten change order box — always shown on print */
   .print-co-box {
@@ -507,8 +523,9 @@ body {
   .print-co-box    { page-break-inside: avoid; }
 }
 
-/* Print box is hidden on screen */
-.print-co-box { display: none; }
+/* Print-only blocks are hidden on screen */
+.print-co-box    { display: none; }
+.print-pay-block { display: none; }
 </style>
 </head>
 <body>
@@ -677,11 +694,19 @@ function renderPaySection(inv) {
   // Void invoice — no pay UI
   if (sc === "void") return "";
 
-  // No Square credentials — show phone-pay fallback
+  // No Square credentials — show phone-pay fallback + optional pay_url button
   if (!window._sqAppId) {
+    const payUrl = inv.pay_url || "";
     return `<div class="pay-section">
       <div class="pay-section-title">Pay This Invoice</div>
-      <div class="pay-section-sub">To pay by card, please call us directly:</div>
+      ${payUrl ? `<a href="${esc(payUrl)}" target="_blank" rel="noopener noreferrer"
+          style="display:inline-flex;align-items:center;gap:8px;margin-bottom:14px;padding:12px 24px;
+                 background:var(--blue);color:#fff;font-size:15px;font-weight:700;border-radius:8px;
+                 text-decoration:none;box-shadow:0 2px 8px rgba(37,99,235,0.25);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Pay Online Securely
+        </a><br>` : ""}
+      <div class="pay-section-sub">Or pay by card — call us directly:</div>
       <a href="tel:4095543392" style="display:inline-block;margin-bottom:8px;font-size:16px;font-weight:800;color:var(--blue);text-decoration:none;">(409) 554-3392</a>
       <div style="font-size:13px;color:var(--gray-400);margin-top:4px;">Cash, check, and card accepted.</div>
     </div>`;
@@ -793,6 +818,14 @@ function renderInvoice(inv) {
     </div>
 
     ${renderTotals(inv, changeOrders)}
+
+    ${(sc !== "paid" && sc !== "void" && Number(inv.balance_due) > 0) ? `<div class="print-pay-block">
+      <div class="print-pay-block-title">Pay This Invoice</div>
+      <div class="print-pay-block-body">To pay by card, please call us directly:</div>
+      <div class="print-pay-block-phone">(409) 554-3392</div>
+      <div class="print-pay-block-note">Cash, check, and card accepted.</div>
+    </div>` : ""}
+
     ${changeOrders.length ? renderChangeOrders(changeOrders) : ""}
 
     ${inv.notes ? `<div class="notes-section">

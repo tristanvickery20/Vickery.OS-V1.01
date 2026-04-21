@@ -321,6 +321,17 @@
       }
       .chip-resize-handle-right:hover { background: rgba(255,255,255,0.15); }
 
+      /* Shared-job pill in day view (secondary tech row) */
+      .dv-chip-shared {
+        position: relative;
+        display: flex; align-items: center; gap: 4px;
+        height: 20px; top: 2px; padding: 0 6px;
+        border-radius: 4px; border: 1px dashed rgba(100,150,255,0.55);
+        background: rgba(37,99,235,0.08); color: var(--muted);
+        font-size: 10px; font-weight: 600; z-index: 2; overflow: hidden;
+      }
+      .dv-chip-shared:hover { background: rgba(37,99,235,0.16); border-color: var(--blue); color: var(--text); }
+
       /* ── Detail panel ──────────────────────────────────────────── */
       .detail-panel {
         position: fixed; top: 0; right: 0; bottom: 0; width: 360px;
@@ -1657,27 +1668,39 @@
         return order;
       }
 
-      // Simple layout: detect overlapping bookings and assign columns
+      // Layout bookings with per-chip overlap groups (Google Calendar style)
       function layoutBookings(bookings) {
         if (!bookings.length) return [];
-        const sorted = [...bookings].sort((a, b) => a.local_hour - b.local_hour || a.local_min - b.local_min);
-        const columns = [];
-        const result  = [];
-
-        for (const b of sorted) {
-          const startH = b.local_hour + b.local_min / 60;
-          const endH   = startH + (b.duration_minutes / 60 || 1);
-
+        const sorted = [...bookings].sort((a, b) => (a.local_hour + a.local_min/60) - (b.local_hour + b.local_min/60));
+        const items = sorted.map(b => ({
+          b,
+          startH: b.local_hour + b.local_min / 60,
+          endH:   b.local_hour + b.local_min / 60 + Math.max(b.duration_minutes / 60 || 1, 0.25),
+          col: 0, numCols: 1,
+        }));
+        // Greedy column assignment
+        const colEnds = [];
+        for (const item of items) {
           let col = 0;
-          while (columns[col] && columns[col] > startH) col++;
-          columns[col] = endH;
-
-          result.push({ b, col });
+          while (colEnds[col] !== undefined && colEnds[col] > item.startH + 0.01) col++;
+          item.col = col;
+          colEnds[col] = item.endH;
         }
-
-        const maxCol = columns.length || 1;
-        return result.map(({ b, col }) => ({
-          b, left: 3 + col * (94 / maxCol), width: 94 / maxCol - 2,
+        // Per-chip numCols: count columns active during this event's span
+        for (const item of items) {
+          let maxCol = item.col;
+          for (const other of items) {
+            if (other === item) continue;
+            if (other.startH < item.endH - 0.01 && other.endH > item.startH + 0.01) {
+              maxCol = Math.max(maxCol, other.col);
+            }
+          }
+          item.numCols = maxCol + 1;
+        }
+        return items.map(item => ({
+          b:     item.b,
+          left:  3 + item.col * (94 / item.numCols),
+          width: 94 / item.numCols - 2,
         }));
       }
 
@@ -1879,12 +1902,12 @@
               const _multiTech = _techIds.size > 1 ? `<span class="chip-multitechs">${_techIds.size} techs</span>` : "";
 
               if (b._dvRole === "secondary") {
-                // Ghost chip — secondary tech sees a slim shared-job indicator
-                html += `<div class="dv-chip dv-chip-ghost" data-id="${esc(b.booking_id)}"
-                  style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;position:relative;
-                    opacity:0.45;border-style:dashed;cursor:pointer;">
-                  <span class="chip-name" style="font-size:10px;">↗ ${esc(b.customer_name || "—")}</span>
-                  <span class="chip-time" style="font-size:9px;opacity:0.7;">${fmtTime(b.scheduled_datetime)}</span>
+                // Shared-job pill — secondary tech sees a clean "also assigned" tag
+                html += `<div class="dv-chip-shared" data-id="${esc(b.booking_id)}"
+                  style="left:${leftPx + 3}px;width:${Math.max(40, chipW - 4)}px;cursor:pointer;" title="Shared job — click to view">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(b.customer_name || "—")}</span>
+                  <span style="font-size:9px;opacity:0.7;flex-shrink:0;">${fmtTime(b.scheduled_datetime)}</span>
                 </div>`;
               } else {
                 html += `<div class="dv-chip ${chipClass(b.status)}${selected}"
@@ -1924,6 +1947,10 @@
       function setupDayEvents(curDate) {
         setupChipEvents(".dv-chip", "day");
         setupChipEvents(".mv-chip[data-id]", "day");
+        // Shared-job pill click → open the detail panel
+        calMain.querySelectorAll(".dv-chip-shared[data-id]").forEach(el => {
+          el.addEventListener("click", e => { e.stopPropagation(); openDetail(el.dataset.id); });
+        });
 
         // Drop into tech/hour cells
         calMain.querySelectorAll(".dv-tech-cell[data-droptarget]").forEach(cell => {
@@ -1963,7 +1990,7 @@
         // Empty cell click → new booking
         calMain.querySelectorAll(".dv-tech-cell[data-droptarget]").forEach(cell => {
           cell.addEventListener("click", e => {
-            if (e.target.closest(".dv-chip")) return;
+            if (e.target.closest(".dv-chip") || e.target.closest(".dv-chip-shared")) return;
             const techId = cell.dataset.techId || "";
             const hour   = cell.dataset.hour;
             const params = new URLSearchParams({ date: curDate, hour });

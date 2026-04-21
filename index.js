@@ -823,7 +823,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // PROTECTED CRM PAGES
-  if (req.url === "/crm/new") {
+  if (req.url === "/crm/new" || req.url.startsWith("/crm/new?")) {
     return serveFile(res, path.join(__dirname, "pages/crm-new.html"), "text/html");
   }
 

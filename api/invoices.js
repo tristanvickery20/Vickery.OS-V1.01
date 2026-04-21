@@ -841,6 +841,7 @@ async function handlePublicInvoice(req, res) {
       deposit_applied:   inv.deposit_applied|| "0",
       original_total:    inv.original_total || inv.total || "0",
       notes:             inv.notes || "",
+      pay_url:           inv.pay_url || "",
       line_items_json:   inv.line_items_json    || "[]",
       change_orders_json:inv.change_orders_json || "[]",
     };

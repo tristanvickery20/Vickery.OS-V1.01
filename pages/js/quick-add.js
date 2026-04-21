@@ -162,6 +162,17 @@
     ".qa-inv-total-row.grand{font-size:16px;font-weight:800;color:#f1f5f9;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px;}",
     ".qa-inv-total-amt{font-weight:700;}",
     ".qa-inv-line-total{font-size:13px;color:#94a3b8;text-align:right;padding:9px 2px 9px 0;font-weight:600;white-space:nowrap;}",
+    /* Client combobox */
+    ".qa-combo-wrap{position:relative;}",
+    ".qa-combo-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:999;",
+    "background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:10px;",
+    "max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;}",
+    ".qa-combo-list.open{display:block;}",
+    ".qa-combo-opt{padding:10px 14px;cursor:pointer;font-size:13px;color:#e2e8f0;border-bottom:1px solid rgba(255,255,255,.05);}",
+    ".qa-combo-opt:last-child{border-bottom:none;}",
+    ".qa-combo-opt:hover,.qa-combo-opt.hl{background:rgba(45,106,224,.2);color:#fff;}",
+    ".qa-combo-opt-sub{font-size:11px;color:#64748b;margin-top:1px;}",
+    ".qa-combo-no-res{padding:10px 14px;font-size:13px;color:#64748b;font-style:italic;}",
     /* Estimate dropdown fix */
     ".qa-q-sel-inp{width:100%;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);",
     "background:rgba(255,255,255,.05);color:#e2e8f0;font-size:14px;font-family:inherit;outline:none;}",
@@ -753,7 +764,7 @@
       if (invSubtotal <= 0) { showErr("Add at least one line item with a rate."); btn.disabled = false; btn.textContent = "Create Invoice"; return; }
       var invTaxPct = parseFloat(document.getElementById("qa-inv-tax")?.value) || 0;
       var invClientId = document.getElementById("qa-inv-client")?.value || "";
-      var invName = g("qa-inv-name");
+      var invName = g("qa-inv-name") || (document.getElementById("qa-inv-client-search")?.value || "").trim();
       if (!invName) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Create Invoice"; return; }
       promise = fetch("/api/invoices/from-lead", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1188,7 +1199,11 @@
     var dueDate = new Date(Date.now() + 30 * 24 * 3600000).toISOString().slice(0, 10);
     var invNum  = "INV-" + String(Date.now()).slice(-6);
     var h = "";
-    h += fld("Client", '<select class="qa-select" id="qa-inv-client"><option value="">— Select client —</option><option value="" disabled>Loading…</option></select>');
+    h += fld("Client", '<div class="qa-combo-wrap">' +
+      '<input class="qa-input qa-inv-editable" id="qa-inv-client-search" placeholder="Search or type client name…" autocomplete="off">' +
+      '<div class="qa-combo-list" id="qa-inv-combo-list"></div>' +
+      '<input type="hidden" id="qa-inv-client">' +
+    '</div>');
     h += '<div class="qa-row">' +
       fld("Name", '<input class="qa-input qa-inv-editable" id="qa-inv-name" placeholder="Client name" autocomplete="off">') +
       fld("Phone", '<input class="qa-input qa-inv-editable" id="qa-inv-phone" placeholder="(555) 000-0000" autocomplete="off">') +
@@ -1267,6 +1282,8 @@
     if (tot) tot.textContent = "$" + total.toFixed(2);
   }
 
+  var _invClients = [];
+
   function afterInvoiceRender() {
     // Add one default empty line
     addInvoiceLine("", 1, "");
@@ -1279,35 +1296,126 @@
     var taxInp = document.getElementById("qa-inv-tax");
     if (taxInp) taxInp.addEventListener("input", calcInvoiceTotals);
 
+    // Combobox wiring
+    var srchEl  = document.getElementById("qa-inv-client-search");
+    var listEl  = document.getElementById("qa-inv-combo-list");
+    var hiddenEl= document.getElementById("qa-inv-client");
+    if (!srchEl || !listEl) return;
+
+    var _hlIdx = -1;
+
+    function renderComboOpts(term) {
+      var q = (term || "").toLowerCase().trim();
+      var filtered = q ? _invClients.filter(function (c) {
+        return (c.name || "").toLowerCase().includes(q) ||
+               (c.phone || "").includes(q) ||
+               (c.address || "").toLowerCase().includes(q);
+      }) : _invClients;
+      _hlIdx = -1;
+      if (!filtered.length) {
+        listEl.innerHTML = '<div class="qa-combo-no-res">No clients found</div>';
+      } else {
+        listEl.innerHTML = filtered.slice(0, 30).map(function (c, i) {
+          var sub = [c.phone, c.address].filter(Boolean).join(" · ");
+          return '<div class="qa-combo-opt" data-idx="' + i + '">' +
+            '<div>' + esc(c.name || c.id || "—") + '</div>' +
+            (sub ? '<div class="qa-combo-opt-sub">' + esc(sub) + '</div>' : '') +
+          '</div>';
+        }).join("");
+        listEl.querySelectorAll(".qa-combo-opt").forEach(function (opt, i) {
+          opt.addEventListener("mousedown", function (e) {
+            e.preventDefault();
+            selectClient(filtered[i]);
+          });
+        });
+      }
+      listEl.classList.add("open");
+    }
+
+    function selectClient(c) {
+      if (!c) return;
+      srchEl.value  = c.name || "";
+      hiddenEl.value= c.id   || "";
+      listEl.classList.remove("open");
+      var nameEl  = document.getElementById("qa-inv-name");
+      var phoneEl = document.getElementById("qa-inv-phone");
+      var addrEl  = document.getElementById("qa-inv-address");
+      if (nameEl)  nameEl.value  = c.name    || "";
+      if (phoneEl) phoneEl.value = c.phone   || "";
+      if (addrEl)  addrEl.value  = c.address || "";
+      // Auto-populate line items from client's most recent invoice
+      if (c.id) {
+        fetch("/api/invoices?client_id=" + encodeURIComponent(c.id))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var invs = Array.isArray(d) ? d : (d.invoices || []);
+            if (!invs.length) return;
+            // Sort descending by issued_at and take the most recent
+            invs.sort(function (a, b) {
+              return new Date(b.issued_at || 0) - new Date(a.issued_at || 0);
+            });
+            var last = invs[0];
+            var lines = [];
+            try { lines = JSON.parse(last.line_items_json || "[]"); } catch (_) {}
+            if (!lines.length && last.subtotal) {
+              lines = [{ description: last.description || last.notes || "Service", qty: 1, rate: Number(last.subtotal) || 0 }];
+            }
+            if (lines.length) {
+              document.getElementById("qa-inv-lines").innerHTML = "";
+              lines.forEach(function (li) {
+                addInvoiceLine(
+                  li.description || li.title || "",
+                  li.qty != null ? li.qty : 1,
+                  li.rate != null ? li.rate : (li.unit_price || li.amount || 0)
+                );
+              });
+            }
+          })
+          .catch(function () {});
+      }
+    }
+
+    srchEl.addEventListener("focus", function () { renderComboOpts(srchEl.value); });
+    srchEl.addEventListener("input", function () { hiddenEl.value = ""; renderComboOpts(srchEl.value); });
+    srchEl.addEventListener("blur",  function () { setTimeout(function () { listEl.classList.remove("open"); }, 150); });
+    srchEl.addEventListener("keydown", function (e) {
+      var opts = listEl.querySelectorAll(".qa-combo-opt");
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        _hlIdx = Math.min(_hlIdx + 1, opts.length - 1);
+        opts.forEach(function (o, i) { o.classList.toggle("hl", i === _hlIdx); });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        _hlIdx = Math.max(_hlIdx - 1, 0);
+        opts.forEach(function (o, i) { o.classList.toggle("hl", i === _hlIdx); });
+      } else if (e.key === "Enter" && _hlIdx >= 0) {
+        e.preventDefault();
+        var q = (srchEl.value || "").toLowerCase().trim();
+        var filtered = q ? _invClients.filter(function (c) {
+          return (c.name || "").toLowerCase().includes(q) ||
+                 (c.phone || "").includes(q) ||
+                 (c.address || "").toLowerCase().includes(q);
+        }) : _invClients;
+        if (filtered[_hlIdx]) selectClient(filtered[_hlIdx]);
+      } else if (e.key === "Escape") {
+        listEl.classList.remove("open");
+      }
+    });
+
     // Load clients from /api/clients
-    var clientSel = document.getElementById("qa-inv-client");
-    if (!clientSel) return;
     fetch("/api/clients")
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        var clients = Array.isArray(d) ? d : (d.clients || []);
-        clientSel.innerHTML = '<option value="">— Select client —</option>' +
-          clients.map(function (c) {
-            return '<option value="' + esc(c.id || c.client_id || "") + '" ' +
-              'data-name="' + esc(c.name || "") + '" ' +
-              'data-phone="' + esc(c.phone || "") + '" ' +
-              'data-address="' + esc(c.address || c.service_address || "") + '">' +
-              esc(c.name || c.id || "—") +
-            '</option>';
-          }).join("");
-        clientSel.addEventListener("change", function () {
-          var opt = clientSel.options[clientSel.selectedIndex];
-          var nameEl = document.getElementById("qa-inv-name");
-          var phoneEl = document.getElementById("qa-inv-phone");
-          var addrEl  = document.getElementById("qa-inv-address");
-          if (nameEl)  nameEl.value  = opt.dataset.name    || "";
-          if (phoneEl) phoneEl.value = opt.dataset.phone   || "";
-          if (addrEl)  addrEl.value  = opt.dataset.address || "";
+        _invClients = (Array.isArray(d) ? d : (d.clients || [])).map(function (c) {
+          return {
+            id:      c.id      || c.client_id || "",
+            name:    c.name    || "",
+            phone:   c.phone   || "",
+            address: c.address || c.service_address || "",
+          };
         });
       })
-      .catch(function () {
-        clientSel.innerHTML = '<option value="">— Client lookup unavailable —</option>';
-      });
+      .catch(function () {});
   }
 
   function afterEstimateRender() {
