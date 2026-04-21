@@ -171,6 +171,10 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           Void
         </button>
+        <button class="btn danger" id="deleteBtn" style="background:rgba(185,28,28,.12);border-color:rgba(185,28,28,.3);color:#ef4444;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete
+        </button>
       </div>
     </div>
 
@@ -730,6 +734,19 @@ document.getElementById("voidBtn").addEventListener("click", async()=>{
   const r = await patch({ status_code:"void" });
   msg.textContent = r?.ok ? "Voided." : (r?.error||"Failed.");
   load();
+});
+
+document.getElementById("deleteBtn").addEventListener("click", async()=>{
+  if (!confirm("Permanently delete this invoice? This cannot be undone and will remove it completely from the system.")) return;
+  const msg = document.getElementById("pageMsg");
+  msg.textContent = "Deleting…";
+  const r = await api("/api/invoices/"+encodeURIComponent(getId()), { method:"DELETE" });
+  if (r?.ok) {
+    msg.textContent = "Deleted.";
+    setTimeout(()=>{ window.location.href = "/invoices"; }, 800);
+  } else {
+    msg.textContent = r?.error || "Delete failed.";
+  }
 });
 
 document.getElementById("saveNotesBtn").addEventListener("click", async()=>{

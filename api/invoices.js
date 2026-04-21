@@ -416,7 +416,9 @@ async function handleCreateInvoiceFromLead(req, res) {
       subtotal,
       tax_amount,
       notes: String(body.notes || ""),
-      line_items: [{ description: "Electrical Services", amount: subtotal }],
+      line_items: Array.isArray(body.line_items) && body.line_items.length
+        ? body.line_items.map(li => ({ description: String(li.description || "Service"), amount: round2(num(li.amount, 0)) }))
+        : [{ description: "Electrical Services", amount: subtotal }],
     }).catch(() => ({ ok: false, provider_ref: "" }));
 
     // Step 3: Backfill provider_ref into the appended row
@@ -963,6 +965,38 @@ async function handleAddChangeOrder(req, res) {
   }
 }
 
+async function handleDeleteInvoice(req, res) {
+  try {
+    const parts = req.url.split("?")[0].split("/");
+    const invoiceId = parts[parts.length - 1];
+    if (!invoiceId || invoiceId === "invoices") return json(res, 400, { ok: false, error: "Invoice ID required." });
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+
+    const colAResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!A:A" });
+    const colA = (colAResp.data.values || []);
+    const rowIndex = colA.findIndex((r) => r[0] === invoiceId);
+    if (rowIndex < 0) return json(res, 404, { ok: false, error: "Invoice not found." });
+
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheet = meta.data.sheets.find((s) => s.properties.title === "Invoices");
+    if (!sheet) return json(res, 500, { ok: false, error: "Invoices sheet not found." });
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1 } } }],
+      },
+    });
+
+    logAudit({ actor: "admin", action: "DELETE_INVOICE", entity_type: "invoice", entity_id: invoiceId, note: "hard delete", source: "crm", request_id: genRequestId() });
+    json(res, 200, { ok: true });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGetInvoices,
   handleCreateInvoice,
@@ -973,4 +1007,5 @@ module.exports = {
   handleUpdateInvoice,
   handlePublicInvoice,
   handleAddChangeOrder,
+  handleDeleteInvoice,
 };

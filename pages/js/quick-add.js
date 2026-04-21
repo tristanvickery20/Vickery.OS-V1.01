@@ -144,6 +144,29 @@
     ".qa-wiz-back:hover{color:#94a3b8;}",
     ".qa-wiz-divider{height:1px;background:rgba(255,255,255,.07);margin:2px 0;}",
     ".qa-est-svc-name{font-size:12px;color:#0891b2;font-weight:700;margin-bottom:10px;}",
+    ".qa-chip.sel.inv{background:#15803d;border-color:#15803d;}",
+    /* Invoice form */
+    ".qa-inv-editable{background:rgba(255,255,255,.09)!important;border-color:rgba(255,255,255,.18)!important;}",
+    ".qa-inv-editable:focus{border-color:#2d6ae0!important;background:rgba(45,106,224,.08)!important;}",
+    ".qa-inv-line-row{display:grid;grid-template-columns:minmax(0,2fr) 50px 80px 72px 26px;gap:5px;align-items:center;margin-bottom:5px;}",
+    ".qa-inv-col-hdr{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475569;padding:0 4px;}",
+    ".qa-inv-add-btn{background:none;border:1.5px dashed rgba(255,255,255,.13);border-radius:8px;color:#64748b;",
+    "font-size:13px;padding:7px 14px;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;transition:all .15s;}",
+    ".qa-inv-add-btn:hover{border-color:#2d6ae0;color:#60a5fa;}",
+    ".qa-inv-remove-btn{background:none;border:none;color:#334155;cursor:pointer;font-size:18px;line-height:1;",
+    "padding:0 2px;font-family:inherit;transition:color .12s;flex-shrink:0;}",
+    ".qa-inv-remove-btn:hover{color:#f87171;}",
+    ".qa-inv-totals{display:flex;flex-direction:column;gap:5px;padding:10px 14px;border-radius:10px;",
+    "background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);}",
+    ".qa-inv-total-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#94a3b8;}",
+    ".qa-inv-total-row.grand{font-size:16px;font-weight:800;color:#f1f5f9;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px;}",
+    ".qa-inv-total-amt{font-weight:700;}",
+    ".qa-inv-line-total{font-size:13px;color:#94a3b8;text-align:right;padding:9px 2px 9px 0;font-weight:600;white-space:nowrap;}",
+    /* Estimate dropdown fix */
+    ".qa-q-sel-inp{width:100%;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);",
+    "background:rgba(255,255,255,.05);color:#e2e8f0;font-size:14px;font-family:inherit;outline:none;}",
+    ".qa-q-sel-inp:focus{border-color:#0891b2;}",
+    ".qa-q-sel-inp option{background:#1e293b;color:#e2e8f0;}",
   ].join("");
   document.head.appendChild(style);
 
@@ -212,6 +235,7 @@
     { id: "Task",           label: "Task",           cls: ""    },
     { id: "Estimate",       label: "Estimate",       cls: "est" },
     { id: "Job",            label: "Job",            cls: "job" },
+    { id: "Invoice",        label: "Invoice",        cls: "inv" },
     { id: "Meeting",        label: "Meeting",        cls: "mtg" },
     { id: "Callback",       label: "Callback",       cls: "cb"  },
     { id: "Personal Block", label: "Personal Block", cls: "blk" },
@@ -461,6 +485,9 @@
       html += fld("Assign To", '<div id="qa-f-assign-checks" class="qa-checks-wrap"><em class="qa-checks-loading">Loading\u2026</em></div>');
       html += fld("Notes", textarea("qa-f-notes", "Additional notes…"));
 
+    } else if (currentType === "Invoice") {
+      html += buildInvoiceFormHtml();
+
     } else if (currentType === "Meeting") {
       html += fld("Meeting Title *", inp("qa-f-title", "text", "e.g. Site walkthrough with Smith…", "", "autocomplete='off'"));
       html += '<div class="qa-row">' +
@@ -515,6 +542,7 @@
     // Step 1 of the Estimate wizard has no submit — service selection advances to step 2
     if (!(currentType === "Estimate" && !IS_CREW && estimateStep === 1)) {
       var submitLabel = currentType === "Estimate" ? "Save Estimate & Create Lead"
+        : currentType === "Invoice"    ? "Create Invoice"
         : currentType === "Time Entry" ? "Save Time Entry"
         : currentType === "Expense"    ? "Save Expense"
         : "Add " + currentType;
@@ -525,6 +553,8 @@
 
     // CRM Estimate wizard — populate grid or wire questions after DOM is set
     if (currentType === "Estimate" && !IS_CREW) { afterEstimateRender(); }
+    // Invoice form — load clients + wire line items after DOM is set
+    if (currentType === "Invoice") { afterInvoiceRender(); }
 
     // Priority button wiring
     formEl.querySelectorAll(".qa-pri").forEach(function (btn) {
@@ -711,6 +741,33 @@
         }),
       }).then(function (r) { return r.json(); });
 
+    } else if (currentType === "Invoice") {
+      var invLines = [];
+      document.querySelectorAll("#qa-inv-lines .qa-inv-line-row").forEach(function (row) {
+        var desc2 = (row.querySelector(".inv-line-desc")?.value || "").trim();
+        var qty2  = parseFloat(row.querySelector(".inv-line-qty")?.value)  || 0;
+        var rate2 = parseFloat(row.querySelector(".inv-line-rate")?.value) || 0;
+        if (desc2 || rate2 > 0) invLines.push({ description: desc2 || "Service", qty: qty2, rate: rate2, amount: Math.round(qty2 * rate2 * 100) / 100 });
+      });
+      var invSubtotal = invLines.reduce(function (s, l) { return s + l.amount; }, 0);
+      if (invSubtotal <= 0) { showErr("Add at least one line item with a rate."); btn.disabled = false; btn.textContent = "Create Invoice"; return; }
+      var invTaxPct = parseFloat(document.getElementById("qa-inv-tax")?.value) || 0;
+      var invClientId = document.getElementById("qa-inv-client")?.value || "";
+      var invName = g("qa-inv-name");
+      if (!invName) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Create Invoice"; return; }
+      promise = fetch("/api/invoices/from-lead", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id:     invClientId,
+          customer_name: invName,
+          line_items:    invLines,
+          subtotal:      invSubtotal,
+          tax_rate:      invTaxPct,
+          due_at:        g("qa-inv-due") || "",
+          notes:         g("qa-inv-notes") || "",
+        }),
+      }).then(function (r) { return r.json(); });
+
     } else if ((currentType === "Estimate" || currentType === "Job") && IS_CREW) {
       // Crew context: post to crew task endpoint as a flagged work item
       // (CRM admin converts to full lead — crew cannot access /api/leads directly)
@@ -803,8 +860,9 @@
     promise.then(function (data) {
       if (data.ok) {
         var okMsg = currentType === "Estimate" || currentType === "Job" ? "Lead saved."
+          : currentType === "Invoice"    ? "Invoice created! View it in Invoices."
           : currentType === "Time Entry" ? "Time logged!"
-          : currentType === "Expense" ? "Expense saved!"
+          : currentType === "Expense"    ? "Expense saved!"
           : "Saved!";
         showOk("Done — " + okMsg);
         setTimeout(function () {
@@ -814,12 +872,18 @@
       } else {
         showErr(data.error || "Something went wrong.");
         btn.disabled = false;
-        btn.textContent = "Add " + currentType;
+        btn.textContent = currentType === "Invoice"    ? "Create Invoice"
+          : currentType === "Time Entry" ? "Save Time Entry"
+          : currentType === "Expense"    ? "Save Expense"
+          : "Add " + currentType;
       }
     }).catch(function (err) {
       showErr("Network error: " + err.message);
       btn.disabled = false;
-      btn.textContent = "Add " + currentType;
+      btn.textContent = currentType === "Invoice"    ? "Create Invoice"
+        : currentType === "Time Entry" ? "Save Time Entry"
+        : currentType === "Expense"    ? "Save Expense"
+        : "Add " + currentType;
     });
   }
 
@@ -1015,14 +1079,15 @@
       html += '<div class="qa-q-block" data-mid="' + esc(mid) + '">';
       html += '<div class="qa-q-label">' + esc(question) + '</div>';
 
-      if ((inputType === "select" || inputType === "radio") && options.length) {
+      if ((inputType === "select" || inputType === "radio" || inputType === "single_select") && options.length) {
         var saved = moduleAnswers[mid] || "";
-        html += '<div class="qa-q-opts">';
+        html += '<select class="qa-q-sel-inp" data-mid="' + esc(mid) + '">';
+        html += '<option value="">— Select —</option>';
         options.forEach(function (opt) {
-          var isSel = (String(opt) === String(saved)) ? " sel" : "";
-          html += '<button type="button" class="qa-q-chip' + isSel + '" data-mid="' + esc(mid) + '" data-val="' + esc(opt) + '">' + esc(opt) + '</button>';
+          var selAttr = (String(opt) === String(saved)) ? " selected" : "";
+          html += '<option value="' + esc(opt) + '"' + selAttr + '>' + esc(opt) + '</option>';
         });
-        html += '</div>';
+        html += '</select>';
       } else if (inputType === "number") {
         var numVal = moduleAnswers[mid] || "";
         html += '<input class="qa-input qa-q-num-inp" type="number" data-mid="' + esc(mid) + '" value="' + esc(numVal) + '" placeholder="Enter value…" style="max-width:160px;" />';
@@ -1091,17 +1156,10 @@
     var form = document.getElementById("ve-qa-form");
     if (!form) return;
 
-    // Option chips (select/radio)
-    form.querySelectorAll(".qa-q-chip").forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        var mid = chip.dataset.mid;
-        var val = chip.dataset.val;
-        // Deselect siblings, select this
-        form.querySelectorAll('.qa-q-chip[data-mid="' + mid + '"]').forEach(function (c) {
-          c.classList.remove("sel");
-        });
-        chip.classList.add("sel");
-        moduleAnswers[mid] = val;
+    // Dropdown selects for single_select/select/radio module questions
+    form.querySelectorAll(".qa-q-sel-inp").forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        moduleAnswers[sel.dataset.mid] = sel.value;
         _schedulePriceCalc();
       });
     });
@@ -1121,6 +1179,135 @@
         _schedulePriceCalc();
       });
     });
+  }
+
+  // ── Invoice form helpers ──────────────────────────────────────────────────
+
+  function buildInvoiceFormHtml() {
+    var today   = new Date().toISOString().slice(0, 10);
+    var dueDate = new Date(Date.now() + 30 * 24 * 3600000).toISOString().slice(0, 10);
+    var invNum  = "INV-" + String(Date.now()).slice(-6);
+    var h = "";
+    h += fld("Client", '<select class="qa-select" id="qa-inv-client"><option value="">— Select client —</option><option value="" disabled>Loading…</option></select>');
+    h += '<div class="qa-row">' +
+      fld("Name", '<input class="qa-input qa-inv-editable" id="qa-inv-name" placeholder="Client name" autocomplete="off">') +
+      fld("Phone", '<input class="qa-input qa-inv-editable" id="qa-inv-phone" placeholder="(555) 000-0000" autocomplete="off">') +
+    '</div>';
+    h += fld("Address", '<input class="qa-input qa-inv-editable" id="qa-inv-address" placeholder="Service address" autocomplete="off">');
+    h += '<div class="qa-wiz-divider"></div>';
+    h += '<div class="qa-row" style="grid-template-columns:1fr 1fr 1fr;">' +
+      fld("Invoice #", '<input class="qa-input qa-inv-editable" id="qa-inv-number" value="' + esc(invNum) + '" autocomplete="off">') +
+      fld("Date",      '<input class="qa-input" id="qa-inv-date" type="date" value="' + today + '">') +
+      fld("Due Date",  '<input class="qa-input" id="qa-inv-due"  type="date" value="' + dueDate + '">') +
+    '</div>';
+    h += '<div class="qa-wiz-divider"></div>';
+    h += '<div class="qa-label">Line Items</div>';
+    h += '<div class="qa-inv-line-row" style="margin-bottom:4px;">' +
+      '<span class="qa-inv-col-hdr">Description</span>' +
+      '<span class="qa-inv-col-hdr" style="text-align:center">Qty</span>' +
+      '<span class="qa-inv-col-hdr" style="text-align:right">Rate</span>' +
+      '<span class="qa-inv-col-hdr" style="text-align:right">Total</span>' +
+      '<span></span>' +
+    '</div>';
+    h += '<div id="qa-inv-lines"></div>';
+    h += '<button type="button" class="qa-inv-add-btn" id="qa-inv-add-line">+ Add Item</button>';
+    h += '<div class="qa-wiz-divider"></div>';
+    h += '<div class="qa-row" style="grid-template-columns:minmax(0,1fr) 90px;align-items:end;">' +
+      '<div class="qa-inv-totals">' +
+        '<div class="qa-inv-total-row"><span>Subtotal</span><span class="qa-inv-total-amt" id="qa-inv-subtotal">$0.00</span></div>' +
+        '<div class="qa-inv-total-row"><span>Tax</span><span class="qa-inv-total-amt" id="qa-inv-tax-amt">$0.00</span></div>' +
+        '<div class="qa-inv-total-row grand"><span>Total</span><span class="qa-inv-total-amt" id="qa-inv-total">$0.00</span></div>' +
+      '</div>' +
+      fld("Tax %", '<input class="qa-input" id="qa-inv-tax" type="number" value="0" min="0" max="100" style="text-align:right;">') +
+    '</div>';
+    h += fld("Notes", textarea("qa-inv-notes", "Any additional notes…"));
+    return h;
+  }
+
+  function addInvoiceLine(desc, qty, rate) {
+    var linesEl = document.getElementById("qa-inv-lines");
+    if (!linesEl) return;
+    var row = document.createElement("div");
+    row.className = "qa-inv-line-row";
+    var q = (qty != null && qty !== "") ? qty : 1;
+    var r = (rate != null && rate !== "") ? rate : "";
+    row.innerHTML =
+      '<input class="qa-input qa-inv-editable inv-line-desc" placeholder="Description" value="' + esc(desc || "") + '" style="font-size:13px;">' +
+      '<input class="qa-input qa-inv-editable inv-line-qty"  type="number" value="' + q + '" min="0" step="0.01" style="text-align:center;font-size:13px;padding:8px 4px;">' +
+      '<input class="qa-input qa-inv-editable inv-line-rate" type="number" value="' + esc(r) + '" min="0" step="0.01" placeholder="0.00" style="text-align:right;font-size:13px;padding:8px 6px;">' +
+      '<span class="qa-inv-line-total">$0.00</span>' +
+      '<button type="button" class="qa-inv-remove-btn" title="Remove">\u00d7</button>';
+    function updateLine() {
+      var qty2  = parseFloat(row.querySelector(".inv-line-qty").value)  || 0;
+      var rate2 = parseFloat(row.querySelector(".inv-line-rate").value) || 0;
+      row.querySelector(".qa-inv-line-total").textContent = "$" + (qty2 * rate2).toFixed(2);
+      calcInvoiceTotals();
+    }
+    row.querySelector(".inv-line-qty").addEventListener("input",  updateLine);
+    row.querySelector(".inv-line-rate").addEventListener("input", updateLine);
+    row.querySelector(".qa-inv-remove-btn").addEventListener("click", function () { row.remove(); calcInvoiceTotals(); });
+    updateLine();
+    linesEl.appendChild(row);
+  }
+
+  function calcInvoiceTotals() {
+    var subtotal = 0;
+    (document.querySelectorAll("#qa-inv-lines .qa-inv-line-row") || []).forEach(function (row) {
+      subtotal += (parseFloat(row.querySelector(".inv-line-qty")?.value)  || 0) *
+                  (parseFloat(row.querySelector(".inv-line-rate")?.value) || 0);
+    });
+    var taxPct = parseFloat(document.getElementById("qa-inv-tax")?.value) || 0;
+    var taxAmt = subtotal * taxPct / 100;
+    var total  = subtotal + taxAmt;
+    var sub = document.getElementById("qa-inv-subtotal");
+    var txa = document.getElementById("qa-inv-tax-amt");
+    var tot = document.getElementById("qa-inv-total");
+    if (sub) sub.textContent = "$" + subtotal.toFixed(2);
+    if (txa) txa.textContent = "$" + taxAmt.toFixed(2);
+    if (tot) tot.textContent = "$" + total.toFixed(2);
+  }
+
+  function afterInvoiceRender() {
+    // Add one default empty line
+    addInvoiceLine("", 1, "");
+
+    // + Add Item button
+    var addBtn = document.getElementById("qa-inv-add-line");
+    if (addBtn) addBtn.addEventListener("click", function () { addInvoiceLine("", 1, ""); });
+
+    // Tax % → recalc
+    var taxInp = document.getElementById("qa-inv-tax");
+    if (taxInp) taxInp.addEventListener("input", calcInvoiceTotals);
+
+    // Load clients from /api/clients
+    var clientSel = document.getElementById("qa-inv-client");
+    if (!clientSel) return;
+    fetch("/api/clients")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var clients = Array.isArray(d) ? d : (d.clients || []);
+        clientSel.innerHTML = '<option value="">— Select client —</option>' +
+          clients.map(function (c) {
+            return '<option value="' + esc(c.id || c.client_id || "") + '" ' +
+              'data-name="' + esc(c.name || "") + '" ' +
+              'data-phone="' + esc(c.phone || "") + '" ' +
+              'data-address="' + esc(c.address || c.service_address || "") + '">' +
+              esc(c.name || c.id || "—") +
+            '</option>';
+          }).join("");
+        clientSel.addEventListener("change", function () {
+          var opt = clientSel.options[clientSel.selectedIndex];
+          var nameEl = document.getElementById("qa-inv-name");
+          var phoneEl = document.getElementById("qa-inv-phone");
+          var addrEl  = document.getElementById("qa-inv-address");
+          if (nameEl)  nameEl.value  = opt.dataset.name    || "";
+          if (phoneEl) phoneEl.value = opt.dataset.phone   || "";
+          if (addrEl)  addrEl.value  = opt.dataset.address || "";
+        });
+      })
+      .catch(function () {
+        clientSel.innerHTML = '<option value="">— Client lookup unavailable —</option>';
+      });
   }
 
   function afterEstimateRender() {

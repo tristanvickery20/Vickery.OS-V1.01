@@ -65,6 +65,7 @@ const {
   handleUpdateInvoice,
   handlePublicInvoice,
   handleAddChangeOrder,
+  handleDeleteInvoice,
 } = require("./api/invoices");
 const { handlePublicPay } = require("./api/invoices-pay");
 const { handleCreatePayment } = require("./api/payments");
@@ -1125,6 +1126,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url.startsWith("/api/invoices/")) {
     if (req.method === "GET") return handleGetInvoiceById(req, res);
     if (req.method === "PATCH") return handleUpdateInvoice(req, res);
+    if (req.method === "DELETE") return handleDeleteInvoice(req, res);
   }
 
   // Ticket 21: payments API
