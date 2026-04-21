@@ -79,7 +79,7 @@ const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
 const { handleGetTasks, handleCreateTask, handleUpdateTask } = require("./api/tasks");
 const { handleGCalStatus, handleGCalSaveSettings, handleGCalBootstrap, handleGCalSync, handleGCalBackfill, handleGCalVerifyPersonal, handleGCalShareWithUser, handleGCalRegisterWatchChannels } = require("./api/gcal-settings");
-const { handleGetNotifications, handleSaveNotifications, handleGetQuickBooks, handleSaveQuickBooks, handleDisconnectQuickBooks, handleGetStaffSettings, handleSaveStaffSettings } = require("./api/settings");
+const { handleGetNotifications, handleSaveNotifications, handleGetQuickBooks, handleSaveQuickBooks, handleDisconnectQuickBooks, handleTestQuickBooks, handleGetStaffSettings, handleSaveStaffSettings } = require("./api/settings");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
@@ -1029,9 +1029,10 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath === "/api/settings/notifications" && req.method === "GET")  return handleGetNotifications(req, res);
   if (_epath === "/api/settings/notifications" && req.method === "POST") return handleSaveNotifications(req, res);
-  if (_epath === "/api/settings/quickbooks"    && req.method === "GET")  return handleGetQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks"    && req.method === "POST") return handleSaveQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks"    && req.method === "DELETE") return handleDisconnectQuickBooks(req, res);
+  if (_epath === "/api/settings/quickbooks"         && req.method === "GET")    return handleGetQuickBooks(req, res);
+  if (_epath === "/api/settings/quickbooks"         && req.method === "POST")   return handleSaveQuickBooks(req, res);
+  if (_epath === "/api/settings/quickbooks"         && req.method === "DELETE") return handleDisconnectQuickBooks(req, res);
+  if (_epath === "/api/settings/quickbooks/test"    && req.method === "POST")   return handleTestQuickBooks(req, res);
   if (_epath === "/api/settings/staff"         && req.method === "GET")  return handleGetStaffSettings(req, res);
   if (_epath === "/api/settings/staff"         && req.method === "POST") return handleSaveStaffSettings(req, res);
 

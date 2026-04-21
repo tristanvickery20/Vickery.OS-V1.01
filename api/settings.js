@@ -1,5 +1,33 @@
 // api/settings.js — Notifications, QuickBooks, and Staff & Access settings
+const crypto = require("crypto");
 const { getConfig, setConfigKeys } = require("../lib/config");
+
+// ─────────────────────────────────────────────────────────────
+// QB SECRET ENCRYPTION — stored in Config sheet encrypted at rest
+// Key is derived from CRM_PIN env var so the raw secret is never
+// visible in the sheet even if someone has the sheet ID.
+// ─────────────────────────────────────────────────────────────
+function _encKey() {
+  return crypto.createHash("sha256").update(process.env.CRM_PIN || "vickery-electric-crm-key").digest();
+}
+function encryptSecret(text) {
+  if (!text) return "";
+  const iv  = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", _encKey(), iv);
+  const enc = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  return iv.toString("hex") + ":" + enc.toString("hex");
+}
+function decryptSecret(stored) {
+  if (!stored || !stored.includes(":")) return stored;
+  try {
+    const [ivHex, encHex] = stored.split(":");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", _encKey(), Buffer.from(ivHex, "hex"));
+    const dec = Buffer.concat([decipher.update(Buffer.from(encHex, "hex")), decipher.final()]);
+    return dec.toString("utf8");
+  } catch {
+    return stored;
+  }
+}
 
 async function readBody(req) {
   return new Promise((resolve) => {
@@ -84,14 +112,17 @@ async function handleSaveQuickBooks(req, res) {
     const body = await readBody(req);
     const pairs = {};
 
+    // Credentials — client secret is AES-encrypted before storing in Config sheet
     if (body.clientId     !== undefined && body.clientId     !== "") pairs.qb_client_id     = String(body.clientId);
-    if (body.clientSecret !== undefined && body.clientSecret !== "") pairs.qb_client_secret = String(body.clientSecret);
+    if (body.clientSecret !== undefined && body.clientSecret !== "") pairs.qb_client_secret = encryptSecret(String(body.clientSecret));
     if (body.realmId      !== undefined) pairs.qb_realm_id      = String(body.realmId || "");
     if (body.environment  !== undefined) pairs.qb_environment   = body.environment === "production" ? "production" : "sandbox";
+
+    // Auto-sync toggles
     if (body.autoSyncExpenses !== undefined) pairs.qb_auto_sync_expenses = String(!!body.autoSyncExpenses);
     if (body.autoSyncTime     !== undefined) pairs.qb_auto_sync_time     = String(!!body.autoSyncTime);
 
-    // If credentials were provided and complete, mark as connected
+    // If all credentials provided, mark as connected
     if (body.clientId && body.clientSecret && body.realmId) {
       pairs.qb_connected    = "true";
       pairs.qb_connected_at = new Date().toISOString();
@@ -108,13 +139,53 @@ async function handleSaveQuickBooks(req, res) {
 async function handleDisconnectQuickBooks(req, res) {
   try {
     await setConfigKeys({
-      qb_connected:    "false",
-      qb_client_id:    "",
+      qb_connected:     "false",
+      qb_client_id:     "",
       qb_client_secret: "",
-      qb_realm_id:     "",
-      qb_connected_at: "",
+      qb_realm_id:      "",
+      qb_connected_at:  "",
     });
     json(res, 200, { ok: true });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+// GET /api/settings/quickbooks/test — attempt a live QB API call and report result
+async function handleTestQuickBooks(req, res) {
+  try {
+    const cfg = await getConfig();
+    if (!cfg.qb_client_id || !cfg.qb_realm_id) {
+      return json(res, 200, { ok: false, error: "No credentials configured. Enter Client ID and Realm ID first." });
+    }
+    const accessToken = cfg.qb_access_token || "";
+    const base = cfg.qb_environment === "production"
+      ? "https://quickbooks.api.intuit.com"
+      : "https://sandbox-quickbooks.api.intuit.com";
+    const url = `${base}/v3/company/${cfg.qb_realm_id}/companyinfo/${cfg.qb_realm_id}?minorversion=65`;
+    let status = 0;
+    let body = "";
+    try {
+      const r = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+      status = r.status;
+      body = await r.text();
+    } catch (netErr) {
+      return json(res, 200, { ok: false, error: `Network error: ${netErr.message}` });
+    }
+    if (status === 200) {
+      let name = "";
+      try { name = JSON.parse(body).CompanyInfo?.CompanyName || ""; } catch {}
+      return json(res, 200, { ok: true, message: `Connected — company: ${name || cfg.qb_realm_id}` });
+    }
+    if (status === 401) {
+      return json(res, 200, { ok: false, error: "Credentials accepted but OAuth token missing or expired. Full OAuth flow is required to complete sync." });
+    }
+    return json(res, 200, { ok: false, error: `QB returned HTTP ${status}` });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -130,9 +201,10 @@ async function handleGetStaffSettings(req, res) {
     const cfg = await getConfig();
     let defaultPermissions = ["jobs", "time", "expenses"];
     try {
-      const raw = cfg.staff_default_permissions || "";
+      // Key is "default_permissions" — matches crew-auth.js signup path
+      const raw = cfg.default_permissions || "";
       if (raw) defaultPermissions = JSON.parse(raw);
-    } catch { /* use defaults */ }
+    } catch { /* use built-in defaults */ }
 
     json(res, 200, {
       ok: true,
@@ -150,7 +222,8 @@ async function handleSaveStaffSettings(req, res) {
     const body = await readBody(req);
     const pairs = {};
     if (Array.isArray(body.defaultPermissions)) {
-      pairs.staff_default_permissions = JSON.stringify(body.defaultPermissions);
+      // Use "default_permissions" — read by crew-auth.js during new-account creation
+      pairs.default_permissions = JSON.stringify(body.defaultPermissions);
     }
     if (body.requireApproval !== undefined) {
       pairs.staff_require_approval = String(!!body.requireApproval);
@@ -163,12 +236,41 @@ async function handleSaveStaffSettings(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// QB PUSH UTILITY — called by expenses.js and time.js after save
+// QB PUSH UTILITIES — called by expenses.js and time.js after save
 // ─────────────────────────────────────────────────────────────
 
+// Build a QuickBooks Purchase payload from an expense entry
+function _buildQbPurchase(entry, cfg) {
+  return {
+    PaymentType: "Cash",
+    AccountRef: { value: "1", name: "Checking" },
+    TotalAmt: Number(entry.amount) || 0,
+    TxnDate: entry.date || new Date().toISOString().slice(0, 10),
+    PrivateNote: `CRM Expense ${entry.id} — ${entry.vendor || ""} — ${entry.notes || ""}`.trim(),
+    Line: [{
+      Amount: Number(entry.amount) || 0,
+      DetailType: "AccountBasedExpenseLineDetail",
+      AccountBasedExpenseLineDetail: { AccountRef: { value: "7", name: "Expenses" } },
+    }],
+  };
+}
+
+// Build a QuickBooks TimeActivity payload from a time entry
+function _buildQbTimeActivity(entry, cfg) {
+  const hours   = Math.floor((Number(entry.minutes) || 0) / 60);
+  const minutes = (Number(entry.minutes) || 0) % 60;
+  return {
+    TxnDate:    entry.date || new Date().toISOString().slice(0, 10),
+    NameOf:     "Employee",
+    Hours:      hours,
+    Minutes:    minutes,
+    Description: `CRM Time Entry ${entry.id} — ${entry.category || ""} — tech: ${entry.tech_id || ""}`.trim(),
+    BillableStatus: "NotBillable",
+  };
+}
+
 // Push an expense record to QuickBooks.
-// When QB credentials are fully set up, this will call the QB API.
-// Until then it logs the attempt so the hook is in place.
+// Exercises the real QB API call path; logs/swallows errors so it never blocks saves.
 async function pushExpenseToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
@@ -177,8 +279,28 @@ async function pushExpenseToQuickBooks(entry) {
       console.log(`[QB] Expense sync skipped — not connected (${entry.id} $${entry.amount} ${entry.vendor})`);
       return;
     }
-    // TODO: replace with real QB API call when OAuth is configured
-    console.log(`[QB] Push expense → QB (stub): id=${entry.id} amount=$${entry.amount} vendor=${entry.vendor} date=${entry.date}`);
+    const accessToken = cfg.qb_access_token || "";
+    const base = cfg.qb_environment === "production"
+      ? "https://quickbooks.api.intuit.com"
+      : "https://sandbox-quickbooks.api.intuit.com";
+    const url = `${base}/v3/company/${cfg.qb_realm_id}/purchase?minorversion=65`;
+    const payload = _buildQbPurchase(entry, cfg);
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (r.status === 200 || r.status === 201) {
+      const d = await r.json();
+      console.log(`[QB] Expense pushed → Purchase Id: ${d?.Purchase?.Id || "?"} for entry ${entry.id}`);
+    } else {
+      const text = await r.text();
+      console.warn(`[QB] Expense push failed (HTTP ${r.status}) for entry ${entry.id}: ${text.slice(0, 200)}`);
+    }
   } catch (err) {
     console.error("[QB] pushExpenseToQuickBooks error:", err.message);
   }
@@ -193,8 +315,28 @@ async function pushTimeToQuickBooks(entry) {
       console.log(`[QB] Time sync skipped — not connected (${entry.id} ${entry.minutes}min tech=${entry.tech_id})`);
       return;
     }
-    // TODO: replace with real QB API call when OAuth is configured
-    console.log(`[QB] Push time entry → QB (stub): id=${entry.id} minutes=${entry.minutes} tech=${entry.tech_id} date=${entry.date}`);
+    const accessToken = cfg.qb_access_token || "";
+    const base = cfg.qb_environment === "production"
+      ? "https://quickbooks.api.intuit.com"
+      : "https://sandbox-quickbooks.api.intuit.com";
+    const url = `${base}/v3/company/${cfg.qb_realm_id}/timeactivity?minorversion=65`;
+    const payload = _buildQbTimeActivity(entry, cfg);
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (r.status === 200 || r.status === 201) {
+      const d = await r.json();
+      console.log(`[QB] Time entry pushed → TimeActivity Id: ${d?.TimeActivity?.Id || "?"} for entry ${entry.id}`);
+    } else {
+      const text = await r.text();
+      console.warn(`[QB] Time push failed (HTTP ${r.status}) for entry ${entry.id}: ${text.slice(0, 200)}`);
+    }
   } catch (err) {
     console.error("[QB] pushTimeToQuickBooks error:", err.message);
   }
@@ -206,6 +348,7 @@ module.exports = {
   handleGetQuickBooks,
   handleSaveQuickBooks,
   handleDisconnectQuickBooks,
+  handleTestQuickBooks,
   handleGetStaffSettings,
   handleSaveStaffSettings,
   pushExpenseToQuickBooks,

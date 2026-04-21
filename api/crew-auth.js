@@ -8,6 +8,7 @@ const {
 } = require("../lib/staff");
 const { CREW_TEMPLATES, buildMessage } = require("../lib/sms");
 const { setAuthCookie } = require("../lib/auth");
+const { getConfig } = require("../lib/config");
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -54,16 +55,31 @@ async function handleSignup(req, res) {
     const hasActiveOwner = all.some(s => s.role === "owner" && s.status === "active");
     const isOwner = !hasActiveOwner;
 
+    // Read owner-configured defaults for new crew accounts
+    let defaultPermsStr = "jobs,time,expenses";
+    let requireApproval = true;
+    if (!isOwner) {
+      try {
+        const cfg = await getConfig();
+        const rawPerms = cfg.default_permissions || "";
+        if (rawPerms) {
+          const arr = JSON.parse(rawPerms);
+          if (Array.isArray(arr) && arr.length > 0) defaultPermsStr = arr.join(",");
+        }
+        requireApproval = cfg.staff_require_approval !== "false";
+      } catch { /* use built-in defaults */ }
+    }
+
     const staff = {
       staff_id:      crypto.randomUUID(),
       first_name:    first_name.trim(),
       last_name:     last_name.trim(),
       phone:         "",
       password_hash: hashPassword(password),
-      status:        isOwner ? "active" : "pending",
-      permissions:   isOwner ? "owner" : "jobs,time,expenses",
+      status:        isOwner ? "active" : (requireApproval ? "pending" : "active"),
+      permissions:   isOwner ? "owner" : defaultPermsStr,
       created_at:    new Date().toISOString(),
-      approved_at:   isOwner ? new Date().toISOString() : "",
+      approved_at:   isOwner ? new Date().toISOString() : (!isOwner && !requireApproval ? new Date().toISOString() : ""),
       notes:         isOwner ? "Auto-approved as owner (first account)" : "",
       username,
       role:          isOwner ? "owner" : "crew",

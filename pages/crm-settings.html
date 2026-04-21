@@ -384,6 +384,7 @@
 
                 <div class="btn-row">
                   <button class="btn-primary" id="qbSaveBtn">Save &amp; Connect</button>
+                  <button class="btn-secondary" id="qbTestBtn">Test Connection</button>
                   <button class="btn-secondary" id="qbDisconnectBtn" style="display:none;color:#7f1d1d;border-color:#fca5a5;">Disconnect</button>
                 </div>
                 <div id="qbMsg" style="font-size:12px;font-weight:600;margin-top:8px;min-height:18px;"></div>
@@ -1030,6 +1031,19 @@
           });
           const d = await r.json();
           msg.textContent = d.ok ? "✓ Saved." : "✗ " + (d.error || "Error");
+          msg.style.color = d.ok ? "#166534" : "#7f1d1d";
+        } catch (err) {
+          msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
+        }
+      });
+
+      document.getElementById("qbTestBtn").addEventListener("click", async () => {
+        const msg = document.getElementById("qbMsg");
+        msg.textContent = "Testing connection…"; msg.style.color = "";
+        try {
+          const r = await fetch("/api/settings/quickbooks/test", { method: "POST" });
+          const d = await r.json();
+          msg.textContent = d.ok ? "✓ " + d.message : "✗ " + (d.error || "Connection failed");
           msg.style.color = d.ok ? "#166534" : "#7f1d1d";
         } catch (err) {
           msg.textContent = "Error: " + err.message; msg.style.color = "#7f1d1d";
