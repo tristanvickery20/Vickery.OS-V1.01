@@ -195,13 +195,13 @@
         <div class="card">
           <div class="line-items-header">
             <div class="card-title">Line Items</div>
-            <button class="btn secondary" id="editLineItemsBtn" style="font-size:12px;padding:6px 10px;">Edit</button>
+            <button class="btn secondary" id="addLineItemBtn" style="font-size:12px;padding:6px 10px;">+ Add Line Item</button>
           </div>
+          <div style="font-size:11px;opacity:.5;margin-bottom:8px;">Click any row to edit it inline</div>
           <div id="lineItemsSection"></div>
-          <div id="lineItemsEditControls" style="display:none;" class="li-edit-controls">
-            <button class="btn" id="saveLineItemsBtn">Save Changes</button>
-            <button class="btn secondary" id="cancelLineItemsBtn">Cancel</button>
-            <button class="btn secondary" id="addLineItemBtn" style="margin-left:auto;">+ Add Line Item</button>
+          <div class="li-edit-controls" style="margin-top:10px;">
+            <button class="btn" id="saveLineItemsBtn">Save to Invoice</button>
+            <button class="btn secondary" id="cancelLineItemsBtn">Discard Changes</button>
             <div class="status-msg" id="lineItemsMsg" style="width:100%;margin-top:4px;"></div>
           </div>
           <!-- Totals -->
@@ -333,159 +333,173 @@ function setBadge(status, overdue){
 
 let CURRENT = null;
 
-// ── Line items ──────────────────────────────────────────────────────────────
-let _lineEditMode = false;
+// ── Line items — click-to-edit per row ──────────────────────────────────────
+let _lineItems = [];   // local working copy; only sent to server on "Save to Invoice"
 
-function renderLineItems(inv){
-  const items = (() => { try { return JSON.parse(inv.line_items_json||"[]"); } catch { return []; } })();
-  const el = document.getElementById("lineItemsSection");
-
-  if (_lineEditMode) {
-    renderLineItemsEdit(items);
-  } else {
-    if (!items.length) {
-      el.innerHTML = `<div class="no-items">No line items recorded.</div>`;
-    } else {
-      el.innerHTML = `<table class="line-table">
-        <thead><tr>
-          <th>Description</th>
-          <th class="col-r">Qty</th>
-          <th class="col-r">Unit Price</th>
-          <th class="col-r">Amount</th>
-        </tr></thead>
-        <tbody>${items.map(it=>{
-          const qty = Number(it.quantity??1);
-          const price = Number(it.unit_price??it.line_total??0);
-          const amt = Number(it.line_total??(qty*price));
-          return `<tr>
-            <td>
-              <div class="item-title">${esc(it.title||it.description||"Service")}</div>
-              ${it.description&&it.title?`<div class="item-desc">${esc(it.description)}</div>`:""}
-            </td>
-            <td class="col-r">${qty}</td>
-            <td class="col-r">${money(price)}</td>
-            <td class="col-r">${money(amt)}</td>
-          </tr>`;
-        }).join("")}</tbody>
-      </table>`;
-    }
-  }
+function renderLineItems(inv) {
+  _lineItems = (() => { try { return JSON.parse(inv.line_items_json||"[]"); } catch { return []; } })()
+    .map(it => ({ ...it, _editing: false, _isNew: false }));
+  renderLineItemsTable();
   renderTotals(inv);
 }
 
-function renderLineItemsEdit(items) {
+function renderLineItemsTable() {
   const el = document.getElementById("lineItemsSection");
-  el.innerHTML = `<table class="line-table" id="liEditTable">
+  if (!_lineItems.length) {
+    el.innerHTML = `<div class="no-items">No line items recorded. Click "+ Add Line Item" to add one.</div>`;
+    return;
+  }
+  el.innerHTML = `<table class="line-table" id="liTable">
     <thead><tr>
-      <th style="width:40%">Description</th>
-      <th style="width:13%">Qty</th>
-      <th style="width:20%">Unit Price</th>
-      <th class="col-r" style="width:18%">Amount</th>
-      <th style="width:9%"></th>
+      <th style="width:38%">Description</th>
+      <th style="width:12%" class="col-r">Qty</th>
+      <th style="width:20%" class="col-r">Unit Price</th>
+      <th style="width:18%" class="col-r">Amount</th>
+      <th style="width:12%"></th>
     </tr></thead>
-    <tbody id="liEditBody">
-      ${items.map((it,i) => liEditRow(it, i)).join("")}
+    <tbody id="liTableBody">
+      ${_lineItems.map((it, i) => it._editing ? liEditRowHtml(it, i) : liViewRowHtml(it, i)).join("")}
     </tbody>
   </table>`;
-  bindLiEditCalc();
+  bindTableEvents();
 }
 
-function liEditRow(it, i) {
-  const qty   = it.quantity   != null ? it.quantity   : 1;
-  const price = it.unit_price != null ? it.unit_price : 0;
-  const amt   = Math.round(Number(qty) * Number(price) * 100) / 100;
-  return `<tr data-li-row="${i}">
-    <td><input class="li-input" data-f="title" value="${esc(it.title||it.description||"")}" placeholder="Description"></td>
-    <td><input class="li-input li-qty" data-f="quantity" type="number" min="0" step="0.01" value="${qty}" style="width:56px"></td>
-    <td><input class="li-input li-price" data-f="unit_price" type="number" min="0" step="0.01" value="${price}" style="width:80px"></td>
-    <td class="col-r"><span class="li-amt-disp">${money(amt)}</span></td>
-    <td><button class="li-del" data-del-row="${i}" title="Remove row">✕</button></td>
+function liViewRowHtml(it, i) {
+  const qty   = Number(it.quantity  ?? 1);
+  const price = Number(it.unit_price ?? 0);
+  const amt   = Math.round(qty * price * 100) / 100;
+  return `<tr data-li-i="${i}" class="li-view-row" title="Click to edit" style="cursor:pointer">
+    <td>
+      <div class="item-title">${esc(it.title||it.description||"Service")}</div>
+      ${it.description&&it.title?`<div class="item-desc">${esc(it.description)}</div>`:""}
+    </td>
+    <td class="col-r">${qty}</td>
+    <td class="col-r">${money(price)}</td>
+    <td class="col-r">${money(amt)}</td>
+    <td style="text-align:center"><button class="li-del" data-del-i="${i}" title="Remove row">✕</button></td>
   </tr>`;
 }
 
-function recomputeEditTotals() {
-  const tbody = document.getElementById("liEditBody");
-  if (!tbody || !CURRENT) return;
-  const rows = Array.from(tbody.querySelectorAll("tr[data-li-row]"));
-  let newSubtotal = 0;
-  rows.forEach(row => {
+function liEditRowHtml(it, i) {
+  const qty   = it.quantity   != null ? it.quantity   : 1;
+  const price = it.unit_price != null ? it.unit_price : 0;
+  const amt   = Math.round(Number(qty) * Number(price) * 100) / 100;
+  return `<tr data-li-i="${i}" class="li-edit-row" style="background:rgba(59,130,246,0.06)">
+    <td><input class="li-input" data-f="title" value="${esc(it.title||it.description||"")}" placeholder="Description" autofocus></td>
+    <td><input class="li-input" data-f="quantity" type="number" min="0" step="0.01" value="${qty}" style="width:60px"></td>
+    <td><input class="li-input" data-f="unit_price" type="number" min="0" step="0.01" value="${price}" style="width:84px"></td>
+    <td class="col-r"><span id="li-amt-${i}">${money(amt)}</span></td>
+    <td style="text-align:center;white-space:nowrap">
+      <button class="btn" data-confirm-i="${i}" style="padding:3px 8px;font-size:11px;margin-right:2px" title="Save row">✓</button>
+      <button class="li-del" data-cancel-i="${i}" title="Cancel">✕</button>
+    </td>
+  </tr>`;
+}
+
+function bindTableEvents() {
+  const tbody = document.getElementById("liTableBody");
+  if (!tbody) return;
+
+  // Input changes → live amount + totals update
+  tbody.addEventListener("input", e => {
+    const row = e.target.closest("tr[data-li-i]");
+    if (!row) return;
+    const i     = parseInt(row.dataset.liI, 10);
     const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 0) || 0;
     const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
-    newSubtotal += Math.round(qty * price * 100) / 100;
+    const amt   = Math.round(qty * price * 100) / 100;
+    const amtEl = document.getElementById(`li-amt-${i}`);
+    if (amtEl) amtEl.textContent = money(amt);
+    recomputeLiveTotals();
   });
-  newSubtotal = Math.round(newSubtotal * 100) / 100;
+
+  tbody.addEventListener("click", e => {
+    // Click view row → switch to edit
+    const viewRow = e.target.closest(".li-view-row");
+    if (viewRow && !e.target.closest("button")) {
+      const i = parseInt(viewRow.dataset.liI, 10);
+      _lineItems[i]._editing = true;
+      renderLineItemsTable();
+      document.querySelector(`[data-li-i="${i}"] [data-f="title"]`)?.focus();
+      return;
+    }
+
+    // Confirm (✓) button → save row locally
+    const confirmBtn = e.target.closest("[data-confirm-i]");
+    if (confirmBtn) {
+      const i   = parseInt(confirmBtn.dataset.confirmI, 10);
+      const row = tbody.querySelector(`tr[data-li-i="${i}"]`);
+      if (!row) return;
+      const title = (row.querySelector("[data-f='title']")?.value || "Service").trim();
+      const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1) || 1;
+      const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
+      _lineItems[i] = { ...(_lineItems[i]||{}), title, description:"", quantity:qty, unit_price:price,
+        line_total: Math.round(qty * price * 100) / 100, taxable:false, tax_rate:0, _editing:false, _isNew:false };
+      renderLineItemsTable();
+      recomputeLiveTotals();
+      return;
+    }
+
+    // Cancel button
+    const cancelBtn = e.target.closest("[data-cancel-i]");
+    if (cancelBtn) {
+      const i = parseInt(cancelBtn.dataset.cancelI, 10);
+      if (_lineItems[i]?._isNew) {
+        _lineItems.splice(i, 1);
+      } else {
+        _lineItems[i]._editing = false;
+      }
+      renderLineItemsTable();
+      recomputeLiveTotals();
+      return;
+    }
+
+    // Delete button (✕ on view row)
+    const delBtn = e.target.closest("[data-del-i]");
+    if (delBtn) {
+      const i = parseInt(delBtn.dataset.delI, 10);
+      if (!confirm("Remove this line item?")) return;
+      _lineItems.splice(i, 1);
+      renderLineItemsTable();
+      recomputeLiveTotals();
+      return;
+    }
+  });
+}
+
+function recomputeLiveTotals() {
+  if (!CURRENT) return;
+  const newSubtotal = Math.round(_lineItems.reduce((s, it) => {
+    const qty   = Number(it.quantity   ?? 1);
+    const price = Number(it.unit_price ?? 0);
+    return s + Math.round(qty * price * 100) / 100;
+  }, 0) * 100) / 100;
+
   const taxRate    = Number(CURRENT.tax_rate || 0);
   const taxAmt     = Math.round(newSubtotal * taxRate) / 100;
   const deposit    = Number(CURRENT.deposit_applied || 0);
-  const paid       = Number(CURRENT.paid_amount || 0);
+  const paid       = Number(CURRENT.paid_amount     || 0);
   const newBalance = Math.max(0, Math.round((newSubtotal + taxAmt - deposit - paid) * 100) / 100);
 
   const totalsEl = document.getElementById("totalsSection");
   if (!totalsEl) return;
-  const rows2 = [];
-  rows2.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${money(newSubtotal)}</span></div>`);
-  if (taxAmt > 0) rows2.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
-  if (deposit > 0) rows2.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
-  if (paid > 0)    rows2.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
-  rows2.push(`<div class="totals-row totals-grand"><span class="totals-label">${newBalance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(newBalance)}</span></div>`);
-  totalsEl.innerHTML = rows2.join("");
-}
-
-function bindLiEditCalc() {
-  const tbody = document.getElementById("liEditBody");
-  if (!tbody || tbody._calcBound) return;
-  tbody._calcBound = true;
-  tbody.addEventListener("input", e => {
-    const row = e.target.closest("tr[data-li-row]");
-    if (!row) return;
-    const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value || 0) || 0;
-    const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
-    const amt   = Math.round(qty * price * 100) / 100;
-    const disp  = row.querySelector(".li-amt-disp");
-    if (disp) disp.textContent = money(amt);
-    recomputeEditTotals();
-  });
-  tbody.addEventListener("click", e => {
-    const btn = e.target.closest("[data-del-row]");
-    if (!btn) return;
-    btn.closest("tr").remove();
-    Array.from(tbody.querySelectorAll("tr[data-li-row]")).forEach((r,i) => {
-      r.dataset.liRow = i;
-      const d = r.querySelector("[data-del-row]");
-      if (d) d.dataset.delRow = i;
-    });
-    recomputeEditTotals();
-  });
-}
-
-function collectLineItems() {
-  const tbody = document.getElementById("liEditBody");
-  if (!tbody) return [];
-  return Array.from(tbody.querySelectorAll("tr[data-li-row]")).map(row => {
-    const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1)  || 1;
-    const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value|| 0) || 0;
-    return {
-      title:      (row.querySelector("[data-f='title']")?.value || "Service").trim(),
-      description:"",
-      quantity:   qty,
-      unit_price: price,
-      line_total: Math.round(qty * price * 100) / 100,
-      taxable:    false,
-      tax_rate:   0,
-    };
-  });
+  const rows = [];
+  rows.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${money(newSubtotal)}</span></div>`);
+  if (taxAmt > 0) rows.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
+  if (deposit > 0) rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
+  if (paid > 0)    rows.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
+  rows.push(`<div class="totals-row totals-grand"><span class="totals-label">${newBalance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(newBalance)}</span></div>`);
+  totalsEl.innerHTML = rows.join("");
 }
 
 function addBlankLineItem() {
-  const tbody = document.getElementById("liEditBody");
-  if (!tbody) return;
-  const idx = tbody.querySelectorAll("tr[data-li-row]").length;
-  const tr  = document.createElement("tr");
-  tr.setAttribute("data-li-row", idx);
-  tr.innerHTML = liEditRow({ title:"", quantity:1, unit_price:0 }, idx);
-  tbody.appendChild(tr);
-  bindLiEditCalc();
-  tr.querySelector("[data-f='title']")?.focus();
+  _lineItems.push({ title:"", description:"", quantity:1, unit_price:0, line_total:0, taxable:false, tax_rate:0, _editing:true, _isNew:true });
+  renderLineItemsTable();
+  const tbody = document.getElementById("liTableBody");
+  if (tbody) {
+    const lastRow = tbody.querySelector(`tr[data-li-i="${_lineItems.length-1}"]`);
+    lastRow?.querySelector("[data-f='title']")?.focus();
+  }
 }
 
 function renderTotals(inv) {
@@ -741,32 +755,37 @@ document.getElementById("addCoBtn").addEventListener("click", async()=>{
   load();
 });
 
-// ── Line Items Edit Mode ──────────────────────────────────────────────────────
-document.getElementById("editLineItemsBtn").addEventListener("click", () => {
-  _lineEditMode = true;
-  document.getElementById("editLineItemsBtn").style.display = "none";
-  document.getElementById("lineItemsEditControls").style.display = "flex";
-  if (CURRENT) renderLineItemsEdit(
-    (() => { try { return JSON.parse(CURRENT.line_items_json||"[]"); } catch { return []; } })()
-  );
+// ── Line Items ────────────────────────────────────────────────────────────────
+document.getElementById("addLineItemBtn").addEventListener("click", () => {
+  addBlankLineItem();
 });
 
 document.getElementById("cancelLineItemsBtn").addEventListener("click", () => {
-  _lineEditMode = false;
-  document.getElementById("editLineItemsBtn").style.display = "";
-  document.getElementById("lineItemsEditControls").style.display = "none";
   document.getElementById("lineItemsMsg").textContent = "";
   if (CURRENT) renderLineItems(CURRENT);
-});
-
-document.getElementById("addLineItemBtn").addEventListener("click", () => {
-  addBlankLineItem();
 });
 
 document.getElementById("saveLineItemsBtn").addEventListener("click", async () => {
   const msg = document.getElementById("lineItemsMsg");
   const btn = document.getElementById("saveLineItemsBtn");
-  const items = collectLineItems();
+
+  // Collect from the local array (any row still in edit mode saves its current values)
+  const tbody = document.getElementById("liTableBody");
+  if (tbody) {
+    tbody.querySelectorAll("tr.li-edit-row").forEach(row => {
+      const i     = parseInt(row.dataset.liI, 10);
+      const title = (row.querySelector("[data-f='title']")?.value || "Service").trim();
+      const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 1) || 1;
+      const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
+      if (Number.isFinite(i) && _lineItems[i]) {
+        _lineItems[i] = { ...(_lineItems[i]), title, description:"", quantity:qty, unit_price:price,
+          line_total: Math.round(qty * price * 100) / 100, taxable:false, tax_rate:0, _editing:false, _isNew:false };
+      }
+    });
+  }
+
+  const items = _lineItems.filter(it => !it._isNew || it.title).map(({ _editing, _isNew, ...it }) => it);
+
   btn.disabled = true;
   msg.textContent = "Saving…";
 
@@ -779,10 +798,7 @@ document.getElementById("saveLineItemsBtn").addEventListener("click", async () =
   btn.disabled = false;
   if (r?.ok) {
     msg.textContent = "Saved!";
-    _lineEditMode = false;
-    document.getElementById("editLineItemsBtn").style.display = "";
-    document.getElementById("lineItemsEditControls").style.display = "none";
-    setTimeout(() => { document.getElementById("lineItemsMsg").textContent = ""; }, 2000);
+    setTimeout(() => { document.getElementById("lineItemsMsg").textContent = ""; }, 2500);
     load();
   } else {
     msg.textContent = r?.error || "Save failed.";

@@ -60,7 +60,10 @@ async function handlePublicPay(req, res) {
   const accessToken  = process.env.SQUARE_ACCESS_TOKEN  || "";
   const locationId   = process.env.SQUARE_LOCATION_ID   || "";
 
-  if (!accessToken || !locationId) {
+  const appId = process.env.SQUARE_APP_ID || "";
+  if (!accessToken || !locationId || !appId) {
+    const missing = [!appId && "SQUARE_APP_ID", !locationId && "SQUARE_LOCATION_ID", !accessToken && "SQUARE_ACCESS_TOKEN"].filter(Boolean).join(", ");
+    console.warn("[invoices-pay] Missing Square env vars:", missing);
     return json(res, 503, {
       ok: false,
       error: "Online payment is not configured yet. Please call (409) 554-3392 to pay.",
@@ -108,8 +111,9 @@ async function handlePublicPay(req, res) {
       });
     }
 
-    // Create Square payment
-    const idempotencyKey = `inv-${inv.id}-${Date.now()}`;
+    // Deterministic idempotency key: same source_id on same invoice always yields
+    // the same key — prevents duplicate charges on retries before sheet update flips status.
+    const idempotencyKey = `inv-${inv.id}-${source_id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`;
     const squareResp = await squareRequest(
       "POST",
       "/v2/payments",
