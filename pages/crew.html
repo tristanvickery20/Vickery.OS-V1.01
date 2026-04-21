@@ -403,6 +403,90 @@
       vertical-align: middle;
       letter-spacing: .03em;
     }
+
+    /* ── Global Timer Banner ── */
+    .timer-banner {
+      background: hsl(0 55% 14%);
+      border: 1px solid hsl(0 60% 26%);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .timer-banner-info { flex: 1; min-width: 0; }
+    .timer-banner-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: hsl(0 60% 60%);
+      margin-bottom: 2px;
+    }
+    .timer-banner-job {
+      font-size: 14px;
+      font-weight: 700;
+      color: hsl(0 0% 90%);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .timer-banner-elapsed {
+      font-size: 26px;
+      font-weight: 900;
+      color: hsl(0 80% 70%);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .04em;
+      line-height: 1;
+      margin-top: 4px;
+    }
+    .timer-banner-elapsed.paused { color: hsl(38 80% 60%); }
+    .timer-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-banner-pause {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(220 10% 30%);
+      background: hsl(220 10% 18%);
+      color: hsl(220 15% 70%);
+      font-family: inherit;
+    }
+    .btn-banner-pause.paused { background: hsl(38 80% 18%); border-color: hsl(38 80% 35%); color: hsl(38 90% 68%); }
+    .btn-banner-stop {
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: hsl(0 68% 46%);
+      color: #fff;
+      font-family: inherit;
+    }
+    .btn-banner-stop:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── NFC Button ── */
+    .btn-nfc {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid hsl(250 60% 40%);
+      background: hsl(250 60% 18%);
+      color: hsl(250 80% 78%);
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .btn-nfc:hover { background: hsl(250 60% 24%); }
+    .btn-nfc.scanning { border-color: hsl(142 55% 35%); background: hsl(142 55% 14%); color: hsl(142 60% 68%); animation: nfc-pulse .9s ease-in-out infinite; }
+    @keyframes nfc-pulse { 0%,100%{opacity:1}50%{opacity:.55} }
     .jd-gps-row {
       font-size: 12px;
       color: #34d399;
@@ -1003,6 +1087,26 @@
 
   <!-- Job list tab -->
   <div id="listView">
+    <!-- Global timer status banner (shown when a timer is active) -->
+    <div class="timer-banner" id="timerBanner" hidden>
+      <div class="timer-banner-info">
+        <div class="timer-banner-label">&#9679; Clock Running</div>
+        <div class="timer-banner-job" id="timerBannerJob">—</div>
+        <div class="timer-banner-elapsed" id="timerBannerElapsed">00:00:00</div>
+      </div>
+      <div class="timer-banner-actions">
+        <button class="btn-banner-pause" id="btnBannerPause">Pause</button>
+        <button class="btn-banner-stop" id="btnBannerStop">&#9632; Stop</button>
+      </div>
+    </div>
+
+    <!-- NFC scan row (shown only on devices with Web NFC — Android Chrome) -->
+    <div id="nfcRow" style="display:none;margin-bottom:12px;">
+      <button class="btn-nfc" id="btnNFCScan" style="display:flex;">
+        &#x1F4F1; Scan NFC to Clock In
+      </button>
+    </div>
+
     <div class="section-label" style="margin-top:4px;">Today's Jobs</div>
     <div id="jobList"></div>
     <div id="noJobs" class="no-jobs" hidden>

@@ -46,6 +46,21 @@ async function handleGetTime(req, res, opts = {}) {
       entries = entries.filter((e) => e.date === opts.filterDate);
     }
 
+    // Support ?lead_id= filter from URL query params
+    if (req && req.url) {
+      try {
+        const u = new URL(req.url, "http://localhost");
+        const qLeadId = u.searchParams.get("lead_id");
+        if (qLeadId) {
+          entries = entries.filter((e) => e.lead_id === qLeadId);
+        }
+        const qDate = u.searchParams.get("date");
+        if (qDate) {
+          entries = entries.filter((e) => e.date === qDate);
+        }
+      } catch {}
+    }
+
     entries = entries
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
       .slice(0, 500);

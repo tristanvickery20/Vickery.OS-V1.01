@@ -113,6 +113,37 @@
     ".qa-section-hdr-btn{font-size:12px;font-weight:700;color:#2d6ae0;background:none;border:none;cursor:pointer;",
     "padding:0;font-family:inherit;}",
     ".qa-section-hdr-btn:hover{text-decoration:underline;}",
+    /* Estimate Wizard */
+    ".qa-wiz-step{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#475569;margin-bottom:12px;display:flex;align-items:center;gap:7px;}",
+    ".qa-wiz-step-dot{width:8px;height:8px;border-radius:50%;background:#334155;flex-shrink:0;transition:background .2s;}",
+    ".qa-wiz-step-dot.active{background:#0891b2;}",
+    ".qa-wiz-step-dot.done{background:#22c55e;}",
+    ".qa-svc-loading{color:#475569;font-size:13px;font-style:italic;padding:24px 0;text-align:center;}",
+    ".qa-svc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px;}",
+    ".qa-svc-card{padding:12px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);",
+    "background:rgba(255,255,255,.04);color:#cbd5e1;font-size:13px;font-weight:700;",
+    "cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;line-height:1.35;width:100%;}",
+    ".qa-svc-card:hover{background:rgba(8,145,178,.12);border-color:#0891b2;color:#e0f2fe;}",
+    ".qa-svc-card.sel{background:rgba(8,145,178,.22);border-color:#0891b2;color:#7dd3fc;}",
+    ".qa-svc-tier{font-size:10px;font-weight:400;color:#475569;margin-top:3px;text-transform:uppercase;letter-spacing:.05em;}",
+    ".qa-q-block{display:flex;flex-direction:column;gap:6px;}",
+    ".qa-q-label{font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.01em;}",
+    ".qa-q-opts{display:flex;flex-wrap:wrap;gap:6px;}",
+    ".qa-q-chip{padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);",
+    "background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;font-weight:600;",
+    "cursor:pointer;font-family:inherit;transition:all .13s;}",
+    ".qa-q-chip:hover{background:rgba(8,145,178,.1);border-color:#0891b2;color:#e0f2fe;}",
+    ".qa-q-chip.sel{background:rgba(8,145,178,.22);border-color:#0891b2;color:#7dd3fc;}",
+    ".qa-price-banner{background:rgba(8,145,178,.1);border:1px solid rgba(8,145,178,.28);",
+    "border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:58px;}",
+    ".qa-price-amount{font-size:22px;font-weight:900;color:#7dd3fc;letter-spacing:-.02em;line-height:1;}",
+    ".qa-price-label{font-size:10px;color:#475569;margin-top:2px;text-transform:uppercase;letter-spacing:.07em;}",
+    ".qa-price-note{font-size:11px;color:#475569;font-style:italic;max-width:160px;text-align:right;}",
+    ".qa-wiz-back{background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;",
+    "padding:0;font-family:inherit;display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;}",
+    ".qa-wiz-back:hover{color:#94a3b8;}",
+    ".qa-wiz-divider{height:1px;background:rgba(255,255,255,.07);margin:2px 0;}",
+    ".qa-est-svc-name{font-size:12px;color:#0891b2;font-weight:700;margin-bottom:10px;}",
   ].join("");
   document.head.appendChild(style);
 
@@ -148,6 +179,14 @@
   var techList       = [];
   var loadingTechs   = false;
   var crewMemberName = "";  // filled on init for crew context
+
+  // Estimate wizard state (CRM only)
+  var estimateStep     = 1;
+  var selectedService  = null;
+  var moduleAnswers    = {};
+  var _estConfig       = null;
+  var _estPriceResult  = null;
+  var _estPricingTimer = null;
 
   // Detect context by URL path — crew page is /crew, all CRM pages are /crm/*
   // This is reliable even on CRM pages that lack a sidebar mount element
@@ -237,6 +276,8 @@
     chip.dataset.type = t.id;
     chip.dataset.cls  = t.cls;
     chip.addEventListener("click", function () {
+      // Reset estimate wizard whenever user picks a chip (including re-picking Estimate)
+      estimateStep = 1; selectedService = null; moduleAnswers = {}; _estPriceResult = null;
       currentType = t.id;
       chipsEl.querySelectorAll(".qa-chip").forEach(function (c) {
         c.className = "qa-chip" + (c.dataset.type === currentType ? " sel " + c.dataset.cls : "");
@@ -351,25 +392,54 @@
       html += fld("Related Lead ID", inp("qa-f-lead", "text", "LEAD-xxxxx (optional)", "", "autocomplete='off'"));
       html += fld("Notes", textarea("qa-f-notes", "Add any notes…"));
 
-    } else if (currentType === "Estimate") {
-      html += fld("Link Existing Lead (optional)",
-        '<div style="display:flex;gap:6px;align-items:center;">' +
-          inp("qa-f-lead-link", "text", "LEAD-xxxxx", "", "autocomplete='off' style='flex:1'") +
-          '<button type="button" id="qa-lead-lookup" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#94a3b8;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;">Auto-fill ↗</button>' +
-        '</div>');
+    } else if (currentType === "Estimate" && IS_CREW) {
+      // Crew: simple form, posts as a task (cannot access /api/leads or estimator config)
       html += fld("Client Name *", inp("qa-f-name", "text", "Full name…", "", "autocomplete='off'"));
       html += '<div class="qa-row">' +
         fld("Phone", inp("qa-f-phone", "tel", "(555) 000-0000")) +
-        fld("Job Type", '<select id="qa-f-jtype" class="qa-select"><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Panel Upgrade">Panel Upgrade</option><option value="EV Charger">EV Charger</option><option value="Other">Other</option></select>') +
+        fld("Est. Date", inp("qa-f-due", "date", "", tomorrowStr())) +
       '</div>';
       html += fld("Address", inp("qa-f-addr", "text", "Street address…", ""));
-      html += '<div class="qa-row">' +
-        fld("Est. Date", inp("qa-f-due", "date", "", tomorrowStr())) +
-        fld("Time", inp("qa-f-time", "time", "", "09:00")) +
-      '</div>';
       html += fld("Duration (min)", inp("qa-f-dur", "number", "60", "60", "min='15' max='480' step='15'"));
       html += fld("Notes", textarea("qa-f-notes", "What work is needed?"));
-      html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders flagged: 24h before and 1h before.</div>';
+
+    } else if (currentType === "Estimate") {
+      // CRM: multi-step V2 estimator wizard
+      if (estimateStep === 1) {
+        html += '<div class="qa-wiz-step"><span class="qa-wiz-step-dot active"></span><span class="qa-wiz-step-dot"></span>Step 1 of 2 — Select Service</div>';
+        html += fld("What service does the customer need?",
+          '<div class="qa-svc-grid" id="qa-svc-grid"><div class="qa-svc-loading">Loading services\u2026</div></div>');
+        html += '<div style="font-size:11px;color:#475569;margin-top:4px;">Service list is loaded from the Estimator sheet.</div>';
+        // No submit button for step 1 — clicking a card advances; afterEstimateRender populates the grid
+      } else {
+        // Step 2
+        html += '<button type="button" class="qa-wiz-back" id="qa-wiz-back">\u2190 Back</button>';
+        html += '<div class="qa-wiz-step"><span class="qa-wiz-step-dot done"></span><span class="qa-wiz-step-dot active"></span>Step 2 of 2 — Details</div>';
+        if (selectedService) {
+          html += '<div class="qa-est-svc-name">' + esc(selectedService.service_name) + '</div>';
+        }
+        // Price banner (updated live as answers change)
+        html += '<div class="qa-price-banner" id="qa-price-banner">' +
+          '<div><div class="qa-price-amount" id="qa-price-amount">—</div><div class="qa-price-label">Estimated price</div></div>' +
+          '<div class="qa-price-note" id="qa-price-note">Answer questions below for a price estimate</div>' +
+        '</div>';
+        // Dynamic module questions
+        html += '<div id="qa-q-container"></div>';
+        html += '<div class="qa-wiz-divider"></div>';
+        // Customer info
+        html += fld("Client Name *", inp("qa-f-name", "text", "Full name…", "", "autocomplete='off'"));
+        html += '<div class="qa-row">' +
+          fld("Phone", inp("qa-f-phone", "tel", "(555) 000-0000")) +
+          fld("Address", inp("qa-f-addr", "text", "Street address…", "")) +
+        '</div>';
+        html += '<div class="qa-row">' +
+          fld("Est. Date", inp("qa-f-due", "date", "", tomorrowStr())) +
+          fld("Time", inp("qa-f-time", "time", "", "09:00")) +
+        '</div>';
+        html += fld("Duration (min)", inp("qa-f-dur", "number", "60", "60", "min='15' max='480' step='15'"));
+        html += fld("Notes", textarea("qa-f-notes", "Any extra details for the estimate…"));
+        html += '<div style="font-size:11px;color:#475569;margin-top:-4px;">Reminders will fire 24h and 1h before.</div>';
+      }
 
     } else if (currentType === "Job") {
       html += fld("Link Existing Lead (optional)",
@@ -442,9 +512,19 @@
       html += fld("Notes", textarea("qa-f-notes", "Any extra details…"));
     }
 
-    html += '<button type="button" class="qa-submit" id="ve-qa-submit">Add ' + currentType + '</button>';
+    // Step 1 of the Estimate wizard has no submit — service selection advances to step 2
+    if (!(currentType === "Estimate" && !IS_CREW && estimateStep === 1)) {
+      var submitLabel = currentType === "Estimate" ? "Save Estimate & Create Lead"
+        : currentType === "Time Entry" ? "Save Time Entry"
+        : currentType === "Expense"    ? "Save Expense"
+        : "Add " + currentType;
+      html += '<button type="button" class="qa-submit" id="ve-qa-submit">' + submitLabel + '</button>';
+    }
 
     formEl.innerHTML = html;
+
+    // CRM Estimate wizard — populate grid or wire questions after DOM is set
+    if (currentType === "Estimate" && !IS_CREW) { afterEstimateRender(); }
 
     // Priority button wiring
     formEl.querySelectorAll(".qa-pri").forEach(function (btn) {
@@ -515,8 +595,11 @@
       });
     }
 
-    // Submit
-    document.getElementById("ve-qa-submit").addEventListener("click", submitQuickAdd);
+    // Submit (null-safe; Estimate step 2 wires its own in afterEstimateRender)
+    var submitBtnEl = document.getElementById("ve-qa-submit");
+    if (submitBtnEl && !(currentType === "Estimate" && !IS_CREW)) {
+      submitBtnEl.addEventListener("click", submitQuickAdd);
+    }
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -552,19 +635,71 @@
         }),
       }).then(function (r) { return r.json(); });
 
-    } else if ((currentType === "Estimate" || currentType === "Job") && !IS_CREW) {
-      // CRM context: create a proper lead record
+    } else if (currentType === "Estimate" && !IS_CREW) {
+      // CRM Estimate — wizard submit: price via /api/estimator/quote, then create Lead
+      var estName = g("qa-f-name");
+      if (!estName) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Save Estimate & Create Lead"; return; }
+      var estDurMin  = g("qa-f-dur") || "60";
+      var estDate    = g("qa-f-due");
+      var estTime    = g("qa-f-time");
+      var estSchedDT = estDate + (estTime ? "T" + estTime : "");
+      var estBaseNotes = g("qa-f-notes");
+      var svc = selectedService || {};
+
+      promise = (svc.service_id
+        ? fetch("/api/estimator/quote", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              segment:    svc.segment || "residential",
+              service_id: svc.service_id,
+              answers:    moduleAnswers,
+            }),
+          }).then(function (r) { return r.json(); }).catch(function () { return {}; })
+        : Promise.resolve({})
+      ).then(function (priceData) {
+        var priceStr = "";
+        if (priceData.final_price) {
+          priceStr = "Quoted: $" + Number(priceData.final_price).toLocaleString();
+        } else if (priceData.price_range) {
+          priceStr = "Quoted: $" + Number(priceData.price_range.low).toLocaleString() + "–$" + Number(priceData.price_range.high).toLocaleString();
+        }
+        var notesLines = [];
+        if (estBaseNotes) notesLines.push(estBaseNotes);
+        notesLines.push("Duration: " + estDurMin + " min");
+        if (svc.service_name) notesLines.push("Service: " + svc.service_name);
+        if (priceStr) notesLines.push(priceStr);
+        if (Object.keys(moduleAnswers).length) {
+          var answerLines = Object.keys(moduleAnswers).map(function (k) {
+            return k + ": " + moduleAnswers[k];
+          }).join(", ");
+          notesLines.push("Answers: " + answerLines);
+        }
+        notesLines.push("reminders:24h,1h");
+        return fetch("/api/leads", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name:           estName,
+            phone:          g("qa-f-phone"),
+            address:        g("qa-f-addr"),
+            job_type:       svc.service_name || svc.service_id || "Estimate",
+            status:         "New",
+            notes:          notesLines.join("\n"),
+            scheduled_date: estSchedDT,
+            estimated_value: priceData.final_price || (priceData.price_range && priceData.price_range.low) || "",
+          }),
+        }).then(function (r) { return r.json(); });
+      });
+
+    } else if (currentType === "Job" && !IS_CREW) {
+      // CRM Job: create lead directly
       var name = g("qa-f-name");
-      if (!name) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
-      var durMin = g("qa-f-dur") || (currentType === "Estimate" ? "60" : "120");
+      if (!name) { showErr("Client name is required."); btn.disabled = false; btn.textContent = "Add Job"; return; }
+      var durMin = g("qa-f-dur") || "120";
       var schedDate = g("qa-f-due");
       var schedTime = g("qa-f-time");
       var schedDT = schedDate + (schedTime ? "T" + schedTime : "");
       var baseNotes = g("qa-f-notes");
       var notesWithDur = (baseNotes ? baseNotes + "\n" : "") + "Duration: " + durMin + " min";
-      if (currentType === "Estimate") {
-        notesWithDur += "\nreminders:24h,1h";
-      }
       promise = fetch("/api/leads", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -572,7 +707,7 @@
           address: g("qa-f-addr"), job_type: g("qa-f-jtype"),
           status: "New", notes: notesWithDur,
           scheduled_date: schedDT,
-          assigned_to: currentType === "Job" ? (getAssignedNames()[0] || "") : "",
+          assigned_to: getAssignedNames()[0] || "",
         }),
       }).then(function (r) { return r.json(); });
 
@@ -601,7 +736,7 @@
         }),
       }).then(function (r) { return r.json(); });
 
-    } else {
+    } else if (currentType === "Meeting" || currentType === "Callback" || currentType === "Personal Block") {
       // Meeting | Callback | Personal Block → Events sheet (timed calendar entries)
       var title2 = g("qa-f-title");
       if (!title2) { showErr("Title is required."); btn.disabled = false; btn.textContent = "Add " + currentType; return; }
@@ -851,4 +986,208 @@
 
   // Expose for external refresh calls
   window.VE_QuickAdd = { refresh: refreshTaskLists, open: openModal };
+
+  // ── Estimate Wizard (CRM only) ────────────────────────────────────────────
+
+  function loadEstimatorConfig(cb) {
+    if (_estConfig) { cb(_estConfig); return; }
+    fetch("/api/estimator/config")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) { _estConfig = d; }
+        cb(_estConfig || { services: [], modules: {} });
+      })
+      .catch(function () { cb({ services: [], modules: {} }); });
+  }
+
+  function buildQuestionsHtml(svc, modulesById) {
+    if (!svc || !svc.modules || !svc.modules.length) return "";
+    var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+    svc.modules.forEach(function (mid) {
+      var mod = modulesById[mid];
+      if (!mod) return;
+      var question   = mod.question  || mid;
+      var inputType  = (mod.input_type || "text").toLowerCase();
+      var optionsRaw = mod.options_json || "";
+      var options    = [];
+      try { options = optionsRaw ? JSON.parse(optionsRaw) : []; } catch (e) { options = []; }
+
+      html += '<div class="qa-q-block" data-mid="' + esc(mid) + '">';
+      html += '<div class="qa-q-label">' + esc(question) + '</div>';
+
+      if ((inputType === "select" || inputType === "radio") && options.length) {
+        var saved = moduleAnswers[mid] || "";
+        html += '<div class="qa-q-opts">';
+        options.forEach(function (opt) {
+          var isSel = (String(opt) === String(saved)) ? " sel" : "";
+          html += '<button type="button" class="qa-q-chip' + isSel + '" data-mid="' + esc(mid) + '" data-val="' + esc(opt) + '">' + esc(opt) + '</button>';
+        });
+        html += '</div>';
+      } else if (inputType === "number") {
+        var numVal = moduleAnswers[mid] || "";
+        html += '<input class="qa-input qa-q-num-inp" type="number" data-mid="' + esc(mid) + '" value="' + esc(numVal) + '" placeholder="Enter value…" style="max-width:160px;" />';
+      } else {
+        var txtVal = moduleAnswers[mid] || "";
+        html += '<input class="qa-input qa-q-txt-inp" type="text" data-mid="' + esc(mid) + '" value="' + esc(txtVal) + '" placeholder="Enter answer…" />';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function _schedulePriceCalc() {
+    if (_estPricingTimer) clearTimeout(_estPricingTimer);
+    _estPricingTimer = setTimeout(function () { calcEstPrice(); }, 350);
+  }
+
+  function calcEstPrice() {
+    var svc = selectedService;
+    if (!svc || !svc.service_id) return;
+
+    var noteEl   = document.getElementById("qa-price-note");
+    var amountEl = document.getElementById("qa-price-amount");
+    if (!amountEl) return;
+
+    if (noteEl) noteEl.textContent = "Calculating…";
+
+    fetch("/api/estimator/quote", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        segment:    svc.segment || "residential",
+        service_id: svc.service_id,
+        answers:    moduleAnswers,
+      }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        _estPriceResult = d;
+        var amtEl2  = document.getElementById("qa-price-amount");
+        var noteEl2 = document.getElementById("qa-price-note");
+        if (!amtEl2) return;
+        if (d.final_price) {
+          amtEl2.textContent = "$" + Number(d.final_price).toLocaleString();
+          if (noteEl2) noteEl2.textContent = "Final estimate";
+        } else if (d.price_range) {
+          amtEl2.textContent = "$" + Number(d.price_range.low).toLocaleString() + "–$" + Number(d.price_range.high).toLocaleString();
+          if (noteEl2) noteEl2.textContent = "Price range";
+        } else if (d.manual_review) {
+          amtEl2.textContent = "Manual Review";
+          if (noteEl2) noteEl2.textContent = d.reason || "Requires custom quote";
+        } else {
+          amtEl2.textContent = "—";
+          if (noteEl2) noteEl2.textContent = d.error || "Unable to price";
+        }
+      })
+      .catch(function () {
+        var amtEl3  = document.getElementById("qa-price-amount");
+        var noteEl3 = document.getElementById("qa-price-note");
+        if (amtEl3) amtEl3.textContent = "—";
+        if (noteEl3) noteEl3.textContent = "Price unavailable";
+      });
+  }
+
+  function wireQuestionEvents() {
+    var form = document.getElementById("ve-qa-form");
+    if (!form) return;
+
+    // Option chips (select/radio)
+    form.querySelectorAll(".qa-q-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var mid = chip.dataset.mid;
+        var val = chip.dataset.val;
+        // Deselect siblings, select this
+        form.querySelectorAll('.qa-q-chip[data-mid="' + mid + '"]').forEach(function (c) {
+          c.classList.remove("sel");
+        });
+        chip.classList.add("sel");
+        moduleAnswers[mid] = val;
+        _schedulePriceCalc();
+      });
+    });
+
+    // Number inputs
+    form.querySelectorAll(".qa-q-num-inp").forEach(function (inp2) {
+      inp2.addEventListener("input", function () {
+        moduleAnswers[inp2.dataset.mid] = inp2.value;
+        _schedulePriceCalc();
+      });
+    });
+
+    // Text inputs
+    form.querySelectorAll(".qa-q-txt-inp").forEach(function (inp3) {
+      inp3.addEventListener("input", function () {
+        moduleAnswers[inp3.dataset.mid] = inp3.value;
+        _schedulePriceCalc();
+      });
+    });
+  }
+
+  function afterEstimateRender() {
+    var formEl = document.getElementById("ve-qa-form");
+    if (!formEl) return;
+
+    if (estimateStep === 1) {
+      // Populate service grid
+      loadEstimatorConfig(function (cfg) {
+        var grid = document.getElementById("qa-svc-grid");
+        if (!grid) return;
+        var services = (cfg.services || []).filter(function (s) { return s.enabled !== false; });
+        if (!services.length) {
+          grid.innerHTML = '<div class="qa-svc-loading">No services found. Check Estimator sheet.</div>';
+          return;
+        }
+        grid.innerHTML = services.map(function (s) {
+          return '<button type="button" class="qa-svc-card" data-svc-id="' + esc(s.service_id) + '">' +
+            esc(s.service_name) +
+            (s.tier ? '<div class="qa-svc-tier">' + esc(s.tier) + '</div>' : '') +
+          '</button>';
+        }).join("");
+        // Store full service objects by id for lookup
+        grid._svcMap = {};
+        services.forEach(function (s) { grid._svcMap[s.service_id] = s; });
+        // Wire card clicks
+        grid.querySelectorAll(".qa-svc-card").forEach(function (card) {
+          card.addEventListener("click", function () {
+            var svcId = card.dataset.svcId;
+            var svc   = (cfg.services || []).find(function (s) { return s.service_id === svcId; });
+            if (!svc) return;
+            selectedService = svc;
+            moduleAnswers   = {};
+            _estPriceResult = null;
+            estimateStep    = 2;
+            renderForm();
+          });
+        });
+      });
+
+    } else if (estimateStep === 2) {
+      // Wire back button
+      var backBtn = document.getElementById("qa-wiz-back");
+      if (backBtn) {
+        backBtn.addEventListener("click", function () {
+          estimateStep    = 1;
+          selectedService = null;
+          moduleAnswers   = {};
+          _estPriceResult = null;
+          renderForm();
+        });
+      }
+
+      // Populate question container
+      var qContainer = document.getElementById("qa-q-container");
+      if (qContainer && selectedService && _estConfig) {
+        qContainer.innerHTML = buildQuestionsHtml(selectedService, _estConfig.modules || {});
+        wireQuestionEvents();
+        // Try initial price calc if we have enough answers
+        if (Object.keys(moduleAnswers).length > 0) calcEstPrice();
+      }
+
+      // Wire submit
+      var submitBtn = document.getElementById("ve-qa-submit");
+      if (submitBtn) {
+        submitBtn.addEventListener("click", submitQuickAdd);
+      }
+    }
+  }
 })();

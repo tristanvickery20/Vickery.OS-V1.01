@@ -2167,13 +2167,64 @@
           ? `<div style="font-size:12px;color:#f87171;font-weight:700;margin-bottom:4px;">&#10007; Reschedule declined by customer</div>`
           : "";
 
+        const nfcWriteBtn = ("NDEFReader" in window)
+          ? `<button class="detail-btn" id="detailNFCWrite" style="background:hsl(250 60% 22%);border-color:hsl(250 60% 40%);color:hsl(250 80% 78%);">&#x1F4F1; Write NFC Chip</button>`
+          : "";
+
         detailFooter.innerHTML = `
           ${rsBadge}
           ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
           ${b.phone ? `<button class="detail-btn amber" id="detailRequestReschedule">Send Reschedule Request</button>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/lead?quote_id=${esc(b.quote_id)}" target="_blank">&#9889; Open Full Report</a>` : ""}
+          ${nfcWriteBtn}
           ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
         `;
+
+        // NFC write — write booking_id to chip (Android Chrome only)
+        document.getElementById("detailNFCWrite")?.addEventListener("click", async function() {
+          const btn = this;
+          try {
+            btn.textContent = "Hold chip to phone…";
+            btn.disabled = true;
+            const ndef = new NDEFReader();
+            await ndef.write({
+              records: [{ recordType: "text", data: b.booking_id }],
+            });
+            btn.textContent = "✓ NFC Written!";
+            btn.style.background = "hsl(142 55% 20%)";
+            btn.style.color = "#4ade80";
+            setTimeout(() => {
+              btn.textContent = "📱 Write NFC Chip";
+              btn.style.background = "";
+              btn.style.color = "";
+              btn.disabled = false;
+            }, 3000);
+          } catch (err) {
+            btn.textContent = "NFC failed: " + err.message;
+            btn.disabled = false;
+          }
+        });
+
+        // Load GPS clock-in data for this booking
+        if (b.quote_id || b.booking_id) {
+          const leadId = b.quote_id || b.booking_id;
+          fetch(`/api/time?lead_id=${encodeURIComponent(leadId)}`)
+            .then(r => r.json())
+            .then(d => {
+              if (!d.ok || !d.entries || !d.entries.length) return;
+              const withGps = d.entries.filter(e => e.lat_in && e.lng_in);
+              if (!withGps.length) return;
+              const latest = withGps[0];
+              // Show GPS badge in the detail body
+              const gpsDiv = document.createElement("div");
+              gpsDiv.style.cssText = "font-size:12px;color:#34d399;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px 12px;margin:10px 16px 0;font-weight:500;";
+              let gpsText = `📍 GPS clock-in on record (${latest.date})`;
+              if (latest.lat_out && latest.lng_out) gpsText += " · Clock-out GPS captured";
+              gpsDiv.textContent = gpsText;
+              detailBody.appendChild(gpsDiv);
+            })
+            .catch(() => {});
+        }
 
         document.getElementById("detailClearCrew")?.addEventListener("click", () => {
           document.querySelectorAll("#detailTechChecks input[type=checkbox]").forEach(cb => { cb.checked = false; });

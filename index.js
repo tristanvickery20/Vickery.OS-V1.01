@@ -989,7 +989,7 @@ const server = http.createServer(async (req, res) => {
     return handleGetTechs(req, res);
   }
 
-  if (req.url === "/api/time" && req.method === "GET") {
+  if (req.url.split("?")[0] === "/api/time" && req.method === "GET") {
     return handleGetTime(req, res);
   }
 

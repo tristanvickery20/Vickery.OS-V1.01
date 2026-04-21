@@ -53,8 +53,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindManualButtons();
   bindLogout();
   bindViewTabs();
+  initNFCScan();
 
-  if (timerState) startTimerTick();
+  if (timerState) {
+    startTimerTick();
+    updateTimerBanner();
+  }
 });
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -176,9 +180,123 @@ function startTimerTick() {
 
 function tickTimer() {
   if (!timerState) { clearInterval(timerInterval); return; }
-  const bid = timerState.bookingId;
-  const el  = document.getElementById("elapsed-" + bid);
-  if (el) el.textContent = formatElapsed(getElapsedMs());
+  const elapsed = formatElapsed(getElapsedMs());
+  const bid     = timerState.bookingId;
+  const cardEl  = document.getElementById("elapsed-" + bid);
+  if (cardEl) cardEl.textContent = elapsed;
+  // Also update the global banner
+  const bannerEl = document.getElementById("timerBannerElapsed");
+  if (bannerEl) bannerEl.textContent = elapsed;
+}
+
+// ── Global Timer Banner ────────────────────────────────────────────────────────
+function updateTimerBanner() {
+  const banner    = document.getElementById("timerBanner");
+  const jobEl     = document.getElementById("timerBannerJob");
+  const elapsedEl = document.getElementById("timerBannerElapsed");
+  const pauseBtn  = document.getElementById("btnBannerPause");
+  const stopBtn   = document.getElementById("btnBannerStop");
+  if (!banner) return;
+
+  if (!timerState) {
+    banner.hidden = true;
+    return;
+  }
+
+  banner.hidden = false;
+
+  // Job name
+  const job = _todayJobs.find(j => j.booking_id === timerState.bookingId);
+  if (jobEl) jobEl.textContent = job ? (job.customer_name || "Job") : "Active job";
+
+  // Elapsed
+  if (elapsedEl) {
+    elapsedEl.textContent = formatElapsed(getElapsedMs());
+    elapsedEl.className = "timer-banner-elapsed" + (timerState.isPaused ? " paused" : "");
+  }
+
+  // Pause / Resume button
+  if (pauseBtn) {
+    pauseBtn.textContent = timerState.isPaused ? "Resume" : "Pause";
+    pauseBtn.className = "btn-banner-pause" + (timerState.isPaused ? " paused" : "");
+    pauseBtn.onclick = () => { if (timerState?.isPaused) resumeTimer(); else pauseTimer(); };
+  }
+  if (stopBtn) {
+    stopBtn.disabled = false;
+    stopBtn.textContent = "■ Stop";
+    stopBtn.onclick = () => stopTimer();
+  }
+}
+
+// ── NFC Scan (Web NFC API — Android Chrome only) ──────────────────────────────
+let _nfcReader = null;
+
+async function initNFCScan() {
+  if (!("NDEFReader" in window)) return;
+  const nfcRow = document.getElementById("nfcRow");
+  const btn    = document.getElementById("btnNFCScan");
+  if (!btn) return;
+  if (nfcRow) nfcRow.style.display = "";
+
+  btn.addEventListener("click", async () => {
+    if (_nfcReader) {
+      // Already scanning — cancel
+      _nfcReader = null;
+      btn.classList.remove("scanning");
+      btn.innerHTML = "&#x1F4F1; Scan NFC to Clock In";
+      return;
+    }
+    try {
+      _nfcReader = new NDEFReader();
+      await _nfcReader.scan();
+      btn.classList.add("scanning");
+      btn.innerHTML = "&#x1F4F1; Scanning… (tap chip)";
+
+      _nfcReader.onreadingerror = () => {
+        showToast("NFC read error", true);
+        _resetNFCBtn();
+      };
+
+      _nfcReader.onreading = ({ message }) => {
+        let bookingId = null;
+        for (const record of message.records) {
+          if (record.recordType === "text") {
+            const decoder = new TextDecoder(record.encoding || "utf-8");
+            bookingId = decoder.decode(record.data).trim();
+            break;
+          } else if (record.recordType === "url") {
+            // Support URL records: extract booking_id from URL fragment or last segment
+            const decoder = new TextDecoder();
+            const url = decoder.decode(record.data);
+            const match = url.match(/booking_id=([^&]+)/) || url.match(/\/([^\/]+)$/);
+            if (match) bookingId = decodeURIComponent(match[1]);
+            break;
+          }
+        }
+        _resetNFCBtn();
+        if (!bookingId) { showToast("NFC chip has no booking ID", true); return; }
+        const job = _todayJobs.find(j => j.booking_id === bookingId);
+        if (job) {
+          showToast("NFC recognized — clocking in to " + (job.customer_name || "job"));
+          startTimer(job);
+        } else {
+          showToast("NFC chip not matched to today's jobs", true);
+        }
+      };
+    } catch (err) {
+      showToast("NFC error: " + err.message, true);
+      _resetNFCBtn();
+    }
+  });
+}
+
+function _resetNFCBtn() {
+  _nfcReader = null;
+  const btn = document.getElementById("btnNFCScan");
+  if (btn) {
+    btn.classList.remove("scanning");
+    btn.innerHTML = "&#x1F4F1; Scan NFC to Clock In";
+  }
 }
 
 // ── Timer — start ─────────────────────────────────────────────────────────────
@@ -252,6 +370,7 @@ async function startTimer(job) {
   saveTimerState(timerState);
   renderJobCards();
   startTimerTick();
+  updateTimerBanner();
   showToast(geoOk ? "Clock started" : `Clock started — ${geoErrIn || "GPS unavailable"}`);
 }
 
@@ -263,6 +382,7 @@ function pauseTimer() {
   timerState.pausedAt  = new Date().toISOString();
   saveTimerState(timerState);
   renderJobCards();
+  updateTimerBanner();
   showToast("Clock paused");
 }
 
@@ -274,6 +394,7 @@ function resumeTimer() {
   saveTimerState(timerState);
   renderJobCards();
   startTimerTick();
+  updateTimerBanner();
   showToast("Clock resumed");
 }
 
@@ -365,6 +486,7 @@ async function stopTimer() {
 
     showToast(`${formatMinutes(minutes)} logged`);
     renderJobCards();
+    updateTimerBanner();
   } catch (err) {
     // Server failed — restore timer so user can retry; resume tick from frozen elapsed
     timerState = snapshot;
@@ -373,6 +495,7 @@ async function stopTimer() {
     timerState.pausedAt  = new Date().toISOString();
     saveTimerState(timerState);
     renderJobCards();
+    updateTimerBanner();
     startTimerTick(); // Resume display so elapsed stays visible
     showToast("Failed to save time: " + err.message + " — clock paused, tap Resume when ready", true);
   }
