@@ -403,9 +403,38 @@ function liEditRow(it, i) {
   </tr>`;
 }
 
+function recomputeEditTotals() {
+  const tbody = document.getElementById("liEditBody");
+  if (!tbody || !CURRENT) return;
+  const rows = Array.from(tbody.querySelectorAll("tr[data-li-row]"));
+  let newSubtotal = 0;
+  rows.forEach(row => {
+    const qty   = parseFloat(row.querySelector("[data-f='quantity']")?.value  || 0) || 0;
+    const price = parseFloat(row.querySelector("[data-f='unit_price']")?.value || 0) || 0;
+    newSubtotal += Math.round(qty * price * 100) / 100;
+  });
+  newSubtotal = Math.round(newSubtotal * 100) / 100;
+  const taxRate    = Number(CURRENT.tax_rate || 0);
+  const taxAmt     = Math.round(newSubtotal * taxRate) / 100;
+  const deposit    = Number(CURRENT.deposit_applied || 0);
+  const paid       = Number(CURRENT.paid_amount || 0);
+  const newBalance = Math.max(0, Math.round((newSubtotal + taxAmt - deposit - paid) * 100) / 100);
+
+  const totalsEl = document.getElementById("totalsSection");
+  if (!totalsEl) return;
+  const rows2 = [];
+  rows2.push(`<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">${money(newSubtotal)}</span></div>`);
+  if (taxAmt > 0) rows2.push(`<div class="totals-row"><span class="totals-label">Tax (${taxRate}%)</span><span class="totals-value">${money(taxAmt)}</span></div>`);
+  if (deposit > 0) rows2.push(`<div class="totals-row totals-credit"><span class="totals-label">Deposit Applied</span><span class="totals-value">− ${money(deposit)}</span></div>`);
+  if (paid > 0)    rows2.push(`<div class="totals-row totals-credit"><span class="totals-label">Amount Paid</span><span class="totals-value">− ${money(paid)}</span></div>`);
+  rows2.push(`<div class="totals-row totals-grand"><span class="totals-label">${newBalance<=0?"Paid In Full":"Balance Due"}</span><span class="totals-value">${money(newBalance)}</span></div>`);
+  totalsEl.innerHTML = rows2.join("");
+}
+
 function bindLiEditCalc() {
   const tbody = document.getElementById("liEditBody");
-  if (!tbody) return;
+  if (!tbody || tbody._calcBound) return;
+  tbody._calcBound = true;
   tbody.addEventListener("input", e => {
     const row = e.target.closest("tr[data-li-row]");
     if (!row) return;
@@ -414,17 +443,18 @@ function bindLiEditCalc() {
     const amt   = Math.round(qty * price * 100) / 100;
     const disp  = row.querySelector(".li-amt-disp");
     if (disp) disp.textContent = money(amt);
+    recomputeEditTotals();
   });
   tbody.addEventListener("click", e => {
     const btn = e.target.closest("[data-del-row]");
     if (!btn) return;
     btn.closest("tr").remove();
-    // Re-index rows
     Array.from(tbody.querySelectorAll("tr[data-li-row]")).forEach((r,i) => {
       r.dataset.liRow = i;
       const d = r.querySelector("[data-del-row]");
       if (d) d.dataset.delRow = i;
     });
+    recomputeEditTotals();
   });
 }
 

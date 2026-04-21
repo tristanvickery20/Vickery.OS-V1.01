@@ -663,8 +663,19 @@ function renderPaySection(inv) {
   const sc = String(inv.status_code || "draft").toLowerCase();
   const balance = Number(inv.balance_due || 0);
 
-  // Already paid — nothing to show
-  if (sc === "paid" || sc === "void" || balance <= 0) return "";
+  // Already paid — show confirmation
+  if (sc === "paid" || (sc !== "void" && balance <= 0)) {
+    return `<div class="pay-section">
+      <div class="pay-success">
+        <div class="pay-success-icon">✅</div>
+        <div class="pay-success-title">Paid — Thank You!</div>
+        <div class="pay-success-body">This invoice has been paid in full. Thank you for your business!</div>
+      </div>
+    </div>`;
+  }
+
+  // Void invoice — no pay UI
+  if (sc === "void") return "";
 
   // No Square credentials — show phone-pay fallback
   if (!window._sqAppId) {
@@ -684,7 +695,7 @@ function renderPaySection(inv) {
     <div class="pay-methods">
       <div class="pay-method-chip active">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        Card / Apple Pay / Google Pay
+        Credit / Debit Card
       </div>
       <div class="pay-method-chip coming-soon" title="Coming soon">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="3" y="11" width="18" height="11" rx="2"/></svg>
@@ -694,6 +705,13 @@ function renderPaySection(inv) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="3" y="11" width="18" height="11" rx="2"/></svg>
         PayPal <span class="cs-tag">Coming soon</span>
       </div>
+    </div>
+
+    <!-- Wallet buttons (Apple Pay / Google Pay — shown only if device supports them) -->
+    <div id="sq-wallet-buttons" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+      <div id="sq-apple-pay-btn" style="display:none;min-height:48px;"></div>
+      <div id="sq-google-pay-btn" style="display:none;min-height:48px;"></div>
+      <div id="sq-wallet-divider" style="display:none;text-align:center;color:var(--gray-400);font-size:12px;padding:4px 0;">— or pay by card —</div>
     </div>
 
     <div id="sq-card-container">
@@ -814,17 +832,106 @@ let _sqCard = null;
 let _sqInvToken = "";
 let _sqBalance = 0;
 
+function showPaySuccess(invoiceNumber) {
+  const section = document.getElementById("paySection");
+  if (section) {
+    section.innerHTML = `<div class="pay-success">
+      <div class="pay-success-icon">✅</div>
+      <div class="pay-success-title">Payment Received — Thank You!</div>
+      <div class="pay-success-body">
+        ${fmt$(_sqBalance)} has been applied to invoice ${esc(invoiceNumber || "")}.<br>
+        Thank you for your business with Vickery Electric!
+      </div>
+    </div>`;
+  }
+}
+
+function resetPayBtn() {
+  const btn = document.getElementById("paySubmitBtn");
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Pay ${fmt$(_sqBalance)} Securely`;
+  }
+}
+
+async function submitTokenizedPayment(sourceId) {
+  const errEl = document.getElementById("payError");
+  const amountCents = Math.round(_sqBalance * 100);
+  try {
+    const resp = await fetch("/api/invoice/pay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: _sqInvToken, source_id: sourceId, amount_cents: amountCents }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      showPaySuccess(data.invoice_number);
+    } else {
+      if (errEl) errEl.textContent = data.error || "Payment declined. Please try again or call (409) 554-3392.";
+      resetPayBtn();
+    }
+  } catch (e) {
+    if (errEl) errEl.textContent = "Network error. Please check your connection and try again.";
+    resetPayBtn();
+  }
+}
+
 async function initSquare(appId, locationId, invToken, balance) {
   if (!window.Square) return;
+  _sqInvToken = invToken;
+  _sqBalance  = balance;
+
   try {
     const payments = window.Square.payments(appId, locationId);
+
+    // ── Payment request (for wallet methods) ──────────────────────────────
+    const paymentRequest = payments.paymentRequest({
+      countryCode:  "US",
+      currencyCode: "USD",
+      total: { amount: balance.toFixed(2), label: "Vickery Electric Invoice" },
+    });
+
+    // ── Apple Pay ────────────────────────────────────────────────────────
+    try {
+      const applePay = await payments.applePay(paymentRequest);
+      await applePay.attach("#sq-apple-pay-btn");
+      document.getElementById("sq-apple-pay-btn").style.display = "";
+      document.getElementById("sq-wallet-divider").style.display = "";
+      applePay.addEventListener("tokenization", async (event) => {
+        const { tokenResult } = event.detail;
+        if (tokenResult.status === "OK") {
+          await submitTokenizedPayment(tokenResult.token);
+        } else {
+          const errEl = document.getElementById("payError");
+          if (errEl) errEl.textContent = tokenResult.errors?.map(e => e.message).join(" ") || "Apple Pay failed. Please try card.";
+        }
+      });
+    } catch (_) { /* Apple Pay not available on this device/browser */ }
+
+    // ── Google Pay ────────────────────────────────────────────────────────
+    try {
+      const googlePay = await payments.googlePay(paymentRequest);
+      await googlePay.attach("#sq-google-pay-btn");
+      document.getElementById("sq-google-pay-btn").style.display = "";
+      document.getElementById("sq-wallet-divider").style.display = "";
+      googlePay.addEventListener("tokenization", async (event) => {
+        const { tokenResult } = event.detail;
+        if (tokenResult.status === "OK") {
+          await submitTokenizedPayment(tokenResult.token);
+        } else {
+          const errEl = document.getElementById("payError");
+          if (errEl) errEl.textContent = tokenResult.errors?.map(e => e.message).join(" ") || "Google Pay failed. Please try card.";
+        }
+      });
+    } catch (_) { /* Google Pay not available on this device/browser */ }
+
+    // ── Card ──────────────────────────────────────────────────────────────
     const card = await payments.card();
     await card.attach("#sq-card-container");
     _sqCard = card;
-    _sqInvToken = invToken;
-    _sqBalance = balance;
     const submitBtn = document.getElementById("paySubmitBtn");
     if (submitBtn) submitBtn.disabled = false;
+
   } catch (e) {
     const container = document.getElementById("sq-card-container");
     if (container) container.innerHTML = `<div class="sq-card-placeholder" style="color:#dc2626">Payment form unavailable. Please call (409) 554-3392 to pay.</div>`;
@@ -847,40 +954,13 @@ async function handlePaySubmit() {
     if (result.status !== "OK") {
       const msg = result.errors?.map(e => e.message).join(" ") || "Card error. Please try again.";
       errEl.textContent = msg;
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Pay ${fmt$(_sqBalance)} Securely`;
+      resetPayBtn();
       return;
     }
-
-    const amountCents = Math.round(_sqBalance * 100);
-    const resp = await fetch("/api/invoice/pay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: _sqInvToken, source_id: result.token, amount_cents: amountCents }),
-    });
-    const data = await resp.json();
-
-    if (data.ok) {
-      const section = document.getElementById("paySection");
-      if (section) {
-        section.innerHTML = `<div class="pay-success">
-          <div class="pay-success-icon">✅</div>
-          <div class="pay-success-title">Payment Received — Thank You!</div>
-          <div class="pay-success-body">
-            ${fmt$(_sqBalance)} has been applied to invoice ${esc(data.invoice_number || "")}.<br>
-            A receipt will be emailed to you if an email is on file.
-          </div>
-        </div>`;
-      }
-    } else {
-      errEl.textContent = data.error || "Payment declined. Please try again or call (409) 554-3392.";
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Pay ${fmt$(_sqBalance)} Securely`;
-    }
+    await submitTokenizedPayment(result.token);
   } catch (e) {
     errEl.textContent = "Network error. Please check your connection and try again.";
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Pay ${fmt$(_sqBalance)} Securely`;
+    resetPayBtn();
   }
 }
 
