@@ -314,9 +314,9 @@ async function pushExpenseToQuickBooks(entry) {
     if (cfg.qb_auto_sync_expenses !== "true") return;
     // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
     if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      if (cfg.qb_credentials_saved === "true") {
-        console.log(`[QB] Expense queued — credentials saved but OAuth not yet complete (${entry.id})`);
-      }
+      // Mock response — log the payload so the sync path is exercisable without live creds
+      const mockPayload = _buildQbPurchase(entry, cfg);
+      console.log(`[QB MOCK] Expense push (not connected) — would POST Purchase:`, JSON.stringify(mockPayload));
       return;
     }
     const accessToken = decryptSecret(cfg.qb_access_token || "");
@@ -353,9 +353,9 @@ async function pushTimeToQuickBooks(entry) {
     if (cfg.qb_auto_sync_time !== "true") return;
     // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
     if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      if (cfg.qb_credentials_saved === "true") {
-        console.log(`[QB] Time entry queued — credentials saved but OAuth not yet complete (${entry.id})`);
-      }
+      // Mock response — log the payload so the sync path is exercisable without live creds
+      const mockPayload = _buildQbTimeActivity(entry, cfg);
+      console.log(`[QB MOCK] Time push (not connected) — would POST TimeActivity:`, JSON.stringify(mockPayload));
       return;
     }
     const accessToken = decryptSecret(cfg.qb_access_token || "");
