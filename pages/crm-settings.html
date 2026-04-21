@@ -970,12 +970,17 @@
 
           if (d.connected) {
             dot.className = "dot-ok";
-            lbl.textContent = "Connected" + (d.connectedAt ? " since " + new Date(d.connectedAt).toLocaleDateString() : "");
+            lbl.textContent = "Connected (OAuth active)" + (d.connectedAt ? " — " + new Date(d.connectedAt).toLocaleDateString() : "");
             disco.style.display = "inline-flex";
-            prov.innerHTML = '<span class="dot-ok"></span> QuickBooks Online (' + (d.environment || "sandbox") + ')';
+            prov.innerHTML = '<span class="dot-ok"></span> QuickBooks Online (' + (d.environment || "sandbox") + ') — live sync active';
+          } else if (d.credentialsSaved) {
+            dot.className = "dot-off";
+            lbl.textContent = "Credentials saved — OAuth token required to activate sync";
+            disco.style.display = "inline-flex";
+            prov.innerHTML = '<span class="dot-off"></span> QuickBooks Online (' + (d.environment || "sandbox") + ') — credentials saved, sync pending OAuth';
           } else {
-            dot.className = d.hasClientId ? "dot-off" : "dot-na";
-            lbl.textContent = d.hasClientId ? "Credentials saved — not yet verified" : "Not connected";
+            dot.className = "dot-na";
+            lbl.textContent = "Not configured";
             disco.style.display = "none";
             prov.innerHTML = '<span class="dot-na"></span> Mock / Manual — no accounting system connected';
           }

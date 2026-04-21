@@ -8,7 +8,13 @@ const { getConfig, setConfigKeys } = require("../lib/config");
 // visible in the sheet even if someone has the sheet ID.
 // ─────────────────────────────────────────────────────────────
 function _encKey() {
-  return crypto.createHash("sha256").update(process.env.CRM_PIN || "vickery-electric-crm-key").digest();
+  const pin = process.env.CRM_PIN;
+  if (!pin) {
+    // CRM_PIN is required for QB secret encryption. Without it we store the
+    // secret unencrypted but still protected by the Config sheet's access controls.
+    return crypto.createHash("sha256").update("NO_PIN_SET").digest();
+  }
+  return crypto.createHash("sha256").update(pin).digest();
 }
 function encryptSecret(text) {
   if (!text) return "";
@@ -88,10 +94,12 @@ async function handleSaveNotifications(req, res) {
 async function handleGetQuickBooks(req, res) {
   try {
     const cfg = await getConfig();
-    const connected = cfg.qb_connected === "true";
+    const credentialsSaved = cfg.qb_credentials_saved === "true";
+    const connected        = cfg.qb_connected === "true";
     json(res, 200, {
       ok: true,
       connected,
+      credentialsSaved,
       // Never expose secrets — only show presence
       hasClientId:       !!cfg.qb_client_id,
       hasClientSecret:   !!cfg.qb_client_secret,
@@ -100,6 +108,7 @@ async function handleGetQuickBooks(req, res) {
       autoSyncTime:      cfg.qb_auto_sync_time     === "true",
       environment:       cfg.qb_environment        || "sandbox",
       connectedAt:       cfg.qb_connected_at       || "",
+      credentialsSavedAt: cfg.qb_credentials_saved_at || "",
     });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
@@ -122,10 +131,12 @@ async function handleSaveQuickBooks(req, res) {
     if (body.autoSyncExpenses !== undefined) pairs.qb_auto_sync_expenses = String(!!body.autoSyncExpenses);
     if (body.autoSyncTime     !== undefined) pairs.qb_auto_sync_time     = String(!!body.autoSyncTime);
 
-    // If all credentials provided, mark as connected
+    // Mark credentials as saved (not yet OAuth-verified)
+    // qb_connected is only "true" once a real OAuth access token is stored
     if (body.clientId && body.clientSecret && body.realmId) {
-      pairs.qb_connected    = "true";
-      pairs.qb_connected_at = new Date().toISOString();
+      pairs.qb_credentials_saved    = "true";
+      pairs.qb_credentials_saved_at = new Date().toISOString();
+      // Do NOT set qb_connected here — that requires a real OAuth token exchange
     }
 
     await setConfigKeys(pairs);
@@ -139,11 +150,13 @@ async function handleSaveQuickBooks(req, res) {
 async function handleDisconnectQuickBooks(req, res) {
   try {
     await setConfigKeys({
-      qb_connected:     "false",
-      qb_client_id:     "",
-      qb_client_secret: "",
-      qb_realm_id:      "",
-      qb_connected_at:  "",
+      qb_connected:          "false",
+      qb_credentials_saved:  "false",
+      qb_client_id:          "",
+      qb_client_secret:      "",
+      qb_realm_id:           "",
+      qb_connected_at:       "",
+      qb_credentials_saved_at: "",
     });
     json(res, 200, { ok: true });
   } catch (err) {
@@ -206,10 +219,13 @@ async function handleGetStaffSettings(req, res) {
       if (raw) defaultPermissions = JSON.parse(raw);
     } catch { /* use built-in defaults */ }
 
+    // Default to true (require approval) when unset — matches signup path behaviour
+    const requireApproval = cfg.staff_require_approval !== "false";
+
     json(res, 200, {
       ok: true,
       defaultPermissions,
-      requireApproval: cfg.staff_require_approval === "true",
+      requireApproval,
     });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
@@ -275,8 +291,8 @@ async function pushExpenseToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_expenses !== "true") return;
-    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB] Expense sync skipped — not connected (${entry.id} $${entry.amount} ${entry.vendor})`);
+    if (cfg.qb_credentials_saved !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
+      console.log(`[QB] Expense sync skipped — credentials not configured (${entry.id} $${entry.amount} ${entry.vendor})`);
       return;
     }
     const accessToken = cfg.qb_access_token || "";
@@ -311,8 +327,8 @@ async function pushTimeToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_time !== "true") return;
-    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB] Time sync skipped — not connected (${entry.id} ${entry.minutes}min tech=${entry.tech_id})`);
+    if (cfg.qb_credentials_saved !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
+      console.log(`[QB] Time sync skipped — credentials not configured (${entry.id} ${entry.minutes}min tech=${entry.tech_id})`);
       return;
     }
     const accessToken = cfg.qb_access_token || "";
