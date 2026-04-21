@@ -113,6 +113,9 @@ async function handleQbCallback(req, res) {
 
     console.log(`[QB OAuth] Connected successfully. Realm: ${realmId}`);
 
+    // Bust the provider cache so the next API call instantly uses QB
+    try { require("../lib/accounting").invalidateCache(); } catch {}
+
     // Redirect back to settings with success flag
     res.writeHead(302, {
       Location: "/crm/settings?tab=billing&qb_connected=1",

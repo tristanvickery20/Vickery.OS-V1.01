@@ -76,18 +76,45 @@
     }
   }
 
+  function showToast(msg, isErr) {
+    let t = document.getElementById("_expToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "_expToast";
+      Object.assign(t.style, {
+        position:"fixed", bottom:"24px", left:"50%", transform:"translateX(-50%)",
+        padding:"10px 22px", borderRadius:"10px", fontWeight:"600", fontSize:"14px",
+        zIndex:"9999", transition:"opacity .3s", pointerEvents:"none",
+      });
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.background = isErr ? "#7f1d1d" : "#166534";
+    t.style.color = "#fff";
+    t.style.opacity = "1";
+    clearTimeout(t._hide);
+    t._hide = setTimeout(() => { t.style.opacity = "0"; }, 2800);
+  }
+
   submitBtn.addEventListener("click", async () => {
-    resultEl.textContent = "Saving...";
-    resultEl.className = "muted";
+    const date   = document.getElementById("date").value;
+    const amount = document.getElementById("amount").value;
+
+    if (!date)   { showToast("Pick a date first.", true); return; }
+    if (!amount) { showToast("Enter an amount.", true); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving…";
+    resultEl.textContent = "";
 
     const payload = {
-      date: document.getElementById("date").value,
-      tech_id: document.getElementById("tech_id").value,
-      lead_id: document.getElementById("lead_id").value,
-      type: document.getElementById("type").value,
-      vendor: document.getElementById("vendor").value,
-      amount: Number(document.getElementById("amount").value || 0),
-      notes: document.getElementById("notes").value,
+      date,
+      tech_id:     document.getElementById("tech_id").value,
+      lead_id:     document.getElementById("lead_id").value,
+      type:        document.getElementById("type").value,
+      vendor:      document.getElementById("vendor").value,
+      amount:      Number(amount || 0),
+      notes:       document.getElementById("notes").value,
       receipt_url: document.getElementById("receipt_url").value,
     };
 
@@ -97,12 +124,17 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      resultEl.textContent = "Expense logged!";
-      resultEl.className = "success-msg";
+      showToast("Expense saved!");
+      document.getElementById("amount").value = "";
+      document.getElementById("vendor").value = "";
+      document.getElementById("notes").value  = "";
+      document.getElementById("receipt_url").value = "";
       await loadEntries();
     } catch (err) {
-      resultEl.textContent = "ERROR: " + err.message;
-      resultEl.className = "warn";
+      showToast("Error: " + err.message, true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Log Expense";
     }
   });
 
