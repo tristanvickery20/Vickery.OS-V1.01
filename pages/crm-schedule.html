@@ -609,7 +609,7 @@
         .mv-cell { min-height: 76px; }
         .mv-chip { font-size: 10px; padding: 2px 4px; }
         .mv-chip .chip-time { display: none; }
-        .wv-time-gutter, .wv-allday-label { width: 38px; }
+        .wv-time-gutter, .wv-allday-label, .wv-time-col { width: 38px; }
         .wv-time-slot { font-size: 9px; padding: 2px 3px 0; }
       }
 
@@ -622,6 +622,11 @@
         font-size: 9px; font-weight: 800; letter-spacing: 0;
         background: rgba(255,255,255,0.15); border-radius: 4px;
         padding: 1px 4px; margin-left: 3px; flex-shrink: 0;
+      }
+      /* Tech name line shown inside week-view chips when 1+ techs assigned */
+      .wv-chip .chip-tech {
+        font-size: 10px; opacity: 0.65;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
     </style>
   </head>
@@ -1593,8 +1598,9 @@
             }
           }
 
-          // Job chips
-          const dayBookings = byDate[day.date] || [];
+          // Job chips — merge duplicate bookings for the same job before layout
+          const rawDayBookings = byDate[day.date] || [];
+          const dayBookings = mergeWeekBookings(rawDayBookings);
           // Layout: detect overlapping chips and offset them
           const positioned = layoutBookings(dayBookings);
           for (const { b, left, width } of positioned) {
@@ -1603,10 +1609,13 @@
             const topPx  = Math.max(0, (startH - START_HOUR) * HOUR_PX);
             const hPx    = Math.max(22, (endH - startH) * HOUR_PX - 2);
             const selected = S.selected.has(b.booking_id) ? " selected" : "";
+            const techLine = b._techNames && b._techNames.length
+              ? `<span class="chip-tech">${esc(b._techNames.join(" + "))}</span>` : "";
             html += `<div class="wv-chip ${chipClass(b.status)}${selected}"
               draggable="true" data-id="${esc(b.booking_id)}" data-dur="${b.duration_minutes}"
-              style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;position:relative;">
+              style="top:${topPx}px;height:${hPx}px;left:${left}%;width:${width}%;">
               <span class="chip-name">${esc(b.customer_name || "—")}</span>
+              ${techLine}
               <span class="chip-time">${fmtTime(b.scheduled_datetime)}</span>
               ${b.address ? `<a class="chip-nav-link" href="${navHref(b.address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Navigate">&#10132;</a>` : ""}
               <div class="chip-resize-handle" title="Drag to resize"></div>
@@ -1617,6 +1626,32 @@
         html += `</div></div></div>`;
         calMain.innerHTML = html;
         setupWeekDayEvents();
+      }
+
+      // Merge duplicate bookings caused by multi-tech assignment
+      // (two separate rows for the same job → collapse into one chip showing "Dave + Ryan")
+      function mergeWeekBookings(bookings) {
+        const groups = new Map();
+        const order  = [];
+        for (const b of bookings) {
+          // Key: same customer + same exact datetime (handles one-booking-per-tech duplicates)
+          const key = `${b.customer_name}|${b.scheduled_datetime || b.local_date + "T" + b.local_hour + ":" + String(b.local_min).padStart(2,"0")}`;
+          if (groups.has(key)) {
+            const g = groups.get(key);
+            const addName = n => { if (n && !g._techNames.includes(n)) g._techNames.push(n); };
+            if (b.assigned_tech_name)  addName(b.assigned_tech_name);
+            if (b.assigned_tech_names) b.assigned_tech_names.forEach(addName);
+          } else {
+            const techNames = [];
+            const addName = n => { if (n && !techNames.includes(n)) techNames.push(n); };
+            if (b.assigned_tech_name)  addName(b.assigned_tech_name);
+            if (b.assigned_tech_names) b.assigned_tech_names.forEach(addName);
+            const merged = { ...b, _techNames: techNames };
+            groups.set(key, merged);
+            order.push(merged);
+          }
+        }
+        return order;
       }
 
       // Simple layout: detect overlapping bookings and assign columns
@@ -2321,11 +2356,14 @@
             container: mapEl,
             style: "mapbox://styles/mapbox/dark-v11",
             center, zoom: withCoords.length > 0 ? 11 : 9,
+            scrollZoom: true,
           });
           _map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
           _optOrder = null;
 
           _map.on("load", () => {
+            // Resize after the container has fully painted to fix blank-tile issues
+            requestAnimationFrame(() => _map.resize());
             const sorted = sortByTime(withCoords);
             mapRenderPins(sorted);
             mapDrawRoute(sorted);
