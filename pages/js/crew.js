@@ -1728,8 +1728,43 @@ function addClaimLine() {
     '<input type="text" placeholder="Description" style="flex:2;min-width:120px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-desc" />' +
     '<input type="number" placeholder="Amount" min="0" step="0.01" style="flex:1;min-width:80px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-amt" />' +
     '<input type="date" title="Item Date" style="flex:1;min-width:110px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-item-date" />' +
-    '<button style="background:transparent;border:none;color:hsl(0 70% 60%);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove">×</button>';
-  row.querySelector("button").addEventListener("click", () => row.remove());
+    '<label title="Attach receipt photo" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:hsl(220 14% 14%);border:1px solid hsl(220 10% 22%);border-radius:8px;flex-shrink:0;">' +
+      '<span class="rcpt-icon" style="font-size:17px;">📎</span>' +
+      '<input type="file" accept="image/*" capture="environment" class="claim-receipt-file" style="display:none;" />' +
+    '</label>' +
+    '<input type="hidden" class="claim-receipt-url" value="" />' +
+    '<button class="claim-rm-btn" style="background:transparent;border:none;color:hsl(0 70% 60%);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove">×</button>';
+  row.querySelector(".claim-rm-btn").addEventListener("click", () => row.remove());
+  // Receipt photo upload
+  row.querySelector(".claim-receipt-file").addEventListener("change", async function() {
+    const file = this.files[0];
+    if (!file) return;
+    const icon = row.querySelector(".rcpt-icon");
+    icon.textContent = "⏳";
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const b64 = e.target.result.split(",")[1];
+      try {
+        const r = await fetch("/api/crew/upload-receipt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64: b64, mime_type: file.type }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          row.querySelector(".claim-receipt-url").value = d.url;
+          icon.textContent = "✅";
+        } else {
+          icon.textContent = "❌";
+          showCrewToast("Receipt upload failed: " + (d.error || "error"), true);
+        }
+      } catch(err) {
+        icon.textContent = "❌";
+        showCrewToast("Receipt upload error", true);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
   container.appendChild(row);
 }
 
@@ -1744,7 +1779,8 @@ async function submitClaim() {
     const desc = (row.querySelector(".claim-desc") || {}).value || "";
     const amt  = parseFloat((row.querySelector(".claim-amt") || {}).value || "0") || 0;
     const idate = (row.querySelector(".claim-item-date") || {}).value || "";
-    if (desc || amt) lines.push({ category: cat, description: desc, amount: amt, item_date: idate });
+    const rcpt = (row.querySelector(".claim-receipt-url") || {}).value || "";
+    if (desc || amt) lines.push({ category: cat, description: desc, amount: amt, item_date: idate, receipt_url: rcpt });
   });
   if (lines.length === 0) { showCrewToast("Add at least one line item.", true); return; }
   const btn = document.getElementById("submitClaimBtn");

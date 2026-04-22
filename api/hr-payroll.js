@@ -18,29 +18,58 @@ const {
 const { readAllEmployees } = require("../lib/hr");
 const { getCrewSession } = require("../lib/staff");
 const { readAllAttendance } = require("../lib/hr-attendance");
+const { readAllHolidays, readAllHolidayLists } = require("../lib/hr-leave");
+
+/**
+ * Load holiday dates from the active holiday list for a given year.
+ * Returns a Set of date strings ("YYYY-MM-DD") for quick lookup.
+ */
+async function loadHolidayDates(periodStart, periodEnd) {
+  const [lists, holidays] = await Promise.all([readAllHolidayLists(), readAllHolidays()]);
+  const year = periodStart.slice(0, 4);
+  const activeList = lists.find(l => l.is_active === "true" || l.is_active === "1" || l.year === year);
+  if (!activeList) return new Set();
+  return new Set(
+    holidays
+      .filter(h => h.holiday_list_id === activeList.holiday_list_id && h.date >= periodStart && h.date <= periodEnd)
+      .map(h => h.date)
+  );
+}
 
 /**
  * Count working days for one employee in a period, respecting payroll settings.
  * Falls back to calendar weekday count if no attendance records exist.
+ * Honors holiday_handling: "exclude" removes holidays from the working day count.
  */
-function resolveWorkingDays(allAttendance, staffId, periodStart, periodEnd, settings, weekdayCount) {
+function resolveWorkingDays(allAttendance, staffId, periodStart, periodEnd, settings, weekdayCount, holidayDates) {
   const source = (settings.working_day_source || "calendar").toLowerCase();
   const halfFrac = parseFloat(settings.half_day_fraction) || 0.5;
+  const holidays = holidayDates || new Set();
+  const excludeHolidays = (settings.holiday_handling || "exclude").toLowerCase() === "exclude";
+
+  // Build the set of weekday-holiday overlaps to subtract from calendar day count
+  const holidayWeekdayCount = excludeHolidays
+    ? [...holidays].filter(d => { const dow = new Date(d + "T00:00:00").getDay(); return dow !== 0 && dow !== 6; }).length
+    : 0;
+
   if (source === "attendance") {
     const records = allAttendance.filter(a =>
       a.staff_id === staffId && a.date >= periodStart && a.date <= periodEnd
     );
-    if (records.length === 0) return weekdayCount; // no attendance data — fall back
+    if (records.length === 0) return weekdayCount - holidayWeekdayCount; // fall back to adjusted calendar
     let days = 0;
     for (const r of records) {
       const s = String(r.status || "").toLowerCase();
+      // If holiday_handling = exclude, don't count holidays as work days even if marked Present
+      if (excludeHolidays && holidays.has(r.date)) continue;
       if (s === "present" || s === "p") days += 1;
       else if (s === "half" || s === "half-day" || s === "half day" || s === "hd") days += halfFrac;
       // absent / other = 0
     }
     return days;
   }
-  return weekdayCount; // calendar — plain weekday count
+  // calendar source — weekday count minus holiday overlaps
+  return weekdayCount - holidayWeekdayCount;
 }
 
 function json(res, status, data) {
@@ -451,6 +480,7 @@ async function handleGetRunPreview(req, res, runId) {
       readPayrollSettings(),
       readAllAttendance(),
     ]);
+    const holidayDates = await loadHolidayDates(run.pay_period_start, run.pay_period_end);
 
     // Calculate calendar weekday count (base for proration denominator)
     const start = new Date(run.pay_period_start);
@@ -472,9 +502,9 @@ async function handleGetRunPreview(req, res, runId) {
 
     const previews = [];
     for (const emp of activeEmps) {
-      // Resolve actual working days using payroll settings (attendance vs calendar)
+      // Resolve actual working days using payroll settings (attendance vs calendar, with holiday exclusion)
       const workDays = resolveWorkingDays(
-        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount
+        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount, holidayDates
       );
       const pay = await computeEmployeePay(
         emp.staff_id, run.pay_period_start, periodEnd, workDays, totalDays,
@@ -510,6 +540,7 @@ async function handleFinalizeRun(req, res, runId) {
       readPayrollSettings(),
       readAllAttendance(),
     ]);
+    const holidayDates = await loadHolidayDates(run.pay_period_start, run.pay_period_end);
 
     const periodEnd = run.pay_period_end;
     const start = new Date(run.pay_period_start);
@@ -530,9 +561,9 @@ async function handleFinalizeRun(req, res, runId) {
       const hasAssignment = assignments.some(a => a.staff_id === emp.staff_id && a.effective_date <= periodEnd);
       if (!hasAssignment) continue;
 
-      // Resolve per-employee working days using payroll settings
+      // Resolve per-employee working days using payroll settings (attendance, calendar, holidays)
       const workDays = resolveWorkingDays(
-        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount
+        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount, holidayDates
       );
       const pay = await computeEmployeePay(
         emp.staff_id, run.pay_period_start, periodEnd, workDays, totalDays,

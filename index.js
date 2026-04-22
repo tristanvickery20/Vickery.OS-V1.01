@@ -614,6 +614,44 @@ const server = http.createServer(async (req, res) => {
     return handleCreateCorrection(wrappedReq, res);
   }
 
+  // ── Crew Expense Claims (crew session auth — must be before requireAuth guard) ─
+  if (req.url.split("?")[0] === "/api/crew/claims" && req.method === "GET")  return handleCrewListClaims(req, res);
+  if (req.url.split("?")[0] === "/api/crew/claims" && req.method === "POST") return handleCrewCreateClaim(req, res);
+  if (req.url.startsWith("/api/crew/claims/") && req.method === "DELETE") {
+    const crewClaimId = req.url.split("?")[0].slice("/api/crew/claims/".length);
+    return handleCrewDeleteClaim(req, res, crewClaimId);
+  }
+
+  // ── Crew receipt upload (crew session — base64 image → /uploads/receipts/) ──
+  if (req.url === "/api/crew/upload-receipt" && req.method === "POST") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "Unauthorized" })); }
+    const body = await readBody(req);
+    const { base64, mime_type } = body;
+    if (!base64) { res.writeHead(400, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "base64 required" })); }
+    const fs = require("fs");
+    const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic"]);
+    const EXT_MAP2 = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic" };
+    const type = (mime_type || "image/jpeg").toLowerCase();
+    if (!ALLOWED.has(type)) { res.writeHead(400, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "Unsupported type" })); }
+    const buf = Buffer.from(base64, "base64");
+    if (buf.length > 10 * 1024 * 1024) { res.writeHead(400, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "File too large (max 10 MB)" })); }
+    const receiptsDir = path.join(__dirname, "uploads", "receipts");
+    if (!fs.existsSync(receiptsDir)) fs.mkdirSync(receiptsDir, { recursive: true });
+    const ext = EXT_MAP2[type] || "jpg";
+    const fname = `receipt-${Date.now()}-${require("crypto").randomBytes(4).toString("hex")}.${ext}`;
+    fs.writeFileSync(path.join(receiptsDir, fname), buf);
+    const url = `/uploads/receipts/${fname}`;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ ok: true, url }));
+  }
+
+  // ── Public salary slip by share token (no CRM auth required) ─────────────────
+  if (req.url.startsWith("/api/salary-slip/") && req.method === "GET") {
+    const slipToken = req.url.split("?")[0].slice("/api/salary-slip/".length);
+    return handlePublicSlip(req, res, slipToken);
+  }
+
   if (req.url === "/crm") {
     const target = isAuthed(req) ? "/crm/dashboard" : "/login";
     res.writeHead(302, { Location: target });
@@ -1638,13 +1676,6 @@ const server = http.createServer(async (req, res) => {
     const claimId = _epath.slice("/api/hr/payroll/claims/".length);
     return handleDeleteClaim(req, res, claimId);
   }
-  // Expense Claims (crew-facing)
-  if (_epath === "/api/crew/claims" && req.method === "GET")  return handleCrewListClaims(req, res);
-  if (_epath === "/api/crew/claims" && req.method === "POST") return handleCrewCreateClaim(req, res);
-  if (_epath.startsWith("/api/crew/claims/") && req.method === "DELETE") {
-    const claimId = _epath.slice("/api/crew/claims/".length);
-    return handleCrewDeleteClaim(req, res, claimId);
-  }
   // Salary Components
   if (_epath === "/api/hr/payroll/components" && req.method === "GET")  return handleListComponents(req, res);
   if (_epath === "/api/hr/payroll/components" && req.method === "POST") return handleCreateComponent(req, res);
@@ -1706,12 +1737,6 @@ const server = http.createServer(async (req, res) => {
     const slipId = _epath.slice("/api/hr/payroll/slips/".length);
     return handleGetSlip(req, res, slipId);
   }
-  // Public slip by token (no auth required — checked inside handler)
-  if (_epath.startsWith("/api/salary-slip/") && req.method === "GET") {
-    const token = _epath.slice("/api/salary-slip/".length);
-    return handlePublicSlip(req, res, token);
-  }
-
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
