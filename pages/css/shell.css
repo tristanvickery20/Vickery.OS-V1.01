@@ -21,6 +21,10 @@ body{
   margin:0;
   background: var(--bg);
   color: var(--text);
+  /* Extend into iPhone notch/home-bar areas */
+  padding-left:  env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ---------- Shell layout ---------- */
@@ -74,6 +78,7 @@ body{
   -webkit-backdrop-filter: blur(10px);
   border-bottom:1px solid var(--line2);
   padding:10px 12px;
+  padding-top: calc(10px + env(safe-area-inset-top));
   align-items:center;
   justify-content:space-between;
   gap:10px;

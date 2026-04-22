@@ -6,8 +6,8 @@
   // ── Styles ─────────────────────────────────────────────────────────────────
   var style = document.createElement("style");
   style.textContent = [
-    /* FAB */
-    "#ve-qa-fab{position:fixed;bottom:24px;right:20px;z-index:900;width:52px;height:52px;border-radius:50%;",
+    /* FAB — respects iPhone safe area (home bar / notch in landscape) */
+    "#ve-qa-fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:calc(20px + env(safe-area-inset-right));z-index:900;width:52px;height:52px;border-radius:50%;",
     "background:#2d6ae0;border:none;color:#fff;font-size:26px;line-height:1;cursor:pointer;",
     "box-shadow:0 4px 18px rgba(45,106,224,.55);display:flex;align-items:center;justify-content:center;",
     "transition:transform .15s,box-shadow .15s;font-family:inherit;}",
@@ -16,15 +16,26 @@
     /* Backdrop */
     "#ve-qa-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:910;display:none;}",
     "#ve-qa-backdrop.open{display:block;}",
-    /* Modal */
+    /* Modal — portrait: slides up from bottom; landscape: centered */
     "#ve-qa-modal{position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(100%);",
     "z-index:920;width:100%;max-width:520px;background:#111827;border:1px solid rgba(255,255,255,.1);",
-    "border-radius:20px 20px 0 0;padding:20px 20px 36px;transition:transform .28s cubic-bezier(.2,.8,.4,1);",
-    "max-height:92dvh;overflow-y:auto;}",
+    "border-radius:20px 20px 0 0;padding:20px 20px calc(36px + env(safe-area-inset-bottom));transition:transform .28s cubic-bezier(.2,.8,.4,1);",
+    "max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}",
     "#ve-qa-modal.open{transform:translateX(-50%) translateY(0);}",
+    /* On wider screens or landscape: center the modal */
     "@media(min-width:600px){",
-    "#ve-qa-modal{bottom:auto;top:50%;border-radius:16px;transform:translateX(-50%) translateY(calc(-50% + 40px));max-height:88dvh;}",
+    "#ve-qa-modal{bottom:auto;top:50%;border-radius:16px;padding:20px 20px 28px;transform:translateX(-50%) translateY(calc(-50% + 40px));max-height:88dvh;}",
     "#ve-qa-modal.open{transform:translateX(-50%) translateY(-50%);}}",
+    /* Landscape fix: short screen height — compact modal that scrolls */
+    "@media(max-height:500px){",
+    "#ve-qa-modal{bottom:auto;top:8px;border-radius:14px;padding:12px 16px 16px;",
+    "transform:translateX(-50%) translateY(0) !important;max-height:calc(100dvh - 16px);",
+    "width:calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));}",
+    "#ve-qa-modal.open{transform:translateX(-50%) translateY(0) !important;}",
+    ".qa-chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:none;}",
+    ".qa-chips::-webkit-scrollbar{display:none;}",
+    ".qa-head{margin-bottom:10px;}",
+    ".qa-form{gap:8px;}}",
     /* Modal header */
     ".qa-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}",
     ".qa-title{font-size:17px;font-weight:800;color:#f1f5f9;}",
