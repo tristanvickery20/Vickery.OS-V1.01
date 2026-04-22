@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Your Job Offer — Vickery Electric</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a1628; color: #e6eefc; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .site-header {
+      background: #060e1e; border-bottom: 1px solid rgba(100,150,255,0.12);
+      padding: 16px 24px;
+    }
+    .brand { font-size: 18px; font-weight: 800; color: #e6eefc; text-decoration: none; }
+    .center { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+    .offer-card {
+      background: #101e45; border: 1px solid rgba(100,150,255,0.2);
+      border-radius: 20px; padding: 36px 32px; max-width: 520px; width: 100%;
+    }
+    .offer-header { text-align: center; margin-bottom: 28px; }
+    .offer-logo { font-size: 36px; margin-bottom: 10px; }
+    .offer-header h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .offer-header p { color: rgba(220,232,255,0.7); font-size: 14px; }
+
+    .detail-row {
+      display: flex; gap: 10px; padding: 12px 0;
+      border-bottom: 1px solid rgba(100,150,255,0.08);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: rgba(220,232,255,0.5); font-size: 13px; min-width: 130px; flex-shrink: 0; }
+    .detail-val { font-size: 14px; font-weight: 600; }
+
+    .offer-notes {
+      background: rgba(100,150,255,0.05); border-radius: 10px; padding: 14px;
+      font-size: 13px; color: rgba(220,232,255,0.75); margin-top: 16px; white-space: pre-line;
+    }
+
+    .action-row {
+      display: flex; gap: 12px; margin-top: 28px; justify-content: center; flex-wrap: wrap;
+    }
+    .btn-accept {
+      flex: 1; min-width: 140px; padding: 14px; background: hsl(140 55% 35%); color: #fff;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 800;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-accept:hover { opacity: .88; }
+    .btn-decline {
+      flex: 1; min-width: 140px; padding: 14px; background: transparent;
+      border: 2px solid hsl(0 50% 40%); color: hsl(0 70% 65%);
+      border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-decline:hover { background: hsl(0 50% 12%); }
+
+    .status-msg {
+      text-align: center; padding: 20px; border-radius: 14px;
+      font-size: 16px; font-weight: 700; margin-top: 20px;
+    }
+    .status-accepted { background: hsl(140 50% 15%); color: hsl(140 70% 72%); }
+    .status-declined { background: hsl(0 30% 15%); color: hsl(0 50% 70%); }
+    .status-sent     { /* actions visible */ }
+
+    .loading-msg { text-align: center; color: rgba(220,232,255,0.5); padding: 40px; }
+    .error-msg { text-align: center; color: hsl(0 70% 65%); padding: 40px; }
+
+    .confirm-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 100;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box {
+      background: #101e45; border: 1px solid rgba(100,150,255,0.2);
+      border-radius: 16px; padding: 28px; max-width: 380px; text-align: center;
+    }
+    .confirm-box h3 { font-size: 17px; margin-bottom: 10px; }
+    .confirm-box p { color: rgba(220,232,255,0.7); font-size: 14px; margin-bottom: 20px; }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .confirm-yes {
+      padding: 10px 22px; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .confirm-no {
+      padding: 10px 22px; background: transparent;
+      border: 1px solid rgba(100,150,255,0.2); border-radius: 10px;
+      color: rgba(220,232,255,0.7); font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="brand">⚡ Vickery Electric</a>
+</header>
+<div class="center">
+  <div id="offerContent" class="loading-msg">Loading your offer…</div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmMsg"></p>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeConfirm()">Go Back</button>
+      <button class="confirm-yes" id="confirmYes" onclick="doRespond()"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = window.location.pathname.split("/offer/")[1] || "";
+  let pendingAction = null;
+  let offerData = null;
+
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function fmtDate(d) {
+    if (!d) return "—";
+    try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }); }
+    catch { return d; }
+  }
+  function fmtPay(rate, period) {
+    const r = parseFloat(rate) || 0;
+    const labels = { Salary: "year", Hourly: "hour", Daily: "day", Weekly: "week" };
+    const unit = labels[period] || "hour";
+    return `$${r.toLocaleString(undefined, { minimumFractionDigits: period === "Salary" ? 0 : 2, maximumFractionDigits: 2 })} / ${unit}`;
+  }
+
+  async function loadOffer() {
+    if (!token) {
+      document.getElementById("offerContent").className = "error-msg";
+      document.getElementById("offerContent").textContent = "Invalid offer link.";
+      return;
+    }
+    try {
+      const r = await fetch(`/api/public/offer/${token}`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Not found");
+      offerData = d.offer;
+      renderOffer(d.offer);
+    } catch (e) {
+      document.getElementById("offerContent").className = "error-msg";
+      document.getElementById("offerContent").textContent = e.message || "This offer link is invalid or has expired.";
+    }
+  }
+
+  function renderOffer(offer) {
+    const isResponded = offer.status === "Accepted" || offer.status === "Declined";
+    let actionHtml = "";
+    if (offer.status === "Sent") {
+      actionHtml = `
+        <div class="action-row">
+          <button class="btn-accept" onclick="confirmRespond('accept')">✓ Accept Offer</button>
+          <button class="btn-decline" onclick="confirmRespond('decline')">Decline</button>
+        </div>`;
+    } else if (offer.status === "Accepted") {
+      actionHtml = `<div class="status-msg status-accepted">✓ You have accepted this offer. Welcome to the team!</div>`;
+    } else if (offer.status === "Declined") {
+      actionHtml = `<div class="status-msg status-declined">This offer has been declined.</div>`;
+    } else {
+      actionHtml = `<div class="status-msg" style="color:rgba(220,232,255,0.5);background:rgba(100,150,255,0.05)">This offer has not been sent yet.</div>`;
+    }
+
+    const html = `
+      <div class="offer-card">
+        <div class="offer-header">
+          <div class="offer-logo">⚡</div>
+          <h1>Job Offer Letter</h1>
+          <p>Hi ${esc(offer.applicant_name)}, we're excited to offer you a position at Vickery Electric.</p>
+        </div>
+        <div class="detail-row"><div class="detail-label">Position</div><div class="detail-val">${esc(offer.designation_name || "—")}</div></div>
+        <div class="detail-row"><div class="detail-label">Department</div><div class="detail-val">${esc(offer.department_name || "—")}</div></div>
+        <div class="detail-row"><div class="detail-label">Compensation</div><div class="detail-val">${esc(fmtPay(offer.pay_rate, offer.pay_period))}</div></div>
+        <div class="detail-row"><div class="detail-label">Start Date</div><div class="detail-val">${esc(fmtDate(offer.start_date))}</div></div>
+        ${offer.notes ? `<div class="offer-notes">${esc(offer.notes)}</div>` : ""}
+        ${actionHtml}
+      </div>`;
+    document.getElementById("offerContent").outerHTML = `<div id="offerContent">${html}</div>`;
+  }
+
+  function confirmRespond(action) {
+    pendingAction = action;
+    if (action === "accept") {
+      document.getElementById("confirmTitle").textContent = "Accept this offer?";
+      document.getElementById("confirmMsg").textContent = "By accepting, you confirm you'd like to join Vickery Electric on the proposed terms.";
+      const btn = document.getElementById("confirmYes");
+      btn.textContent = "Yes, Accept";
+      btn.style.background = "hsl(140 55% 35%)";
+      btn.style.color = "#fff";
+    } else {
+      document.getElementById("confirmTitle").textContent = "Decline this offer?";
+      document.getElementById("confirmMsg").textContent = "Are you sure you want to decline? This action cannot be undone.";
+      const btn = document.getElementById("confirmYes");
+      btn.textContent = "Decline Offer";
+      btn.style.background = "hsl(0 50% 30%)";
+      btn.style.color = "#fff";
+    }
+    document.getElementById("confirmOverlay").classList.add("open");
+  }
+
+  function closeConfirm() {
+    document.getElementById("confirmOverlay").classList.remove("open");
+    pendingAction = null;
+  }
+
+  async function doRespond() {
+    const action = pendingAction;
+    closeConfirm();
+    try {
+      const r = await fetch(`/api/public/offer/${token}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        offerData.status = d.status;
+        renderOffer(offerData);
+      } else {
+        alert(d.error || "Something went wrong.");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    }
+  }
+
+  loadOffer();
+</script>
+</body>
+</html>

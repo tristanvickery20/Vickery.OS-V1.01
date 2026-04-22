@@ -1,7 +1,7 @@
 # Vickery Electric CRM
 
 ## Overview
-Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, a universal Task system (Quick Add FAB on all pages), full QuickBooks Online OAuth 2.0 integration, and an HR module covering employee profiles, departments, designations, shift types, daily attendance tracking, monthly attendance grid, and attendance correction requests. Backed by Google Sheets API.
+Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, a universal Task system (Quick Add FAB on all pages), full QuickBooks Online OAuth 2.0 integration, and an HR module covering employee profiles, departments, designations, shift types, daily attendance tracking, monthly attendance grid, attendance correction requests, a leave management engine, and a full recruiting pipeline (job openings, applicants, interview scheduling with feedback, job offers with shareable links, and applicant-to-employee conversion). Backed by Google Sheets API.
 
 ## Tech Stack
 - **Backend**: Node.js (vanilla `http` module), Express-less
@@ -56,7 +56,22 @@ pages/
   people-employee.html      # HR: Employee profile (Personal/Employment/Emergency tabs)
   people-departments.html   # HR: Departments CRUD
   people-designations.html  # HR: Designations CRUD
+  people-job-openings.html  # HR Recruiting: Job Openings list & CRUD
+  people-applicants.html    # HR Recruiting: All Applicants with funnel view
+  people-applicant.html     # HR Recruiting: Applicant profile (interviews, offers, conversion)
+  careers.html              # Public job board (no auth required)
+  offer-view.html           # Public offer acceptance page (shareable link, no auth)
 ```
+
+## HR Recruiting Pipeline (Phase 4)
+- **Job Openings**: Admin CRUD at `/people/job-openings`. Fields: title, dept, designation, description, Open/Closed status.
+- **Public Board**: `/careers` — lists open positions, each with an Apply button. Submissions create applicant records.
+- **Applicants**: `/people/applicants` — filterable by status funnel (New→Screening→Interview→Offer→Hired/Rejected) and by opening.
+- **Applicant Profile**: `/people/applicants/:id` — full contact info, inline status/notes editing, interview scheduling, offer creation.
+- **Interviews**: Schedule rounds (Phone Screen, Technical, Final) with interviewer, date/time. After the fact, add result (Pass/Fail/Hold), skill rating (1–5), and written feedback.
+- **Job Offers**: Create offers with pay rate/period, designation, dept, start date. One-click "Mark as Sent" generates a shareable `/offer/:token` link. Accepted/Declined can be set by admin or by the candidate via the public link.
+- **Create Employee**: Accepted offers unlock a "Create Employee" button that pre-fills the Phase 1 employee profile — no retyping.
+- **Google Sheets tabs**: HR_JobOpenings, HR_JobApplicants, HR_Interviews, HR_JobOffers (auto-created on startup).
 
 ## HR / People Module (Phase 1)
 - **Google Sheets tabs**: `HR_Departments`, `HR_Designations`

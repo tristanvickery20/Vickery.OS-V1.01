@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Applicant Profile — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .back-link { color: var(--muted, rgba(220,232,255,0.7)); text-decoration: none; font-size: 13px; }
+    .back-link:hover { color: var(--text); }
+    .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-primary {
+      padding: 10px 20px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      padding: 9px 16px; background: transparent; color: var(--text, #e6eefc);
+      border: 1px solid var(--line, rgba(100,150,255,0.2)); border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-secondary:hover { border-color: rgba(100,150,255,0.4); }
+    .btn-success {
+      padding: 10px 20px; background: hsl(140 55% 35%); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-success:hover { opacity: .88; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 800;
+    }
+    .badge-new       { background: hsl(220 60% 25%); color: hsl(220 70% 80%); }
+    .badge-screening { background: hsl(260 50% 28%); color: hsl(260 70% 80%); }
+    .badge-interview { background: hsl(200 60% 25%); color: hsl(200 70% 80%); }
+    .badge-offer     { background: hsl(38 60% 25%); color: hsl(38 80% 80%); }
+    .badge-hired     { background: hsl(140 50% 22%); color: hsl(140 70% 72%); }
+    .badge-rejected  { background: hsl(0 30% 25%); color: hsl(0 50% 75%); }
+
+    .two-col { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 14px; padding: 20px;
+    }
+    .card + .card { margin-top: 16px; }
+    .card-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted, rgba(220,232,255,0.6));
+      margin-bottom: 14px;
+    }
+    .info-row {
+      display: flex; gap: 8px; margin-bottom: 10px; font-size: 14px;
+    }
+    .info-label { color: var(--muted, rgba(220,232,255,0.6)); min-width: 90px; flex-shrink: 0; }
+    .info-val { font-weight: 500; word-break: break-word; }
+    .info-val a { color: var(--blue, #2d6ae0); text-decoration: none; }
+    .info-val a:hover { text-decoration: underline; }
+
+    .status-select {
+      padding: 6px 12px; background: var(--bg, #0a1628);
+      border: 1px solid var(--line, rgba(100,150,255,0.2)); border-radius: 8px;
+      color: var(--text, #e6eefc); font-size: 13px; font-family: inherit; cursor: pointer;
+    }
+
+    .notes-area {
+      width: 100%; box-sizing: border-box; padding: 10px 14px;
+      background: var(--bg, #0a1628); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc); font-size: 13px; font-family: inherit;
+      resize: vertical; min-height: 80px; margin-top: 8px;
+    }
+    .save-notes-btn {
+      margin-top: 8px; padding: 7px 16px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* Interview list */
+    .interview-item {
+      background: var(--bg, #0a1628);
+      border: 1px solid var(--line, rgba(100,150,255,0.1));
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    }
+    .interview-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .interview-type { font-weight: 700; font-size: 14px; }
+    .interview-meta { font-size: 12px; color: var(--muted, rgba(220,232,255,0.6)); margin-top: 4px; }
+    .interview-feedback { font-size: 13px; color: var(--muted, rgba(220,232,255,0.8)); margin-top: 8px; }
+    .result-badge {
+      display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 800;
+    }
+    .result-pass    { background: hsl(140 50% 22%); color: hsl(140 70% 72%); }
+    .result-fail    { background: hsl(0 30% 25%); color: hsl(0 50% 75%); }
+    .result-hold    { background: hsl(38 60% 25%); color: hsl(38 80% 80%); }
+    .result-pending { background: hsl(220 30% 25%); color: hsl(220 60% 75%); }
+
+    /* Offer list */
+    .offer-item {
+      background: var(--bg, #0a1628);
+      border: 1px solid var(--line, rgba(100,150,255,0.1));
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    }
+    .offer-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .offer-status-draft    { background: hsl(220 30% 25%); color: hsl(220 60% 75%); }
+    .offer-status-sent     { background: hsl(200 50% 25%); color: hsl(200 70% 75%); }
+    .offer-status-accepted { background: hsl(140 50% 22%); color: hsl(140 70% 72%); }
+    .offer-status-declined { background: hsl(0 30% 25%); color: hsl(0 50% 75%); }
+
+    .offer-link-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 10px;
+      background: var(--panel, #101e45); border-radius: 8px; padding: 8px 12px; flex-wrap: wrap;
+    }
+    .offer-link-url {
+      flex: 1; font-size: 12px; color: var(--muted, rgba(220,232,255,0.7));
+      word-break: break-all;
+    }
+    .copy-btn {
+      padding: 5px 12px; background: transparent;
+      border: 1px solid var(--line, rgba(100,150,255,0.2)); border-radius: 6px;
+      color: var(--muted, rgba(220,232,255,0.7)); font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+    .copy-btn:hover { color: var(--text); }
+
+    /* Modals */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.2));
+      border-radius: 18px; padding: 28px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin: 0 0 20px; font-size: 18px; font-weight: 800; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--muted, rgba(220,232,255,0.7)); text-transform: uppercase; letter-spacing: .04em; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 14px; box-sizing: border-box;
+      background: var(--bg, #0a1628); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc); font-size: 14px; font-family: inherit;
+    }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--blue); }
+    .rating-row { display: flex; gap: 8px; align-items: center; }
+    .rating-star { font-size: 20px; cursor: pointer; color: var(--muted, rgba(220,232,255,0.3)); transition: color .1s; }
+    .rating-star.active { color: hsl(45 100% 60%); }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel {
+      padding: 10px 18px; background: transparent;
+      border: 1px solid var(--line, rgba(100,150,255,0.2));
+      border-radius: 10px; color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+
+    .empty-note { font-size: 13px; color: var(--muted, rgba(220,232,255,0.5)); font-style: italic; }
+
+    .btn-danger {
+      padding: 7px 14px; background: transparent;
+      border: 1px solid hsl(0 50% 40%); border-radius: 8px;
+      color: hsl(0 70% 65%); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-danger:hover { background: hsl(0 50% 15%); }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebarMount"></aside>
+  <div class="shell-body">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu">&#9776;</button>
+    </div>
+    <main class="main-content">
+      <div class="page-header-row">
+        <div class="header-left">
+          <a href="/people/applicants" class="back-link">← Applicants</a>
+          <h1 id="pageTitle">Applicant Profile</h1>
+          <span class="badge" id="statusBadge"></span>
+        </div>
+        <div class="header-actions" id="headerActions"></div>
+      </div>
+
+      <div class="two-col" id="mainGrid">
+        <!-- Left column -->
+        <div>
+          <div class="card" id="profileCard">
+            <div class="card-title">Contact Info</div>
+            <div id="profileInfo"></div>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <div class="card-title">Status</div>
+            <select class="status-select" id="statusSelect" onchange="updateStatus()">
+              <option value="New">New</option>
+              <option value="Screening">Screening</option>
+              <option value="Interview">Interview</option>
+              <option value="Offer">Offer</option>
+              <option value="Hired">Hired</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <div class="card-title">Notes</div>
+            <textarea class="notes-area" id="notesArea" placeholder="Internal notes..."></textarea>
+            <button class="save-notes-btn" onclick="saveNotes()">Save Notes</button>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="card-title" style="margin-bottom:0">Interview Rounds</div>
+              <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="openInterviewModal()">+ Schedule</button>
+            </div>
+            <div id="interviewsList"><p class="empty-note">No interviews scheduled yet.</p></div>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="card-title" style="margin-bottom:0">Job Offers</div>
+              <button class="btn-primary" id="createOfferBtn" style="font-size:12px;padding:6px 14px" onclick="openOfferModal()">+ Create Offer</button>
+            </div>
+            <div id="offersList"><p class="empty-note">No offers created yet.</p></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Interview Modal -->
+<div class="modal-overlay" id="interviewModal">
+  <div class="modal">
+    <h2 id="interviewModalTitle">Schedule Interview</h2>
+    <input type="hidden" id="editInterviewId" />
+    <div class="form-row">
+      <label>Interview Type</label>
+      <select class="form-select" id="iType">
+        <option value="Phone Screen">Phone Screen</option>
+        <option value="Technical">Technical</option>
+        <option value="Final">Final</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Interviewer <span style="color:#f06060">*</span></label>
+      <select class="form-select" id="iInterviewer" required></select>
+    </div>
+    <div class="form-row">
+      <label>Date &amp; Time</label>
+      <input type="datetime-local" class="form-input" id="iScheduledAt" />
+    </div>
+    <div class="form-row">
+      <label>Result</label>
+      <select class="form-select" id="iResult">
+        <option value="Pending">Pending</option>
+        <option value="Pass">Pass</option>
+        <option value="Hold">Hold</option>
+        <option value="Fail">Fail</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Skill Rating (1–5)</label>
+      <div class="rating-row" id="ratingRow">
+        <span class="rating-star" data-val="1" onclick="setRating(1)">★</span>
+        <span class="rating-star" data-val="2" onclick="setRating(2)">★</span>
+        <span class="rating-star" data-val="3" onclick="setRating(3)">★</span>
+        <span class="rating-star" data-val="4" onclick="setRating(4)">★</span>
+        <span class="rating-star" data-val="5" onclick="setRating(5)">★</span>
+      </div>
+      <input type="hidden" id="iRating" value="0" />
+    </div>
+    <div class="form-row">
+      <label>Feedback / Comments</label>
+      <textarea class="form-textarea" id="iFeedback" placeholder="Interviewer notes..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeInterviewModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveInterview()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Offer Modal -->
+<div class="modal-overlay" id="offerModal">
+  <div class="modal">
+    <h2>Create Job Offer</h2>
+    <div class="form-row">
+      <label>Pay Rate *</label>
+      <input class="form-input" id="oPay" type="number" step="0.01" placeholder="e.g. 28.00" />
+    </div>
+    <div class="form-row">
+      <label>Pay Period</label>
+      <select class="form-select" id="oPayPeriod">
+        <option value="Hourly">Hourly</option>
+        <option value="Salary">Annual Salary</option>
+        <option value="Daily">Daily</option>
+        <option value="Weekly">Weekly</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Department</label>
+      <select class="form-select" id="oDept"></select>
+    </div>
+    <div class="form-row">
+      <label>Designation</label>
+      <select class="form-select" id="oDesig"></select>
+    </div>
+    <div class="form-row">
+      <label>Proposed Start Date</label>
+      <input type="date" class="form-input" id="oStartDate" />
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea class="form-textarea" id="oNotes" placeholder="Any offer notes..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeOfferModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveOffer()">Create Offer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Employee Preview Modal -->
+<div class="modal-overlay" id="createEmpModal">
+  <div class="modal">
+    <h2>Review &amp; Create Employee</h2>
+    <p style="color:var(--muted);font-size:13px;margin:-10px 0 18px">Review the pre-filled information below, then confirm to create the employee record.</p>
+    <input type="hidden" id="createEmpOfferId" />
+    <div class="form-row">
+      <label>First Name</label>
+      <input class="form-input" id="ceFirst" />
+    </div>
+    <div class="form-row">
+      <label>Last Name</label>
+      <input class="form-input" id="ceLast" />
+    </div>
+    <div class="form-row">
+      <label>Phone</label>
+      <input class="form-input" id="cePhone" type="tel" />
+    </div>
+    <div class="form-row">
+      <label>Hire Date (Start Date)</label>
+      <input class="form-input" id="ceHireDate" type="date" />
+    </div>
+    <div class="form-row">
+      <label>Department</label>
+      <select class="form-select" id="ceDept"></select>
+    </div>
+    <div class="form-row">
+      <label>Designation</label>
+      <select class="form-select" id="ceDesig"></select>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeCreateEmpModal()">Cancel</button>
+      <button class="btn-success" onclick="confirmCreateEmployee()">Confirm &amp; Create Employee</button>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-applicant.js"></script>
+</body>
+</html>

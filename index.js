@@ -110,6 +110,16 @@ const {
 const { ensureLeaveSheets } = require("./lib/hr-leave");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
+const {
+  handleListJobOpenings, handleCreateJobOpening, handleUpdateJobOpening, handleDeleteJobOpening,
+  handlePublicJobListings, handlePublicApply,
+  handleListApplicants, handleGetApplicant, handleUpdateApplicant, handleDeleteApplicant,
+  handleCreateInterview, handleUpdateInterview, handleDeleteInterview,
+  handleCreateOffer, handleUpdateOffer, handleSendOffer,
+  handlePublicGetOffer, handlePublicOfferRespond,
+  handleCreateEmployeeFromOffer,
+} = require("./api/hr-recruiting");
+const { ensureRecruitingSheets } = require("./lib/hr-recruiting");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -169,10 +179,26 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith("/uploads/")) {
-    const filePath = path.join(__dirname, req.url.split("?")[0]);
+    // Normalize path first to prevent path-traversal bypasses
+    const rawPath = req.url.split("?")[0];
+    const filePath = path.normalize(path.join(__dirname, rawPath));
+    const uploadsBase = path.normalize(path.join(__dirname, "uploads"));
+    const resumesBase = path.normalize(path.join(__dirname, "uploads", "resumes"));
+    // Reject anything that escapes the uploads directory
+    if (!filePath.startsWith(uploadsBase + path.sep) && filePath !== uploadsBase) {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      return res.end("Bad Request");
+    }
+    // Applicant resumes contain PII — require authentication based on normalized path
+    if (filePath.startsWith(resumesBase + path.sep) && !isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "text/plain" });
+      return res.end("Unauthorized");
+    }
     const ext = path.extname(filePath).toLowerCase();
-    const mimeTypes = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic" };
-    return serveFile(res, filePath, mimeTypes[ext] || "application/octet-stream");
+    const resumeMimes = { ".pdf": "application/pdf", ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".txt": "text/plain", ".rtf": "application/rtf" };
+    const imageMimes = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic" };
+    const mime = resumeMimes[ext] || imageMimes[ext] || "application/octet-stream";
+    return serveFile(res, filePath, mime);
   }
 
   // PUBLIC PAGES
@@ -210,6 +236,26 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/financing") {
     return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
+  }
+
+  // ── Public careers pages ──────────────────────────────────────────────────────
+  if (req.url === "/careers" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/careers.html"), "text/html");
+  }
+  if (req.url.split("?")[0].startsWith("/offer/") && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/offer-view.html"), "text/html");
+  }
+
+  // ── Public careers API (no auth required) ─────────────────────────────────────
+  if (req.url.split("?")[0] === "/api/public/jobs" && req.method === "GET") return handlePublicJobListings(req, res);
+  if (req.url.split("?")[0] === "/api/public/apply" && req.method === "POST") return handlePublicApply(req, res);
+  if (req.url.split("?")[0].startsWith("/api/public/offer/") && req.url.split("?")[0].endsWith("/respond") && req.method === "POST") {
+    const token = req.url.split("?")[0].replace("/api/public/offer/", "").replace("/respond", "");
+    return handlePublicOfferRespond(req, res, token);
+  }
+  if (req.url.split("?")[0].startsWith("/api/public/offer/") && req.method === "GET") {
+    const token = req.url.split("?")[0].slice("/api/public/offer/".length);
+    return handlePublicGetOffer(req, res, token);
   }
 
   // PWA files — public, no auth
@@ -1339,6 +1385,17 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/people-leave-apply.html"), "text/html");
   }
 
+  // ── Recruiting pages ──────────────────────────────────────────────────────────
+  if (_epath === "/people/job-openings" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-job-openings.html"), "text/html");
+  }
+  if (_epath === "/people/applicants" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-applicants.html"), "text/html");
+  }
+  if (_epath.startsWith("/people/applicants/") && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-applicant.html"), "text/html");
+  }
+
   // ── HR API — Departments ──────────────────────────────────────────────────────
   if (_epath === "/api/hr/departments" && req.method === "GET")  return handleListDepartments(req, res);
   if (_epath === "/api/hr/departments" && req.method === "POST") return handleCreateDepartment(req, res);
@@ -1473,6 +1530,59 @@ const server = http.createServer(async (req, res) => {
   if (_epath === "/api/hr/leave/team-calendar" && req.method === "GET") return handleTeamCalendar(req, res);
   if (_epath === "/api/hr/leave/pending-count" && req.method === "GET") return handleLeavePendingCount(req, res);
 
+  // ── HR API — Recruiting: Job Openings ─────────────────────────────────────────
+  if (_epath === "/api/hr/job-openings" && req.method === "GET")  return handleListJobOpenings(req, res);
+  if (_epath === "/api/hr/job-openings" && req.method === "POST") return handleCreateJobOpening(req, res);
+  if (_epath.startsWith("/api/hr/job-openings/") && req.method === "PATCH") {
+    const openingId = _epath.slice("/api/hr/job-openings/".length);
+    return handleUpdateJobOpening(req, res, openingId);
+  }
+  if (_epath.startsWith("/api/hr/job-openings/") && req.method === "DELETE") {
+    const openingId = _epath.slice("/api/hr/job-openings/".length);
+    return handleDeleteJobOpening(req, res, openingId);
+  }
+
+  // ── HR API — Recruiting: Applicants ──────────────────────────────────────────
+  if (_epath === "/api/hr/applicants" && req.method === "GET")  return handleListApplicants(req, res);
+  if (_epath.startsWith("/api/hr/applicants/") && req.method === "GET") {
+    const applicantId = _epath.slice("/api/hr/applicants/".length);
+    return handleGetApplicant(req, res, applicantId);
+  }
+  if (_epath.startsWith("/api/hr/applicants/") && req.method === "PATCH") {
+    const applicantId = _epath.slice("/api/hr/applicants/".length);
+    return handleUpdateApplicant(req, res, applicantId);
+  }
+  if (_epath.startsWith("/api/hr/applicants/") && req.method === "DELETE") {
+    const applicantId = _epath.slice("/api/hr/applicants/".length);
+    return handleDeleteApplicant(req, res, applicantId);
+  }
+
+  // ── HR API — Recruiting: Interviews ──────────────────────────────────────────
+  if (_epath === "/api/hr/interviews" && req.method === "POST") return handleCreateInterview(req, res);
+  if (_epath.startsWith("/api/hr/interviews/") && req.method === "PATCH") {
+    const interviewId = _epath.slice("/api/hr/interviews/".length);
+    return handleUpdateInterview(req, res, interviewId);
+  }
+  if (_epath.startsWith("/api/hr/interviews/") && req.method === "DELETE") {
+    const interviewId = _epath.slice("/api/hr/interviews/".length);
+    return handleDeleteInterview(req, res, interviewId);
+  }
+
+  // ── HR API — Recruiting: Job Offers ──────────────────────────────────────────
+  if (_epath === "/api/hr/offers" && req.method === "POST") return handleCreateOffer(req, res);
+  if (_epath.startsWith("/api/hr/offers/") && _epath.endsWith("/send") && req.method === "POST") {
+    const offerId = _epath.replace("/api/hr/offers/", "").replace("/send", "");
+    return handleSendOffer(req, res, offerId);
+  }
+  if (_epath.startsWith("/api/hr/offers/") && _epath.endsWith("/create-employee") && req.method === "POST") {
+    const offerId = _epath.replace("/api/hr/offers/", "").replace("/create-employee", "");
+    return handleCreateEmployeeFromOffer(req, res, offerId);
+  }
+  if (_epath.startsWith("/api/hr/offers/") && req.method === "PATCH") {
+    const offerId = _epath.slice("/api/hr/offers/".length);
+    return handleUpdateOffer(req, res, offerId);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -1492,6 +1602,7 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => ensureHrSheets())
     .then(() => ensureAttendanceSheets())
     .then(() => ensureLeaveSheets())
+    .then(() => ensureRecruitingSheets())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Applicants — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .btn-secondary {
+      padding: 9px 16px; background: transparent; color: var(--text, #e6eefc);
+      border: 1px solid var(--line, rgba(100,150,255,0.2)); border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-secondary:hover { border-color: rgba(100,150,255,0.4); }
+
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center;
+    }
+    .search-input {
+      flex: 1; min-width: 200px; padding: 9px 14px;
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc); font-size: 14px; font-family: inherit;
+    }
+    .search-input::placeholder { color: var(--muted, rgba(220,232,255,0.5)); }
+    .search-input:focus { outline: none; border-color: var(--blue); }
+    select.filter-sel {
+      padding: 9px 12px; background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc); font-size: 13px; font-family: inherit;
+    }
+
+    .funnel-bar {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .funnel-chip {
+      padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 700;
+      cursor: pointer; border: 2px solid transparent; transition: all .15s;
+      background: var(--panel, #101e45); color: var(--muted, rgba(220,232,255,0.7));
+    }
+    .funnel-chip.active { border-color: var(--blue); color: var(--text); }
+    .funnel-chip:hover { color: var(--text); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted, rgba(220,232,255,0.6));
+      padding: 10px 14px; border-bottom: 1px solid var(--line, rgba(100,150,255,0.14));
+    }
+    tbody tr { border-bottom: 1px solid var(--line, rgba(100,150,255,0.07)); }
+    tbody tr:hover { background: rgba(100,150,255,0.04); }
+    tbody td { padding: 13px 14px; font-size: 14px; }
+    tbody td a { color: var(--blue, #2d6ae0); text-decoration: none; font-weight: 600; }
+    tbody td a:hover { text-decoration: underline; }
+
+    .badge {
+      display: inline-block; padding: 2px 9px; border-radius: 99px;
+      font-size: 11px; font-weight: 800;
+    }
+    .badge-new       { background: hsl(220 60% 25%); color: hsl(220 70% 80%); }
+    .badge-screening { background: hsl(260 50% 28%); color: hsl(260 70% 80%); }
+    .badge-interview { background: hsl(200 60% 25%); color: hsl(200 70% 80%); }
+    .badge-offer     { background: hsl(38 60% 25%); color: hsl(38 80% 80%); }
+    .badge-hired     { background: hsl(140 50% 22%); color: hsl(140 70% 72%); }
+    .badge-rejected  { background: hsl(0 30% 25%); color: hsl(0 50% 75%); }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted, rgba(220,232,255,0.5)); font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebarMount"></aside>
+  <div class="shell-body">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu">&#9776;</button>
+    </div>
+    <main class="main-content">
+      <div class="page-header-row">
+        <h1>Applicants</h1>
+        <a href="/people/job-openings" class="btn-secondary">← Job Openings</a>
+      </div>
+
+      <div class="filter-bar">
+        <input class="search-input" id="searchInput" placeholder="Search name, email…" oninput="applyFilter()" />
+        <select class="filter-sel" id="openingFilter" onchange="applyFilter()">
+          <option value="">All Openings</option>
+        </select>
+      </div>
+
+      <div class="funnel-bar" id="funnelBar">
+        <div class="funnel-chip active" data-status="" onclick="setFunnel(this, '')">All</div>
+        <div class="funnel-chip" data-status="New" onclick="setFunnel(this, 'New')">New</div>
+        <div class="funnel-chip" data-status="Screening" onclick="setFunnel(this, 'Screening')">Screening</div>
+        <div class="funnel-chip" data-status="Interview" onclick="setFunnel(this, 'Interview')">Interview</div>
+        <div class="funnel-chip" data-status="Offer" onclick="setFunnel(this, 'Offer')">Offer</div>
+        <div class="funnel-chip" data-status="Hired" onclick="setFunnel(this, 'Hired')">Hired</div>
+        <div class="funnel-chip" data-status="Rejected" onclick="setFunnel(this, 'Rejected')">Rejected</div>
+      </div>
+
+      <table id="applicantsTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Opening</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Applied</th>
+          </tr>
+        </thead>
+        <tbody id="applicantsTbody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">No applicants found.</div>
+    </main>
+  </div>
+</div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-applicants.js"></script>
+</body>
+</html>
