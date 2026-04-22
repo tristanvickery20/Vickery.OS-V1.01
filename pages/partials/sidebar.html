@@ -26,6 +26,8 @@
 
   <div class="sidebar-section-title">People</div>
   <a class="sidebar-link" data-nav="/people/employees" href="/people/employees"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Employees</a>
+  <a class="sidebar-link" data-nav="/people/attendance" href="/people/attendance"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></span> Attendance <span class="attend-pending-badge" id="attendPendingBadge" style="display:none;background:hsl(38 80% 50%);color:#000;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;margin-left:4px;"></span></a>
+  <a class="sidebar-link" data-nav="/people/shifts" href="/people/shifts"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Shift Types</a>
   <a class="sidebar-link" data-nav="/people/departments" href="/people/departments"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span> Departments</a>
   <a class="sidebar-link" data-nav="/people/designations" href="/people/designations"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></span> Designations</a>
 
@@ -57,10 +59,21 @@
         else { badge.style.display = "none"; }
       }).catch(function(){});
     }
+    function refreshAttendBadge() {
+      fetch("/api/hr/corrections").then(r => r.json()).then(d => {
+        var badge = document.getElementById("attendPendingBadge");
+        if (!badge) return;
+        var pending = d.ok ? (d.corrections || []).filter(function(c){ return c.status === "pending"; }).length : 0;
+        if (pending > 0) { badge.textContent = pending; badge.style.display = "inline"; }
+        else { badge.style.display = "none"; }
+      }).catch(function(){});
+    }
     refreshBadge();
     refreshOverdueBadge();
+    refreshAttendBadge();
     setInterval(refreshBadge, 60000);
     setInterval(refreshOverdueBadge, 60000);
+    setInterval(refreshAttendBadge, 60000);
   })();
 </script>
 

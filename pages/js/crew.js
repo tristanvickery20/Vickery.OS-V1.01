@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindManualButtons();
   bindLogout();
   bindViewTabs();
+  bindCrewCorrections();
   initNFCScan();
 
   if (timerState) {
@@ -1665,19 +1666,99 @@ async function submitExpense() {
   if (btn) btn.disabled = false;
 }
 
-// ── View tabs (Jobs / Map) ─────────────────────────────────────────────────────
+// ── View tabs (Jobs / Map / Attendance) ───────────────────────────────────────
 function bindViewTabs() {
   document.querySelectorAll(".view-tab").forEach(btn => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
       document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
-      document.getElementById("listView").style.display = tab === "list" ? "" : "none";
-      document.getElementById("mapView").style.display  = tab === "map"  ? "" : "none";
+      document.getElementById("listView").style.display       = tab === "list"       ? "" : "none";
+      document.getElementById("mapView").style.display        = tab === "map"        ? "" : "none";
+      const attView = document.getElementById("attendanceView");
+      if (attView) attView.style.display = tab === "attendance" ? "" : "none";
       if (tab === "map" && !_mapLoaded) {
         _mapLoaded = true;
         renderCrewMap();
       }
+      if (tab === "attendance") {
+        loadCrewCorrections();
+      }
     });
+  });
+}
+
+// ── Crew Attendance Correction Requests ────────────────────────────────────────
+function todayDateStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function loadCrewCorrections() {
+  const list = document.getElementById("myCorrList");
+  if (!list) return;
+  try {
+    const resp = await fetch("/api/crew/corrections");
+    const data = await resp.json();
+    if (!data.ok || !data.corrections || !data.corrections.length) {
+      list.innerHTML = '<div style="font-size:13px;color:hsl(220 15% 45%);padding:20px 0;text-align:center;">No correction requests submitted yet.</div>';
+      return;
+    }
+    const sorted = data.corrections.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    const statusColors = { pending: "#fbbf24", approved: "#4ade80", rejected: "#f87171" };
+    list.innerHTML = sorted.map(c => {
+      const color = statusColors[c.status] || "#aaa";
+      return `<div style="background:hsl(220 10% 12%);border:1px solid hsl(220 10% 18%);border-radius:12px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:13px;font-weight:700;">${esc(c.date)}</div>
+          <span style="font-size:11px;font-weight:700;background:${color}22;color:${color};border-radius:99px;padding:2px 9px;">${esc(c.status)}</span>
+        </div>
+        <div style="font-size:12px;color:hsl(220 15% 55%);">Requested: <strong style="color:hsl(220 15% 78%)">${esc(c.requested_status)}</strong></div>
+        ${c.reason ? `<div style="font-size:12px;color:hsl(220 15% 50%);margin-top:4px;">"${esc(c.reason)}"</div>` : ""}
+        ${c.admin_notes ? `<div style="font-size:11px;color:hsl(220 15% 45%);margin-top:6px;">Admin: ${esc(c.admin_notes)}</div>` : ""}
+      </div>`;
+    }).join("");
+  } catch {
+    list.innerHTML = '<div style="font-size:13px;color:#f87171;padding:20px 0;text-align:center;">Failed to load requests.</div>';
+  }
+}
+
+function bindCrewCorrections() {
+  const corrDate = document.getElementById("corrDate");
+  if (corrDate) corrDate.value = todayDateStr();
+
+  const submitBtn = document.getElementById("btnSubmitCorr");
+  if (!submitBtn) return;
+
+  submitBtn.addEventListener("click", async () => {
+    const date   = document.getElementById("corrDate").value;
+    const status = document.getElementById("corrStatus").value;
+    const reason = document.getElementById("corrReason").value.trim();
+    if (!date || !status) {
+      alert("Please select a date and the correct status.");
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+    try {
+      const resp = await fetch("/api/crew/corrections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, requested_status: status, reason }),
+      });
+      const data = await resp.json();
+      if (!data.ok) {
+        alert(data.error || "Failed to submit request.");
+      } else {
+        document.getElementById("corrStatus").value = "";
+        document.getElementById("corrReason").value = "";
+        document.getElementById("corrDate").value = todayDateStr();
+        await loadCrewCorrections();
+      }
+    } catch {
+      alert("Network error — please try again.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Correction Request";
+    }
   });
 }
 

@@ -90,6 +90,13 @@ const {
   handleCreateEmployee, handleListEmployees, handleGetEmployee, handleUpdateEmployee,
 } = require("./api/hr-people");
 const { ensureHrSheets } = require("./lib/hr");
+const {
+  handleListShifts, handleCreateShift, handleUpdateShift, handleDeleteShift,
+  handleListAttendance, handleUpsertAttendance, handleBulkAttendance,
+  handleSyncAttendance, handleAttendanceGrid,
+  handleListCorrections, handleCreateCorrection, handleUpdateCorrection,
+} = require("./api/hr-attendance");
+const { ensureAttendanceSheets } = require("./lib/hr-attendance");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
 
@@ -503,6 +510,39 @@ const server = http.createServer(async (req, res) => {
       created_by:  crewFullName,
       assigned_to: crewFullName,  // default; body.assigned_to takes precedence
     });
+  }
+
+  // Crew corrections — crew members can GET their own and POST new requests
+  if (req.url === "/api/crew/corrections" && req.method === "GET") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    // Forward with staff_id scoped to the crew member's own records
+    const origUrl = req.url;
+    req.url = `/api/hr/corrections?staff_id=${crewSess.staffId}`;
+    const result = await handleListCorrections(req, res);
+    req.url = origUrl;
+    return result;
+  }
+  if (req.url === "/api/crew/corrections" && req.method === "POST") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    // Read body, inject staff_id from session, then route to shared handler.
+    const body = await readBody(req);
+    body.staff_id = crewSess.staffId;
+    // Wrap req so the shared handler receives a pre-parsed body (avoids double-read).
+    const wrappedReq = new Proxy(req, {
+      get(target, prop) {
+        if (prop === "_crewInjectedBody") return body;
+        return target[prop];
+      },
+    });
+    return handleCreateCorrection(wrappedReq, res);
   }
 
   if (req.url === "/crm") {
@@ -1221,6 +1261,18 @@ const server = http.createServer(async (req, res) => {
   if (_epath === "/people/designations" && req.method === "GET") {
     return serveFile(res, path.join(__dirname, "pages/people-designations.html"), "text/html");
   }
+  if (_epath === "/people/shifts" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-shifts.html"), "text/html");
+  }
+  if (_epath === "/people/attendance" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-attendance.html"), "text/html");
+  }
+  if (_epath === "/people/attendance/grid" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-attendance-grid.html"), "text/html");
+  }
+  if (_epath === "/people/attendance/corrections" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-attendance-corrections.html"), "text/html");
+  }
 
   // ── HR API — Departments ──────────────────────────────────────────────────────
   if (_epath === "/api/hr/departments" && req.method === "GET")  return handleListDepartments(req, res);
@@ -1258,6 +1310,33 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateEmployee(req, res, empId);
   }
 
+  // ── HR API — Shift Types ──────────────────────────────────────────────────────
+  if (_epath === "/api/hr/shifts" && req.method === "GET")  return handleListShifts(req, res);
+  if (_epath === "/api/hr/shifts" && req.method === "POST") return handleCreateShift(req, res);
+  if (_epath.startsWith("/api/hr/shifts/") && req.method === "PATCH") {
+    const shiftId = _epath.slice("/api/hr/shifts/".length);
+    return handleUpdateShift(req, res, shiftId);
+  }
+  if (_epath.startsWith("/api/hr/shifts/") && req.method === "DELETE") {
+    const shiftId = _epath.slice("/api/hr/shifts/".length);
+    return handleDeleteShift(req, res, shiftId);
+  }
+
+  // ── HR API — Attendance ───────────────────────────────────────────────────────
+  if (_epath === "/api/hr/attendance/grid" && req.method === "GET")  return handleAttendanceGrid(req, res);
+  if (_epath === "/api/hr/attendance/bulk" && req.method === "POST") return handleBulkAttendance(req, res);
+  if (_epath === "/api/hr/attendance/sync" && req.method === "POST") return handleSyncAttendance(req, res);
+  if (_epath === "/api/hr/attendance" && req.method === "GET")  return handleListAttendance(req, res);
+  if (_epath === "/api/hr/attendance" && req.method === "POST") return handleUpsertAttendance(req, res);
+
+  // ── HR API — Correction Requests ──────────────────────────────────────────────
+  if (_epath === "/api/hr/corrections" && req.method === "GET")  return handleListCorrections(req, res);
+  if (_epath === "/api/hr/corrections" && req.method === "POST") return handleCreateCorrection(req, res);
+  if (_epath.startsWith("/api/hr/corrections/") && req.method === "PATCH") {
+    const corrId = _epath.slice("/api/hr/corrections/".length);
+    return handleUpdateCorrection(req, res, corrId);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -1275,6 +1354,7 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => ensureCalculatorDefaults())
     .then(() => ensureStaffSheet())
     .then(() => ensureHrSheets())
+    .then(() => ensureAttendanceSheets())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())
@@ -1321,6 +1401,28 @@ server.listen(5000, "0.0.0.0", () => {
     console.log(`[Nightly] Actuals scheduled in ${Math.round(msUntil/3600000)}h`);
   }
   scheduleNightlyActuals();
+
+  // Nightly attendance sync — auto-populate Present records from Time log at 1 AM server time
+  function scheduleNightlyAttendanceSync() {
+    const now  = new Date();
+    const next = new Date(now);
+    next.setHours(25, 0, 5, 0); // 1 AM next day
+    const msUntil = next - now;
+    setTimeout(async () => {
+      try {
+        console.log("[Nightly] Running attendance sync…");
+        const { syncAttendanceFromTimeLog } = require("./lib/hr-attendance");
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        const result = await syncAttendanceFromTimeLog(yesterday);
+        console.log(`[Nightly] Attendance sync: ${result.synced} records for ${result.date}`);
+      } catch (err) {
+        console.error("[Nightly] Attendance sync failed:", err.message);
+      }
+      scheduleNightlyAttendanceSync(); // reschedule for next night
+    }, msUntil);
+    console.log(`[Nightly] Attendance sync scheduled in ${Math.round(msUntil / 3600000)}h`);
+  }
+  scheduleNightlyAttendanceSync();
 
   // Monthly material price update (BLS PPI, first of each month at 2am)
   if (process.env.ESTIMATOR_V2_SHEET_ID) {

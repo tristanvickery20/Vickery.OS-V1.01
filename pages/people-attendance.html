@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Attendance — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    .toolbar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .toolbar input[type="date"] {
+      padding: 8px 12px; background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc);
+      font-size: 14px; font-family: inherit;
+    }
+    .toolbar select {
+      padding: 8px 12px; background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--text, #e6eefc);
+      font-size: 14px; font-family: inherit;
+    }
+    .toolbar input:focus, .toolbar select:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+    .btn-primary {
+      padding: 8px 16px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      padding: 8px 14px; background: transparent;
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px; color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-secondary:hover { color: var(--text, #e6eefc); border-color: rgba(100,150,255,0.3); }
+
+    .summary-bar {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .summary-chip {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+    }
+    .chip-present  { background: rgba(34,197,94,0.15);  color: #4ade80; }
+    .chip-absent   { background: rgba(239,68,68,0.12);  color: #f87171; }
+    .chip-leave    { background: rgba(251,191,36,0.12); color: #fbbf24; }
+    .chip-halfday  { background: rgba(139,92,246,0.12); color: #a78bfa; }
+    .chip-unmarked { background: rgba(100,150,255,0.08); color: var(--muted, rgba(220,232,255,0.6)); }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      text-align: left; padding: 10px 12px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted, rgba(220,232,255,0.6));
+      border-bottom: 1px solid var(--line, rgba(100,150,255,0.14));
+    }
+    tbody tr { border-bottom: 1px solid var(--line, rgba(100,150,255,0.08)); }
+    tbody tr:hover { background: rgba(100,150,255,0.04); }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+    .emp-name { font-weight: 600; }
+
+    .status-select {
+      padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--line, rgba(100,150,255,0.2));
+      background: var(--bg, #0c1535); color: var(--text, #e6eefc);
+      font-family: inherit; cursor: pointer; min-width: 120px;
+    }
+    .status-present  { background: rgba(34,197,94,0.15);  color: #4ade80;  border-color: rgba(34,197,94,0.25); }
+    .status-absent   { background: rgba(239,68,68,0.12);  color: #f87171;  border-color: rgba(239,68,68,0.25); }
+    .status-on-leave { background: rgba(251,191,36,0.12); color: #fbbf24;  border-color: rgba(251,191,36,0.25); }
+    .status-half-day { background: rgba(139,92,246,0.12); color: #a78bfa;  border-color: rgba(139,92,246,0.25); }
+    .status-none     { background: rgba(100,150,255,0.06); color: var(--muted); }
+
+    .source-badge {
+      display: inline-block; font-size: 11px; padding: 2px 7px;
+      border-radius: 6px; margin-left: 6px;
+      background: rgba(100,150,255,0.1); color: var(--muted, rgba(220,232,255,0.6));
+    }
+    .source-auto       { background: rgba(45,106,224,0.15); color: #7aa3f5; }
+    .source-correction { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+
+    .notes-input {
+      padding: 5px 8px; border-radius: 8px; font-size: 12px;
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      background: var(--bg, #0c1535); color: var(--text, #e6eefc);
+      font-family: inherit; width: 160px;
+    }
+    .notes-input:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+
+    .btn-save-row {
+      padding: 4px 10px; font-size: 12px; font-weight: 700;
+      border: 1px solid rgba(45,106,224,0.4); border-radius: 7px;
+      background: rgba(45,106,224,0.15); color: #7aa3f5;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-save-row:hover { background: rgba(45,106,224,0.25); }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted, rgba(220,232,255,0.7)); }
+    .empty strong { display: block; font-size: 16px; margin-bottom: 6px; color: var(--text, #e6eefc); }
+
+    .view-toggle { display: flex; gap: 8px; }
+    .view-toggle a {
+      padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 700;
+      text-decoration: none; color: var(--muted, rgba(220,232,255,0.7));
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+    }
+    .view-toggle a.active { background: var(--blue, #2d6ae0); color: #fff; border-color: transparent; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #166534; color: #fff; padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 200;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+
+    .corrections-link {
+      font-size: 13px; color: var(--muted, rgba(220,232,255,0.6)); text-decoration: none;
+    }
+    .corrections-link:hover { color: var(--text, #e6eefc); }
+    .pending-badge {
+      display: inline-block; background: #fbbf24; color: #000;
+      font-size: 11px; font-weight: 800; border-radius: 99px;
+      padding: 1px 7px; margin-left: 4px;
+    }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <h1>Attendance</h1>
+        <div class="view-toggle">
+          <a href="/people/attendance" class="active">Daily</a>
+          <a href="/people/attendance/grid">Monthly Grid</a>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input type="date" id="datePicker" />
+        <select id="deptFilter">
+          <option value="">All Departments</option>
+        </select>
+        <button class="btn-primary" id="markAllBtn">Mark All Present</button>
+        <button class="btn-secondary" id="syncBtn">Sync from Time Log</button>
+        <a class="corrections-link" href="/people/attendance/corrections">Correction Requests <span class="pending-badge" id="pendingBadge" style="display:none"></span></a>
+      </div>
+
+      <div class="summary-bar" id="summaryBar"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="attendanceBody">
+            <tr><td colspan="5" class="empty"><strong>Loading…</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-attendance.js"></script>
+</body>
+</html>

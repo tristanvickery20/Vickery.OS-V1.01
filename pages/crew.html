@@ -1083,6 +1083,7 @@
   <div class="view-tabs">
     <button class="view-tab active" data-tab="list">Jobs</button>
     <button class="view-tab" data-tab="map">Map</button>
+    <button class="view-tab" data-tab="attendance">Attendance</button>
   </div>
 
   <!-- Job list tab -->
@@ -1126,6 +1127,40 @@
   <div id="mapView" style="display:none;">
     <div id="crewMapEl"></div>
     <div class="crew-map-status" id="crewMapStatus">Tap a pin to navigate or send a notification.</div>
+  </div>
+
+  <!-- Attendance Correction tab -->
+  <div id="attendanceView" style="display:none;padding-top:16px;">
+    <div class="section-label" style="margin-bottom:12px;">My Attendance Corrections</div>
+    <p style="font-size:13px;color:hsl(220 15% 55%);margin-bottom:16px;line-height:1.5;">
+      If your attendance was recorded incorrectly, you can submit a correction request below. An admin will review and update the record.
+    </p>
+    <div style="background:hsl(220 10% 12%);border:1px solid hsl(220 10% 18%);border-radius:14px;padding:18px;margin-bottom:20px;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:hsl(220 15% 55%);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Date</label>
+        <input type="date" id="corrDate" style="width:100%;box-sizing:border-box;padding:10px 12px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:10px;color:hsl(220 15% 88%);font-size:14px;font-family:inherit;" />
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:hsl(220 15% 55%);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Correct Status Should Be</label>
+        <select id="corrStatus" style="width:100%;box-sizing:border-box;padding:10px 12px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:10px;color:hsl(220 15% 88%);font-size:14px;font-family:inherit;">
+          <option value="">— Select —</option>
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+          <option value="On Leave">On Leave</option>
+          <option value="Half Day">Half Day</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:700;color:hsl(220 15% 55%);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reason</label>
+        <textarea id="corrReason" placeholder="Briefly explain why the record needs correction…" style="width:100%;box-sizing:border-box;padding:10px 12px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:10px;color:hsl(220 15% 88%);font-size:14px;font-family:inherit;resize:vertical;min-height:80px;"></textarea>
+      </div>
+      <button id="btnSubmitCorr" style="width:100%;padding:13px;background:#2d6ae0;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Submit Correction Request</button>
+    </div>
+
+    <div class="section-label" style="margin-bottom:12px;">Past Requests</div>
+    <div id="myCorrList" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:13px;color:hsl(220 15% 45%);padding:20px 0;text-align:center;">Loading…</div>
+    </div>
   </div>
 
   <div class="section-label" style="margin-top:24px;">Log Without a Job</div>

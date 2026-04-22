@@ -4,6 +4,7 @@
   var departments = [];
   var designations = [];
   var employees = [];
+  var shifts = [];
 
   function qs(id) { return document.getElementById(id); }
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -34,6 +35,12 @@
   function buildDesigOptions(selectedId) {
     return designations.map(function(d) {
       return '<option value="' + esc(d.designation_id) + '"' + (selectedId === d.designation_id ? " selected" : "") + '>' + esc(d.name) + '</option>';
+    }).join("");
+  }
+
+  function buildShiftOptions(selectedId) {
+    return shifts.map(function(s) {
+      return '<option value="' + esc(s.shift_id) + '"' + (selectedId === s.shift_id ? " selected" : "") + '>' + esc(s.name) + '</option>';
     }).join("");
   }
 
@@ -98,6 +105,9 @@
             '</div>' +
             '<div class="form-row"><label>Reports To' + managerLinkHtml + '</label>' +
               '<select id="fReportsTo"><option value="">— None —</option>' + buildReportsToOptions(emp.reports_to) + '</select>' +
+            '</div>' +
+            '<div class="form-row"><label>Default Shift</label>' +
+              '<select id="fDefaultShift"><option value="">— None —</option>' + buildShiftOptions(emp.default_shift_id) + '</select>' +
             '</div>' +
             '<div class="form-row full"><label>Notes</label>' +
               '<textarea id="fNotes"></textarea>' +
@@ -189,6 +199,7 @@
           department_id: (document.getElementById("fDept") || {}).value || "",
           designation_id: (document.getElementById("fDesig") || {}).value || "",
           reports_to: (document.getElementById("fReportsTo") || {}).value || "",
+          default_shift_id: (document.getElementById("fDefaultShift") || {}).value || "",
           notes: (document.getElementById("fNotes") || {}).value || "",
         });
         if (ok) {
@@ -222,6 +233,7 @@
         fetch("/api/hr/departments").then(function(r) { return r.json(); }),
         fetch("/api/hr/designations").then(function(r) { return r.json(); }),
         fetch("/api/hr/employees").then(function(r) { return r.json(); }),
+        fetch("/api/hr/shifts").then(function(r) { return r.json(); }),
       ]);
 
       if (!results[0].ok) {
@@ -233,6 +245,7 @@
       departments = results[1].ok ? results[1].departments : [];
       designations = results[2].ok ? results[2].designations : [];
       employees = results[3].ok ? results[3].employees : [];
+      shifts = results[4] && results[4].ok ? results[4].shifts : [];
 
       var name = [employee.first_name, employee.last_name].filter(Boolean).join(" ") || "Employee";
       qs("empNameHeading").textContent = name;

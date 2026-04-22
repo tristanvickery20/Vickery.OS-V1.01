@@ -6,6 +6,7 @@ const {
   readAllDesignations, appendDesignation, updateDesignation, deleteDesignation,
   readAllEmployees, updateEmployeeHr, appendEmployeeRow,
 } = require("../lib/hr");
+const { readAllShiftTypes } = require("../lib/hr-attendance");
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -210,7 +211,7 @@ async function handleUpdateEmployee(req, res, staffId) {
       "first_name", "last_name", "phone",
       "hire_date", "employment_status", "department_id", "designation_id", "reports_to",
       "personal_phone", "emergency_contact_name", "emergency_contact_phone",
-      "notes",
+      "notes", "default_shift_id",
     ];
     const updates = {};
     allowed.forEach(k => { if (body[k] !== undefined) updates[k] = body[k]; });
@@ -232,6 +233,12 @@ async function handleUpdateEmployee(req, res, staffId) {
       const all = await readAllEmployees();
       if (!all.find(e => e.staff_id === updates.reports_to)) {
         return json(res, 400, { ok: false, error: "Invalid reports_to staff_id" });
+      }
+    }
+    if (updates.default_shift_id) {
+      const shifts = await readAllShiftTypes();
+      if (!shifts.find(s => s.shift_id === updates.default_shift_id)) {
+        return json(res, 400, { ok: false, error: "Invalid default_shift_id" });
       }
     }
 
