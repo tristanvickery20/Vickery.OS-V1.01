@@ -1,0 +1,764 @@
+Got it. Treat this as a gap-audit checklist for cloning Frappe HR behavior inside your CRM, not a pitch.
+
+One important note first: Frappe HR is documented as a full HR/payroll product with 13+ modules, and a lot of what feels like “features” are really connected screens plus rules between them. So the right way to audit your CRM is not just “do I have this page,” but also “does this page trigger the next thing automatically?”  ￼
+
+1) Main HR home / workspace
+
+This is the top-level landing area. In Frappe HR, users navigate into employee management, shift & attendance, leaves, recruitment, lifecycle, performance, payroll, expense claims, reports, and settings from organized module areas rather than one giant mixed CRM screen.  ￼
+
+Your audit questions
+
+* Do you have a dedicated HR sidebar/nav separate from sales/jobs?
+* Can a manager get to attendance, leave, payroll, recruiting, and employee records in 1–2 taps?
+* Are admin/setup screens separated from day-to-day operator screens?
+
+2) Employee list screen
+
+This is your master people list. Frappe HR maintains a full employee database and supports related org records like department, branch, designation, employee grade, employee group, health insurance, and org chart.  ￼
+
+Must-have features
+
+* searchable employee list
+* active/inactive status
+* branch / department / designation filters
+* employee profile entry point
+* hire/exit state visibility
+
+What it should connect to
+
+* attendance
+* leave
+* payroll
+* appraisals
+* advances / claims
+* transfers / promotions / separation  ￼
+
+Gap test
+
+* Can one employee record act as the source of truth for every HR workflow?
+* Or do you have employee data duplicated across multiple modules?
+
+3) Employee profile screen
+
+This is one of the most important screens. Frappe HR’s employee records tie into contact info, salary/payroll records, attendance, leave, appraisals, lifecycle changes, and reporting. The docs also note hierarchy-based access using the employee’s “Reports To” chain.  ￼
+
+Must-have tabs/sections
+
+* personal/contact info
+* employment info
+* department / branch / designation / grade
+* manager / reports-to
+* shift assignment
+* leave balances
+* salary structure assignment
+* claims / advances
+* appraisal history
+* onboarding / separation history
+
+Logic
+
+* manager hierarchy should control visibility of subordinate requests
+* changing department/designation should affect approvers, staffing, or template matching where applicable  ￼
+
+Gap test
+
+* When you open one employee, can you actually manage the whole employee lifecycle from there?
+
+4) Department / org structure screens
+
+Frappe HR has dedicated screens for Department and Organizational Chart. Department setup can store leave approvers and expense approvers, and org chart shows hierarchy by employee, designation, image, and name.  ￼
+
+Must-have screens
+
+* Department list/detail
+* Branch list/detail
+* Designation list/detail
+* Employee Grade
+* Org Chart
+
+Must-have logic
+
+* department-level default approvers
+* hierarchy visibility
+* branch/department used as filters in attendance/payroll/reports  ￼
+
+Gap test
+
+* Does your org structure actually drive workflows, or is it just display data?
+
+5) Attendance list screen
+
+Frappe HR has a standard Attendance screen where attendance is recorded daily per employee with statuses like Present, Absent, On Leave, and Half Day; future dates cannot be marked.  ￼
+
+Must-have features
+
+* date + employee + status
+* optional shift link
+* submit/finalize state
+* monthly attendance reporting
+
+Logic
+
+* attendance can feed payroll working-day calculation, depending on payroll settings
+* half-day handling should affect pay math if payroll uses attendance  ￼
+
+Gap test
+
+* Is attendance just informational, or does it change payroll and leave behavior?
+
+6) Bulk attendance / upload screens
+
+Frappe HR includes Employee Attendance Tool for marking multiple employees at once, plus Upload Attendance and Attendance Request flows. The attendance tool lets users filter by department and branch for a given day.  ￼
+
+Must-have screens
+
+* bulk attendance entry
+* import/upload attendance
+* attendance correction/request screen
+
+Why it matters
+Without bulk tools, HR staff waste time doing one employee at a time.
+
+Gap test
+
+* Can a supervisor mark a whole crew/department at once?
+* Can employees request corrections instead of admins editing records manually?
+
+7) Employee check-in / check-out screen
+
+Frappe HR has an Employee Checkin screen and mobile check-in/out. It supports geolocation tracking, can fetch current location, and automatically ties logs to shifts; logs without an active shift can be marked Off-Shift and excluded from auto-attendance.  ￼
+
+Must-have features
+
+* check-in timestamp
+* check-out timestamp
+* geolocation
+* device/mobile entry
+* shift match indicator
+* off-shift flag
+
+Logic
+
+* checkin logs should not just sit there
+* they should feed attendance generation
+* off-shift logs should be treated differently from normal logs  ￼
+
+Gap test
+
+* Do check-ins create useful payroll/attendance data, or are they just timestamps?
+
+8) Shift management screens
+
+Frappe HR includes Shift Type, Shift Location, Shift Request, Shift Assignment, Shift Schedule, Shift Schedule Assignment, and Roster. Approved Shift Requests can auto-create Shift Assignments, and Shift Schedule Assignment can auto-create repeating shift assignments over time.  ￼
+
+Must-have screens
+
+* Shift Type
+* Shift Location
+* Shift Assignment
+* Shift Request
+* Shift Schedule
+* Shift Schedule Assignment
+* Roster calendar/grid
+
+Must-have logic
+
+* shift requests become assignments when approved
+* repeating schedules generate future assignments
+* roster view shows who works when
+* shift location can enforce geofence check-in rules  ￼
+
+Gap test
+
+* Can you manage real schedules, or only static employee defaults?
+
+9) Geofence / shift location screen
+
+Shift Location is a separate screen in Frappe HR. If geolocation tracking is enabled, admins can set a check-in radius plus coordinates, and users outside the allowed radius can be blocked from checking in.  ￼
+
+Must-have features
+
+* location name
+* lat/long
+* allowed radius
+* fetch location button
+* enforcement toggle
+
+Gap test
+
+* If you need field accountability, do you have true geofence rules or just a map pin?
+
+10) Leave setup screens
+
+Frappe HR’s leave engine includes Leave Type, Leave Period, Leave Policy, Leave Policy Assignment, Holiday List, Holiday List Assignment, Leave Control Panel, Leave Allocation, Earned Leaves, Leave Adjustment, Leave Ledger Entry, Leave Block List, Compensatory Leave Request, Leave Encashment, and Leave Application.  ￼
+
+This means your CRM should have setup screens for
+
+* leave categories
+* leave year/period
+* holiday calendars
+* policy templates
+* employee policy assignment
+* manual adjustments
+* leave ledger/history
+
+Core logic
+
+* leave policy assignment creates/feeds allocations
+* earned leave can be credited on a schedule
+* holidays should affect leave calculation
+* blocked dates/rules should prevent invalid leave requests  ￼
+
+Gap test
+
+* Do you only have “time off requests,” or a full leave engine with balances, rules, accruals, and history?
+
+11) Leave application screen
+
+Frappe HR has a dedicated Leave Application screen where employees apply for leave and leave approvers approve it.  ￼
+
+Must-have features
+
+* employee
+* leave type
+* from/to dates
+* half-day handling
+* reason
+* approver
+* status
+* overlap checks
+* balance check
+* holiday handling
+
+Logic
+
+* should validate against leave balance/policy
+* should route to leave approver
+* should affect attendance/payroll depending on settings  ￼
+
+Gap test
+
+* Can an employee self-serve leave with real policy validation?
+
+12) Leave control panel / manager leave screen
+
+Frappe HR includes Leave Control Panel plus leave reports. This is the admin/manager view for allocations and balances across many employees.  ￼
+
+Must-have features
+
+* company-wide leave balances
+* allocation visibility
+* quick adjustments
+* department/team view
+* leave calendar or conflict view
+
+Gap test
+
+* Can a manager see upcoming absences and remaining balances without opening each employee one by one?
+
+13) Recruitment planning screens
+
+Frappe HR includes Staffing Plan and Job Opening controls. Staffing Plan is used to plan manpower and budget hiring, and Job Openings are restricted by the active Staffing Plan’s vacancies/budget.  ￼
+
+Must-have screens
+
+* Staffing Plan
+* Job Requisition
+* Job Opening
+
+Logic
+
+* open roles should be capped by approved plan
+* department/designation should tie into planned headcount
+* closed job openings should block new applicants  ￼
+
+Gap test
+
+* Can recruiting happen without approved headcount?
+* If yes, you are missing one of Frappe HR’s control layers.
+
+14) Job opening / job portal screen
+
+Frappe HR lets Job Openings be published on the website Job Portal. Openings are linked to department/designation and can spawn applicants directly.  ￼
+
+Must-have features
+
+* open/closed status
+* department / designation
+* planned positions
+* publish-to-website toggle
+* applicant count
+* create applicant action
+
+Gap test
+
+* Is your hiring page separate from your internal opening record, or are they connected?
+
+15) Job applicant screen
+
+Frappe HR has a Job Applicant screen with applicant source tracking, dashboard-style interview tracking, and the ability to generate applicants from an inbound email account. Sources include campaign, employee referral, walk-in, and website listing.  ￼
+
+Must-have features
+
+* candidate profile
+* linked opening
+* source tracking
+* resume/files
+* interview history
+* notes
+* status funnel
+
+Logic
+
+* email-to-applicant ingestion
+* opening linkage
+* interview linkage
+* offer conversion path  ￼
+
+Gap test
+
+* Are applicants actual structured records, or just contacts/leads?
+
+16) Interview screens
+
+Frappe HR includes Interview Round, Interview, and Interview Feedback. Interview Round defines the type/stage; Interview Feedback records skill ratings, result, comments, and can summarize feedback.  ￼
+
+Must-have screens
+
+* Interview Round setup
+* Interview schedule
+* Interview feedback form
+
+Must-have features
+
+* stage definition
+* interviewer
+* scheduled time
+* scorecard
+* skills assessment
+* result
+* reminders/follow-up
+
+Gap test
+
+* Do interviews produce structured scoring, or just random notes?
+
+17) Job offer / appointment screen
+
+Frappe HR includes Job Offer and Appointment Letter-type handoff. The Job Offer holds compensation package, designation, grade, department, and leave entitlements among other details.  ￼
+
+Must-have features
+
+* candidate to offer conversion
+* pay package
+* role/grade/department
+* start date
+* leave entitlement
+* approval/send/accept flow
+
+Gap test
+
+* Can you move someone cleanly from applicant to employee without retyping everything?
+
+18) Onboarding template screen
+
+Frappe HR has Employee Onboarding Template and Employee Onboarding. Templates are blueprints of activities by department/designation/grade, with assignees, offsets, and durations.  ￼
+
+Must-have features
+
+* reusable onboarding task templates
+* task owner by user or role
+* start offsets
+* duration days
+* department/designation/grade targeting
+
+Gap test
+
+* Do new hires trigger a real checklist, or does everyone just “remember what to do”?
+
+19) Employee onboarding screen
+
+When an Employee Onboarding record is created, it can pull from a Job Applicant and template. Frappe HR uses that template to create onboarding activities/tasks.  ￼
+
+Must-have features
+
+* link to applicant / employee
+* date of joining
+* selected template
+* generated tasks
+* completion status
+* visible owners
+
+Gap test
+
+* Can you see onboarding progress at a glance for every new hire?
+
+20) Employee lifecycle screens
+
+Frappe HR has Employee Lifecycle Management plus Employee Promotion, Employee Transfer, Employee Skill Map, Employee Separation, Exit Interview, and Full and Final Statement.  ￼
+
+Must-have lifecycle screens
+
+* promotion
+* transfer
+* skills map
+* separation
+* exit interview
+* final settlement
+
+Gap test
+
+* Do role/location/pay changes live as trackable events, or do you just edit the employee record and lose history?
+
+21) Employee transfer screen
+
+Frappe HR uses Employee Transfer to record moving an employee to another company, department, or unit.  ￼
+
+Must-have features
+
+* from/to department or company
+* effective date
+* reason
+* linked employee
+* approval trail
+
+Gap test
+
+* Can you tell where someone used to belong and when they moved?
+
+22) Separation template + separation screen
+
+Frappe HR has Employee Separation Template and Employee Separation. Templates define activities like collect laptop, clear dues, delete email, collect ID card, plus who owns each task and timing. On submission, a Project and Tasks are created, and the separation completes when all activities are complete.  ￼
+
+Must-have features
+
+* resignation / notice data
+* task template
+* assigned owners
+* dated tasks
+* weighted activities
+* completion tracking
+
+Critical logic
+
+* submission generates offboarding tasks automatically
+* status moves to completed when tasks are done  ￼
+
+Gap test
+
+* Is offboarding procedural and trackable, or just a note on the employee record?
+
+23) Exit interview screen
+
+Frappe HR includes Exit Interview as a survey-style screen for departing employees.  ￼
+
+Must-have features
+
+* reason for leaving
+* feedback categories
+* manager/HR notes
+* final recommendation/themes
+* analytics/reporting
+
+Gap test
+
+* Are you capturing why people leave in a structured way?
+
+24) Travel and expense screens
+
+Frappe HR includes Travel Request, Employee Advance, and Expense Claim. Travel Request is for requesting official travel funds; Employee Advance is pre-spend money; Expense Claim is post-spend reimbursement.  ￼
+
+You want three separate screens
+
+* Travel Request
+* Employee Advance
+* Expense Claim
+
+Why
+These are not the same workflow.
+
+25) Employee advance screen
+
+Employees can create an Employee Advance with purpose and amount, but approvers submit it; after payment it can become Paid, Unpaid, or later Claimed through expense claim linkage.  ￼
+
+Must-have features
+
+* purpose
+* amount
+* employee
+* mode of payment
+* approver
+* payment status
+* claim linkage
+
+Gap test
+
+* Do you distinguish advance money from reimbursement money?
+
+26) Expense claim screen
+
+Expense Claim is for out-of-pocket expenses employees want reimbursed.  ￼
+
+Must-have features
+
+* expense rows
+* category
+* amount
+* receipts/files
+* linked advance offset
+* approver
+* accountant/payment status
+
+Gap test
+
+* Can one claim reconcile against prior advances and final payout?
+
+27) Performance setup screens
+
+Frappe HR includes Appraisal Template, Appraisal Cycle, Goal, Employee Performance Feedback, Appraisal, and Appraisal Overview Report. Templates define KRAs and feedback criteria; appraisal cycles define the review period.  ￼
+
+Must-have setup screens
+
+* Goal/KRA definitions
+* feedback criteria
+* appraisal template
+* appraisal cycle
+
+Gap test
+
+* Is performance review just a form, or does it have reusable structure and scoring rules?
+
+28) Appraisal screen
+
+Appraisal depends on an Appraisal Template and Appraisal Cycle. The overview report rolls up goal score, feedback count, average feedback score, self score, and final score.  ￼
+
+Must-have features
+
+* employee + cycle
+* self review
+* manager review
+* linked goals
+* weighted scores
+* final score
+* approval/finalization
+
+Gap test
+
+* Can you compare appraisals consistently across employees and cycles?
+
+29) Payroll settings screen
+
+Frappe HR has Payroll Settings and HR Settings for payroll behavior. Working days can be calculated from Leave Applications or Attendance, unmarked attendance can be treated a certain way, holidays can be included/excluded, half-day pay fraction is configurable, and timesheet-based payroll limits exist.  ￼
+
+Must-have settings
+
+* payroll source: attendance vs leave
+* unmarked attendance rule
+* holiday inclusion rule
+* half-day salary fraction
+* max timesheet hours
+* rounding rules
+
+Gap test
+
+* Do you have one clear place where payroll math rules live?
+
+30) Salary component screen
+
+Salary Components are the building blocks of pay. Frappe HR lets them be earnings or deductions and supports formulas and attributes like tax/flexible-benefit behavior.  ￼
+
+Must-have features
+
+* earning/deduction type
+* formula or fixed amount
+* account mapping
+* taxability flags
+* flexible benefit flags
+* claim-based payout flags
+
+Gap test
+
+* Is your payroll hardcoded, or built from reusable pay components?
+
+31) Salary structure screen
+
+Salary Structure is the pay package template made from salary components.  ￼
+
+Must-have features
+
+* earnings table
+* deductions table
+* formulas
+* company-specific configuration
+* reusable template behavior
+
+Gap test
+
+* Can multiple employees share a structure with different values/formulas?
+
+32) Salary structure assignment screen
+
+Frappe HR uses Salary Structure Assignment to attach a structure to an employee for a date range, with base pay, variable pay, and tax slab preference. Multiple assignments can exist for different periods, and bulk assignment tools exist.  ￼
+
+Must-have features
+
+* employee
+* structure
+* effective date
+* base amount
+* variable amount
+* tax slab
+* bulk assignment
+
+Gap test
+
+* Can pay changes be time-based without overwriting history?
+
+33) Salary slip screen
+
+Salary Slip pulls the employee’s assigned structure and period data, then shows detailed earnings and deductions.  ￼
+
+Must-have features
+
+* employee
+* pay period
+* working/payment days
+* earnings
+* deductions
+* net pay
+* printable/shareable slip
+
+Gap test
+
+* Does your system explain pay clearly, or just output one number?
+
+34) Payroll entry / payroll run screen
+
+Payroll Entry bulk-processes payroll company-wide or by branch, department, or designation. Payroll setup docs describe the standard flow of payroll period, tax slab, salary components, structures, assignments, salary slips, and accounting booking.  ￼
+
+Must-have features
+
+* run payroll for filtered employee groups
+* preview
+* create salary slips in bulk
+* submit/finalize payroll
+* accounting handoff
+
+Gap test
+
+* Can payroll be run operationally in bulk, not just manually employee by employee?
+
+35) Additional payroll screens
+
+Frappe HR also documents Additional Salary, Retention Bonus, Employee Incentive, Overtime, Flexible Benefits, Payroll Correction, Arrears, tax exemption declarations, other income, employee benefits, loans, gratuity, and benefit claims.  ￼
+
+At minimum, your CRM should decide whether it needs screens for
+
+* one-off additions
+* incentives/bonuses
+* overtime
+* loans
+* benefits
+* payroll corrections
+* arrears/back-pay
+* tax declarations
+
+Gap test
+
+* Can your payroll absorb exceptions cleanly without hacks?
+
+36) Reports screens
+
+Frappe HR ships dedicated HR reports including leave balance, salary register, monthly attendance sheet, shift attendance, employee exits, birthdays, holiday workers, bank remittance, loan repayment, and appraisal overview.  ￼
+
+Must-have report screens
+
+* attendance by month
+* leave balance
+* payroll register
+* appraisal overview
+* exits/attrition
+* birthdays/anniversaries
+* bank remittance / payroll export
+* loan repayment if loans exist
+
+Gap test
+
+* Can managers self-serve HR answers without asking an admin?
+
+37) Daily work summary / notification screens
+
+Frappe HR includes Daily Work Summary Group and broader notification/workflow behavior. This is the “send the right people the right reminder/update” layer.  ￼
+
+Must-have features
+
+* approval reminders
+* missing check-in reminders
+* pending onboarding/offboarding tasks
+* pending interview feedback reminders
+* daily summary email/digest
+
+Gap test
+
+* Do records just exist, or do they push action?
+
+38) Mobile employee screens
+
+Frappe HR’s mobile app supports leave apply/approve, check-in/check-out, employee profile access, and geolocation-backed attendance behavior.  ￼
+
+Must-have mobile screens
+
+* today/check-in
+* leave request
+* approvals inbox
+* profile
+* salary slip viewer
+* claims/advances
+
+Gap test
+
+* Can employees and managers do the basics without opening the full desktop CRM?
+
+39) Hidden interconnections you absolutely need
+
+These are the important “why it works” pieces:
+
+* Department can define default leave and expense approvers.  ￼
+* Reports To hierarchy controls subordinate visibility for some records.  ￼
+* Shift Request approval can create Shift Assignment automatically.  ￼
+* Shift Schedule Assignment can keep generating repeating future shifts.  ￼
+* Shift Location plus geolocation can block out-of-zone check-ins.  ￼
+* Employee Checkin logs attach to shifts, and off-shift logs can be excluded from auto-attendance.  ￼
+* Leave Policy Assignment drives leave allocation behavior, including earned-leave schedules.  ￼
+* Staffing Plan limits allowed Job Openings.  ￼
+* Closed Job Openings block new applicants.  ￼
+* Job Applicant can be generated from inbound email.  ￼
+* Onboarding and Separation are template-driven task systems, not just status fields. Separation submission creates a project/tasks and completes when activities complete.  ￼
+* Payroll can calculate working days from either attendance or leave, depending on settings.  ￼
+* Salary Structure Assignment is effective-date based, so history is preserved.  ￼
+* Payroll Entry runs in bulk by org filters.  ￼
+* Employee Advance and Expense Claim are linked but distinct states/workflows.  ￼
+
+40) The fastest way to audit your CRM
+
+Use these five labels against every screen above:
+
+* Missing entirely
+* Exists but isolated
+* Exists and connected
+* Exists but weak UX
+* Exists and production-ready
+
+Then prioritize in this order:
+
+1. Employee profile + org hierarchy
+2. Attendance/check-in + shifts
+3. Leave engine
+4. Recruiting to onboarding
+5. Payroll settings + structures + payroll run
+6. Expenses/advances
+7. Performance + reports  ￼
+
+The reason for that order is simple: those are the screens that create the biggest web of downstream logic in Frappe HR. If those are weak, the rest becomes manual busywork. That prioritization is my inference from how the documented modules depend on shared employee, attendance, leave, payroll, and lifecycle data.  ￼
+
+Next I can turn this into a one-page audit template you can literally paste into Replit or your project notes and mark red/yellow/green.
