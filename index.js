@@ -97,6 +97,17 @@ const {
   handleListCorrections, handleCreateCorrection, handleUpdateCorrection,
 } = require("./api/hr-attendance");
 const { ensureAttendanceSheets } = require("./lib/hr-attendance");
+const {
+  handleListLeaveTypes, handleCreateLeaveType, handleUpdateLeaveType, handleDeleteLeaveType,
+  handleListHolidayLists, handleCreateHolidayList, handleUpdateHolidayList, handleDeleteHolidayList,
+  handleListHolidays, handleCreateHoliday, handleDeleteHoliday,
+  handleListLeavePolicies, handleCreateLeavePolicy, handleUpdateLeavePolicy, handleDeleteLeavePolicy,
+  handleCreatePolicyItem, handleDeletePolicyItem,
+  handleListAllocations, handleAssignPolicy, handleUpdateAllocation,
+  handleListApplications, handleCreateApplication, handleUpdateApplication,
+  handleTeamCalendar, handleLeavePendingCount,
+} = require("./api/hr-leave");
+const { ensureLeaveSheets } = require("./lib/hr-leave");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
 
@@ -812,6 +823,39 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
+  // ── Crew-session-accessible Leave API routes (before admin auth guard) ─────────
+  // These endpoints accept a valid crew session OR admin session.
+  // Security enforcement (self-scope, manager identity) is inside each handler.
+  if (_epath === "/api/hr/leave-types" && req.method === "GET") {
+    if (!getCrewSession(req) && !isAuthed(req)) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "UNAUTHORIZED" })); }
+    return handleListLeaveTypes(req, res);
+  }
+  if (_epath === "/api/hr/leave/allocations" && req.method === "GET") {
+    if (!getCrewSession(req) && !isAuthed(req)) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "UNAUTHORIZED" })); }
+    const crewSessAlloc = getCrewSession(req);
+    if (crewSessAlloc) {
+      const urlAlloc = new URL(req.url, "http://localhost");
+      if (!urlAlloc.searchParams.get("staff_id")) { urlAlloc.searchParams.set("staff_id", crewSessAlloc.staffId); req.url = urlAlloc.pathname + "?" + urlAlloc.searchParams.toString(); }
+      else if (urlAlloc.searchParams.get("staff_id") !== crewSessAlloc.staffId) { res.writeHead(403, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "Crew users may only view their own allocations" })); }
+    }
+    return handleListAllocations(req, res);
+  }
+  if (_epath === "/api/hr/leave/applications" && req.method === "GET") {
+    if (!getCrewSession(req) && !isAuthed(req)) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "UNAUTHORIZED" })); }
+    // Crew users may only fetch their own applications (enforced server-side)
+    const crewSess = getCrewSession(req);
+    if (crewSess) {
+      const urlObj = new URL(req.url, "http://localhost");
+      if (!urlObj.searchParams.get("staff_id")) { urlObj.searchParams.set("staff_id", crewSess.staffId); req.url = urlObj.pathname + "?" + urlObj.searchParams.toString(); }
+      else if (urlObj.searchParams.get("staff_id") !== crewSess.staffId) { res.writeHead(403, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "Crew users may only view their own applications" })); }
+    }
+    return handleListApplications(req, res);
+  }
+  if (_epath === "/api/hr/leave/applications" && req.method === "POST") {
+    if (!getCrewSession(req) && !isAuthed(req)) { res.writeHead(401, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: false, error: "UNAUTHORIZED" })); }
+    return handleCreateApplication(req, res);
+  }
+
   // AUTH GUARD: protected pages + remaining /api/*
   if (
     req.url === "/clients" ||
@@ -1274,6 +1318,27 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/people-attendance-corrections.html"), "text/html");
   }
 
+  // ── Crew-facing Leave pages (crew session required) ───────────────────────────
+  if (_epath === "/crew/leave/apply" && req.method === "GET") {
+    const crewSess = getCrewSession(req);
+    if (!crewSess) { res.writeHead(302, { Location: "/crew/login" }); return res.end(); }
+    return serveFile(res, path.join(__dirname, "pages/crew-leave-apply.html"), "text/html");
+  }
+
+  // ── People / HR Leave pages ───────────────────────────────────────────────────
+  if (_epath === "/people/leave" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-leave-applications.html"), "text/html");
+  }
+  if (_epath === "/people/leave/types" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-leave-types.html"), "text/html");
+  }
+  if (_epath === "/people/leave/policies" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-leave-policies.html"), "text/html");
+  }
+  if (_epath === "/people/leave/apply" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-leave-apply.html"), "text/html");
+  }
+
   // ── HR API — Departments ──────────────────────────────────────────────────────
   if (_epath === "/api/hr/departments" && req.method === "GET")  return handleListDepartments(req, res);
   if (_epath === "/api/hr/departments" && req.method === "POST") return handleCreateDepartment(req, res);
@@ -1337,6 +1402,77 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateCorrection(req, res, corrId);
   }
 
+  // ── HR API — Leave Types ──────────────────────────────────────────────────────
+  if (_epath === "/api/hr/leave-types" && req.method === "GET")  return handleListLeaveTypes(req, res);
+  if (_epath === "/api/hr/leave-types" && req.method === "POST") return handleCreateLeaveType(req, res);
+  if (_epath.startsWith("/api/hr/leave-types/") && req.method === "PATCH") {
+    const id = _epath.slice("/api/hr/leave-types/".length);
+    return handleUpdateLeaveType(req, res, id);
+  }
+  if (_epath.startsWith("/api/hr/leave-types/") && req.method === "DELETE") {
+    const id = _epath.slice("/api/hr/leave-types/".length);
+    return handleDeleteLeaveType(req, res, id);
+  }
+
+  // ── HR API — Holiday Lists ────────────────────────────────────────────────────
+  if (_epath === "/api/hr/holiday-lists" && req.method === "GET")  return handleListHolidayLists(req, res);
+  if (_epath === "/api/hr/holiday-lists" && req.method === "POST") return handleCreateHolidayList(req, res);
+  if (_epath.startsWith("/api/hr/holiday-lists/") && req.method === "PATCH") {
+    const id = _epath.slice("/api/hr/holiday-lists/".length);
+    return handleUpdateHolidayList(req, res, id);
+  }
+  if (_epath.startsWith("/api/hr/holiday-lists/") && req.method === "DELETE") {
+    const id = _epath.slice("/api/hr/holiday-lists/".length);
+    return handleDeleteHolidayList(req, res, id);
+  }
+
+  // ── HR API — Holidays ─────────────────────────────────────────────────────────
+  if (_epath === "/api/hr/holidays" && req.method === "GET")  return handleListHolidays(req, res);
+  if (_epath === "/api/hr/holidays" && req.method === "POST") return handleCreateHoliday(req, res);
+  if (_epath.startsWith("/api/hr/holidays/") && req.method === "DELETE") {
+    const id = _epath.slice("/api/hr/holidays/".length);
+    return handleDeleteHoliday(req, res, id);
+  }
+
+  // ── HR API — Leave Policies ───────────────────────────────────────────────────
+  if (_epath === "/api/hr/leave/policies" && req.method === "GET")  return handleListLeavePolicies(req, res);
+  if (_epath === "/api/hr/leave/policies" && req.method === "POST") return handleCreateLeavePolicy(req, res);
+  if (_epath.startsWith("/api/hr/leave/policies/") && req.method === "PATCH") {
+    const id = _epath.slice("/api/hr/leave/policies/".length);
+    return handleUpdateLeavePolicy(req, res, id);
+  }
+  if (_epath.startsWith("/api/hr/leave/policies/") && req.method === "DELETE") {
+    const id = _epath.slice("/api/hr/leave/policies/".length);
+    return handleDeleteLeavePolicy(req, res, id);
+  }
+
+  // ── HR API — Policy Items ─────────────────────────────────────────────────────
+  if (_epath === "/api/hr/leave/policy-items" && req.method === "POST") return handleCreatePolicyItem(req, res);
+  if (_epath.startsWith("/api/hr/leave/policy-items/") && req.method === "DELETE") {
+    const id = _epath.slice("/api/hr/leave/policy-items/".length);
+    return handleDeletePolicyItem(req, res, id);
+  }
+
+  // ── HR API — Leave Allocations ────────────────────────────────────────────────
+  if (_epath === "/api/hr/leave/allocations" && req.method === "GET")          return handleListAllocations(req, res);
+  if (_epath === "/api/hr/leave/allocations/assign" && req.method === "POST")  return handleAssignPolicy(req, res);
+  if (_epath.startsWith("/api/hr/leave/allocations/") && req.method === "PATCH") {
+    const id = _epath.slice("/api/hr/leave/allocations/".length);
+    return handleUpdateAllocation(req, res, id);
+  }
+
+  // ── HR API — Leave Applications ───────────────────────────────────────────────
+  if (_epath === "/api/hr/leave/applications" && req.method === "GET")  return handleListApplications(req, res);
+  if (_epath === "/api/hr/leave/applications" && req.method === "POST") return handleCreateApplication(req, res);
+  if (_epath.startsWith("/api/hr/leave/applications/") && req.method === "PATCH") {
+    const id = _epath.slice("/api/hr/leave/applications/".length);
+    return handleUpdateApplication(req, res, id);
+  }
+
+  // ── HR API — Leave Team Calendar & Pending Count ──────────────────────────────
+  if (_epath === "/api/hr/leave/team-calendar" && req.method === "GET") return handleTeamCalendar(req, res);
+  if (_epath === "/api/hr/leave/pending-count" && req.method === "GET") return handleLeavePendingCount(req, res);
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -1355,6 +1491,7 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => ensureStaffSheet())
     .then(() => ensureHrSheets())
     .then(() => ensureAttendanceSheets())
+    .then(() => ensureLeaveSheets())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())

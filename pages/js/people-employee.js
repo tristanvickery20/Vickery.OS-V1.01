@@ -5,6 +5,8 @@
   var designations = [];
   var employees = [];
   var shifts = [];
+  var leaveTypes = [];
+  var allocations = [];
 
   function qs(id) { return document.getElementById(id); }
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -67,6 +69,7 @@
       '<button class="tab-btn active" data-tab="personal">Personal Info</button>' +
       '<button class="tab-btn" data-tab="employment">Employment Info</button>' +
       '<button class="tab-btn" data-tab="emergency">Emergency Contact</button>' +
+      '<button class="tab-btn" data-tab="leave">Leave Balances</button>' +
       '</div>' +
 
       /* ── Personal Info tab ── */
@@ -127,6 +130,17 @@
           '</div>' +
         '</div>' +
         '<div class="save-bar"><button class="btn-primary" id="saveEmergency">Save Changes</button></div>' +
+      '</div>' +
+
+      /* ── Leave Balances tab ── */
+      '<div class="tab-panel" id="tab-leave">' +
+        '<div class="section-card">' +
+          '<div class="section-title">Current Year Leave Balances</div>' +
+          '<div id="leaveBalancesContent" style="color:var(--muted,rgba(220,232,255,0.5));font-size:14px;">Loading…</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;">' +
+          '<a class="btn-primary" href="/people/leave/apply?staff_id=' + esc(staffId) + '" style="display:inline-block;padding:10px 20px;text-decoration:none;border-radius:10px;">+ Submit Leave Application</a>' +
+        '</div>' +
       '</div>';
   }
 
@@ -143,6 +157,33 @@
     set("fEcPhone", emp.emergency_contact_phone);
   }
 
+  function renderLeaveBalances() {
+    var el = document.getElementById("leaveBalancesContent");
+    if (!el) return;
+    if (!allocations.length) {
+      el.innerHTML = '<span>No leave balances assigned. Assign a Leave Policy to this employee from <a href="/people/leave/policies" style="color:var(--blue,#2d6ae0);">Leave Policies</a>.</span>';
+      return;
+    }
+    var year = new Date().getFullYear();
+    var ltById = {};
+    leaveTypes.forEach(function(lt) { ltById[lt.leave_type_id] = lt; });
+    var rows = allocations.filter(function(a) { return a.year === String(year); }).map(function(a) {
+      var lt = ltById[a.leave_type_id] || {};
+      var rem = Math.max(0, parseFloat(a.days_allocated || 0) - parseFloat(a.days_used || 0));
+      var pct = parseFloat(a.days_allocated || 0) > 0
+        ? Math.min(100, Math.round((parseFloat(a.days_used || 0) / parseFloat(a.days_allocated)) * 100))
+        : 0;
+      return '<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--line,rgba(100,150,255,0.09));">' +
+        '<div style="flex:1;font-size:14px;color:var(--text,#e6eefc);">' + esc(lt.name || a.leave_type_id) + '</div>' +
+        '<div style="font-size:14px;color:var(--muted,rgba(220,232,255,0.7));">' + rem + ' / ' + esc(a.days_allocated) + ' days</div>' +
+        '<div style="width:80px;height:6px;border-radius:3px;background:var(--line,rgba(100,150,255,0.14));">' +
+          '<div style="width:' + pct + '%;height:100%;border-radius:3px;background:var(--blue,#2d6ae0);"></div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+    el.innerHTML = rows || '<span style="color:var(--muted);">No allocations for ' + year + '.</span>';
+  }
+
   function initTabs() {
     document.querySelectorAll(".tab-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -151,6 +192,7 @@
         btn.classList.add("active");
         var panel = document.getElementById("tab-" + btn.getAttribute("data-tab"));
         if (panel) panel.classList.add("active");
+        if (btn.getAttribute("data-tab") === "leave") renderLeaveBalances();
       });
     });
   }
@@ -228,12 +270,15 @@
 
   async function load() {
     try {
+      var year = new Date().getFullYear();
       var results = await Promise.all([
         fetch("/api/hr/employees/" + staffId).then(function(r) { return r.json(); }),
         fetch("/api/hr/departments").then(function(r) { return r.json(); }),
         fetch("/api/hr/designations").then(function(r) { return r.json(); }),
         fetch("/api/hr/employees").then(function(r) { return r.json(); }),
         fetch("/api/hr/shifts").then(function(r) { return r.json(); }),
+        fetch("/api/hr/leave-types").then(function(r) { return r.json(); }),
+        fetch("/api/hr/leave/allocations?staff_id=" + staffId + "&year=" + year).then(function(r) { return r.json(); }),
       ]);
 
       if (!results[0].ok) {
@@ -246,6 +291,8 @@
       designations = results[2].ok ? results[2].designations : [];
       employees = results[3].ok ? results[3].employees : [];
       shifts = results[4] && results[4].ok ? results[4].shifts : [];
+      leaveTypes = results[5] && results[5].ok ? results[5].leave_types : [];
+      allocations = results[6] && results[6].ok ? results[6].allocations : [];
 
       var name = [employee.first_name, employee.last_name].filter(Boolean).join(" ") || "Employee";
       qs("empNameHeading").textContent = name;

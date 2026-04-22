@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Leave Setup — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .btn-primary {
+      padding: 10px 20px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-sm {
+      padding: 6px 14px; font-size: 13px; font-weight: 700;
+      border-radius: 8px; border: none; cursor: pointer; font-family: inherit;
+    }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+    /* ── Tabs ── */
+    .page-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line, rgba(100,150,255,0.14));
+      margin-bottom: 28px;
+    }
+    .page-tab {
+      padding: 10px 22px; background: transparent; border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--muted, rgba(220,232,255,0.7)); font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; margin-bottom: -1px;
+    }
+    .page-tab.active { color: var(--text, #e6eefc); border-bottom-color: var(--blue, #2d6ae0); }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    /* ── Section card ── */
+    .section-card {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.7)); margin: 0 0 16px;
+    }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.6)); padding: 0 0 10px; text-align: left;
+    }
+    .data-table td {
+      padding: 12px 0; border-top: 1px solid var(--line, rgba(100,150,255,0.09));
+      font-size: 14px; color: var(--text, #e6eefc); vertical-align: middle;
+    }
+    .data-table td:last-child { text-align: right; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 700;
+    }
+    .badge-yes { background: rgba(34,197,94,0.13); color: #4ade80; }
+    .badge-no  { background: rgba(100,116,139,0.18); color: #94a3b8; }
+
+    /* ── Form row ── */
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+    .form-col { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--muted, rgba(220,232,255,0.7)); }
+    input[type="text"], input[type="number"], input[type="date"], select {
+      padding: 9px 12px; background: var(--bg, #0c1535);
+      border: 1px solid var(--line, rgba(100,150,255,0.14)); border-radius: 10px;
+      color: var(--text, #e6eefc); font-size: 14px; font-family: inherit;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue, #2d6ae0); }
+    .active-badge { background: rgba(34,197,94,0.13); color: #4ade80; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #166534; color: #fff; padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 200;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+    .empty-state { color: var(--muted, rgba(220,232,255,0.5)); font-size: 14px; padding: 20px 0; }
+
+    /* ── Holiday sub-list ── */
+    .holiday-list-row { cursor: pointer; }
+    .holiday-list-row:hover td { background: rgba(100,150,255,0.05); }
+    .holiday-entries { display: none; }
+    .holiday-entries.open { display: table-row-group; }
+    .holiday-entry td { background: rgba(100,150,255,0.04); padding: 8px 12px 8px 28px; font-size: 13px; }
+    .add-holiday-form { padding: 10px 12px 10px 28px; }
+    .add-holiday-form .form-row { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <h1>Leave Setup</h1>
+      </div>
+
+      <div class="page-tabs">
+        <button class="page-tab active" data-tab="leave-types">Leave Types</button>
+        <button class="page-tab" data-tab="holiday-lists">Holiday Lists</button>
+      </div>
+
+      <!-- ── Leave Types ── -->
+      <div class="tab-section active" id="tab-leave-types">
+        <div class="section-card">
+          <div class="section-title">Add Leave Type</div>
+          <div class="form-row">
+            <div class="form-col">
+              <label>Name</label>
+              <input type="text" id="ltName" placeholder="e.g. PTO, Sick, Unpaid" />
+            </div>
+            <div class="form-col">
+              <label>Days Per Year</label>
+              <input type="number" id="ltDays" min="0" step="0.5" value="10" />
+            </div>
+            <div class="form-col" style="flex: 0 0 auto; justify-content: flex-end;">
+              <label>&nbsp;</label>
+              <div style="display:flex;gap:16px;align-items:center;padding-bottom:2px;">
+                <div class="checkbox-row">
+                  <input type="checkbox" id="ltPaid" checked />
+                  <label for="ltPaid" style="text-transform:none;letter-spacing:0;font-size:14px;">Paid</label>
+                </div>
+                <div class="checkbox-row">
+                  <input type="checkbox" id="ltCarryOver" />
+                  <label for="ltCarryOver" style="text-transform:none;letter-spacing:0;font-size:14px;">Carry Over</label>
+                </div>
+                <button class="btn-primary btn-sm" id="addLeaveTypeBtn">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">Leave Types</div>
+          <div id="leaveTypesList"><div class="empty-state">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── Holiday Lists ── -->
+      <div class="tab-section" id="tab-holiday-lists">
+        <div class="section-card">
+          <div class="section-title">Add Holiday List</div>
+          <div class="form-row">
+            <div class="form-col">
+              <label>Name</label>
+              <input type="text" id="hlName" placeholder="e.g. 2026 Company Holidays" />
+            </div>
+            <div class="form-col" style="flex: 0 0 100px;">
+              <label>Year</label>
+              <input type="number" id="hlYear" value="2026" min="2020" max="2035" />
+            </div>
+            <div class="form-col" style="flex: 0 0 auto; justify-content: flex-end;">
+              <label>&nbsp;</label>
+              <div style="display:flex;gap:16px;align-items:center;padding-bottom:2px;">
+                <div class="checkbox-row">
+                  <input type="checkbox" id="hlActive" />
+                  <label for="hlActive" style="text-transform:none;letter-spacing:0;font-size:14px;">Set as Active</label>
+                </div>
+                <button class="btn-primary btn-sm" id="addHolidayListBtn">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">Holiday Lists</div>
+          <div id="holidayListsContent"><div class="empty-state">Loading…</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-leave-types.js"></script>
+</body>
+</html>

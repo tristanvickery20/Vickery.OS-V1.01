@@ -1084,6 +1084,7 @@
     <button class="view-tab active" data-tab="list">Jobs</button>
     <button class="view-tab" data-tab="map">Map</button>
     <button class="view-tab" data-tab="attendance">Attendance</button>
+    <button class="view-tab" data-tab="leave">Leave</button>
   </div>
 
   <!-- Job list tab -->
@@ -1127,6 +1128,20 @@
   <div id="mapView" style="display:none;">
     <div id="crewMapEl"></div>
     <div class="crew-map-status" id="crewMapStatus">Tap a pin to navigate or send a notification.</div>
+  </div>
+
+  <!-- Leave tab -->
+  <div id="leaveView" style="display:none;padding-top:16px;">
+    <div class="section-label" style="margin-bottom:12px;">Time Off / Leave</div>
+    <p style="font-size:13px;color:hsl(220 15% 55%);margin-bottom:16px;line-height:1.5;">
+      Request time off, view your leave balances, and check your past applications.
+    </p>
+    <a href="/crew/leave/apply" style="display:block;width:100%;box-sizing:border-box;padding:15px;background:#2d6ae0;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;margin-bottom:12px;">
+      ＋ Request Leave
+    </a>
+    <a href="/crew/leave/apply" style="display:block;width:100%;box-sizing:border-box;padding:13px;background:hsl(220 10% 14%);color:hsl(220 15% 70%);border:1px solid hsl(220 10% 22%);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;">
+      View Leave Dashboard
+    </a>
   </div>
 
   <!-- Attendance Correction tab -->

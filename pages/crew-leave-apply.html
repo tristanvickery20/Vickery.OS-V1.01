@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Request Leave — Vickery Electric</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-body, system-ui, sans-serif); background: hsl(220 14% 8%); color: hsl(220 15% 88%); min-height: 100dvh; display: flex; flex-direction: column; align-items: center; }
+    .page { width: 100%; max-width: 480px; padding: 0 16px 40px; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 16px; border-bottom: 1px solid hsl(220 10% 18%); margin-bottom: 24px; }
+    .header-title { font-size: 18px; font-weight: 800; color: hsl(220 15% 92%); }
+    .back-link { color: hsl(220 15% 55%); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .card { background: hsl(220 20% 13%); border: 1px solid hsl(220 15% 20%); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: hsl(220 15% 50%); margin-bottom: 14px; }
+    .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-row:last-child { margin-bottom: 0; }
+    label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: hsl(220 15% 50%); }
+    select, input[type="date"], textarea { width: 100%; padding: 12px 14px; background: hsl(220 20% 10%); border: 1px solid hsl(220 15% 22%); border-radius: 10px; color: hsl(220 15% 88%); font-size: 15px; font-family: inherit; outline: none; appearance: none; }
+    select:focus, input:focus, textarea:focus { border-color: hsl(220 70% 55%); }
+    textarea { resize: vertical; min-height: 80px; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-row label { text-transform: none; font-size: 14px; letter-spacing: 0; color: hsl(220 15% 75%); }
+    input[type="checkbox"] { width: 20px; height: 20px; accent-color: hsl(220 70% 55%); cursor: pointer; }
+    .balance-grid { display: grid; gap: 8px; margin-top: 8px; }
+    .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid hsl(220 10% 18%); font-size: 14px; }
+    .balance-label { color: hsl(220 15% 70%); }
+    .balance-val { font-weight: 700; }
+    .balance-bar { width: 60px; height: 5px; border-radius: 3px; background: hsl(220 10% 22%); overflow: hidden; }
+    .balance-fill { height: 100%; border-radius: 3px; background: hsl(220 70% 55%); }
+    .submit-btn { display: block; width: 100%; padding: 16px; background: hsl(220 70% 45%); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px); background: hsl(220 20% 18%); color: #fff; padding: 12px 22px; border-radius: 24px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: hsl(0 60% 38%); }
+    .who-badge { font-size: 13px; font-weight: 600; color: hsl(220 15% 70%); background: hsl(220 20% 17%); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+    .past-list { display: flex; flex-direction: column; gap: 10px; }
+    .past-card { background: hsl(220 20% 11%); border: 1px solid hsl(220 15% 20%); border-radius: 12px; padding: 14px; }
+    .past-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .past-type { font-size: 14px; font-weight: 700; }
+    .past-dates { font-size: 12px; color: hsl(220 15% 55%); }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
+    .badge-pending { background: hsl(40 60% 25%); color: hsl(40 80% 75%); }
+    .badge-approved { background: hsl(140 40% 18%); color: hsl(140 60% 60%); }
+    .badge-rejected { background: hsl(0 40% 18%); color: hsl(0 60% 60%); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-title">Request Leave</div>
+      <a class="back-link" href="/crew">← Back</a>
+    </div>
+
+    <div id="whoBadge" class="who-badge" style="display:none;"></div>
+
+    <!-- Leave form -->
+    <div class="card" id="formCard">
+      <div class="card-title">New Application</div>
+      <div class="form-row">
+        <label>Leave Type</label>
+        <select id="leaveTypeSelect"><option value="">Loading…</option></select>
+      </div>
+      <div class="form-row">
+        <label>From Date</label>
+        <input type="date" id="fromDate" />
+      </div>
+      <div class="form-row">
+        <label>To Date</label>
+        <input type="date" id="toDate" />
+      </div>
+      <div class="form-row toggle-row">
+        <label for="halfDay">Half Day</label>
+        <input type="checkbox" id="halfDay" />
+      </div>
+      <div class="form-row">
+        <label>Reason (optional)</label>
+        <textarea id="reason" placeholder="Add reason…"></textarea>
+      </div>
+      <button class="submit-btn" id="submitBtn">Submit Request</button>
+    </div>
+
+    <!-- Balances -->
+    <div class="card" id="balCard" style="display:none;">
+      <div class="card-title">Your Leave Balances</div>
+      <div id="balList"></div>
+    </div>
+
+    <!-- Past applications -->
+    <div class="card" id="pastCard" style="display:none;">
+      <div class="card-title">Your Applications</div>
+      <div id="pastList"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function() {
+    var myStaffId = null;
+    var leaveTypes = [];
+    var allocations = [];
+
+    function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+    function showToast(msg, isError) {
+      var t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast" + (isError ? " error" : "");
+      t.classList.add("show");
+      setTimeout(function() { t.classList.remove("show"); }, 3500);
+    }
+
+    function fmtDate(d) {
+      if (!d) return "";
+      var p = d.split("-");
+      var m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return m[parseInt(p[1])-1] + " " + parseInt(p[2]) + ", " + p[0];
+    }
+
+    function renderBalances() {
+      var el = document.getElementById("balList");
+      var year = new Date().getFullYear();
+      var ltById = {};
+      leaveTypes.forEach(function(lt) { ltById[lt.leave_type_id] = lt; });
+      var rows = allocations.filter(function(a) { return a.year === String(year); }).map(function(a) {
+        var lt = ltById[a.leave_type_id] || {};
+        var rem = Math.max(0, parseFloat(a.days_allocated || 0) - parseFloat(a.days_used || 0));
+        var pct = parseFloat(a.days_allocated || 0) > 0 ? Math.min(100, Math.round((parseFloat(a.days_used || 0) / parseFloat(a.days_allocated)) * 100)) : 0;
+        return '<div class="balance-row"><span class="balance-label">' + esc(lt.name || a.leave_type_id) + '</span>' +
+          '<span class="balance-val">' + rem + ' / ' + esc(a.days_allocated) + ' d</span>' +
+          '<div class="balance-bar"><div class="balance-fill" style="width:' + pct + '%;"></div></div></div>';
+      }).join("");
+      el.innerHTML = rows || '<div style="color:hsl(220 15% 50%);font-size:14px;">No balances assigned yet.</div>';
+      document.getElementById("balCard").style.display = "";
+    }
+
+    function renderPast(apps) {
+      var ltById = {};
+      leaveTypes.forEach(function(lt) { ltById[lt.leave_type_id] = lt; });
+      var el = document.getElementById("pastList");
+      if (!apps.length) { el.innerHTML = '<div style="color:hsl(220 15% 50%);font-size:14px;">No applications yet.</div>'; }
+      else {
+        el.innerHTML = '<div class="past-list">' + apps.map(function(a) {
+          var lt = ltById[a.leave_type_id] || {};
+          var badgeCls = { pending: "badge-pending", approved: "badge-approved", rejected: "badge-rejected" }[a.status] || "badge-pending";
+          return '<div class="past-card">' +
+            '<div class="past-head"><span class="past-type">' + esc(lt.name || a.leave_type_id) + '</span><span class="badge ' + badgeCls + '">' + esc(a.status) + '</span></div>' +
+            '<div class="past-dates">' + fmtDate(a.from_date) + ' – ' + fmtDate(a.to_date) + ' · ' + esc(a.days_count) + ' day(s)</div>' +
+            (a.manager_note ? '<div style="font-size:12px;color:hsl(220 15% 55%);margin-top:4px;">' + esc(a.manager_note) + '</div>' : '') +
+          '</div>';
+        }).join("") + '</div>';
+      }
+      document.getElementById("pastCard").style.display = "";
+    }
+
+    async function load() {
+      var meRes = await fetch("/api/crew/me").then(function(r) { return r.json(); });
+      if (!meRes.staffId) { document.getElementById("formCard").innerHTML = '<p style="color:hsl(0 60% 60%);">Session expired. Please <a href="/crew/login">log in</a>.</p>'; return; }
+      myStaffId = meRes.staffId;
+      var name = [meRes.firstName, meRes.lastName].filter(Boolean).join(" ");
+      var badge = document.getElementById("whoBadge");
+      badge.textContent = "Submitting as: " + name;
+      badge.style.display = "";
+
+      var year = new Date().getFullYear();
+      var results = await Promise.all([
+        fetch("/api/hr/leave-types").then(function(r) { return r.json(); }),
+        fetch("/api/hr/leave/allocations?staff_id=" + myStaffId + "&year=" + year).then(function(r) { return r.json(); }),
+        fetch("/api/hr/leave/applications?staff_id=" + myStaffId).then(function(r) { return r.json(); }),
+      ]);
+
+      leaveTypes = results[0].ok ? results[0].leave_types : [];
+      allocations = results[1].ok ? results[1].allocations : [];
+      var apps = results[2].ok ? results[2].applications : [];
+
+      var sel = document.getElementById("leaveTypeSelect");
+      sel.innerHTML = '<option value="">Select leave type…</option>' +
+        leaveTypes.map(function(lt) { return '<option value="' + esc(lt.leave_type_id) + '">' + esc(lt.name) + '</option>'; }).join("");
+
+      renderBalances();
+      renderPast(apps);
+    }
+
+    document.getElementById("halfDay").addEventListener("change", function() {
+      if (this.checked) {
+        var from = document.getElementById("fromDate").value;
+        if (from) document.getElementById("toDate").value = from;
+        document.getElementById("toDate").disabled = true;
+      } else {
+        document.getElementById("toDate").disabled = false;
+      }
+    });
+
+    document.getElementById("fromDate").addEventListener("change", function() {
+      if (document.getElementById("halfDay").checked) {
+        document.getElementById("toDate").value = this.value;
+      }
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", async function() {
+      var btn = this;
+      var ltId = document.getElementById("leaveTypeSelect").value;
+      var from = document.getElementById("fromDate").value;
+      var to = document.getElementById("toDate").value;
+      var halfDay = document.getElementById("halfDay").checked;
+      var reason = document.getElementById("reason").value;
+      if (!ltId || !from || !to) { showToast("Please fill in all required fields", true); return; }
+      btn.disabled = true; btn.textContent = "Submitting…";
+      try {
+        var r = await fetch("/api/hr/leave/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ staff_id: myStaffId, leave_type_id: ltId, from_date: from, to_date: to, half_day: halfDay, reason: reason }),
+        });
+        var d = await r.json();
+        if (d.ok) {
+          showToast("Leave request submitted!");
+          document.getElementById("leaveTypeSelect").value = "";
+          document.getElementById("fromDate").value = "";
+          document.getElementById("toDate").value = "";
+          document.getElementById("halfDay").checked = false;
+          document.getElementById("toDate").disabled = false;
+          document.getElementById("reason").value = "";
+          load();
+        } else { showToast(d.error || "Error submitting request", true); }
+      } finally { btn.disabled = false; btn.textContent = "Submit Request"; }
+    });
+
+    load();
+  })();
+  </script>
+</body>
+</html>

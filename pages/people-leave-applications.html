@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Leave Dashboard — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .btn-primary {
+      padding: 10px 20px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; }
+    .btn-approve { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .btn-approve:hover { background: rgba(34,197,94,0.25); }
+    .btn-reject { background: rgba(239,68,68,0.15); color: #f87171; }
+    .btn-reject:hover { background: rgba(239,68,68,0.25); }
+
+    /* ── Tabs ── */
+    .page-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line, rgba(100,150,255,0.14)); margin-bottom: 28px;
+    }
+    .page-tab {
+      padding: 10px 22px; background: transparent; border: none; border-bottom: 3px solid transparent;
+      color: var(--muted, rgba(220,232,255,0.7)); font-size: 14px; font-weight: 700; cursor: pointer;
+      font-family: inherit; margin-bottom: -1px;
+    }
+    .page-tab.active { color: var(--text, #e6eefc); border-bottom-color: var(--blue, #2d6ae0); }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    .section-card {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.7)); margin: 0 0 16px;
+    }
+
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+    select.filter-sel {
+      padding: 9px 12px; background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14)); border-radius: 10px;
+      color: var(--text, #e6eefc); font-size: 14px; font-family: inherit;
+    }
+
+    /* ── Application cards ── */
+    .app-card {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 14px; padding: 16px 20px; margin-bottom: 12px;
+      display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+    }
+    .app-card-main { flex: 1; min-width: 200px; }
+    .app-card-name { font-size: 15px; font-weight: 800; color: var(--text, #e6eefc); margin-bottom: 4px; }
+    .app-card-meta { font-size: 13px; color: var(--muted, rgba(220,232,255,0.65)); margin-bottom: 8px; line-height: 1.6; }
+    .app-card-reason { font-size: 13px; color: var(--text, #e6eefc); }
+    .app-card-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+    .status-badge { display: inline-flex; align-items: center; padding: 3px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+    .status-pending  { background: rgba(234,179,8,0.15); color: #fde047; }
+    .status-approved { background: rgba(34,197,94,0.13); color: #4ade80; }
+    .status-rejected { background: rgba(239,68,68,0.13); color: #f87171; }
+    .overlap-warn { margin-top: 8px; padding: 8px 12px; background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 8px; font-size: 12px; color: #fde047; }
+
+    /* ── Team calendar ── */
+    .week-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .week-nav button { background: var(--panel,#101e45); border: 1px solid var(--line, rgba(100,150,255,0.14)); color: var(--text,#e6eefc); padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .week-label { font-size: 14px; font-weight: 700; color: var(--text, #e6eefc); }
+    .team-leave-grid { display: flex; flex-direction: column; gap: 6px; }
+    .team-leave-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(45,106,224,0.08); border: 1px solid rgba(100,150,255,0.12); border-radius: 10px; }
+    .team-emp-name { min-width: 160px; font-size: 14px; font-weight: 700; color: var(--text,#e6eefc); }
+    .team-leave-info { flex: 1; font-size: 13px; color: var(--muted,rgba(220,232,255,0.7)); }
+
+    /* ── Balance table ── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted,rgba(220,232,255,0.6)); padding: 0 0 10px; text-align: left; }
+    .data-table td { padding: 10px 0; border-top: 1px solid var(--line,rgba(100,150,255,0.09)); font-size: 14px; color: var(--text,#e6eefc); }
+    .bal-bar { height: 6px; border-radius: 3px; background: var(--line,rgba(100,150,255,0.14)); margin-top: 4px; }
+    .bal-fill { height: 100%; border-radius: 3px; background: var(--blue,#2d6ae0); }
+
+    .empty-state { color: var(--muted,rgba(220,232,255,0.5)); font-size: 14px; padding: 24px 0; }
+
+    /* ── Note modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--panel,#101e45); border: 1px solid var(--line,rgba(100,150,255,0.14)); border-radius: 18px; padding: 28px; width: 400px; max-width: 95vw; }
+    .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 14px; }
+    .modal-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted,rgba(220,232,255,0.7)); margin-bottom: 6px; }
+    .modal textarea { width: 100%; padding: 10px 12px; background: var(--bg,#0c1535); border: 1px solid var(--line,rgba(100,150,255,0.14)); border-radius: 10px; color: var(--text,#e6eefc); font-size: 14px; font-family: inherit; min-height: 90px; resize: vertical; }
+    .modal textarea:focus { outline: none; border-color: var(--blue,#2d6ae0); }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+    .btn-ghost { background: transparent; border: 1px solid var(--line,rgba(100,150,255,0.14)); color: var(--muted,rgba(220,232,255,0.7)); padding: 9px 18px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px); background: #166534; color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 200; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <h1>Leave Dashboard</h1>
+        <a class="btn-primary" href="/people/leave/apply">+ Request Leave</a>
+      </div>
+
+      <div class="page-tabs">
+        <button class="page-tab active" data-tab="pending">Pending Approvals</button>
+        <button class="page-tab" data-tab="team-calendar">Team Calendar</button>
+        <button class="page-tab" data-tab="balances">Team Balances</button>
+        <button class="page-tab" data-tab="all">All Applications</button>
+      </div>
+
+      <!-- ── Pending Approvals ── -->
+      <div class="tab-section active" id="tab-pending">
+        <div class="filter-bar">
+          <select class="filter-sel" id="pendMgrFilter">
+            <option value="">All Managers</option>
+          </select>
+        </div>
+        <div id="pendingList"><div class="empty-state">Loading…</div></div>
+      </div>
+
+      <!-- ── Team Calendar ── -->
+      <div class="tab-section" id="tab-team-calendar">
+        <div class="filter-bar">
+          <select class="filter-sel" id="calDeptFilter">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div class="week-nav">
+          <button id="prevWeekBtn">← Prev</button>
+          <div class="week-label" id="weekLabel"></div>
+          <button id="nextWeekBtn">Next →</button>
+        </div>
+        <div class="section-card">
+          <div id="teamCalendarGrid"><div class="empty-state">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── Team Balances ── -->
+      <div class="tab-section" id="tab-balances">
+        <div class="filter-bar">
+          <select class="filter-sel" id="balDeptFilter">
+            <option value="">All Departments</option>
+          </select>
+          <select class="filter-sel" id="balYear">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2027">2027</option>
+          </select>
+        </div>
+        <div class="section-card">
+          <div id="balancesTable"><div class="empty-state">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── All Applications ── -->
+      <div class="tab-section" id="tab-all">
+        <div class="filter-bar">
+          <select class="filter-sel" id="allStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select class="filter-sel" id="allDeptFilter">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div id="allList"><div class="empty-state">Loading…</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Approve/Reject modal -->
+<div class="modal-overlay" id="actionModal">
+  <div class="modal">
+    <div class="modal-title" id="actionModalTitle">Approve Leave</div>
+    <input type="hidden" id="actionAppId" />
+    <input type="hidden" id="actionStatus" />
+    <div class="modal-label">Note (optional)</div>
+    <textarea id="actionNote" placeholder="Add a note for the employee…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="actionCancelBtn">Cancel</button>
+      <button class="btn-primary" id="actionConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-leave-applications.js"></script>
+</body>
+</html>

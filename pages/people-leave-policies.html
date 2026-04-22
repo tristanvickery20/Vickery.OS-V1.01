@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Leave Policies — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .btn-primary {
+      padding: 10px 20px; background: var(--blue, #2d6ae0); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+    .section-card {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.7)); margin: 0 0 16px;
+    }
+    .policy-card {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 14px; padding: 18px; margin-bottom: 14px;
+    }
+    .policy-name { font-size: 16px; font-weight: 800; color: var(--text, #e6eefc); margin-bottom: 4px; }
+    .policy-desc { font-size: 13px; color: var(--muted, rgba(220,232,255,0.6)); margin-bottom: 14px; }
+    .policy-items-title {
+      font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.5)); margin-bottom: 8px;
+    }
+    .policy-item-row {
+      display: flex; align-items: center; gap: 10px; padding: 6px 0;
+      border-top: 1px solid var(--line, rgba(100,150,255,0.09)); font-size: 14px;
+    }
+    .policy-item-name { flex: 1; color: var(--text, #e6eefc); }
+    .policy-item-days { color: var(--muted, rgba(220,232,255,0.7)); font-size: 13px; }
+    .policy-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+    .form-col { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, rgba(220,232,255,0.7)); }
+    input[type="text"], input[type="number"], select {
+      padding: 9px 12px; background: var(--bg, #0c1535);
+      border: 1px solid var(--line, rgba(100,150,255,0.14)); border-radius: 10px;
+      color: var(--text, #e6eefc); font-size: 14px; font-family: inherit;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+    .empty-state { color: var(--muted, rgba(220,232,255,0.5)); font-size: 14px; padding: 20px 0; }
+
+    /* ── Assign Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+      display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel, #101e45); border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 18px; padding: 28px; width: 420px; max-width: 95vw;
+    }
+    .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn-ghost { background: transparent; border: 1px solid var(--line, rgba(100,150,255,0.14)); color: var(--muted, rgba(220,232,255,0.7)); padding: 9px 18px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px); background: #166534; color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 200; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <h1>Leave Policies</h1>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">Create Policy</div>
+        <div class="form-row">
+          <div class="form-col">
+            <label>Policy Name</label>
+            <input type="text" id="pName" placeholder="e.g. Full-Time Standard" />
+          </div>
+          <div class="form-col">
+            <label>Description</label>
+            <input type="text" id="pDesc" placeholder="Optional" />
+          </div>
+          <div class="form-col" style="flex:0 0 auto; justify-content:flex-end;">
+            <label>&nbsp;</label>
+            <button class="btn-primary btn-sm" id="addPolicyBtn">Create</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="policiesList"><div class="empty-state" style="padding:40px;text-align:center;">Loading…</div></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Assign Policy Modal -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <div class="modal-title">Assign Policy to Employee</div>
+    <input type="hidden" id="assignPolicyId" />
+    <div class="form-row">
+      <div class="form-col">
+        <label>Employee</label>
+        <select id="assignEmpSel"><option value="">Select…</option></select>
+      </div>
+      <div class="form-col" style="flex:0 0 110px;">
+        <label>Year</label>
+        <input type="number" id="assignYear" value="2026" min="2020" max="2035" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="assignCancelBtn">Cancel</button>
+      <button class="btn-primary" id="assignConfirmBtn">Assign & Write Balances</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal-overlay" id="addItemModal">
+  <div class="modal">
+    <div class="modal-title">Add Leave Allocation to Policy</div>
+    <input type="hidden" id="addItemPolicyId" />
+    <div class="form-row">
+      <div class="form-col">
+        <label>Leave Type</label>
+        <select id="addItemLtSel"><option value="">Select…</option></select>
+      </div>
+      <div class="form-col" style="flex:0 0 120px;">
+        <label>Days Allocated</label>
+        <input type="number" id="addItemDays" min="0" step="0.5" value="10" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="addItemCancelBtn">Cancel</button>
+      <button class="btn-primary" id="addItemConfirmBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-leave-policies.js"></script>
+</body>
+</html>

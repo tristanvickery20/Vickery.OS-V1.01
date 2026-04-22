@@ -30,6 +30,9 @@
   <a class="sidebar-link" data-nav="/people/shifts" href="/people/shifts"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Shift Types</a>
   <a class="sidebar-link" data-nav="/people/departments" href="/people/departments"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span> Departments</a>
   <a class="sidebar-link" data-nav="/people/designations" href="/people/designations"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></span> Designations</a>
+  <a class="sidebar-link" data-nav="/people/leave" href="/people/leave"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></span> Leave <span id="leavePendingBadge" style="display:none;background:hsl(38 80% 50%);color:#000;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;margin-left:4px;"></span></a>
+  <a class="sidebar-link" data-nav="/people/leave/types" href="/people/leave/types"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg></span> Leave Setup</a>
+  <a class="sidebar-link" data-nav="/people/leave/policies" href="/people/leave/policies"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> Leave Policies</a>
 
   <div class="sidebar-section-title">Admin</div>
   <a class="sidebar-link" data-nav="/crm/staff" href="/crm/staff" id="staffNavLink"><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Staff <span class="staff-pending-badge" id="staffPendingBadge" style="display:none;background:hsl(38 80% 50%);color:#000;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;margin-left:4px;"></span></a>
@@ -68,12 +71,22 @@
         else { badge.style.display = "none"; }
       }).catch(function(){});
     }
+    function refreshLeaveBadge() {
+      fetch("/api/hr/leave/pending-count").then(r => r.json()).then(d => {
+        var badge = document.getElementById("leavePendingBadge");
+        if (!badge) return;
+        if (d.count > 0) { badge.textContent = d.count; badge.style.display = "inline"; }
+        else { badge.style.display = "none"; }
+      }).catch(function(){});
+    }
     refreshBadge();
     refreshOverdueBadge();
     refreshAttendBadge();
+    refreshLeaveBadge();
     setInterval(refreshBadge, 60000);
     setInterval(refreshOverdueBadge, 60000);
     setInterval(refreshAttendBadge, 60000);
+    setInterval(refreshLeaveBadge, 60000);
   })();
 </script>
 

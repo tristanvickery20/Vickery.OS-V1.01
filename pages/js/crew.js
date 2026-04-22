@@ -1676,6 +1676,8 @@ function bindViewTabs() {
       document.getElementById("mapView").style.display        = tab === "map"        ? "" : "none";
       const attView = document.getElementById("attendanceView");
       if (attView) attView.style.display = tab === "attendance" ? "" : "none";
+      const leaveView = document.getElementById("leaveView");
+      if (leaveView) leaveView.style.display = tab === "leave" ? "" : "none";
       if (tab === "map" && !_mapLoaded) {
         _mapLoaded = true;
         renderCrewMap();
