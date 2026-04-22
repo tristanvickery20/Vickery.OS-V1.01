@@ -19,6 +19,13 @@
       String(d.getDate()).padStart(2, "0");
   }
 
+  // Normalize a type string to "Materials" or "Labor" for display
+  function normalizeType(raw) {
+    const s = String(raw || "").toLowerCase();
+    if (s === "labor") return "Labor";
+    return "Materials";
+  }
+
   async function populateSelects() {
     const techSelect = document.getElementById("tech_id");
     const leadSelect = document.getElementById("lead_id");
@@ -46,33 +53,90 @@
   }
 
   async function loadEntries() {
-    statusEl.textContent = "Loading...";
+    statusEl.textContent = "Loading…";
     tbody.innerHTML = "";
 
-    try {
-      const data = await window.Api.fetchJson("/api/expenses");
-      const entries = data.entries || [];
-      statusEl.textContent = `${entries.length} entry(ies).`;
+    // Fetch CRM entries and QB transactions in parallel
+    const [crmResult, qbResult] = await Promise.allSettled([
+      window.Api.fetchJson("/api/expenses"),
+      window.Api.fetchJson("/api/accounting/transactions"),
+    ]);
 
-      for (const e of entries) {
-        const tr = document.createElement("tr");
-        const receiptLink = e.receipt_url
-          ? `<a href="${esc(e.receipt_url)}" target="_blank" rel="noopener">View</a>`
-          : "";
-        tr.innerHTML = `
-          <td>${esc(e.date)}</td>
-          <td>${esc(e.tech_id)}</td>
-          <td>${esc(e.lead_id)}</td>
-          <td>${esc(e.type)}</td>
-          <td>${esc(e.vendor)}</td>
-          <td>$${Number(e.amount).toFixed(2)}</td>
-          <td>${esc(e.notes)}</td>
-          <td>${receiptLink}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    } catch (err) {
-      statusEl.textContent = "ERROR: " + err.message;
+    const crmEntries = (crmResult.status === "fulfilled" ? crmResult.value.entries : null) || [];
+    const qbData     = qbResult.status  === "fulfilled" ? qbResult.value  : null;
+    const qbConnected = qbData && qbData.connected;
+    const qbTxns     = qbConnected ? (qbData.transactions || []) : [];
+
+    // Build unified rows
+    const rows = [];
+
+    for (const e of crmEntries) {
+      rows.push({
+        date:    e.date || "",
+        type:    normalizeType(e.type),
+        amount:  Number(e.amount) || 0,
+        vendor:  e.vendor || "",
+        tech:    e.tech_id || "",
+        notes:   e.notes || "",
+        receipt: e.receipt_url || "",
+        source:  "crm",
+      });
+    }
+
+    for (const t of qbTxns) {
+      rows.push({
+        date:    t.date || "",
+        type:    normalizeType(t.account && t.account.toLowerCase().includes("labor") ? "labor" : "materials"),
+        amount:  Number(t.amount) || 0,
+        vendor:  t.account || "",
+        tech:    "",
+        notes:   t.note || "",
+        receipt: "",
+        source:  "qb",
+      });
+    }
+
+    // Sort newest first
+    rows.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+
+    const heading = document.getElementById("expHeading");
+    if (qbConnected) {
+      heading.innerHTML = `Expenses <span style="font-size:13px;font-weight:500;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:2px 10px;border-radius:20px;vertical-align:middle;">CRM + QuickBooks</span>`;
+    }
+
+    statusEl.textContent = rows.length
+      ? `${rows.length} expense(s)${qbConnected ? " — CRM & QB combined" : ""}.`
+      : "No expenses found.";
+
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+
+      const typeBadge = r.type === "Labor"
+        ? `<span style="background:#1e3a5f;color:#93c5fd;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;">Labor</span>`
+        : `<span style="background:#14532d;color:#86efac;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;">Materials</span>`;
+
+      const sourceBadge = r.source === "qb"
+        ? `<span style="background:#7c3aed22;color:#a78bfa;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;">QB</span>`
+        : `<span style="background:#1e293b;color:#94a3b8;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;">CRM</span>`;
+
+      const receiptCell = r.receipt
+        ? `<a href="${esc(r.receipt)}" target="_blank" rel="noopener" style="color:hsl(var(--primary));">View</a>`
+        : "";
+
+      tr.innerHTML = `
+        <td>${esc(r.date)}</td>
+        <td>${typeBadge}</td>
+        <td style="font-weight:600;">$${r.amount.toFixed(2)}</td>
+        <td>${esc(r.vendor)}</td>
+        <td>${esc(r.tech)}</td>
+        <td style="max-width:220px;white-space:normal;word-break:break-word;">${esc(r.notes)}${receiptCell ? " " + receiptCell : ""}</td>
+        <td>${sourceBadge}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:hsl(var(--muted-foreground));">No expenses yet.</td></tr>';
     }
   }
 
@@ -143,38 +207,4 @@
   refreshBtn.addEventListener("click", loadEntries);
   populateSelects();
   loadEntries();
-
-  // ── QB Transactions ──────────────────────────────────────────────────────
-  async function loadQbTransactions() {
-    const section  = document.getElementById("qbTxSection");
-    const statusEl = document.getElementById("qbTxStatus");
-    const tbody    = document.getElementById("qbTxBody");
-    if (!section) return;
-
-    try {
-      const data = await window.Api.fetchJson("/api/accounting/transactions");
-      if (!data.connected) return; // QB not connected — keep section hidden
-
-      section.style.display = "";
-      const txns = data.transactions || [];
-      statusEl.textContent = txns.length ? `${txns.length} transaction(s) from QuickBooks.` : "No QB transactions found year-to-date.";
-      tbody.innerHTML = "";
-
-      for (const t of txns) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${esc(t.date)}</td>
-          <td style="font-weight:600;">$${Number(t.amount).toFixed(2)}</td>
-          <td>${esc(t.payment_type)}</td>
-          <td>${esc(t.account)}</td>
-          <td style="max-width:260px;white-space:normal;word-break:break-word;">${esc(t.note)}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    } catch (err) {
-      // QB not connected or token issue — silently skip; section stays hidden
-      console.warn("[QB Transactions] load error:", err.message);
-    }
-  }
-  loadQbTransactions();
 })();

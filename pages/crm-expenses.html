@@ -31,15 +31,13 @@
               <div class="form-group">
                 <label class="form-label">Type</label>
                 <select id="type">
-                  <option value="gas">Gas</option>
-                  <option value="material">Material</option>
-                  <option value="parts">Parts</option>
-                  <option value="other">Other</option>
+                  <option value="materials">Materials</option>
+                  <option value="labor">Labor</option>
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Vendor</label>
-                <input id="vendor" placeholder="e.g. Shell, Home Depot" />
+                <input id="vendor" placeholder="e.g. Home Depot, subcontractor" />
               </div>
               <div class="form-group">
                 <label class="form-label">Amount ($)</label>
@@ -60,7 +58,7 @@
             <p id="result" class="muted" style="margin-top: 8px; text-align: center;"></p>
           </div>
 
-          <h2>Recent Expenses</h2>
+          <h2 id="expHeading">Expenses</h2>
           <p id="status" class="status-text"></p>
 
           <div class="data-table-wrap">
@@ -68,43 +66,16 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Tech</th>
-                  <th>Lead</th>
                   <th>Type</th>
-                  <th>Vendor</th>
                   <th>Amount</th>
+                  <th>Vendor / Account</th>
+                  <th>Tech</th>
                   <th>Notes</th>
-                  <th>Receipt</th>
+                  <th>Source</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
-          </div>
-
-          <!-- QB Transactions pulled live from QuickBooks -->
-          <div id="qbTxSection" style="margin-top:32px;display:none;">
-            <h2 style="display:flex;align-items:center;gap:10px;">
-              QuickBooks Transactions
-              <span style="font-size:12px;font-weight:500;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:2px 10px;border-radius:20px;">Live from QB</span>
-            </h2>
-            <p style="font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:10px;">
-              Every purchase, card swipe, and expense recorded in QuickBooks — year to date.
-            </p>
-            <p id="qbTxStatus" class="status-text"></p>
-            <div class="data-table-wrap">
-              <table id="qbTxTable">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Payment Type</th>
-                    <th>Account</th>
-                    <th>Note</th>
-                  </tr>
-                </thead>
-                <tbody id="qbTxBody"></tbody>
-              </table>
-            </div>
           </div>
         </div>
       </main>

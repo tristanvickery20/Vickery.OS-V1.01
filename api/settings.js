@@ -296,8 +296,12 @@ async function handleSaveStaffSettings(req, res) {
 // Bank/checking account and expense category account IDs come from Config
 // (qb_bank_account_id, qb_expense_account_id) so they match the company's chart of accounts.
 function _buildQbPurchase(entry, cfg) {
-  const bankAccountId    = cfg.qb_bank_account_id    || "35";
-  const expenseAccountId = cfg.qb_expense_account_id || "80";
+  const bankAccountId = cfg.qb_bank_account_id || "35";
+  // Materials → Cost of Goods Sold (ID 80); Labor → Cost of Labor (ID 59)
+  const isLabor = String(entry.type || "").toLowerCase() === "labor";
+  const expenseAccountId = isLabor
+    ? (cfg.qb_labor_expense_account_id || "59")
+    : (cfg.qb_expense_account_id       || "80");
   return {
     PaymentType: "Cash",
     AccountRef: { value: bankAccountId },
