@@ -297,23 +297,37 @@ async function handleSaveStaffSettings(req, res) {
 // (qb_bank_account_id, qb_expense_account_id) so they match the company's chart of accounts.
 function _buildQbPurchase(entry, cfg) {
   const bankAccountId = cfg.qb_bank_account_id || "35";
-  // Materials → Cost of Goods Sold (ID 80); Labor → Cost of Labor (ID 59)
-  const isLabor = String(entry.type || "").toLowerCase() === "labor";
-  const expenseAccountId = isLabor
-    ? (cfg.qb_labor_expense_account_id || "59")
-    : (cfg.qb_expense_account_id       || "80");
-  return {
+  // Use QB account ID from the entry (set when user picks a category in the form).
+  // Fall back to the configured default expense account (Cost of Goods Sold = 80).
+  const expenseAccountId = entry.qb_account_id || cfg.qb_expense_account_id || "80";
+  const category = entry.category || entry.type || "";
+  const payee    = entry.payee    || entry.vendor || "";
+  const noteStr  = [
+    `CRM Expense ${entry.id}`,
+    category ? `Category: ${category}` : "",
+    payee,
+    entry.notes || "",
+  ].filter(Boolean).join(" — ").trim();
+
+  const payload = {
     PaymentType: "Cash",
     AccountRef: { value: bankAccountId },
     TotalAmt: Number(entry.amount) || 0,
     TxnDate: entry.date || new Date().toISOString().slice(0, 10),
-    PrivateNote: `CRM Expense ${entry.id} — ${entry.vendor || ""} — ${entry.notes || ""}`.trim(),
+    PrivateNote: noteStr,
     Line: [{
       Amount: Number(entry.amount) || 0,
       DetailType: "AccountBasedExpenseLineDetail",
       AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } },
     }],
   };
+
+  // Set Payee/EntityRef if a payee name is provided
+  if (payee) {
+    payload.EntityRef = { name: payee, type: "Vendor" };
+  }
+
+  return payload;
 }
 
 // Build a QuickBooks TimeActivity payload from a time entry.

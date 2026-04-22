@@ -4,6 +4,7 @@
   const tbody = document.querySelector("#table tbody");
   const refreshBtn = document.getElementById("refreshBtn");
   const submitBtn = document.getElementById("submitBtn");
+  const categorySelect = document.getElementById("category");
 
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({
@@ -19,13 +20,7 @@
       String(d.getDate()).padStart(2, "0");
   }
 
-  // Normalize a type string to "Materials" or "Labor" for display
-  function normalizeType(raw) {
-    const s = String(raw || "").toLowerCase();
-    if (s === "labor") return "Labor";
-    return "Materials";
-  }
-
+  // ── Populate Tech/Lead selects ────────────────────────────────────────────
   async function populateSelects() {
     const techSelect = document.getElementById("tech_id");
     const leadSelect = document.getElementById("lead_id");
@@ -52,47 +47,83 @@
     }
   }
 
+  // ── Populate Category dropdown from QB accounts ───────────────────────────
+  // Falls back to a sensible static list if QB is not connected.
+  const STATIC_CATEGORIES = [
+    { id: "", name: "Cost of Goods Sold" },
+    { id: "", name: "Automobile" },
+    { id: "", name: "Fuel" },
+    { id: "", name: "Job Expenses" },
+    { id: "", name: "Meals and Entertainment" },
+    { id: "", name: "Supplies" },
+    { id: "", name: "Utilities" },
+    { id: "", name: "Miscellaneous" },
+  ];
+
+  async function populateCategories() {
+    try {
+      const data = await window.Api.fetchJson("/api/accounting/accounts");
+      const accounts = data.accounts && data.accounts.length > 0
+        ? data.accounts
+        : STATIC_CATEGORIES;
+      renderCategories(accounts);
+    } catch {
+      renderCategories(STATIC_CATEGORIES);
+    }
+  }
+
+  function renderCategories(accounts) {
+    categorySelect.innerHTML = "";
+    for (const a of accounts) {
+      const o = document.createElement("option");
+      o.value = a.name;
+      o.dataset.qbId = a.id || "";
+      o.textContent = a.name;
+      categorySelect.appendChild(o);
+    }
+  }
+
+  // ── Load + merge CRM and QB expenses into one table ───────────────────────
   async function loadEntries() {
     statusEl.textContent = "Loading…";
     tbody.innerHTML = "";
 
-    // Fetch CRM entries and QB transactions in parallel
     const [crmResult, qbResult] = await Promise.allSettled([
       window.Api.fetchJson("/api/expenses"),
       window.Api.fetchJson("/api/accounting/transactions"),
     ]);
 
-    const crmEntries = (crmResult.status === "fulfilled" ? crmResult.value.entries : null) || [];
-    const qbData     = qbResult.status  === "fulfilled" ? qbResult.value  : null;
+    const crmEntries  = (crmResult.status === "fulfilled" ? crmResult.value.entries : null) || [];
+    const qbData      = qbResult.status  === "fulfilled" ? qbResult.value : null;
     const qbConnected = qbData && qbData.connected;
-    const qbTxns     = qbConnected ? (qbData.transactions || []) : [];
+    const qbTxns      = qbConnected ? (qbData.transactions || []) : [];
 
-    // Build unified rows
+    // Build unified row list
     const rows = [];
 
     for (const e of crmEntries) {
       rows.push({
-        date:    e.date || "",
-        type:    normalizeType(e.type),
-        amount:  Number(e.amount) || 0,
-        vendor:  e.vendor || "",
-        tech:    e.tech_id || "",
-        notes:   e.notes || "",
-        receipt: e.receipt_url || "",
-        source:  "crm",
+        date:     e.date || "",
+        payee:    e.payee || e.vendor || "",
+        category: e.category || e.type || "",
+        amount:   Number(e.amount) || 0,
+        tech:     e.tech_id || "",
+        notes:    e.notes || "",
+        receipt:  e.receipt_url || "",
+        source:   "crm",
       });
     }
 
     for (const t of qbTxns) {
       rows.push({
-        date:    t.date || "",
-        type:    normalizeType(t.account && t.account.toLowerCase().includes("labor") ? "labor" : "materials"),
-        amount:  Number(t.amount) || 0,
-        vendor:  t.account || "",
-        tech:    "",
-        notes:   t.note || "",
-        receipt: "",
-        source:  "qb",
+        date:     t.date || "",
+        payee:    t.payee || "",
+        category: t.category || t.account || "",
+        amount:   Number(t.amount) || 0,
+        tech:     "",
+        notes:    t.note || "",
+        receipt:  "",
+        source:   "qb",
       });
     }
 
@@ -102,34 +133,32 @@
     const heading = document.getElementById("expHeading");
     if (qbConnected) {
       heading.innerHTML = `Expenses <span style="font-size:13px;font-weight:500;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:2px 10px;border-radius:20px;vertical-align:middle;">CRM + QuickBooks</span>`;
+    } else {
+      heading.textContent = "Expenses";
     }
 
     statusEl.textContent = rows.length
       ? `${rows.length} expense(s)${qbConnected ? " — CRM & QB combined" : ""}.`
-      : "No expenses found.";
+      : "No expenses yet.";
 
     for (const r of rows) {
       const tr = document.createElement("tr");
 
-      const typeBadge = r.type === "Labor"
-        ? `<span style="background:#1e3a5f;color:#93c5fd;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;">Labor</span>`
-        : `<span style="background:#14532d;color:#86efac;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;">Materials</span>`;
-
       const sourceBadge = r.source === "qb"
-        ? `<span style="background:#7c3aed22;color:#a78bfa;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;">QB</span>`
-        : `<span style="background:#1e293b;color:#94a3b8;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;">CRM</span>`;
+        ? `<span style="background:#7c3aed22;color:#a78bfa;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">QB</span>`
+        : `<span style="background:#1e293b;color:#94a3b8;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">CRM</span>`;
 
-      const receiptCell = r.receipt
-        ? `<a href="${esc(r.receipt)}" target="_blank" rel="noopener" style="color:hsl(var(--primary));">View</a>`
-        : "";
+      const notesCell = r.receipt
+        ? `${esc(r.notes)} <a href="${esc(r.receipt)}" target="_blank" rel="noopener" style="color:hsl(var(--primary));">Receipt</a>`
+        : esc(r.notes);
 
       tr.innerHTML = `
         <td>${esc(r.date)}</td>
-        <td>${typeBadge}</td>
+        <td style="font-weight:500;">${esc(r.payee)}</td>
+        <td>${esc(r.category)}</td>
         <td style="font-weight:600;">$${r.amount.toFixed(2)}</td>
-        <td>${esc(r.vendor)}</td>
         <td>${esc(r.tech)}</td>
-        <td style="max-width:220px;white-space:normal;word-break:break-word;">${esc(r.notes)}${receiptCell ? " " + receiptCell : ""}</td>
+        <td style="max-width:200px;white-space:normal;word-break:break-word;">${notesCell}</td>
         <td>${sourceBadge}</td>
       `;
       tbody.appendChild(tr);
@@ -140,6 +169,7 @@
     }
   }
 
+  // ── Toast notification ────────────────────────────────────────────────────
   function showToast(msg, isErr) {
     let t = document.getElementById("_expToast");
     if (!t) {
@@ -160,6 +190,7 @@
     t._hide = setTimeout(() => { t.style.opacity = "0"; }, 2800);
   }
 
+  // ── Submit new expense ────────────────────────────────────────────────────
   submitBtn.addEventListener("click", async () => {
     const date   = document.getElementById("date").value;
     const amount = document.getElementById("amount").value;
@@ -171,15 +202,21 @@
     submitBtn.textContent = "Saving…";
     resultEl.textContent = "";
 
+    // Read selected category name + QB account ID from the dropdown
+    const selectedOpt  = categorySelect.options[categorySelect.selectedIndex];
+    const categoryName = selectedOpt ? selectedOpt.value : "";
+    const qbAccountId  = selectedOpt ? (selectedOpt.dataset.qbId || "") : "";
+
     const payload = {
       date,
-      tech_id:     document.getElementById("tech_id").value,
-      lead_id:     document.getElementById("lead_id").value,
-      type:        document.getElementById("type").value,
-      vendor:      document.getElementById("vendor").value,
-      amount:      Number(amount || 0),
-      notes:       document.getElementById("notes").value,
-      receipt_url: document.getElementById("receipt_url").value,
+      tech_id:       document.getElementById("tech_id").value,
+      lead_id:       document.getElementById("lead_id").value,
+      category:      categoryName,
+      qb_account_id: qbAccountId,
+      payee:         document.getElementById("payee").value,
+      amount:        Number(amount || 0),
+      notes:         document.getElementById("notes").value,
+      receipt_url:   document.getElementById("receipt_url").value,
     };
 
     try {
@@ -189,9 +226,9 @@
         body: JSON.stringify(payload),
       });
       showToast("Expense saved!");
-      document.getElementById("amount").value = "";
-      document.getElementById("vendor").value = "";
-      document.getElementById("notes").value  = "";
+      document.getElementById("amount").value    = "";
+      document.getElementById("payee").value     = "";
+      document.getElementById("notes").value     = "";
       document.getElementById("receipt_url").value = "";
       await loadEntries();
     } catch (err) {
@@ -206,5 +243,6 @@
 
   refreshBtn.addEventListener("click", loadEntries);
   populateSelects();
+  populateCategories();
   loadEntries();
 })();

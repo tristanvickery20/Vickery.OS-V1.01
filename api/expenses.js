@@ -2,19 +2,26 @@ const { getSheetsClient } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { pushExpenseToQuickBooks } = require("./settings");
 
+// Columns: A=id, B=created_at, C=date, D=tech_id, E=lead_id,
+//          F=category (QB account name), G=payee, H=amount, I=notes,
+//          J=receipt_url, K=qb_account_id
 function mapRowToExpense(row) {
-  const [id, created_at, date, tech_id, lead_id, type, vendor, amount, notes, receipt_url] = row;
+  const [id, created_at, date, tech_id, lead_id, category, payee, amount, notes, receipt_url, qb_account_id] = row;
   return {
-    id: id || "",
-    created_at: created_at || "",
-    date: date || "",
-    tech_id: tech_id || "",
-    lead_id: lead_id || "",
-    type: type || "",
-    vendor: vendor || "",
-    amount: Number(amount || 0),
-    notes: notes || "",
-    receipt_url: receipt_url || "",
+    id:           id || "",
+    created_at:   created_at || "",
+    date:         date || "",
+    tech_id:      tech_id || "",
+    lead_id:      lead_id || "",
+    category:     category || "",
+    payee:        payee || "",
+    amount:       Number(amount || 0),
+    notes:        notes || "",
+    receipt_url:  receipt_url || "",
+    qb_account_id: qb_account_id || "",
+    // Legacy compat — old rows used "type" and "vendor"
+    type:   category || "",
+    vendor: payee || "",
   };
 }
 
@@ -25,7 +32,7 @@ async function handleGetExpenses(req, res, opts = {}) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Expenses!A1:J2000",
+      range: "Expenses!A1:K2000",
     });
 
     const values = resp.data.values || [];
@@ -63,16 +70,17 @@ async function handleCreateExpense(req, res) {
       const data = body ? JSON.parse(body) : {};
 
       const entry = {
-        id: "EXP-" + Date.now(),
-        created_at: new Date().toISOString(),
-        date: data.date || "",
-        tech_id: data.tech_id || "",
-        lead_id: data.lead_id || "",
-        type: data.type || "",
-        vendor: data.vendor || "",
-        amount: Number(data.amount || 0),
-        notes: data.notes || "",
-        receipt_url: data.receipt_url || "",
+        id:            "EXP-" + Date.now(),
+        created_at:    new Date().toISOString(),
+        date:          data.date || "",
+        tech_id:       data.tech_id || "",
+        lead_id:       data.lead_id || "",
+        category:      data.category || data.type || "",
+        payee:         data.payee || data.vendor || "",
+        amount:        Number(data.amount || 0),
+        notes:         data.notes || "",
+        receipt_url:   data.receipt_url || "",
+        qb_account_id: data.qb_account_id || "",
       };
 
       const row = [
@@ -81,11 +89,12 @@ async function handleCreateExpense(req, res) {
         entry.date,
         entry.tech_id,
         entry.lead_id,
-        entry.type,
-        entry.vendor,
+        entry.category,
+        entry.payee,
         String(entry.amount),
         entry.notes,
         entry.receipt_url,
+        entry.qb_account_id,
       ];
 
       const sheets = await getSheetsClient();
@@ -109,7 +118,7 @@ async function handleCreateExpense(req, res) {
         entity_type: "expense",
         entity_id: entry.id,
         field: "*",
-        new_value: JSON.stringify({ tech_id: entry.tech_id, lead_id: entry.lead_id, type: entry.type, amount: entry.amount }),
+        new_value: JSON.stringify({ tech_id: entry.tech_id, lead_id: entry.lead_id, category: entry.category, payee: entry.payee, amount: entry.amount }),
         source: "crm-expenses",
         request_id: genRequestId(),
       }).catch(() => {});

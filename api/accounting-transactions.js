@@ -55,4 +55,34 @@ async function handleGetProfitLoss(req, res) {
   }
 }
 
-module.exports = { handleGetTransactions, handleGetProfitLoss };
+// GET /api/accounting/accounts — returns QB expense accounts for the Category dropdown
+// Cached for 10 minutes since the chart of accounts rarely changes.
+let _accountsCache = null;
+let _accountsCacheAt = 0;
+const ACCOUNTS_CACHE_TTL = 10 * 60 * 1000;
+
+async function handleGetAccounts(req, res) {
+  try {
+    const cfg = await getConfig();
+    if (cfg.qb_connected !== "true") {
+      return json(res, 200, { ok: true, connected: false, accounts: [] });
+    }
+
+    const now = Date.now();
+    if (_accountsCache && (now - _accountsCacheAt) < ACCOUNTS_CACHE_TTL) {
+      return json(res, 200, { ok: true, connected: true, accounts: _accountsCache });
+    }
+
+    const provider = require("../lib/accounting/qb-provider");
+    const result = await provider.getAccounts();
+    if (result.ok) {
+      _accountsCache = result.accounts;
+      _accountsCacheAt = now;
+    }
+    return json(res, 200, { ok: result.ok, connected: true, accounts: result.accounts || [] });
+  } catch (err) {
+    return json(res, 500, { ok: false, error: err.message, accounts: [] });
+  }
+}
+
+module.exports = { handleGetTransactions, handleGetProfitLoss, handleGetAccounts };

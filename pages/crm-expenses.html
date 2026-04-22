@@ -29,25 +29,24 @@
                 <select id="lead_id"></select>
               </div>
               <div class="form-group">
-                <label class="form-label">Type</label>
-                <select id="type">
-                  <option value="materials">Materials</option>
-                  <option value="labor">Labor</option>
+                <label class="form-label">Category</label>
+                <select id="category">
+                  <option value="">Loading…</option>
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Vendor</label>
-                <input id="vendor" placeholder="e.g. Home Depot, subcontractor" />
+                <label class="form-label">Payee</label>
+                <input id="payee" placeholder="e.g. Home Depot, subcontractor name" />
               </div>
               <div class="form-group">
                 <label class="form-label">Amount ($)</label>
                 <input id="amount" type="number" min="0" step="0.01" placeholder="0.00" />
               </div>
-              <div class="form-group">
+              <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label">Notes</label>
                 <input id="notes" placeholder="Optional notes" />
               </div>
-              <div class="form-group">
+              <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label">Receipt URL</label>
                 <input id="receipt_url" placeholder="https://..." />
               </div>
@@ -66,9 +65,9 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Type</th>
+                  <th>Payee</th>
+                  <th>Category</th>
                   <th>Amount</th>
-                  <th>Vendor / Account</th>
                   <th>Tech</th>
                   <th>Notes</th>
                   <th>Source</th>
