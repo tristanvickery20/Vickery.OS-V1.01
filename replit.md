@@ -1,7 +1,7 @@
 # Vickery Electric CRM
 
 ## Overview
-Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, a universal Task system (Quick Add FAB on all pages), and full QuickBooks Online OAuth 2.0 integration. Backed by Google Sheets API.
+Internal CRM portal for Vickery Electric. Manages leads, scheduling, dashboard KPIs, instant quotes, crew time/expense logging, profit calculator with real actuals, invoicing, per-job gross margin + bonus eligibility tracking, a universal Task system (Quick Add FAB on all pages), full QuickBooks Online OAuth 2.0 integration, and an HR People module (employee profiles, departments, designations). Backed by Google Sheets API.
 
 ## Tech Stack
 - **Backend**: Node.js (vanilla `http` module), Express-less
@@ -52,7 +52,19 @@ pages/
   img/logo.png        # Vickery Electric logo
   js/shell.js         # Sidebar loader, dropdown toggle, active link
   js/                 # Client-side JavaScript
+  people-employees.html     # HR: Employee list (searchable, filterable)
+  people-employee.html      # HR: Employee profile (Personal/Employment/Emergency tabs)
+  people-departments.html   # HR: Departments CRUD
+  people-designations.html  # HR: Designations CRUD
 ```
+
+## HR / People Module (Phase 1)
+- **Google Sheets tabs**: `HR_Departments`, `HR_Designations`
+- **Staff sheet migration**: Added `hire_date`, `employment_status`, `department_id`, `designation_id`, `reports_to`, `personal_phone`, `emergency_contact_name`, `emergency_contact_phone` columns on first boot
+- **Routes**: `/people/employees`, `/people/employees/:id`, `/people/departments`, `/people/designations` (all auth-gated)
+- **API**: `/api/hr/departments`, `/api/hr/designations`, `/api/hr/employees` (GET/POST/PATCH/DELETE as appropriate)
+- **Sidebar**: "People" section with Employees, Departments, Designations links
+- **Key files**: `lib/hr.js`, `api/hr-people.js`, `pages/js/people-*.js`
 
 ## Layout
 - **Authenticated pages**: Sidebar (left, 240px) + main content area. Sidebar fetched as HTML partial.

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Employee Profile — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    .page-header-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .back-link {
+      color: var(--muted, rgba(220,232,255,0.7));
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      transition: color .15s;
+    }
+    .back-link:hover { color: var(--text, #e6eefc); }
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .emp-status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-active     { background: rgba(34,197,94,0.13); color: #4ade80; }
+    .badge-inactive   { background: rgba(100,116,139,0.18); color: #94a3b8; }
+    .badge-terminated { background: rgba(239,68,68,0.13); color: #f87171; }
+    .badge-pending    { background: rgba(234,179,8,0.13); color: #fde047; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--line, rgba(100,150,255,0.14));
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      margin-bottom: -1px;
+      transition: all .15s;
+    }
+    .tab-btn.active {
+      color: var(--text, #e6eefc);
+      border-bottom-color: var(--blue, #2d6ae0);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Form sections ── */
+    .section-card {
+      background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.7));
+      margin: 0 0 18px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .form-row { display: flex; flex-direction: column; gap: 6px; }
+    .form-row.full { grid-column: 1 / -1; }
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted, rgba(220,232,255,0.7));
+    }
+    input[type="text"],
+    input[type="date"],
+    input[type="tel"],
+    select,
+    textarea {
+      padding: 10px 12px;
+      background: var(--bg, #0c1535);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      color: var(--text, #e6eefc);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue, #2d6ae0);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .reports-to-link {
+      color: var(--blue, #2d6ae0);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .reports-to-link:hover { text-decoration: underline; }
+
+    /* ── Save bar ── */
+    .save-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+    }
+    .btn-primary {
+      padding: 11px 24px;
+      background: var(--blue, #2d6ae0);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .save-msg { font-size: 13px; color: var(--muted, rgba(220,232,255,0.7)); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #166534; color: #fff;
+      padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      opacity: 0; transition: all .25s; z-index: 200;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+
+    /* ── Loading ── */
+    .loading-state { padding: 60px 20px; text-align: center; color: var(--muted, rgba(220,232,255,0.7)); }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <a class="back-link" href="/people/employees">← Employees</a>
+        <h1 id="empNameHeading">Employee Profile</h1>
+        <span class="emp-status-badge" id="empStatusBadge"></span>
+      </div>
+
+      <div id="profileContent" class="loading-state">Loading…</div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-employee.js"></script>
+</body>
+</html>

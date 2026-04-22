@@ -84,6 +84,12 @@ const { handleGetNotifications, handleSaveNotifications, handleGetQuickBooks, ha
 const { handleQbConnect, handleQbCallback } = require("./api/qb-oauth-routes");
 const { handleGetTransactions, handleGetProfitLoss, handleGetAccounts } = require("./api/accounting-transactions");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
+const {
+  handleListDepartments, handleCreateDepartment, handleUpdateDepartment, handleDeleteDepartment,
+  handleListDesignations, handleCreateDesignation, handleUpdateDesignation, handleDeleteDesignation,
+  handleCreateEmployee, handleListEmployees, handleGetEmployee, handleUpdateEmployee,
+} = require("./api/hr-people");
+const { ensureHrSheets } = require("./lib/hr");
 const { runMaterialPriceUpdate, scheduleMonthlyPriceUpdate } = require("./lib/materialPriceUpdater");
 const { getSheetsClient } = require("./lib/sheets");
 
@@ -773,6 +779,7 @@ const server = http.createServer(async (req, res) => {
     req.url.startsWith("/crm/") ||
     req.url === "/invoices" ||
     req.url.startsWith("/invoices/") ||
+    req.url.startsWith("/people/") ||
     req.url.startsWith("/api/")
   ) {
     if (!requireAuth(req, res)) return;
@@ -1201,6 +1208,56 @@ const server = http.createServer(async (req, res) => {
     return handleGetTrips(req, res);
   }
 
+  // ── People / HR pages ─────────────────────────────────────────────────────────
+  if (_epath === "/people/employees" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-employees.html"), "text/html");
+  }
+  if (_epath.startsWith("/people/employees/") && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-employee.html"), "text/html");
+  }
+  if (_epath === "/people/departments" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-departments.html"), "text/html");
+  }
+  if (_epath === "/people/designations" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-designations.html"), "text/html");
+  }
+
+  // ── HR API — Departments ──────────────────────────────────────────────────────
+  if (_epath === "/api/hr/departments" && req.method === "GET")  return handleListDepartments(req, res);
+  if (_epath === "/api/hr/departments" && req.method === "POST") return handleCreateDepartment(req, res);
+  if (_epath.startsWith("/api/hr/departments/") && req.method === "PATCH") {
+    const deptId = _epath.slice("/api/hr/departments/".length);
+    return handleUpdateDepartment(req, res, deptId);
+  }
+  if (_epath.startsWith("/api/hr/departments/") && req.method === "DELETE") {
+    const deptId = _epath.slice("/api/hr/departments/".length);
+    return handleDeleteDepartment(req, res, deptId);
+  }
+
+  // ── HR API — Designations ─────────────────────────────────────────────────────
+  if (_epath === "/api/hr/designations" && req.method === "GET")  return handleListDesignations(req, res);
+  if (_epath === "/api/hr/designations" && req.method === "POST") return handleCreateDesignation(req, res);
+  if (_epath.startsWith("/api/hr/designations/") && req.method === "PATCH") {
+    const designationId = _epath.slice("/api/hr/designations/".length);
+    return handleUpdateDesignation(req, res, designationId);
+  }
+  if (_epath.startsWith("/api/hr/designations/") && req.method === "DELETE") {
+    const designationId = _epath.slice("/api/hr/designations/".length);
+    return handleDeleteDesignation(req, res, designationId);
+  }
+
+  // ── HR API — Employees ────────────────────────────────────────────────────────
+  if (_epath === "/api/hr/employees" && req.method === "GET")  return handleListEmployees(req, res);
+  if (_epath === "/api/hr/employees" && req.method === "POST") return handleCreateEmployee(req, res);
+  if (_epath.startsWith("/api/hr/employees/") && req.method === "GET") {
+    const empId = _epath.slice("/api/hr/employees/".length);
+    return handleGetEmployee(req, res, empId);
+  }
+  if (_epath.startsWith("/api/hr/employees/") && req.method === "PATCH") {
+    const empId = _epath.slice("/api/hr/employees/".length);
+    return handleUpdateEmployee(req, res, empId);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -1217,6 +1274,7 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => ensureConfigDefaults())
     .then(() => ensureCalculatorDefaults())
     .then(() => ensureStaffSheet())
+    .then(() => ensureHrSheets())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())

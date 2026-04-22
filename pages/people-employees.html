@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Employees — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .btn-primary {
+      padding: 10px 20px;
+      background: var(--blue, #2d6ae0);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary:hover { opacity: .88; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .search-input {
+      flex: 1;
+      min-width: 180px;
+      padding: 9px 14px;
+      background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      color: var(--text, #e6eefc);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .search-input::placeholder { color: var(--muted, rgba(220,232,255,0.5)); }
+    .search-input:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+    select.filter-sel {
+      padding: 9px 12px;
+      background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      color: var(--text, #e6eefc);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    select.filter-sel:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-tab {
+      padding: 7px 16px;
+      border: 1.5px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 99px;
+      background: transparent;
+      color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .filter-tab.active {
+      background: var(--blue, #2d6ae0);
+      border-color: var(--blue, #2d6ae0);
+      color: #fff;
+    }
+
+    /* ── Employee table ── */
+    .emp-table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--line, rgba(100,150,255,0.14));
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line2, rgba(100,150,255,0.08));
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { cursor: pointer; transition: background .12s; }
+    tbody tr:hover { background: rgba(45,106,224,0.08); }
+
+    .emp-name { font-weight: 700; color: var(--text, #e6eefc); }
+    .emp-meta { font-size: 12px; color: var(--muted, rgba(220,232,255,0.7)); margin-top: 2px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-active     { background: rgba(34,197,94,0.13); color: #4ade80; }
+    .badge-inactive   { background: rgba(100,116,139,0.18); color: #94a3b8; }
+    .badge-terminated { background: rgba(239,68,68,0.13); color: #f87171; }
+    .badge-pending    { background: rgba(234,179,8,0.13); color: #fde047; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted, rgba(220,232,255,0.7));
+    }
+    .empty strong { display: block; font-size: 16px; margin-bottom: 6px; color: var(--text, #e6eefc); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #166534; color: #fff;
+      padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      opacity: 0; transition: all .25s; z-index: 200;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #7f1d1d; }
+
+    /* ── Add Employee Modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--panel, #101e45);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 480px;
+      margin: 20px;
+    }
+    .modal h2 { margin: 0 0 20px; font-size: 18px; font-weight: 800; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 12px; font-weight: 700; color: var(--muted, rgba(220,232,255,0.7)); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .form-row input, .form-row select {
+      width: 100%; box-sizing: border-box;
+      padding: 10px 12px;
+      background: var(--bg, #0c1535);
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      color: var(--text, #e6eefc);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--blue, #2d6ae0); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-secondary {
+      padding: 10px 18px;
+      background: transparent;
+      border: 1px solid var(--line, rgba(100,150,255,0.14));
+      border-radius: 10px;
+      color: var(--muted, rgba(220,232,255,0.7));
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+
+      <div class="page-header-row">
+        <h1>Employees</h1>
+        <button class="btn-primary" id="addEmpBtn">+ Add Employee</button>
+      </div>
+
+      <div class="filter-bar">
+        <input class="search-input" id="searchInput" type="text" placeholder="Search by name…" />
+        <select class="filter-sel" id="deptFilter">
+          <option value="">All Departments</option>
+        </select>
+        <select class="filter-sel" id="desigFilter">
+          <option value="">All Designations</option>
+        </select>
+      </div>
+
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-status="">All</button>
+        <button class="filter-tab" data-status="active">Active</button>
+        <button class="filter-tab" data-status="inactive">Inactive</button>
+        <button class="filter-tab" data-status="terminated">Terminated</button>
+      </div>
+
+      <div class="emp-table-wrap">
+        <table id="empTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th>Status</th>
+              <th>Hire Date</th>
+            </tr>
+          </thead>
+          <tbody id="empBody">
+            <tr><td colspan="5"><div class="empty"><strong>Loading…</strong></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <h2>Add Employee</h2>
+    <div class="form-row">
+      <label>First Name *</label>
+      <input type="text" id="newFirstName" placeholder="First name" />
+    </div>
+    <div class="form-row">
+      <label>Last Name *</label>
+      <input type="text" id="newLastName" placeholder="Last name" />
+    </div>
+    <div class="form-row">
+      <label>Hire Date</label>
+      <input type="date" id="newHireDate" />
+    </div>
+    <div class="form-row">
+      <label>Employment Status</label>
+      <select id="newEmpStatus">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="terminated">Terminated</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Department</label>
+      <select id="newDept"><option value="">— None —</option></select>
+    </div>
+    <div class="form-row">
+      <label>Designation</label>
+      <select id="newDesig"><option value="">— None —</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelAddBtn">Cancel</button>
+      <button class="btn-primary" id="saveAddBtn">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-employees.js"></script>
+</body>
+</html>
