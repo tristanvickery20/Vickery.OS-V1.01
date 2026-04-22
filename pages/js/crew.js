@@ -1727,6 +1727,7 @@ function addClaimLine() {
     '</select>' +
     '<input type="text" placeholder="Description" style="flex:2;min-width:120px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-desc" />' +
     '<input type="number" placeholder="Amount" min="0" step="0.01" style="flex:1;min-width:80px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-amt" />' +
+    '<input type="date" title="Item Date" style="flex:1;min-width:110px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-item-date" />' +
     '<button style="background:transparent;border:none;color:hsl(0 70% 60%);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove">×</button>';
   row.querySelector("button").addEventListener("click", () => row.remove());
   container.appendChild(row);
@@ -1742,7 +1743,8 @@ async function submitClaim() {
     const cat  = (row.querySelector(".claim-cat") || {}).value || "Other";
     const desc = (row.querySelector(".claim-desc") || {}).value || "";
     const amt  = parseFloat((row.querySelector(".claim-amt") || {}).value || "0") || 0;
-    if (desc || amt) lines.push({ category: cat, description: desc, amount: amt });
+    const idate = (row.querySelector(".claim-item-date") || {}).value || "";
+    if (desc || amt) lines.push({ category: cat, description: desc, amount: amt, item_date: idate });
   });
   if (lines.length === 0) { showCrewToast("Add at least one line item.", true); return; }
   const btn = document.getElementById("submitClaimBtn");

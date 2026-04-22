@@ -17,6 +17,31 @@ const {
 } = require("../lib/hr-payroll");
 const { readAllEmployees } = require("../lib/hr");
 const { getCrewSession } = require("../lib/staff");
+const { readAllAttendance } = require("../lib/hr-attendance");
+
+/**
+ * Count working days for one employee in a period, respecting payroll settings.
+ * Falls back to calendar weekday count if no attendance records exist.
+ */
+function resolveWorkingDays(allAttendance, staffId, periodStart, periodEnd, settings, weekdayCount) {
+  const source = (settings.working_day_source || "calendar").toLowerCase();
+  const halfFrac = parseFloat(settings.half_day_fraction) || 0.5;
+  if (source === "attendance") {
+    const records = allAttendance.filter(a =>
+      a.staff_id === staffId && a.date >= periodStart && a.date <= periodEnd
+    );
+    if (records.length === 0) return weekdayCount; // no attendance data — fall back
+    let days = 0;
+    for (const r of records) {
+      const s = String(r.status || "").toLowerCase();
+      if (s === "present" || s === "p") days += 1;
+      else if (s === "half" || s === "half-day" || s === "half day" || s === "hd") days += halfFrac;
+      // absent / other = 0
+    }
+    return days;
+  }
+  return weekdayCount; // calendar — plain weekday count
+}
 
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -156,6 +181,7 @@ async function handleCrewCreateClaim(req, res) {
         amount: String(parseFloat(item.amount) || 0),
         receipt_url: item.receipt_url || "",
         description: item.description || "",
+        item_date: item.item_date || "",
         created_at: now,
       });
     }
@@ -418,49 +444,53 @@ async function handleGetRunPreview(req, res, runId) {
   try {
     const run = await readRun(runId);
     if (!run) return json(res, 404, { ok: false, error: "Run not found" });
-    const additions = await readRunAdditions(runId);
-    const employees = await readAllEmployees();
-    const assignments = await readAllAssignments();
+    const [additions, employees, assignments, settings, allAttendance] = await Promise.all([
+      readRunAdditions(runId),
+      readAllEmployees(),
+      readAllAssignments(),
+      readPayrollSettings(),
+      readAllAttendance(),
+    ]);
 
-    // Filter employees who have an active assignment
-    const activeEmps = [];
-    const today = run.pay_period_end || new Date().toISOString().slice(0, 10);
-    for (const emp of employees) {
-      if (emp.employment_status === "terminated") continue;
-      if (run.department_id && emp.department_id !== run.department_id) continue;
-      const empAssignments = assignments
-        .filter(a => a.staff_id === emp.staff_id && a.effective_date <= today)
-        .sort((a, b) => b.effective_date.localeCompare(a.effective_date));
-      if (empAssignments.length === 0) continue;
-      activeEmps.push(emp);
-    }
-
-    // Calculate working days in period (simple weekday count)
+    // Calculate calendar weekday count (base for proration denominator)
     const start = new Date(run.pay_period_start);
     const end = new Date(run.pay_period_end);
-    let totalDays = 0, workDays = 0;
+    let totalDays = 0, weekdayCount = 0;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       totalDays++;
       const dow = d.getDay();
-      if (dow !== 0 && dow !== 6) workDays++;
+      if (dow !== 0 && dow !== 6) weekdayCount++;
     }
+
+    // Filter employees who have an active assignment as of period end
+    const periodEnd = run.pay_period_end;
+    const activeEmps = employees.filter(emp => {
+      if (emp.employment_status === "terminated") return false;
+      if (run.department_id && emp.department_id !== run.department_id) return false;
+      return assignments.some(a => a.staff_id === emp.staff_id && a.effective_date <= periodEnd);
+    });
 
     const previews = [];
     for (const emp of activeEmps) {
+      // Resolve actual working days using payroll settings (attendance vs calendar)
+      const workDays = resolveWorkingDays(
+        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount
+      );
       const pay = await computeEmployeePay(
-        emp.staff_id, run.pay_period_start, run.pay_period_end, workDays, totalDays,
-        additions.filter(a => a.staff_id === emp.staff_id)
+        emp.staff_id, run.pay_period_start, periodEnd, workDays, totalDays,
+        additions.filter(a => a.staff_id === emp.staff_id), settings
       );
       if (!pay) continue;
       previews.push({
         staff_id: emp.staff_id,
         name: `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || emp.staff_id,
         ...pay,
+        working_days: workDays,
         additions: additions.filter(a => a.staff_id === emp.staff_id),
       });
     }
 
-    json(res, 200, { ok: true, run, previews, additions });
+    json(res, 200, { ok: true, run, previews, additions, settings });
   } catch (err) {
     console.error("[hr/payroll/run/preview]", err.message);
     json(res, 500, { ok: false, error: err.message });
@@ -473,18 +503,22 @@ async function handleFinalizeRun(req, res, runId) {
     if (!run) return json(res, 404, { ok: false, error: "Run not found" });
     if (run.status === "finalized") return json(res, 400, { ok: false, error: "Already finalized" });
 
-    const additions = await readRunAdditions(runId);
-    const employees = await readAllEmployees();
-    const assignments = await readAllAssignments();
-    const today = run.pay_period_end || new Date().toISOString().slice(0, 10);
+    const [additions, employees, assignments, settings, allAttendance] = await Promise.all([
+      readRunAdditions(runId),
+      readAllEmployees(),
+      readAllAssignments(),
+      readPayrollSettings(),
+      readAllAttendance(),
+    ]);
 
+    const periodEnd = run.pay_period_end;
     const start = new Date(run.pay_period_start);
     const end = new Date(run.pay_period_end);
-    let totalDays = 0, workDays = 0;
+    let totalDays = 0, weekdayCount = 0;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       totalDays++;
       const dow = d.getDay();
-      if (dow !== 0 && dow !== 6) workDays++;
+      if (dow !== 0 && dow !== 6) weekdayCount++;
     }
 
     const now = new Date().toISOString();
@@ -492,14 +526,17 @@ async function handleFinalizeRun(req, res, runId) {
     for (const emp of employees) {
       if (emp.employment_status === "terminated") continue;
       if (run.department_id && emp.department_id !== run.department_id) continue;
-      const empAssignments = assignments
-        .filter(a => a.staff_id === emp.staff_id && a.effective_date <= today)
-        .sort((a, b) => b.effective_date.localeCompare(a.effective_date));
-      if (empAssignments.length === 0) continue;
+      // Only include employees with an assignment active as of period end
+      const hasAssignment = assignments.some(a => a.staff_id === emp.staff_id && a.effective_date <= periodEnd);
+      if (!hasAssignment) continue;
 
+      // Resolve per-employee working days using payroll settings
+      const workDays = resolveWorkingDays(
+        allAttendance, emp.staff_id, run.pay_period_start, periodEnd, settings, weekdayCount
+      );
       const pay = await computeEmployeePay(
-        emp.staff_id, run.pay_period_start, run.pay_period_end, workDays, totalDays,
-        additions.filter(a => a.staff_id === emp.staff_id)
+        emp.staff_id, run.pay_period_start, periodEnd, workDays, totalDays,
+        additions.filter(a => a.staff_id === emp.staff_id), settings
       );
       if (!pay) continue;
 
