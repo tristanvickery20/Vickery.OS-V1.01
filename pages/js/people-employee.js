@@ -70,6 +70,7 @@
       '<button class="tab-btn" data-tab="employment">Employment Info</button>' +
       '<button class="tab-btn" data-tab="emergency">Emergency Contact</button>' +
       '<button class="tab-btn" data-tab="leave">Leave Balances</button>' +
+      '<button class="tab-btn" data-tab="payroll">Payroll</button>' +
       '</div>' +
 
       /* ── Personal Info tab ── */
@@ -141,6 +142,24 @@
         '<div style="margin-top:10px;">' +
           '<a class="btn-primary" href="/people/leave/apply?staff_id=' + esc(staffId) + '" style="display:inline-block;padding:10px 20px;text-decoration:none;border-radius:10px;">+ Submit Leave Application</a>' +
         '</div>' +
+      '</div>' +
+
+      /* ── Payroll tab ── */
+      '<div class="tab-panel" id="tab-payroll">' +
+        '<div class="section-card">' +
+          '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">' +
+            'Salary Assignments' +
+            '<button id="addAssignmentBtn" style="padding:7px 16px;background:var(--blue,#2d6ae0);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+ Assign Structure</button>' +
+          '</div>' +
+          '<div id="assignmentList" style="color:var(--muted);font-size:14px;">Loading…</div>' +
+        '</div>' +
+        '<div class="section-card">' +
+          '<div class="section-title">Recent Salary Slips</div>' +
+          '<div id="slipsList" style="color:var(--muted);font-size:14px;">Loading…</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;">' +
+          '<a href="/people/payroll/runs" style="font-size:13px;color:var(--blue,#2d6ae0);text-decoration:none;">→ Go to Payroll Runs</a>' +
+        '</div>' +
       '</div>';
   }
 
@@ -184,6 +203,101 @@
     el.innerHTML = rows || '<span style="color:var(--muted);">No allocations for ' + year + '.</span>';
   }
 
+  function renderPayrollTab() {
+    var aEl = document.getElementById("assignmentList");
+    var sEl = document.getElementById("slipsList");
+    if (aEl) aEl.innerHTML = "Loading…";
+    if (sEl) sEl.innerHTML = "Loading…";
+
+    Promise.all([
+      fetch("/api/hr/payroll/assignments?staff_id=" + staffId).then(function(r){return r.json();}),
+      fetch("/api/hr/payroll/slips?all=1").then(function(r){return r.json();}),
+      fetch("/api/hr/payroll/structures").then(function(r){return r.json();}),
+    ]).then(function(results) {
+      var assignments = results[0].ok ? results[0].assignments : [];
+      var allSlips = results[1].ok ? results[1].slips : [];
+      var structures = results[2].ok ? results[2].structures : [];
+      var slips = allSlips.filter(function(s){return s.staff_id === staffId;}).slice(0, 10);
+
+      if (aEl) {
+        if (assignments.length === 0) {
+          aEl.innerHTML = '<span style="color:var(--muted)">No salary assignments yet. Click "+ Assign Structure" to add one.</span>';
+        } else {
+          aEl.innerHTML = assignments.map(function(a) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,150,255,.07)">' +
+              '<div><div style="font-size:14px;font-weight:700">' + esc(a.structure_name || a.structure_id) + '</div>' +
+              '<div style="font-size:12px;color:var(--muted)">Base: $' + (parseFloat(a.base_amount)||0).toFixed(2) + ' · Effective ' + esc(a.effective_date) + '</div></div>' +
+              '<button style="background:transparent;border:none;color:#f87171;cursor:pointer;font-size:13px;" data-del-assign="' + esc(a.assignment_id) + '">Remove</button>' +
+            '</div>';
+          }).join("");
+          aEl.querySelectorAll("[data-del-assign]").forEach(function(btn) {
+            btn.addEventListener("click", function() {
+              if (!confirm("Remove this salary assignment?")) return;
+              fetch("/api/hr/payroll/assignments/" + btn.dataset.delAssign, {method:"DELETE"}).then(function(r){return r.json();}).then(function(d){
+                if (d.ok) renderPayrollTab(); else showToast("Error: " + d.error, true);
+              });
+            });
+          });
+        }
+      }
+
+      if (sEl) {
+        if (slips.length === 0) {
+          sEl.innerHTML = '<span style="color:var(--muted)">No salary slips generated yet. Run a payroll to generate slips.</span>';
+        } else {
+          sEl.innerHTML = slips.map(function(s) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(100,150,255,.07)">' +
+              '<span style="font-size:13px;color:var(--muted)">' + esc(s.pay_period_start) + ' – ' + esc(s.pay_period_end) + '</span>' +
+              '<span style="display:flex;align-items:center;gap:12px">' +
+                '<span style="font-weight:700;color:#34d399">$' + (parseFloat(s.net_pay)||0).toFixed(2) + '</span>' +
+                '<a href="/people/payroll/slips/' + esc(s.slip_id) + '" style="font-size:12px;color:#60a5fa;text-decoration:none">View ›</a>' +
+              '</span>' +
+            '</div>';
+          }).join("");
+        }
+      }
+
+      // Add Assignment form
+      var addBtn = document.getElementById("addAssignmentBtn");
+      if (addBtn && !addBtn._bound) {
+        addBtn._bound = true;
+        addBtn.addEventListener("click", function() {
+          var structOpts = structures.map(function(s) { return '<option value="' + esc(s.structure_id) + '">' + esc(s.name) + '</option>'; }).join("");
+          var div = document.createElement("div");
+          div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;";
+          div.innerHTML = '<div style="background:var(--panel,#101e45);border:1px solid var(--line);border-radius:20px;padding:28px;width:100%;max-width:420px;margin:20px">' +
+            '<h2 style="margin:0 0 20px;font-size:18px;font-weight:800">Assign Salary Structure</h2>' +
+            '<div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Structure</label>' +
+              '<select id="_assignStruct" style="width:100%;box-sizing:border-box;padding:10px;background:var(--bg,#0c1535);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit"><option value="">— Select —</option>' + structOpts + '</select></div>' +
+            '<div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Base Amount ($)</label>' +
+              '<input type="number" id="_assignBase" placeholder="e.g. 5000" style="width:100%;box-sizing:border-box;padding:10px;background:var(--bg,#0c1535);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit" /></div>' +
+            '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Effective Date</label>' +
+              '<input type="date" id="_assignDate" value="' + new Date().toISOString().slice(0,10) + '" style="width:100%;box-sizing:border-box;padding:10px;background:var(--bg,#0c1535);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit" /></div>' +
+            '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+              '<button id="_cancelAssign" style="padding:10px 18px;background:transparent;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>' +
+              '<button id="_saveAssign" style="padding:10px 20px;background:var(--blue,#2d6ae0);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>' +
+            '</div>' +
+          '</div>';
+          document.body.appendChild(div);
+          div.querySelector("#_cancelAssign").addEventListener("click", function(){ div.remove(); });
+          div.querySelector("#_saveAssign").addEventListener("click", function(){
+            var body = {
+              staff_id: staffId,
+              structure_id: div.querySelector("#_assignStruct").value,
+              base_amount: div.querySelector("#_assignBase").value,
+              effective_date: div.querySelector("#_assignDate").value,
+            };
+            if (!body.structure_id || !body.effective_date) { showToast("Structure and effective date required", true); return; }
+            fetch("/api/hr/payroll/assignments", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(d){
+              if (d.ok) { div.remove(); showToast("Assigned"); renderPayrollTab(); }
+              else showToast(d.error || "Error", true);
+            });
+          });
+        });
+      }
+    });
+  }
+
   function initTabs() {
     document.querySelectorAll(".tab-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -193,6 +307,7 @@
         var panel = document.getElementById("tab-" + btn.getAttribute("data-tab"));
         if (panel) panel.classList.add("active");
         if (btn.getAttribute("data-tab") === "leave") renderLeaveBalances();
+        if (btn.getAttribute("data-tab") === "payroll") renderPayrollTab();
       });
     });
   }

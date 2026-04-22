@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Payroll Run — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin:0; font-size:22px; font-weight:800; }
+    .back-link { color:var(--muted); font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-bottom:16px; }
+    .back-link:hover { color:var(--text); }
+    .page-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+    .badge { display:inline-block; font-size:12px; font-weight:700; border-radius:6px; padding:3px 11px; margin-left:10px; vertical-align:middle; }
+    .badge-draft { background:rgba(148,163,184,.18); color:#94a3b8; }
+    .badge-finalized { background:rgba(52,211,153,.18); color:#34d399; }
+    .section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:24px 0 10px; }
+    .preview-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .preview-table th { text-align:left; padding:8px 12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); border-bottom:1px solid var(--line); }
+    .preview-table td { padding:10px 12px; border-bottom:1px solid rgba(100,150,255,.07); }
+    .preview-table tr:last-child td { border-bottom:none; }
+    .preview-table .amount { text-align:right; font-weight:700; }
+    .net-pay { color:#34d399; }
+    .totals-row td { font-weight:800; border-top:1px solid var(--line) !important; padding-top:14px; }
+    .slip-link { color:#60a5fa; font-size:12px; text-decoration:none; }
+    .slip-link:hover { text-decoration:underline; }
+    .btn-primary { padding:10px 20px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .btn-primary:hover { opacity:.88; }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-secondary { padding:9px 18px; background:transparent; border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .addition-form { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .addition-form .form-row { margin:0; flex:1; min-width:120px; }
+    .form-row label { display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; }
+    .form-row input, .form-row select { width:100%; box-sizing:border-box; padding:8px 10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; }
+    .form-row input:focus, .form-row select:focus { outline:none; border-color:var(--blue); }
+    .addition-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+    .addition-row { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+    .addition-row .btn-del { background:transparent; border:none; color:#f87171; cursor:pointer; font-size:16px; }
+    .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:#166534; color:#fff; padding:12px 24px; border-radius:12px; font-size:14px; font-weight:700; opacity:0; transition:all .25s; z-index:200; pointer-events:none; white-space:nowrap; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast.error { background:#7f1d1d; }
+    @media(max-width:600px) { .preview-table { font-size:12px; } .preview-table th, .preview-table td { padding:7px 8px; } }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+      <a href="/people/payroll/runs" class="back-link">← Payroll Runs</a>
+      <div class="page-header-row">
+        <div><h1 id="runTitle">Loading…</h1><span id="runBadge"></span></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-secondary" id="refreshBtn">Refresh Preview</button>
+          <button class="btn-primary" id="finalizeBtn" style="display:none">Finalize &amp; Generate Slips</button>
+        </div>
+      </div>
+
+      <div class="section-title" id="additionsTitle" style="display:none">One-Off Additions</div>
+      <div class="addition-list" id="additionList"></div>
+      <div class="addition-form" id="additionForm" style="display:none">
+        <div class="form-row">
+          <label>Employee</label>
+          <select id="addStaff"></select>
+        </div>
+        <div class="form-row">
+          <label>Type</label>
+          <select id="addType">
+            <option value="bonus">Bonus</option>
+            <option value="deduction">Deduction</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <input type="text" id="addDesc" placeholder="e.g. Performance bonus" />
+        </div>
+        <div class="form-row" style="max-width:100px">
+          <label>Amount ($)</label>
+          <input type="number" id="addAmount" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <button class="btn-secondary" id="addAdditionBtn">Add</button>
+      </div>
+
+      <div class="section-title">Pay Preview</div>
+      <div id="previewWrap">
+        <div class="empty">Loading preview…</div>
+      </div>
+
+      <div id="slipsSection" style="display:none">
+        <div class="section-title">Salary Slips</div>
+        <div id="slipsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-payroll-run.js"></script>
+</body>
+</html>

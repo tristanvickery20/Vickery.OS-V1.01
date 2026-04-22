@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Expense Claims — Vickery Electric CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .page-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+    .filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    .filter-btn { padding:7px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--muted); font-family:inherit; transition:all .15s; }
+    .filter-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .claims-list { display:flex; flex-direction:column; gap:12px; }
+    .claim-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+    .claim-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .claim-name { font-size:15px; font-weight:700; }
+    .claim-meta { font-size:12px; color:var(--muted); margin-top:3px; }
+    .claim-amount { font-size:18px; font-weight:800; color:#34d399; white-space:nowrap; }
+    .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 9px; }
+    .badge-submitted { background:rgba(59,130,246,0.18); color:#93c5fd; }
+    .badge-approved  { background:rgba(52,211,153,0.18); color:#34d399; }
+    .badge-rejected  { background:rgba(248,113,113,0.18); color:#f87171; }
+    .badge-paid      { background:rgba(167,139,250,0.18); color:#a78bfa; }
+    .claim-items { border-top:1px solid var(--line); margin-top:10px; padding-top:10px; display:flex; flex-direction:column; gap:6px; }
+    .claim-item { display:flex; justify-content:space-between; font-size:13px; }
+    .claim-item-cat { color:var(--muted); }
+    .claim-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
+    .btn-sm { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--muted); font-family:inherit; transition:all .15s; }
+    .btn-sm:hover { color:var(--text); border-color:rgba(100,150,255,0.3); }
+    .btn-approve { color:#34d399; border-color:rgba(52,211,153,0.3); }
+    .btn-approve:hover { background:rgba(52,211,153,0.1); }
+    .btn-reject { color:#f87171; border-color:rgba(239,68,68,0.25); }
+    .btn-reject:hover { background:rgba(239,68,68,0.08); }
+    .btn-paid { color:#a78bfa; border-color:rgba(167,139,250,0.3); }
+    .btn-paid:hover { background:rgba(167,139,250,0.1); }
+    .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+    .empty strong { display:block; font-size:16px; margin-bottom:6px; color:var(--text); }
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:#166534; color:#fff; padding:12px 24px; border-radius:12px; font-size:14px; font-weight:700; opacity:0; transition:all .25s; z-index:200; pointer-events:none; white-space:nowrap; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast.error { background:#7f1d1d; }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar" id="sidebarMount"></div>
+  <div class="main-area">
+    <div class="page-content">
+      <div class="page-header-row">
+        <h1>Expense Claims</h1>
+      </div>
+      <div class="filters" id="filters">
+        <button class="filter-btn active" data-status="">All</button>
+        <button class="filter-btn" data-status="submitted">Submitted</button>
+        <button class="filter-btn" data-status="approved">Approved</button>
+        <button class="filter-btn" data-status="paid">Paid</button>
+        <button class="filter-btn" data-status="rejected">Rejected</button>
+      </div>
+      <div class="claims-list" id="claimsList">
+        <div class="empty"><strong>Loading…</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="/pages/js/shell.js"></script>
+<script src="/pages/js/people-expense-claims.js"></script>
+</body>
+</html>

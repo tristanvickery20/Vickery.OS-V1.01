@@ -1678,6 +1678,8 @@ function bindViewTabs() {
       if (attView) attView.style.display = tab === "attendance" ? "" : "none";
       const leaveView = document.getElementById("leaveView");
       if (leaveView) leaveView.style.display = tab === "leave" ? "" : "none";
+      const claimsView = document.getElementById("claimsView");
+      if (claimsView) claimsView.style.display = tab === "claims" ? "" : "none";
       if (tab === "map" && !_mapLoaded) {
         _mapLoaded = true;
         renderCrewMap();
@@ -1685,8 +1687,129 @@ function bindViewTabs() {
       if (tab === "attendance") {
         loadCrewCorrections();
       }
+      if (tab === "claims") {
+        initClaimsTab();
+      }
     });
   });
+}
+
+// ── Crew Expense Claims ───────────────────────────────────────────────────────
+let _claimsInited = false;
+
+function initClaimsTab() {
+  if (!_claimsInited) {
+    _claimsInited = true;
+    // Set today's date
+    const dateEl = document.getElementById("claimDate");
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+    // Seed one empty line
+    addClaimLine();
+    // Add Line button
+    const addLineBtn = document.getElementById("addClaimLineBtn");
+    if (addLineBtn) addLineBtn.addEventListener("click", addClaimLine);
+    // Submit button
+    const submitBtn = document.getElementById("submitClaimBtn");
+    if (submitBtn) submitBtn.addEventListener("click", submitClaim);
+  }
+  loadMyClaims();
+}
+
+function addClaimLine() {
+  const container = document.getElementById("claimLines");
+  if (!container) return;
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:6px;align-items:center;";
+  row.innerHTML =
+    '<input type="text" placeholder="Description" style="flex:2;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-desc" />' +
+    '<input type="number" placeholder="Amount" min="0" step="0.01" style="flex:1;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-amt" />' +
+    '<button style="background:transparent;border:none;color:hsl(0 70% 60%);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove">×</button>';
+  row.querySelector("button").addEventListener("click", () => row.remove());
+  container.appendChild(row);
+}
+
+async function submitClaim() {
+  const date = (document.getElementById("claimDate") || {}).value || "";
+  const notes = (document.getElementById("claimNotes") || {}).value || "";
+  if (!date) { showCrewToast("Please enter a claim date.", true); return; }
+  const lines = [];
+  document.querySelectorAll("#claimLines > div").forEach(row => {
+    const desc = (row.querySelector(".claim-desc") || {}).value || "";
+    const amt  = parseFloat((row.querySelector(".claim-amt") || {}).value || "0") || 0;
+    if (desc || amt) lines.push({ description: desc, amount: amt });
+  });
+  if (lines.length === 0) { showCrewToast("Add at least one line item.", true); return; }
+  const btn = document.getElementById("submitClaimBtn");
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch("/api/crew/claims", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_date: date, notes, items: lines }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showCrewToast("Claim submitted!");
+      (document.getElementById("claimNotes") || {}).value = "";
+      document.getElementById("claimLines").innerHTML = "";
+      addClaimLine();
+      loadMyClaims();
+    } else {
+      showCrewToast(d.error || "Submission failed.", true);
+    }
+  } catch(e) {
+    showCrewToast("Network error.", true);
+  }
+  if (btn) btn.disabled = false;
+}
+
+async function loadMyClaims() {
+  const el = document.getElementById("myClaimsList");
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:13px;color:hsl(220 15% 45%);padding:20px 0;text-align:center;">Loading…</div>';
+  try {
+    const r = await fetch("/api/crew/claims");
+    const d = await r.json();
+    if (!d.ok || !d.claims || d.claims.length === 0) {
+      el.innerHTML = '<div style="font-size:13px;color:hsl(220 15% 45%);padding:20px 0;text-align:center;">No claims submitted yet.</div>';
+      return;
+    }
+    const statusColor = { pending: "hsl(38 80% 55%)", approved: "hsl(142 60% 50%)", rejected: "hsl(0 70% 60%)", paid: "hsl(217 80% 65%)" };
+    el.innerHTML = d.claims.map(c => {
+      const total = (parseFloat(c.total_amount) || 0).toFixed(2);
+      const sc = statusColor[c.status] || "hsl(220 15% 55%)";
+      return `<div style="background:hsl(220 10% 12%);border:1px solid hsl(220 10% 18%);border-radius:12px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:700;color:hsl(220 15% 88%);">${c.claim_date || ""}</span>
+          <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${sc};">${c.status || "pending"}</span>
+        </div>
+        <div style="font-size:13px;color:hsl(220 15% 55%);">${c.notes ? escCrew(c.notes) + " · " : ""}Total: <strong style="color:hsl(220 15% 88%);">$${total}</strong></div>
+        ${c.status === "pending" ? `<button data-del-claim="${escCrew(c.claim_id)}" style="margin-top:8px;background:transparent;border:none;color:hsl(0 70% 60%);font-size:12px;cursor:pointer;font-family:inherit;padding:0;">Withdraw</button>` : ""}
+      </div>`;
+    }).join("");
+    el.querySelectorAll("[data-del-claim]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Withdraw this claim?")) return;
+        const r2 = await fetch("/api/crew/claims/" + btn.dataset.delClaim, { method: "DELETE" });
+        const d2 = await r2.json();
+        if (d2.ok) loadMyClaims(); else showCrewToast(d2.error || "Error", true);
+      });
+    });
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:13px;color:hsl(0 70% 60%);padding:20px 0;text-align:center;">Failed to load claims.</div>';
+  }
+}
+
+function escCrew(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function showCrewToast(msg, isErr) {
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:${isErr?"hsl(0 60% 35%)":"hsl(142 50% 30%)"};color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;z-index:9999;max-width:85vw;text-align:center;`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 // ── Crew Attendance Correction Requests ────────────────────────────────────────

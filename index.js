@@ -120,6 +120,18 @@ const {
   handleCreateEmployeeFromOffer,
 } = require("./api/hr-recruiting");
 const { ensureRecruitingSheets } = require("./lib/hr-recruiting");
+const {
+  handleListClaims, handleGetClaim, handleAdminUpdateClaim, handleDeleteClaim,
+  handleCrewListClaims, handleCrewCreateClaim, handleCrewDeleteClaim,
+  handleListComponents, handleCreateComponent, handleUpdateComponent, handleDeleteComponent,
+  handleListStructures, handleCreateStructure, handleUpdateStructure, handleDeleteStructure,
+  handleListAssignments, handleCreateAssignment, handleDeleteAssignment,
+  handleGetSettings, handleSaveSettings,
+  handleListRuns, handleCreateRun, handleGetRunPreview, handleFinalizeRun,
+  handleRunAdditions, handleDeleteRunAddition,
+  handleListSlips, handleGetSlip, handlePublicSlip,
+} = require("./api/hr-payroll");
+const { ensurePayrollSheets } = require("./lib/hr-payroll");
 
 const { isAuthed, requireAuth, setAuthCookie, clearAuthCookie } = require("./lib/auth");
 
@@ -1396,6 +1408,34 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/people-applicant.html"), "text/html");
   }
 
+  // ── Payroll / Expense pages ───────────────────────────────────────────────────
+  if (_epath === "/people/expense-claims" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-expense-claims.html"), "text/html");
+  }
+  if (_epath === "/people/payroll/components" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-components.html"), "text/html");
+  }
+  if (_epath === "/people/payroll/structures" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-structures.html"), "text/html");
+  }
+  if (_epath === "/people/payroll/settings" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-settings.html"), "text/html");
+  }
+  if (_epath === "/people/payroll/runs" && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-runs.html"), "text/html");
+  }
+  if (_epath.startsWith("/people/payroll/runs/") && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-run.html"), "text/html");
+  }
+  if (_epath.startsWith("/people/payroll/slips/") && req.method === "GET") {
+    return serveFile(res, path.join(__dirname, "pages/people-payroll-slip.html"), "text/html");
+  }
+  // Public salary slip (no auth)
+  if (_epath.startsWith("/salary-slip/") && req.method === "GET") {
+    const token = _epath.slice("/salary-slip/".length);
+    return serveFile(res, path.join(__dirname, "pages/salary-slip-public.html"), "text/html");
+  }
+
   // ── HR API — Departments ──────────────────────────────────────────────────────
   if (_epath === "/api/hr/departments" && req.method === "GET")  return handleListDepartments(req, res);
   if (_epath === "/api/hr/departments" && req.method === "POST") return handleCreateDepartment(req, res);
@@ -1583,6 +1623,95 @@ const server = http.createServer(async (req, res) => {
     return handleUpdateOffer(req, res, offerId);
   }
 
+  // ── HR API — Payroll / Expense Claims ────────────────────────────────────────
+  // Expense Claims (admin)
+  if (_epath === "/api/hr/payroll/claims" && req.method === "GET")  return handleListClaims(req, res);
+  if (_epath.startsWith("/api/hr/payroll/claims/") && req.method === "GET") {
+    const claimId = _epath.slice("/api/hr/payroll/claims/".length);
+    return handleGetClaim(req, res, claimId);
+  }
+  if (_epath.startsWith("/api/hr/payroll/claims/") && req.method === "PATCH") {
+    const claimId = _epath.slice("/api/hr/payroll/claims/".length);
+    return handleAdminUpdateClaim(req, res, claimId);
+  }
+  if (_epath.startsWith("/api/hr/payroll/claims/") && req.method === "DELETE") {
+    const claimId = _epath.slice("/api/hr/payroll/claims/".length);
+    return handleDeleteClaim(req, res, claimId);
+  }
+  // Expense Claims (crew-facing)
+  if (_epath === "/api/crew/claims" && req.method === "GET")  return handleCrewListClaims(req, res);
+  if (_epath === "/api/crew/claims" && req.method === "POST") return handleCrewCreateClaim(req, res);
+  if (_epath.startsWith("/api/crew/claims/") && req.method === "DELETE") {
+    const claimId = _epath.slice("/api/crew/claims/".length);
+    return handleCrewDeleteClaim(req, res, claimId);
+  }
+  // Salary Components
+  if (_epath === "/api/hr/payroll/components" && req.method === "GET")  return handleListComponents(req, res);
+  if (_epath === "/api/hr/payroll/components" && req.method === "POST") return handleCreateComponent(req, res);
+  if (_epath.startsWith("/api/hr/payroll/components/") && req.method === "PATCH") {
+    const compId = _epath.slice("/api/hr/payroll/components/".length);
+    return handleUpdateComponent(req, res, compId);
+  }
+  if (_epath.startsWith("/api/hr/payroll/components/") && req.method === "DELETE") {
+    const compId = _epath.slice("/api/hr/payroll/components/".length);
+    return handleDeleteComponent(req, res, compId);
+  }
+  // Salary Structures
+  if (_epath === "/api/hr/payroll/structures" && req.method === "GET")  return handleListStructures(req, res);
+  if (_epath === "/api/hr/payroll/structures" && req.method === "POST") return handleCreateStructure(req, res);
+  if (_epath.startsWith("/api/hr/payroll/structures/") && req.method === "PATCH") {
+    const structId = _epath.slice("/api/hr/payroll/structures/".length);
+    return handleUpdateStructure(req, res, structId);
+  }
+  if (_epath.startsWith("/api/hr/payroll/structures/") && req.method === "DELETE") {
+    const structId = _epath.slice("/api/hr/payroll/structures/".length);
+    return handleDeleteStructure(req, res, structId);
+  }
+  // Salary Assignments
+  if (_epath === "/api/hr/payroll/assignments" && req.method === "GET")  return handleListAssignments(req, res);
+  if (_epath === "/api/hr/payroll/assignments" && req.method === "POST") return handleCreateAssignment(req, res);
+  if (_epath.startsWith("/api/hr/payroll/assignments/") && req.method === "DELETE") {
+    const assignId = _epath.slice("/api/hr/payroll/assignments/".length);
+    return handleDeleteAssignment(req, res, assignId);
+  }
+  // Payroll Settings
+  if (_epath === "/api/hr/payroll/settings" && req.method === "GET")  return handleGetSettings(req, res);
+  if (_epath === "/api/hr/payroll/settings" && req.method === "POST") return handleSaveSettings(req, res);
+  // Payroll Runs
+  if (_epath === "/api/hr/payroll/runs" && req.method === "GET")  return handleListRuns(req, res);
+  if (_epath === "/api/hr/payroll/runs" && req.method === "POST") return handleCreateRun(req, res);
+  if (_epath.endsWith("/preview") && _epath.startsWith("/api/hr/payroll/runs/") && req.method === "GET") {
+    const runId = _epath.slice("/api/hr/payroll/runs/".length).replace("/preview", "");
+    return handleGetRunPreview(req, res, runId);
+  }
+  if (_epath.endsWith("/finalize") && _epath.startsWith("/api/hr/payroll/runs/") && req.method === "POST") {
+    const runId = _epath.slice("/api/hr/payroll/runs/".length).replace("/finalize", "");
+    return handleFinalizeRun(req, res, runId);
+  }
+  if (_epath.endsWith("/additions") && _epath.startsWith("/api/hr/payroll/runs/") && req.method === "GET") {
+    const runId = _epath.slice("/api/hr/payroll/runs/".length).replace("/additions", "");
+    return handleRunAdditions(req, res, runId);
+  }
+  if (_epath.endsWith("/additions") && _epath.startsWith("/api/hr/payroll/runs/") && req.method === "POST") {
+    const runId = _epath.slice("/api/hr/payroll/runs/".length).replace("/additions", "");
+    return handleRunAdditions(req, res, runId);
+  }
+  if (_epath.startsWith("/api/hr/payroll/run-additions/") && req.method === "DELETE") {
+    const additionId = _epath.slice("/api/hr/payroll/run-additions/".length);
+    return handleDeleteRunAddition(req, res, additionId);
+  }
+  // Salary Slips
+  if (_epath === "/api/hr/payroll/slips" && req.method === "GET")  return handleListSlips(req, res);
+  if (_epath.startsWith("/api/hr/payroll/slips/") && req.method === "GET") {
+    const slipId = _epath.slice("/api/hr/payroll/slips/".length);
+    return handleGetSlip(req, res, slipId);
+  }
+  // Public slip by token (no auth required — checked inside handler)
+  if (_epath.startsWith("/api/salary-slip/") && req.method === "GET") {
+    const token = _epath.slice("/api/salary-slip/".length);
+    return handlePublicSlip(req, res, token);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
@@ -1603,6 +1732,7 @@ server.listen(5000, "0.0.0.0", () => {
     .then(() => ensureAttendanceSheets())
     .then(() => ensureLeaveSheets())
     .then(() => ensureRecruitingSheets())
+    .then(() => ensurePayrollSheets())
     .then(() => seedQuoteSheetIfEmpty())
     .then(() => backfillSegmentCategory())
     .then(() => logQuoteHealth())

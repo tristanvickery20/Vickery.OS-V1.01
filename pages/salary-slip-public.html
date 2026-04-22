@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salary Slip — Vickery Electric</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui, sans-serif; background:#0b0f14; color:#dce8ff; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:24px 16px 60px; }
+    .slip-wrap { width:100%; max-width:600px; }
+    .slip-card { background:#111827; border:1px solid rgba(100,150,255,.14); border-radius:16px; padding:28px; }
+    .slip-logo { font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#64748b; margin-bottom:4px; }
+    .slip-title { font-size:24px; font-weight:800; margin-bottom:10px; }
+    .slip-meta { display:flex; flex-wrap:wrap; gap:20px; font-size:13px; color:#64748b; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(100,150,255,.12); }
+    .slip-meta strong { color:#dce8ff; }
+    .section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b; margin:20px 0 10px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th { text-align:left; padding:7px 0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#64748b; border-bottom:1px solid rgba(100,150,255,.12); }
+    td { padding:9px 0; border-bottom:1px solid rgba(100,150,255,.06); }
+    td.right { text-align:right; }
+    tr:last-child td { border-bottom:none; }
+    .totals { margin-top:24px; padding-top:20px; border-top:1px solid rgba(100,150,255,.14); display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+    .total-box { background:rgba(100,150,255,.07); border-radius:12px; padding:14px; }
+    .total-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:5px; }
+    .total-value { font-size:20px; font-weight:800; }
+    .net { color:#34d399; }
+    .work-stats { margin-top:16px; font-size:13px; color:#64748b; }
+    .work-stats strong { color:#dce8ff; }
+    .print-btn { margin-top:20px; text-align:center; }
+    .print-btn button { padding:10px 24px; background:#2d6ae0; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+    .error-msg { text-align:center; padding:80px 20px; color:#f87171; font-size:16px; }
+    @media print { .print-btn { display:none; } body { background:#fff; color:#000; } .slip-card { border:1px solid #ccc; } .total-box { background:#f0f4f8; } }
+    @media(max-width:480px) { .totals { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="slip-wrap">
+  <div id="content"><div class="error-msg">Loading…</div></div>
+</div>
+<script>
+(function () {
+  function fmt(n) { return "$" + (parseFloat(n) || 0).toFixed(2); }
+  function fmtDate(d) { if (!d) return ""; var p = d.split("-"); return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" }); }
+  var token = location.pathname.replace("/salary-slip/", "").replace(/\//g, "");
+  if (!token) { document.getElementById("content").innerHTML = '<div class="error-msg">Invalid link.</div>'; return; }
+  fetch("/api/hr/payroll/public/slip/" + token).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.ok) { document.getElementById("content").innerHTML = '<div class="error-msg">Slip not found or link has expired.</div>'; return; }
+    var s = d.slip;
+    var earnings = JSON.parse(s.earnings_detail || "[]");
+    var deductions = JSON.parse(s.deductions_detail || "[]");
+    var earningsHTML = earnings.map(function (e) {
+      return "<tr><td>" + s2esc(e.name) + "</td><td class='right'>" + fmt(e.amount) + "</td></tr>";
+    }).join("") || "<tr><td colspan='2' style='color:#64748b'>No earnings components</td></tr>";
+    var deductionsHTML = deductions.map(function (e) {
+      return "<tr><td>" + s2esc(e.name) + "</td><td class='right'>" + fmt(e.amount) + "</td></tr>";
+    }).join("") || "<tr><td colspan='2' style='color:#64748b'>No deductions</td></tr>";
+    document.getElementById("content").innerHTML =
+      '<div class="slip-card">' +
+        '<div class="slip-logo">Vickery Electric</div>' +
+        '<div class="slip-title">Salary Slip</div>' +
+        '<div class="slip-meta">' +
+          '<span>Employee: <strong>' + s2esc(s.employee_name) + '</strong></span>' +
+          '<span>Period: <strong>' + fmtDate(s.pay_period_start) + ' – ' + fmtDate(s.pay_period_end) + '</strong></span>' +
+        '</div>' +
+        '<div class="section-title">Earnings</div>' +
+        '<table><tr><th>Component</th><th class="right">Amount</th></tr><tr><td>Base Pay</td><td class="right">' + fmt(s.base_amount) + '</td></tr>' + earningsHTML + '</table>' +
+        '<div class="section-title">Deductions</div>' +
+        '<table><tr><th>Component</th><th class="right">Amount</th></tr>' + deductionsHTML + '</table>' +
+        '<div class="totals">' +
+          '<div class="total-box"><div class="total-label">Gross Earnings</div><div class="total-value">' + fmt(s.gross_earnings) + '</div></div>' +
+          '<div class="total-box"><div class="total-label">Total Deductions</div><div class="total-value">' + fmt(s.total_deductions) + '</div></div>' +
+          '<div class="total-box"><div class="total-label">Net Pay</div><div class="total-value net">' + fmt(s.net_pay) + '</div></div>' +
+        '</div>' +
+        '<div class="work-stats" style="margin-top:16px">Working Days: <strong>' + (s.working_days || "—") + '</strong> of <strong>' + (s.total_days || "—") + '</strong> calendar days</div>' +
+      '</div>' +
+      '<div class="print-btn"><button onclick="window.print()">Print / Save as PDF</button></div>';
+  }).catch(function () { document.getElementById("content").innerHTML = '<div class="error-msg">Failed to load slip.</div>'; });
+  function s2esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+})();
+</script>
+</body>
+</html>
