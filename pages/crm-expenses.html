@@ -80,6 +80,32 @@
               <tbody></tbody>
             </table>
           </div>
+
+          <!-- QB Transactions pulled live from QuickBooks -->
+          <div id="qbTxSection" style="margin-top:32px;display:none;">
+            <h2 style="display:flex;align-items:center;gap:10px;">
+              QuickBooks Transactions
+              <span style="font-size:12px;font-weight:500;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:2px 10px;border-radius:20px;">Live from QB</span>
+            </h2>
+            <p style="font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:10px;">
+              Every purchase, card swipe, and expense recorded in QuickBooks — year to date.
+            </p>
+            <p id="qbTxStatus" class="status-text"></p>
+            <div class="data-table-wrap">
+              <table id="qbTxTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Payment Type</th>
+                    <th>Account</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody id="qbTxBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </main>
     </div>

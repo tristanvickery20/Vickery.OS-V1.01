@@ -143,4 +143,38 @@
   refreshBtn.addEventListener("click", loadEntries);
   populateSelects();
   loadEntries();
+
+  // ── QB Transactions ──────────────────────────────────────────────────────
+  async function loadQbTransactions() {
+    const section  = document.getElementById("qbTxSection");
+    const statusEl = document.getElementById("qbTxStatus");
+    const tbody    = document.getElementById("qbTxBody");
+    if (!section) return;
+
+    try {
+      const data = await window.Api.fetchJson("/api/accounting/transactions");
+      if (!data.connected) return; // QB not connected — keep section hidden
+
+      section.style.display = "";
+      const txns = data.transactions || [];
+      statusEl.textContent = txns.length ? `${txns.length} transaction(s) from QuickBooks.` : "No QB transactions found year-to-date.";
+      tbody.innerHTML = "";
+
+      for (const t of txns) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${esc(t.date)}</td>
+          <td style="font-weight:600;">$${Number(t.amount).toFixed(2)}</td>
+          <td>${esc(t.payment_type)}</td>
+          <td>${esc(t.account)}</td>
+          <td style="max-width:260px;white-space:normal;word-break:break-word;">${esc(t.note)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      // QB not connected or token issue — silently skip; section stays hidden
+      console.warn("[QB Transactions] load error:", err.message);
+    }
+  }
+  loadQbTransactions();
 })();

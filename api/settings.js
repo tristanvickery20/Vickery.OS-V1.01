@@ -296,8 +296,8 @@ async function handleSaveStaffSettings(req, res) {
 // Bank/checking account and expense category account IDs come from Config
 // (qb_bank_account_id, qb_expense_account_id) so they match the company's chart of accounts.
 function _buildQbPurchase(entry, cfg) {
-  const bankAccountId    = cfg.qb_bank_account_id    || "1";
-  const expenseAccountId = cfg.qb_expense_account_id || "7";
+  const bankAccountId    = cfg.qb_bank_account_id    || "35";
+  const expenseAccountId = cfg.qb_expense_account_id || "80";
   return {
     PaymentType: "Cash",
     AccountRef: { value: bankAccountId },
@@ -327,20 +327,48 @@ function _buildQbTimeActivity(entry, cfg) {
   };
 }
 
+// ─── Shared: get a valid (auto-refreshed) QB access token ────────────────────
+// Refreshes the token if it is expired or expiring within 5 minutes.
+// Updates the Config sheet and invalidates the accounting provider cache.
+async function _getValidQbToken(cfg) {
+  let accessToken = decryptSecret(cfg.qb_access_token || "");
+  const expiresIso = cfg.qb_token_expires_at || "";
+  const needsRefresh = !expiresIso || new Date(expiresIso) < new Date(Date.now() + 5 * 60 * 1000);
+
+  if (needsRefresh) {
+    const { refreshAccessToken, encryptSecret: enc, expiresAt } = require("../lib/accounting/qb-oauth");
+    const clientSecret = decryptSecret(cfg.qb_client_secret || "");
+    const refreshToken = decryptSecret(cfg.qb_refresh_token || "");
+
+    if (!cfg.qb_client_id || !clientSecret || !refreshToken) {
+      throw new Error("QB token expired and no refresh token available — reconnect in Settings → Billing.");
+    }
+    const newTokens = await refreshAccessToken(cfg.qb_client_id, clientSecret, refreshToken);
+    accessToken = newTokens.access_token;
+    await setConfigKeys({
+      qb_access_token:       enc(newTokens.access_token),
+      qb_refresh_token:      enc(newTokens.refresh_token),
+      qb_token_expires_at:   expiresAt(newTokens.expires_in),
+      qb_refresh_expires_at: expiresAt(newTokens.x_refresh_token_expires_in),
+      qb_connected:          "true",
+    });
+    try { require("../lib/accounting").invalidateCache(); } catch {}
+    console.log("[QB] Access token auto-refreshed in push function.");
+  }
+  return accessToken;
+}
+
 // Push an expense record to QuickBooks.
 // Exercises the real QB API call path; logs/swallows errors so it never blocks saves.
 async function pushExpenseToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_expenses !== "true") return;
-    // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
     if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      // Mock response — log the payload so the sync path is exercisable without live creds
-      const mockPayload = _buildQbPurchase(entry, cfg);
-      console.log(`[QB MOCK] Expense push (not connected) — would POST Purchase:`, JSON.stringify(mockPayload));
+      console.log(`[QB MOCK] Expense push (not connected) — would POST Purchase for entry ${entry.id}`);
       return;
     }
-    const accessToken = decryptSecret(cfg.qb_access_token || "");
+    const accessToken = await _getValidQbToken(cfg);
     const base = cfg.qb_environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
@@ -372,14 +400,11 @@ async function pushTimeToQuickBooks(entry) {
   try {
     const cfg = await getConfig();
     if (cfg.qb_auto_sync_time !== "true") return;
-    // Gate on qb_connected (requires OAuth access token) so we only call QB when ready
     if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      // Mock response — log the payload so the sync path is exercisable without live creds
-      const mockPayload = _buildQbTimeActivity(entry, cfg);
-      console.log(`[QB MOCK] Time push (not connected) — would POST TimeActivity:`, JSON.stringify(mockPayload));
+      console.log(`[QB MOCK] Time push (not connected) — would POST TimeActivity for entry ${entry.id}`);
       return;
     }
-    const accessToken = decryptSecret(cfg.qb_access_token || "");
+    const accessToken = await _getValidQbToken(cfg);
     const base = cfg.qb_environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
