@@ -135,7 +135,7 @@
   document.getElementById("additionList").addEventListener("click", function (e) {
     var btn = e.target.closest("[data-add-id]");
     if (!btn) return;
-    fetch("/api/hr/payroll/additions/" + btn.dataset.addId, { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
+    fetch("/api/hr/payroll/run-additions/" + btn.dataset.addId, { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
       if (d.ok) { toast("Removed"); loadAdditions(); loadPreview(); }
     });
   });

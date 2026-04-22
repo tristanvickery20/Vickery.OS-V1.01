@@ -45,7 +45,7 @@
   function fmtDate(d) { if (!d) return ""; var p = d.split("-"); return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" }); }
   var token = location.pathname.replace("/salary-slip/", "").replace(/\//g, "");
   if (!token) { document.getElementById("content").innerHTML = '<div class="error-msg">Invalid link.</div>'; return; }
-  fetch("/api/hr/payroll/public/slip/" + token).then(function (r) { return r.json(); }).then(function (d) {
+  fetch("/api/salary-slip/" + token).then(function (r) { return r.json(); }).then(function (d) {
     if (!d.ok) { document.getElementById("content").innerHTML = '<div class="error-msg">Slip not found or link has expired.</div>'; return; }
     var s = d.slip;
     var earnings = JSON.parse(s.earnings_detail || "[]");

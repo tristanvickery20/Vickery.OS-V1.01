@@ -1719,10 +1719,14 @@ function addClaimLine() {
   const container = document.getElementById("claimLines");
   if (!container) return;
   const row = document.createElement("div");
-  row.style.cssText = "display:flex;gap:6px;align-items:center;";
+  row.style.cssText = "display:flex;gap:6px;align-items:center;flex-wrap:wrap;";
   row.innerHTML =
-    '<input type="text" placeholder="Description" style="flex:2;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-desc" />' +
-    '<input type="number" placeholder="Amount" min="0" step="0.01" style="flex:1;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-amt" />' +
+    '<select class="claim-cat" style="flex:1;min-width:100px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;">' +
+      '<option value="Fuel">Fuel</option><option value="Tools">Tools</option><option value="Materials">Materials</option>' +
+      '<option value="Food">Food</option><option value="Accommodation">Accommodation</option><option value="Other" selected>Other</option>' +
+    '</select>' +
+    '<input type="text" placeholder="Description" style="flex:2;min-width:120px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-desc" />' +
+    '<input type="number" placeholder="Amount" min="0" step="0.01" style="flex:1;min-width:80px;padding:8px 10px;background:hsl(220 14% 8%);border:1px solid hsl(220 10% 22%);border-radius:8px;color:hsl(220 15% 88%);font-size:13px;font-family:inherit;" class="claim-amt" />' +
     '<button style="background:transparent;border:none;color:hsl(0 70% 60%);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove">×</button>';
   row.querySelector("button").addEventListener("click", () => row.remove());
   container.appendChild(row);
@@ -1733,10 +1737,12 @@ async function submitClaim() {
   const notes = (document.getElementById("claimNotes") || {}).value || "";
   if (!date) { showCrewToast("Please enter a claim date.", true); return; }
   const lines = [];
+  const jobId = (document.getElementById("claimJobId") || {}).value || "";
   document.querySelectorAll("#claimLines > div").forEach(row => {
+    const cat  = (row.querySelector(".claim-cat") || {}).value || "Other";
     const desc = (row.querySelector(".claim-desc") || {}).value || "";
     const amt  = parseFloat((row.querySelector(".claim-amt") || {}).value || "0") || 0;
-    if (desc || amt) lines.push({ description: desc, amount: amt });
+    if (desc || amt) lines.push({ category: cat, description: desc, amount: amt });
   });
   if (lines.length === 0) { showCrewToast("Add at least one line item.", true); return; }
   const btn = document.getElementById("submitClaimBtn");
@@ -1745,7 +1751,7 @@ async function submitClaim() {
     const r = await fetch("/api/crew/claims", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ claim_date: date, notes, items: lines }),
+      body: JSON.stringify({ claim_date: date, notes, job_id: jobId, items: lines }),
     });
     const d = await r.json();
     if (d.ok) {
@@ -1774,17 +1780,18 @@ async function loadMyClaims() {
       el.innerHTML = '<div style="font-size:13px;color:hsl(220 15% 45%);padding:20px 0;text-align:center;">No claims submitted yet.</div>';
       return;
     }
-    const statusColor = { pending: "hsl(38 80% 55%)", approved: "hsl(142 60% 50%)", rejected: "hsl(0 70% 60%)", paid: "hsl(217 80% 65%)" };
+    const statusColor = { submitted: "hsl(38 80% 55%)", approved: "hsl(142 60% 50%)", rejected: "hsl(0 70% 60%)", paid: "hsl(217 80% 65%)" };
     el.innerHTML = d.claims.map(c => {
-      const total = (parseFloat(c.total_amount) || 0).toFixed(2);
+      const total = (Array.isArray(c.items) ? c.items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) : 0).toFixed(2);
       const sc = statusColor[c.status] || "hsl(220 15% 55%)";
+      const statusLabel = c.status === "submitted" ? "Pending Review" : (c.status || "submitted");
       return `<div style="background:hsl(220 10% 12%);border:1px solid hsl(220 10% 18%);border-radius:12px;padding:14px 16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:700;color:hsl(220 15% 88%);">${c.claim_date || ""}</span>
-          <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${sc};">${c.status || "pending"}</span>
+          <span style="font-size:13px;font-weight:700;color:hsl(220 15% 88%);">${escCrew(c.claim_date || "")}</span>
+          <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${sc};">${escCrew(statusLabel)}</span>
         </div>
         <div style="font-size:13px;color:hsl(220 15% 55%);">${c.notes ? escCrew(c.notes) + " · " : ""}Total: <strong style="color:hsl(220 15% 88%);">$${total}</strong></div>
-        ${c.status === "pending" ? `<button data-del-claim="${escCrew(c.claim_id)}" style="margin-top:8px;background:transparent;border:none;color:hsl(0 70% 60%);font-size:12px;cursor:pointer;font-family:inherit;padding:0;">Withdraw</button>` : ""}
+        ${c.status === "submitted" ? `<button data-del-claim="${escCrew(c.claim_id)}" style="margin-top:8px;background:transparent;border:none;color:hsl(0 70% 60%);font-size:12px;cursor:pointer;font-family:inherit;padding:0;">Withdraw</button>` : ""}
       </div>`;
     }).join("");
     el.querySelectorAll("[data-del-claim]").forEach(btn => {
