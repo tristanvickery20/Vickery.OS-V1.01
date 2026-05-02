@@ -5,6 +5,7 @@
 const https = require("https");
 const { readTab } = require("../lib/readTab");
 const { getSheetsClient } = require("../lib/sheets");
+const { ensureTabHeaders } = require("../lib/sheetsSchema");
 const { logAudit } = require("../lib/audit");
 
 function json(res, code, data) {
@@ -54,6 +55,50 @@ function squareRequest(method, path, body, accessToken) {
     req.write(payload);
     req.end();
   });
+}
+
+async function appendOnlinePaymentRow(sheets, spreadsheetId, inv, amount, paymentId, now) {
+  await ensureTabHeaders("Payments", spreadsheetId);
+
+  const existingPayments = await readTab("Payments");
+  const existing = existingPayments.find((p) =>
+    String(p.provider_ref || "").trim() === paymentId ||
+    String(p.reference || "").trim() === paymentId
+  );
+  if (existing && existing.id) return existing.id;
+
+  const paymentIdRow = "PAY-" + Date.now();
+  const payRowObj = {
+    id: paymentIdRow,
+    created_at: now,
+    invoice_id: inv.id || "",
+    client_id: inv.client_id || "",
+    request_id: inv.request_id || "",
+    amount: String(amount),
+    method: "card",
+    reference: paymentId,
+    note: "Online Square payment",
+    payment_date: now.slice(0, 10),
+    provider_ref: paymentId,
+  };
+
+  const payHeadersResp = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: "Payments!1:1",
+  });
+  const payHeaders = ((payHeadersResp.data.values && payHeadersResp.data.values[0]) || [])
+    .map((h) => String(h || "").trim());
+  const payRow = payHeaders.map((h) => payRowObj[h] != null ? payRowObj[h] : "");
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Payments!A:A",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { majorDimension: "ROWS", values: [payRow] },
+  });
+
+  return paymentIdRow;
 }
 
 async function handlePublicPay(req, res) {
@@ -142,10 +187,11 @@ async function handlePublicPay(req, res) {
     const now = new Date().toISOString();
     const newPaid = round2(Number(inv.paid_amount || 0) + balance);
 
-    // Update invoice in sheet
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+    const paymentRowId = await appendOnlinePaymentRow(sheets, spreadsheetId, inv, balance, paymentId, now);
 
+    // Update invoice in sheet
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: "Invoices!A1:AZ5000",
@@ -182,6 +228,17 @@ async function handlePublicPay(req, res) {
         });
       }
     }
+
+    logAudit({
+      actor:       "customer",
+      action:      "CREATE_PAYMENT",
+      entity_type: "payment",
+      entity_id:   paymentRowId,
+      field:       "amount",
+      new_value:   String(balance),
+      note:        `Online Square payment invoice_id=${inv.id} square_id=${paymentId}`,
+      source:      "public",
+    });
 
     logAudit({
       actor:       "customer",
