@@ -24,6 +24,18 @@ function readBody(req) {
   });
 }
 
+function ownerSetupCodeMatches(setupCode) {
+  const expected = process.env.OWNER_SETUP_CODE;
+  if (!expected) return false;
+
+  const submitted = String(setupCode || "");
+  const expectedBuffer = Buffer.from(String(expected));
+  const submittedBuffer = Buffer.from(submitted);
+
+  return expectedBuffer.length === submittedBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, submittedBuffer);
+}
+
 // Generate first.last username (lowercase letters only), ensuring uniqueness
 async function generateUsername(firstName, lastName) {
   const base = [firstName, lastName]
@@ -40,7 +52,7 @@ async function generateUsername(firstName, lastName) {
 // POST /api/crew/signup
 async function handleSignup(req, res) {
   try {
-    const { first_name, last_name, password } = await readBody(req);
+    const { first_name, last_name, password, setup_code } = await readBody(req);
     if (!first_name?.trim() || !last_name?.trim() || !password) {
       return json(res, 400, { ok: false, error: "First name, last name, and password are required." });
     }
@@ -48,12 +60,15 @@ async function handleSignup(req, res) {
       return json(res, 400, { ok: false, error: "Password must be at least 6 characters." });
     }
 
-    const username = await generateUsername(first_name.trim(), last_name.trim());
-
-    // First active account becomes the owner — auto-approved
+    // First active account becomes owner only when private setup code is configured and provided.
     const all = await readAllStaff();
     const hasActiveOwner = all.some(s => s.role === "owner" && s.status === "active");
     const isOwner = !hasActiveOwner;
+    if (isOwner && !ownerSetupCodeMatches(setup_code)) {
+      return json(res, 403, { ok: false, error: "Owner setup code required." });
+    }
+
+    const username = await generateUsername(first_name.trim(), last_name.trim());
 
     // Read owner-configured defaults for new crew accounts
     let defaultPermsStr = "jobs,time,expenses";
@@ -105,7 +120,7 @@ async function handleSignup(req, res) {
     }
 
     console.log(`[crew-auth] Signup pending: ${staff.first_name} ${staff.last_name} @${username}`);
-    json(res, 200, { ok: true, message: "Account request submitted! You\u2019ll receive a text when it\u2019s approved." });
+    json(res, 200, { ok: true, message: "Account request submitted! You’ll receive a text when it’s approved." });
   } catch (err) {
     console.error("[crew-auth/signup]", err.message);
     json(res, 500, { ok: false, error: "Server error. Please try again." });
@@ -124,7 +139,7 @@ async function handleLogin(req, res) {
       return json(res, 401, { ok: false, error: "No account found with that username." });
     }
     if (staff.status === "pending") {
-      return json(res, 403, { ok: false, error: "Your account is pending approval. You\u2019ll receive a text when it\u2019s ready." });
+      return json(res, 403, { ok: false, error: "Your account is pending approval. You’ll receive a text when it’s ready." });
     }
     if (staff.status === "inactive") {
       return json(res, 403, { ok: false, error: "Your account has been deactivated. Contact your supervisor." });
