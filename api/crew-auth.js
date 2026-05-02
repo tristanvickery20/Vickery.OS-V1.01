@@ -120,7 +120,7 @@ async function handleSignup(req, res) {
     }
 
     console.log(`[crew-auth] Signup pending: ${staff.first_name} ${staff.last_name} @${username}`);
-    json(res, 200, { ok: true, message: "Account request submitted! You’ll receive a text when it’s approved." });
+    json(res, 200, { ok: true, message: "Account request submitted! You\u2019ll receive a text when it\u2019s approved." });
   } catch (err) {
     console.error("[crew-auth/signup]", err.message);
     json(res, 500, { ok: false, error: "Server error. Please try again." });
@@ -139,7 +139,7 @@ async function handleLogin(req, res) {
       return json(res, 401, { ok: false, error: "No account found with that username." });
     }
     if (staff.status === "pending") {
-      return json(res, 403, { ok: false, error: "Your account is pending approval. You’ll receive a text when it’s ready." });
+      return json(res, 403, { ok: false, error: "Your account is pending approval. You\u2019ll receive a text when it\u2019s ready." });
     }
     if (staff.status === "inactive") {
       return json(res, 403, { ok: false, error: "Your account has been deactivated. Contact your supervisor." });
