@@ -3,7 +3,7 @@
 const crypto = require("crypto");
 const {
   ensureStaffSheet, readAllStaff, findStaffByUsername, appendStaffRow, updateStaffRow,
-  hashPassword, setCrewSessionCookie, clearCrewSessionCookie,
+  hashPassword, verifyPassword, needsPasswordRehash, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
 const { CREW_TEMPLATES, buildMessage } = require("../lib/sms");
@@ -144,8 +144,12 @@ async function handleLogin(req, res) {
     if (staff.status === "inactive") {
       return json(res, 403, { ok: false, error: "Your account has been deactivated. Contact your supervisor." });
     }
-    if (hashPassword(password) !== staff.password_hash) {
+    if (!verifyPassword(password, staff.password_hash)) {
       return json(res, 401, { ok: false, error: "Incorrect password." });
+    }
+
+    if (needsPasswordRehash(staff.password_hash)) {
+      await updateStaffRow(staff.staff_id, { password_hash: hashPassword(password) });
     }
 
     const isOwner = staff.role === "owner";
