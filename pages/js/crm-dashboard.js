@@ -68,6 +68,264 @@
     return '<span class="spill ' + escH(dot) + '">' + escH(label) + "</span>";
   }
 
+  // ── Owner Action Queue UI ────────────────────────────────────────────────
+  function injectOwnerQueueStyles() {
+    if (document.getElementById("ownerActionQueueStyles")) return;
+    const style = document.createElement("style");
+    style.id = "ownerActionQueueStyles";
+    style.textContent = `
+      .owner-queue-card {
+        margin-bottom: 24px;
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(96,165,250,0.22);
+        background: linear-gradient(180deg, rgba(59,130,246,0.08), rgba(255,255,255,0.025));
+      }
+      .owner-queue-header {
+        display:flex;
+        align-items:flex-start;
+        justify-content:space-between;
+        gap:14px;
+        margin-bottom:14px;
+      }
+      .owner-queue-title {
+        font-family: var(--font-display);
+        font-size:18px;
+        font-weight:900;
+        letter-spacing:-0.02em;
+      }
+      .owner-queue-sub {
+        margin-top:3px;
+        font-size:12px;
+        color:rgba(230,238,252,0.55);
+        line-height:1.4;
+      }
+      .owner-queue-count {
+        flex:0 0 auto;
+        border:1px solid rgba(96,165,250,0.35);
+        background:rgba(96,165,250,0.12);
+        color:#93c5fd;
+        border-radius:999px;
+        padding:5px 10px;
+        font-size:12px;
+        font-weight:800;
+        white-space:nowrap;
+      }
+      .owner-queue-systems {
+        display:grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap:12px;
+      }
+      @media (max-width: 1000px) { .owner-queue-systems { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 650px) { .owner-queue-systems { grid-template-columns: 1fr; } }
+      .owner-system-card {
+        border:1px solid rgba(255,255,255,0.08);
+        border-radius:14px;
+        background:rgba(255,255,255,0.03);
+        padding:12px;
+        min-width:0;
+      }
+      .owner-system-head {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:9px;
+      }
+      .owner-system-name {
+        font-size:12px;
+        font-weight:850;
+        letter-spacing:.04em;
+        text-transform:uppercase;
+        color:rgba(230,238,252,0.72);
+        line-height:1.25;
+      }
+      .owner-system-state {
+        border-radius:999px;
+        padding:2px 7px;
+        font-size:10px;
+        font-weight:850;
+        text-transform:uppercase;
+        letter-spacing:.04em;
+      }
+      .owner-system-state.state-critical { background:rgba(251,113,133,.16); color:#fda4af; border:1px solid rgba(251,113,133,.28); }
+      .owner-system-state.state-warning { background:rgba(251,191,36,.12); color:#fcd34d; border:1px solid rgba(251,191,36,.24); }
+      .owner-system-state.state-partial { background:rgba(148,163,184,.10); color:#cbd5e1; border:1px solid rgba(148,163,184,.20); }
+      .owner-system-state.state-clear { background:rgba(74,222,128,.10); color:#86efac; border:1px solid rgba(74,222,128,.20); }
+      .owner-action-list { display:flex; flex-direction:column; gap:7px; }
+      .owner-action-row {
+        display:grid;
+        grid-template-columns:auto 1fr auto;
+        gap:9px;
+        align-items:start;
+        text-decoration:none;
+        color:inherit;
+        border:1px solid rgba(255,255,255,0.06);
+        border-radius:11px;
+        padding:9px;
+        background:rgba(0,0,0,0.08);
+      }
+      .owner-action-row:hover { border-color:rgba(96,165,250,0.28); background:rgba(96,165,250,0.06); }
+      .owner-action-row.unavailable,
+      .owner-action-row.clear {
+        opacity:.82;
+      }
+      .owner-sev {
+        width:8px;
+        height:8px;
+        margin-top:5px;
+        border-radius:50%;
+        background:#94a3b8;
+      }
+      .owner-sev-critical { background:#fb7185; box-shadow:0 0 0 3px rgba(251,113,133,.12); }
+      .owner-sev-warning { background:#fbbf24; box-shadow:0 0 0 3px rgba(251,191,36,.10); }
+      .owner-sev-info { background:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.10); }
+      .owner-action-title { font-size:13px; font-weight:850; line-height:1.25; }
+      .owner-action-reason { margin-top:3px; font-size:11px; line-height:1.35; color:rgba(230,238,252,0.48); }
+      .owner-action-meta {
+        display:flex;
+        flex-direction:column;
+        align-items:flex-end;
+        gap:4px;
+      }
+      .owner-action-count {
+        min-width:28px;
+        text-align:center;
+        padding:3px 7px;
+        border-radius:999px;
+        background:rgba(255,255,255,0.07);
+        font-size:12px;
+        font-weight:900;
+      }
+      .owner-action-status {
+        font-size:9px;
+        text-transform:uppercase;
+        letter-spacing:.05em;
+        color:rgba(230,238,252,0.38);
+        font-weight:800;
+        white-space:nowrap;
+      }
+      .owner-queue-loading,
+      .owner-queue-error {
+        border:1px dashed rgba(255,255,255,.12);
+        border-radius:14px;
+        padding:16px;
+        color:rgba(230,238,252,.55);
+        font-size:13px;
+      }
+      .owner-queue-error { color:#fda4af; border-color:rgba(251,113,133,.25); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureOwnerQueueMount() {
+    injectOwnerQueueStyles();
+    let el = document.getElementById("ownerActionQueue");
+    if (el) return el;
+
+    const main = document.querySelector(".main-content");
+    if (!main) return null;
+
+    el = document.createElement("section");
+    el.id = "ownerActionQueue";
+    el.className = "owner-queue-card";
+    const firstDashSection = main.querySelector(".dash-section");
+    if (firstDashSection) main.insertBefore(el, firstDashSection);
+    else main.prepend(el);
+    return el;
+  }
+
+  function displaySeverity(label) {
+    const key = String(label || "info").toLowerCase();
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  function renderOwnerActionQueue(queue, state) {
+    const el = ensureOwnerQueueMount();
+    if (!el) return;
+
+    if (state && state.loading) {
+      el.innerHTML = (
+        '<div class="owner-queue-header">' +
+          '<div><div class="owner-queue-title">Owner Action Queue</div>' +
+          '<div class="owner-queue-sub">Checking leads, jobs, invoices, payroll, fleet, and compliance signals.</div></div>' +
+        '</div>' +
+        '<div class="owner-queue-loading">Loading owner actions&hellip;</div>'
+      );
+      return;
+    }
+
+    if (state && state.error) {
+      el.innerHTML = (
+        '<div class="owner-queue-header">' +
+          '<div><div class="owner-queue-title">Owner Action Queue</div>' +
+          '<div class="owner-queue-sub">This queue shows stuck, blocked, overdue, risky, or unavailable operating-system items.</div></div>' +
+        '</div>' +
+        '<div class="owner-queue-error">Failed to load owner action queue: ' + escH(state.error) + '</div>'
+      );
+      return;
+    }
+
+    if (!queue || !Array.isArray(queue.systems)) {
+      el.innerHTML = (
+        '<div class="owner-queue-header">' +
+          '<div><div class="owner-queue-title">Owner Action Queue</div>' +
+          '<div class="owner-queue-sub">No owner action queue data was returned by the API.</div></div>' +
+        '</div>' +
+        '<div class="owner-queue-loading">Data unavailable.</div>'
+      );
+      return;
+    }
+
+    const activeCount = Number(queue.total_active_items || 0);
+    const systemsHtml = queue.systems.map((sys) => {
+      const stateKey = String(sys.status || "partial").toLowerCase();
+      const items = Array.isArray(sys.items) ? sys.items : [];
+      const itemHtml = items.map((item) => {
+        const severity = String(item.severity || "info").toLowerCase();
+        const status = String(item.status || "active").toLowerCase();
+        const count = item.count === null || item.count === undefined ? "&mdash;" : escH(String(item.count));
+        const href = item.href || "#";
+        const tag = href && href !== "#" ? "a" : "div";
+        const attrs = tag === "a" ? ' href="' + escH(href) + '"' : "";
+        return (
+          '<' + tag + ' class="owner-action-row ' + escH(status) + '"' + attrs + '>' +
+            '<div class="owner-sev owner-sev-' + escH(severity) + '" title="' + escH(displaySeverity(severity)) + '"></div>' +
+            '<div>' +
+              '<div class="owner-action-title">' + escH(item.title || "Action item") + '</div>' +
+              '<div class="owner-action-reason">' + escH(item.reason || "") + '</div>' +
+            '</div>' +
+            '<div class="owner-action-meta">' +
+              '<div class="owner-action-count">' + count + '</div>' +
+              '<div class="owner-action-status">' + escH(status === "active" ? displaySeverity(severity) : status) + '</div>' +
+            '</div>' +
+          '</' + tag + '>'
+        );
+      }).join("");
+
+      return (
+        '<div class="owner-system-card">' +
+          '<div class="owner-system-head">' +
+            '<div class="owner-system-name">' + escH(sys.key || sys.system_key || "") + '. ' + escH(sys.system || "System") + '</div>' +
+            '<div class="owner-system-state state-' + escH(stateKey) + '">' + escH(stateKey) + '</div>' +
+          '</div>' +
+          '<div class="owner-action-list">' + (itemHtml || '<div class="owner-action-row clear"><div class="owner-sev owner-sev-info"></div><div><div class="owner-action-title">No action items found</div><div class="owner-action-reason">No issues were returned for this system.</div></div><div class="owner-action-meta"><div class="owner-action-count">0</div><div class="owner-action-status">clear</div></div></div>') + '</div>' +
+        '</div>'
+      );
+    }).join("");
+
+    el.innerHTML = (
+      '<div class="owner-queue-header">' +
+        '<div>' +
+          '<div class="owner-queue-title">Owner Action Queue</div>' +
+          '<div class="owner-queue-sub">Stuck, blocked, overdue, risky, or unavailable items grouped by the six VE OS operating systems.</div>' +
+        '</div>' +
+        '<div class="owner-queue-count">' + activeCount + ' active action' + (activeCount === 1 ? '' : 's') + '</div>' +
+      '</div>' +
+      '<div class="owner-queue-systems">' + systemsHtml + '</div>'
+    );
+  }
+
   // ── Filter state ──────────────────────────────────────────────────────────
   let activeFilter = "all";
   let todayData   = null;
@@ -228,7 +486,6 @@
       return;
     }
     el.innerHTML = days.map((d, i) => {
-      const isActive = d.is_today || d.date === expandedDay;
       const cls = "week-day" + (d.is_today ? " today-marker" : "") + (d.date === expandedDay ? " active" : "");
       const pips =
         (d.event_count > 0 ? '<span class="wd-pip wd-pip-ev">' + d.event_count + ' ev</span>' : "") +
@@ -381,15 +638,18 @@
 
   // ── Load today data ───────────────────────────────────────────────────────
   async function loadToday() {
+    renderOwnerActionQueue(null, { loading: true });
     try {
       const resp = await fetch("/api/today", { cache: "no-store" });
       const data = await resp.json();
       if (!data.ok) throw new Error(data.error || "API error");
       todayData = data;
+      renderOwnerActionQueue(data.owner_action_queue || null);
       renderToday(data);
       renderWeekStrip(data.week_days || []);
     } catch (e) {
       console.error("[dashboard] today error:", e);
+      renderOwnerActionQueue(null, { error: e.message });
       set("timedEventsList", '<div class="empty-strip">Failed to load today: ' + escH(e.message) + "</div>");
     }
   }
