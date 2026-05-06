@@ -48,6 +48,10 @@ Give the owner one command center for daily priorities, overdue work, pipeline, 
 
 Admin/owner control should remain centered on `/crm/dashboard` and visible sidebar modules. Backend-only owner logic should have a visible dashboard card, badge, list, or detail view unless the task is explicitly backend-only.
 
+### Owner control notes
+
+The owner should be able to open `/crm/dashboard` and immediately know what needs attention today, what is stuck, what is risky, and which page or record to open next. Existing dashboard pieces are present, but the complete owner command queue is not clearly implemented yet.
+
 ## B. Sales / Estimator / Website Intake System
 
 ### Purpose
@@ -95,6 +99,10 @@ Capture demand, price work, preserve quote assumptions, route manual-review jobs
 
 Sales and estimator workflows must show the owner where each lead came from, what price was shown, what assumptions were used, whether manual review is required, and what action is next.
 
+### Owner control notes
+
+The owner should not have to remember which leads need response, review, follow-up, or scheduling. Current quote and lead data exists, but a complete visible owner review/follow-up queue is not clearly implemented yet.
+
 ## C. Job Operations / Scheduling / Closeout System
 
 ### Purpose
@@ -137,6 +145,10 @@ Move approved work through scheduling, prep, dispatch, field work, completion, i
 ### UI visibility notes
 
 Job operations should be visible from Schedule, Clients, Crew View, Dashboard, and job/client detail pages. The owner should see what is blocked and why.
+
+### Owner control notes
+
+The owner should be able to see every job that is unscheduled, unprepped, in progress too long, complete but not invoiced, invoiced but unpaid, or closed without review/retention follow-up. Current scheduling, time, expense, crew, invoice, and review pieces exist, but complete stage enforcement is not clearly implemented yet.
 
 ## D. HR / Payroll / People System
 
@@ -182,6 +194,10 @@ Control employees, crew access, staff approvals, attendance, shifts, leave, recr
 
 People systems should surface pending approvals and payroll blockers to the owner dashboard, not only inside subpages.
 
+### Owner control notes
+
+The owner should be able to see pending staff approvals, attendance corrections, leave requests, expense claims, payroll run readiness, and payroll exceptions before money goes out. Current HR/payroll data layers and routes exist, but complete owner payroll/compliance control is not clearly implemented yet.
+
 ## E. Fleet / Tools / Inventory / Asset System
 
 ### Purpose
@@ -200,6 +216,7 @@ Control trucks, drive activity, vehicle maintenance, tools, inventory, materials
 
 ### What is missing or not clearly implemented yet
 
+- Not found in current repo: dedicated `api/inventory.js`, `api/tools.js`, or `api/assets.js` files during the QA pass.
 - Not clearly implemented yet: dedicated tools inventory module.
 - Not clearly implemented yet: vehicle maintenance schedule, reminders, service history, insurance/registration tracking, or inspection tracking.
 - Not clearly implemented yet: truck stock/min-max inventory.
@@ -223,6 +240,10 @@ Control trucks, drive activity, vehicle maintenance, tools, inventory, materials
 ### UI visibility notes
 
 Fleet/tools/inventory alerts should appear on the owner dashboard when something needs action, not only on a fleet page.
+
+### Owner control notes
+
+The owner should know when a truck, tool, stocked material, or asset needs action before it causes a missed job or margin leak. Current fleet GPS and material price pieces exist, but dedicated maintenance, tools, inventory, and asset control are not clearly implemented yet.
 
 ## F. Finance / Compliance / Strategy System
 
@@ -267,3 +288,7 @@ Protect cash, margin, invoicing, payment collection, job costing, compliance, au
 ### UI visibility notes
 
 Finance/compliance risks should surface as owner alerts with exact next actions and links to the source record.
+
+### Owner control notes
+
+The owner should be able to see cash, receivables, unpaid invoices, margin risk, payroll liability, compliance deadlines, and strategic triggers before they become emergencies. Current invoice, payment, accounting-provider, dashboard financials, and audit pieces exist, but full compliance and strategy control are not clearly implemented yet.
