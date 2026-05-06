@@ -12,6 +12,7 @@
   var payrollComponents = [];
   var payrollStructures = [];
   var salaryAssignments = [];
+  var availability = {};
   var activeStatus = "";
 
   function qs(id) { return document.getElementById(id); }
@@ -65,10 +66,12 @@
   }
 
   function hasAssignment(emp) {
+    if (!availability.assignments) return false;
     return salaryAssignments.some(function(a) { return a.staff_id === emp.staff_id; });
   }
 
   function latestAssignment(emp) {
+    if (!availability.assignments) return null;
     var list = salaryAssignments.filter(function(a) { return a.staff_id === emp.staff_id; });
     list.sort(function(a, b) { return String(b.effective_date || "").localeCompare(String(a.effective_date || "")); });
     return list[0] || null;
@@ -83,7 +86,7 @@
     if (!emp.hire_date) missing.push("hire date");
     if (!emp.phone && !emp.personal_phone) missing.push("phone");
     if (!emp.emergency_contact_name || !emp.emergency_contact_phone) missing.push("emergency contact");
-    if (!hasAssignment(emp) && isActiveEmployee(emp)) missing.push("pay assignment");
+    if (availability.assignments && !hasAssignment(emp) && isActiveEmployee(emp)) missing.push("pay assignment");
     return missing;
   }
 
@@ -102,39 +105,51 @@
       '</' + tag + '>';
   }
 
+  function addSetupWarning(list, limited, available, hasRows, name) {
+    if (!available) limited.push(name + " unavailable");
+    else if (!hasRows) list.push(name);
+  }
+
   function renderOverview() {
     var activeStaff = employees.filter(isActiveEmployee);
     var pendingStaff = employees.filter(function(e) { return norm(e.status) === "pending" || norm(empStatus(e)) === "pending"; });
     var missingCritical = activeStaff.filter(function(e) { return missingEmployeeFields(e).length > 0; });
-    var pendingCorrections = corrections.filter(function(c) { return norm(c.status) === "pending"; });
-    var openLeave = leaveApplications.filter(function(a) { return norm(a.status) === "pending"; });
-    var submittedClaims = expenseClaims.filter(function(c) { return norm(c.status) === "submitted"; });
-    var approvedUnpaidClaims = expenseClaims.filter(function(c) { return norm(c.status) === "approved"; });
-    var draftRuns = payrollRuns.filter(function(r) { return norm(r.status) === "draft"; });
-    var pendingRuns = payrollRuns.filter(function(r) { return ["pending", "review", "processing"].indexOf(norm(r.status)) >= 0; });
-    var finalizedRuns = payrollRuns.filter(function(r) { return ["finalized", "completed", "complete"].indexOf(norm(r.status)) >= 0; });
-    var unassignedPay = activeStaff.filter(function(e) { return !hasAssignment(e); });
+    var pendingCorrections = availability.corrections ? corrections.filter(function(c) { return norm(c.status) === "pending"; }) : [];
+    var openLeave = availability.leave ? leaveApplications.filter(function(a) { return norm(a.status) === "pending"; }) : [];
+    var submittedClaims = availability.claims ? expenseClaims.filter(function(c) { return norm(c.status) === "submitted"; }) : [];
+    var approvedUnpaidClaims = availability.claims ? expenseClaims.filter(function(c) { return norm(c.status) === "approved"; }) : [];
+    var draftRuns = availability.runs ? payrollRuns.filter(function(r) { return norm(r.status) === "draft"; }) : [];
+    var pendingRuns = availability.runs ? payrollRuns.filter(function(r) { return ["pending", "review", "processing"].indexOf(norm(r.status)) >= 0; }) : [];
+    var finalizedRuns = availability.runs ? payrollRuns.filter(function(r) { return ["finalized", "completed", "complete"].indexOf(norm(r.status)) >= 0; }) : [];
+    var unassignedPay = availability.assignments ? activeStaff.filter(function(e) { return !hasAssignment(e); }) : [];
 
     var setupWarnings = [];
-    if (!departments.length) setupWarnings.push("departments");
-    if (!designations.length) setupWarnings.push("designations");
-    if (!shifts.length) setupWarnings.push("shifts");
-    if (!payrollComponents.length) setupWarnings.push("pay components");
-    if (!payrollStructures.length) setupWarnings.push("pay structures");
-    if (!payrollSettings) setupWarnings.push("payroll settings");
+    var limitedAreas = [];
+    addSetupWarning(setupWarnings, limitedAreas, availability.departments, departments.length, "departments");
+    addSetupWarning(setupWarnings, limitedAreas, availability.designations, designations.length, "designations");
+    addSetupWarning(setupWarnings, limitedAreas, availability.shifts, shifts.length, "shifts");
+    addSetupWarning(setupWarnings, limitedAreas, availability.leavePolicies, leavePolicies.length, "leave policies");
+    addSetupWarning(setupWarnings, limitedAreas, availability.components, payrollComponents.length, "pay components");
+    addSetupWarning(setupWarnings, limitedAreas, availability.structures, payrollStructures.length, "pay structures");
+    if (!availability.settings) limitedAreas.push("payroll settings unavailable");
+    if (!availability.assignments) limitedAreas.push("pay assignments unavailable");
+    if (!availability.corrections) limitedAreas.push("attendance corrections unavailable");
+    if (!availability.leave) limitedAreas.push("leave requests unavailable");
+    if (!availability.claims) limitedAreas.push("expense claims unavailable");
+    if (!availability.runs) limitedAreas.push("payroll runs unavailable");
 
-    var activeCount = pendingStaff.length + missingCritical.length + pendingCorrections.length + openLeave.length + submittedClaims.length + approvedUnpaidClaims.length + draftRuns.length + pendingRuns.length + unassignedPay.length + setupWarnings.length;
+    var activeCount = pendingStaff.length + missingCritical.length + pendingCorrections.length + openLeave.length + submittedClaims.length + approvedUnpaidClaims.length + draftRuns.length + pendingRuns.length + unassignedPay.length + setupWarnings.length + limitedAreas.length;
     qs("hrOverviewPill").textContent = activeCount + " HR/payroll item" + (activeCount === 1 ? "" : "s") + " to review";
 
     qs("hrKpiGrid").innerHTML = [
-      { label: "Active staff", value: activeStaff.length, note: employees.length + " total employee/staff records" },
+      { label: "Active staff", value: availability.employees ? activeStaff.length : "—", note: availability.employees ? employees.length + " total employee/staff records" : "Employee data unavailable" },
       { label: "Pending approvals", value: pendingStaff.length, note: "Staff accounts needing owner approval" },
-      { label: "Open leave", value: openLeave.length, note: "Pending leave applications" },
-      { label: "Payroll runs", value: draftRuns.length + pendingRuns.length, note: finalizedRuns.length + " finalized/internal summaries" },
-      { label: "Expense claims", value: submittedClaims.length + approvedUnpaidClaims.length, note: submittedClaims.length + " submitted, " + approvedUnpaidClaims.length + " approved unpaid" },
+      { label: "Open leave", value: availability.leave ? openLeave.length : "—", note: availability.leave ? "Pending leave applications" : "Leave request data unavailable" },
+      { label: "Payroll runs", value: availability.runs ? draftRuns.length + pendingRuns.length : "—", note: availability.runs ? finalizedRuns.length + " finalized/internal summaries" : "Payroll run data unavailable" },
+      { label: "Expense claims", value: availability.claims ? submittedClaims.length + approvedUnpaidClaims.length : "—", note: availability.claims ? submittedClaims.length + " submitted, " + approvedUnpaidClaims.length + " approved unpaid" : "Expense claim data unavailable" },
       { label: "Record gaps", value: missingCritical.length, note: "Active staff missing critical HR/pay fields" },
-      { label: "Attendance issues", value: pendingCorrections.length, note: "Pending correction requests" },
-      { label: "Setup gaps", value: setupWarnings.length, note: setupWarnings.length ? setupWarnings.join(", ") : "Core setup found" },
+      { label: "Attendance issues", value: availability.corrections ? pendingCorrections.length : "—", note: availability.corrections ? "Pending correction requests" : "Attendance correction data unavailable" },
+      { label: "Setup gaps", value: setupWarnings.length + limitedAreas.length, note: setupWarnings.concat(limitedAreas).length ? setupWarnings.concat(limitedAreas).join(", ") : "Core setup found" },
     ].map(function(k) {
       return '<div class="hr-kpi"><div class="hr-kpi-label">' + esc(k.label) + '</div>' +
         '<div class="hr-kpi-value">' + esc(k.value) + '</div>' +
@@ -144,13 +159,25 @@
     var warnings = [];
     warnings.push(warningCard(pendingStaff.length ? "critical" : "info", "Pending staff approvals", pendingStaff.length, "Approve or reject staff accounts so access is controlled.", "/crm/staff"));
     warnings.push(warningCard(missingCritical.length ? "warning" : "info", "Employee records missing critical fields", missingCritical.length, "Employee records should have department, role/designation, hire date, contact, emergency contact, and pay assignment where applicable.", "/people/employees"));
-    warnings.push(warningCard(pendingCorrections.length ? "warning" : "info", "Attendance corrections need review", pendingCorrections.length, "Correction requests should be approved or rejected before payroll review.", "/people/attendance"));
-    warnings.push(warningCard(openLeave.length ? "warning" : "info", "Open leave requests", openLeave.length, "Pending leave should be reviewed before scheduling and payroll decisions.", "/people/leave"));
-    warnings.push(warningCard(submittedClaims.length ? "warning" : "info", "Submitted expense claims", submittedClaims.length, "Submitted claims need review before reimbursement or payroll processing.", "/people/expense-claims"));
-    warnings.push(warningCard(approvedUnpaidClaims.length ? "warning" : "info", "Approved claims not marked paid", approvedUnpaidClaims.length, "Approved reimbursements should be paid or intentionally held before payroll closeout.", "/people/expense-claims"));
-    warnings.push(warningCard((draftRuns.length + pendingRuns.length) ? "warning" : "info", "Payroll runs need owner review", draftRuns.length + pendingRuns.length, "Draft/review payroll runs are internal summaries only; external payroll filing and direct deposit are not connected.", "/people/payroll/runs"));
-    warnings.push(warningCard(unassignedPay.length ? "critical" : "info", "Active staff missing pay assignment", unassignedPay.length, "Payroll previews require salary/pay assignments before internal payroll can be reviewed.", "/people/payroll/structures"));
-    warnings.push(warningCard(setupWarnings.length ? "warning" : "info", "Payroll setup gaps", setupWarnings.length, setupWarnings.length ? "Setup still needed: " + setupWarnings.join(", ") + "." : "Departments, roles, shifts, pay components, structures, and settings are present enough for internal review.", "/people/payroll/settings"));
+    warnings.push(availability.corrections
+      ? warningCard(pendingCorrections.length ? "warning" : "info", "Attendance corrections need review", pendingCorrections.length, "Correction requests should be approved or rejected before payroll review.", "/people/attendance")
+      : warningCard("info", "Attendance correction check limited", null, "Attendance correction data is unavailable, so correction readiness cannot be confirmed.", "/people/attendance"));
+    warnings.push(availability.leave
+      ? warningCard(openLeave.length ? "warning" : "info", "Open leave requests", openLeave.length, "Pending leave should be reviewed before scheduling and payroll decisions.", "/people/leave")
+      : warningCard("info", "Leave request check limited", null, "Leave request data is unavailable, so leave readiness cannot be confirmed.", "/people/leave"));
+    warnings.push(availability.claims
+      ? warningCard(submittedClaims.length ? "warning" : "info", "Submitted expense claims", submittedClaims.length, "Submitted claims need review before reimbursement or payroll processing.", "/people/expense-claims")
+      : warningCard("info", "Expense claim check limited", null, "Expense claim data is unavailable, so reimbursement readiness cannot be confirmed.", "/people/expense-claims"));
+    if (availability.claims) {
+      warnings.push(warningCard(approvedUnpaidClaims.length ? "warning" : "info", "Approved claims not marked paid", approvedUnpaidClaims.length, "Approved reimbursements should be paid or intentionally held before payroll closeout.", "/people/expense-claims"));
+    }
+    warnings.push(availability.runs
+      ? warningCard((draftRuns.length + pendingRuns.length) ? "warning" : "info", "Payroll runs need owner review", draftRuns.length + pendingRuns.length, "Draft/review payroll runs are internal summaries only; external payroll filing and direct deposit are not connected.", "/people/payroll/runs")
+      : warningCard("info", "Payroll run check limited", null, "Payroll run data is unavailable, so run readiness cannot be confirmed.", "/people/payroll/runs"));
+    warnings.push(availability.assignments
+      ? warningCard(unassignedPay.length ? "critical" : "info", "Active staff missing pay assignment", unassignedPay.length, "Payroll previews require salary/pay assignments before internal payroll can be reviewed.", "/people/payroll/structures")
+      : warningCard("info", "Pay assignment check limited", null, "Salary assignment data is unavailable, so pay assignment readiness cannot be confirmed.", "/people/payroll/structures"));
+    warnings.push(warningCard((setupWarnings.length || limitedAreas.length) ? "warning" : "info", "Payroll setup gaps", setupWarnings.length + limitedAreas.length, setupWarnings.concat(limitedAreas).length ? "Setup or data still needs review: " + setupWarnings.concat(limitedAreas).join(", ") + "." : "Departments, roles, shifts, leave policies, pay components, structures, assignments, and settings are present enough for internal review.", "/people/payroll/settings"));
 
     qs("hrWarningList").innerHTML = warnings.join("");
   }
@@ -192,12 +219,18 @@
       if (missing.length) rowBadges.push(miniBadge("Missing: " + missing.slice(0, 3).join(", ") + (missing.length > 3 ? " +" + (missing.length - 3) : ""), "warn"));
       else rowBadges.push(miniBadge("HR record OK", "good"));
       if (norm(e.status) === "pending") rowBadges.push(miniBadge("Needs approval", "warn"));
-      if (assignment) rowBadges.push(miniBadge("Pay assigned", "good"));
-      else if (isActiveEmployee(e)) rowBadges.push(miniBadge("No pay assignment", "warn"));
+      if (availability.assignments) {
+        if (assignment) rowBadges.push(miniBadge("Pay assigned", "good"));
+        else if (isActiveEmployee(e)) rowBadges.push(miniBadge("No pay assignment", "warn"));
+      } else {
+        rowBadges.push(miniBadge("Pay assignment check limited", "limited"));
+      }
 
-      var payText = assignment
-        ? (money(assignment.base_amount) + " · " + (assignment.currency || "USD") + (assignment.effective_date ? " · from " + assignment.effective_date : ""))
-        : '<span style="color:var(--muted)">No assignment</span>';
+      var payText = !availability.assignments
+        ? '<span style="color:var(--muted)">Assignment data unavailable</span>'
+        : assignment
+          ? (money(assignment.base_amount) + " · " + (assignment.currency || "USD") + (assignment.effective_date ? " · from " + assignment.effective_date : ""))
+          : '<span style="color:var(--muted)">No assignment</span>';
 
       return '<tr data-id="' + esc(e.staff_id) + '">' +
         '<td><div class="emp-name">' + esc(name) + '</div>' +
@@ -270,6 +303,21 @@
         safeFetch("/api/hr/payroll/structures", { ok: false, structures: [] }),
         safeFetch("/api/hr/payroll/assignments", { ok: false, assignments: [] }),
       ]);
+      availability = {
+        employees: !!results[0].ok,
+        departments: !!results[1].ok,
+        designations: !!results[2].ok,
+        shifts: !!results[3].ok,
+        corrections: !!results[4].ok,
+        leave: !!results[5].ok,
+        leavePolicies: !!results[6].ok,
+        claims: !!results[7].ok,
+        runs: !!results[8].ok,
+        settings: !!results[9].ok,
+        components: !!results[10].ok,
+        structures: !!results[11].ok,
+        assignments: !!results[12].ok,
+      };
       if (results[0].ok) employees = results[0].employees || [];
       if (results[1].ok) departments = results[1].departments || [];
       if (results[2].ok) designations = results[2].designations || [];
