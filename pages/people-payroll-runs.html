@@ -9,9 +9,11 @@
   <link rel="stylesheet" href="/pages/css/brand.css" />
   <style>
     h1 { margin:0; font-size:22px; font-weight:800; }
-    .page-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
+    .page-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
     .btn-primary { padding:10px 20px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
     .btn-primary:hover { opacity:.88; }
+    .payroll-notice { margin-bottom:18px; border:1px solid rgba(96,165,250,.22); background:rgba(96,165,250,.07); border-radius:14px; padding:13px 15px; color:var(--muted); font-size:13px; line-height:1.45; }
+    .payroll-notice strong { display:block; color:var(--text); font-size:14px; margin-bottom:3px; }
     .runs-list { display:flex; flex-direction:column; gap:12px; }
     .run-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; cursor:pointer; text-decoration:none; color:inherit; transition:border-color .15s; }
     .run-card:hover { border-color:rgba(100,150,255,.35); }
@@ -48,6 +50,10 @@
       <div class="page-header-row">
         <h1>Payroll Runs</h1>
         <button class="btn-primary" id="newRunBtn">+ New Run</button>
+      </div>
+      <div class="payroll-notice">
+        <strong>Internal payroll review only</strong>
+        VE OS can organize payroll runs, previews, additions, deductions, reimbursements, and salary slips for owner review/export. External payroll filing, payroll taxes, direct deposit, W-2/1099 filing, and government compliance filing are not connected.
       </div>
       <div class="runs-list" id="runsList">
         <div class="empty"><strong>Loading…</strong></div>
