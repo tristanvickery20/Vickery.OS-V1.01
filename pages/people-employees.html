@@ -32,6 +32,99 @@
     }
     .btn-primary:hover { opacity: .88; }
 
+    /* ── HR owner overview ── */
+    .hr-overview {
+      margin-bottom: 22px;
+      border: 1px solid rgba(100,150,255,.16);
+      background: linear-gradient(180deg, rgba(45,106,224,.09), rgba(255,255,255,.025));
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .hr-overview-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .hr-overview-title { font-size: 18px; font-weight: 900; letter-spacing: -.02em; }
+    .hr-overview-sub { margin-top: 4px; font-size: 12px; color: var(--muted, rgba(220,232,255,.65)); line-height: 1.45; }
+    .hr-overview-pill {
+      flex: 0 0 auto;
+      border: 1px solid rgba(96,165,250,.28);
+      background: rgba(96,165,250,.10);
+      color: #93c5fd;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .hr-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 980px) { .hr-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .hr-kpi-grid { grid-template-columns: 1fr; } }
+    .hr-kpi {
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.035);
+      border-radius: 14px;
+      padding: 12px;
+      min-width: 0;
+    }
+    .hr-kpi-label {
+      font-size: 10px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted, rgba(220,232,255,.62));
+    }
+    .hr-kpi-value { margin-top: 6px; font-size: 23px; font-weight: 950; }
+    .hr-kpi-note { margin-top: 3px; font-size: 11px; color: var(--muted, rgba(220,232,255,.58)); line-height: 1.35; }
+    .hr-warning-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+    @media (max-width: 760px) { .hr-warning-list { grid-template-columns: 1fr; } }
+    .hr-warning {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: flex-start;
+      color: inherit;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.075);
+      background: rgba(0,0,0,.08);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .hr-warning:hover { border-color: rgba(96,165,250,.26); background: rgba(96,165,250,.055); }
+    .hr-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: #60a5fa; }
+    .hr-dot.critical { background: #fb7185; box-shadow: 0 0 0 3px rgba(251,113,133,.10); }
+    .hr-dot.warning { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.10); }
+    .hr-dot.info { background: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.10); }
+    .hr-warning-title { font-size: 13px; font-weight: 900; line-height: 1.25; }
+    .hr-warning-reason { margin-top: 3px; font-size: 11px; color: var(--muted, rgba(220,232,255,.55)); line-height: 1.35; }
+    .hr-warning-count {
+      min-width: 28px;
+      text-align: center;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .hr-footnote {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted, rgba(220,232,255,.5));
+      line-height: 1.4;
+    }
+
     /* ── Filter bar ── */
     .filter-bar {
       display: flex;
@@ -111,7 +204,7 @@
     td {
       padding: 12px 14px;
       border-bottom: 1px solid var(--line2, rgba(100,150,255,0.08));
-      vertical-align: middle;
+      vertical-align: top;
     }
     tr:last-child td { border-bottom: none; }
     tbody tr { cursor: pointer; transition: background .12s; }
@@ -119,6 +212,17 @@
 
     .emp-name { font-weight: 700; color: var(--text, #e6eefc); }
     .emp-meta { font-size: 12px; color: var(--muted, rgba(220,232,255,0.7)); margin-top: 2px; }
+    .emp-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+    .mini-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 7px; border-radius:999px;
+      font-size:10px; font-weight:800;
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--muted, rgba(220,232,255,.7));
+    }
+    .mini-badge.warn { color:#fcd34d; background:rgba(251,191,36,.10); border-color:rgba(251,191,36,.22); }
+    .mini-badge.good { color:#86efac; background:rgba(74,222,128,.10); border-color:rgba(74,222,128,.20); }
+    .mini-badge.limited { color:#93c5fd; background:rgba(96,165,250,.10); border-color:rgba(96,165,250,.20); }
 
     .badge {
       display: inline-flex;
@@ -215,6 +319,21 @@
         <button class="btn-primary" id="addEmpBtn">+ Add Employee</button>
       </div>
 
+      <section class="hr-overview" id="hrOverview">
+        <div class="hr-overview-head">
+          <div>
+            <div class="hr-overview-title">HR / Payroll Owner Overview</div>
+            <div class="hr-overview-sub">Internal HR and payroll review only. External payroll filing, payroll taxes, direct deposit, and benefits administration are not connected.</div>
+          </div>
+          <div class="hr-overview-pill" id="hrOverviewPill">Loading…</div>
+        </div>
+        <div class="hr-kpi-grid" id="hrKpiGrid">
+          <div class="hr-kpi"><div class="hr-kpi-label">Loading</div><div class="hr-kpi-value">—</div><div class="hr-kpi-note">Checking employees, attendance, leave, expense claims, and payroll setup.</div></div>
+        </div>
+        <div class="hr-warning-list" id="hrWarningList"></div>
+        <div class="hr-footnote">Counts are computed from existing VE OS HR/payroll APIs. Missing/limited states are shown honestly instead of inventing payroll data.</div>
+      </section>
+
       <div class="filter-bar">
         <input class="search-input" id="searchInput" type="text" placeholder="Search by name…" />
         <select class="filter-sel" id="deptFilter">
@@ -236,15 +355,17 @@
         <table id="empTable">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Name / Warnings</th>
               <th>Department</th>
               <th>Designation</th>
               <th>Status</th>
+              <th>Contact</th>
+              <th>Payroll Setup</th>
               <th>Hire Date</th>
             </tr>
           </thead>
           <tbody id="empBody">
-            <tr><td colspan="5"><div class="empty"><strong>Loading…</strong></div></td></tr>
+            <tr><td colspan="7"><div class="empty"><strong>Loading…</strong></div></td></tr>
           </tbody>
         </table>
       </div>
