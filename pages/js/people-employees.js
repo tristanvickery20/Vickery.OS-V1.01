@@ -2,10 +2,22 @@
   var employees = [];
   var departments = [];
   var designations = [];
+  var shifts = [];
+  var corrections = [];
+  var leaveApplications = [];
+  var leavePolicies = [];
+  var expenseClaims = [];
+  var payrollRuns = [];
+  var payrollSettings = null;
+  var payrollComponents = [];
+  var payrollStructures = [];
+  var salaryAssignments = [];
   var activeStatus = "";
 
   function qs(id) { return document.getElementById(id); }
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function norm(s) { return String(s || "").toLowerCase().trim(); }
+  function money(n) { return "$" + (parseFloat(n) || 0).toFixed(2); }
 
   function showToast(msg, isError) {
     var t = qs("toast");
@@ -13,6 +25,12 @@
     t.className = "toast" + (isError ? " error" : "");
     t.classList.add("show");
     setTimeout(function() { t.classList.remove("show"); }, 3000);
+  }
+
+  function safeFetch(url, fallback) {
+    return fetch(url, { cache: "no-store" })
+      .then(function(r) { return r.json(); })
+      .catch(function() { return fallback || { ok: false }; });
   }
 
   function deptName(id) {
@@ -29,7 +47,12 @@
 
   function empStatus(emp) {
     var es = emp.employment_status || "";
-    return es || (emp.status === "active" ? "active" : emp.status === "inactive" ? "inactive" : "");
+    return es || (emp.status === "active" ? "active" : emp.status === "inactive" ? "inactive" : emp.status === "pending" ? "pending" : "");
+  }
+
+  function isActiveEmployee(emp) {
+    var s = norm(empStatus(emp));
+    return s === "active" || s === "" || s === "pending";
   }
 
   function badgeHtml(status) {
@@ -39,6 +62,97 @@
     };
     var cls = map[status] || "badge-inactive";
     return '<span class="badge ' + cls + '">' + esc(status || "—") + '</span>';
+  }
+
+  function hasAssignment(emp) {
+    return salaryAssignments.some(function(a) { return a.staff_id === emp.staff_id; });
+  }
+
+  function latestAssignment(emp) {
+    var list = salaryAssignments.filter(function(a) { return a.staff_id === emp.staff_id; });
+    list.sort(function(a, b) { return String(b.effective_date || "").localeCompare(String(a.effective_date || "")); });
+    return list[0] || null;
+  }
+
+  function missingEmployeeFields(emp) {
+    var missing = [];
+    if (!emp.first_name || !emp.last_name) missing.push("name");
+    if (!emp.department_id) missing.push("department");
+    if (!emp.designation_id) missing.push("designation");
+    if (!empStatus(emp)) missing.push("status");
+    if (!emp.hire_date) missing.push("hire date");
+    if (!emp.phone && !emp.personal_phone) missing.push("phone");
+    if (!emp.emergency_contact_name || !emp.emergency_contact_phone) missing.push("emergency contact");
+    if (!hasAssignment(emp) && isActiveEmployee(emp)) missing.push("pay assignment");
+    return missing;
+  }
+
+  function miniBadge(label, cls) {
+    return '<span class="mini-badge ' + (cls || "") + '">' + esc(label) + '</span>';
+  }
+
+  function warningCard(severity, title, count, reason, href) {
+    var tag = href ? "a" : "div";
+    var attrs = href ? ' href="' + esc(href) + '"' : "";
+    return '<' + tag + ' class="hr-warning"' + attrs + '>' +
+      '<div class="hr-dot ' + esc(severity || "info") + '"></div>' +
+      '<div><div class="hr-warning-title">' + esc(title) + '</div>' +
+      '<div class="hr-warning-reason">' + esc(reason) + '</div></div>' +
+      '<div class="hr-warning-count">' + (count === null || count === undefined ? '&mdash;' : esc(count)) + '</div>' +
+      '</' + tag + '>';
+  }
+
+  function renderOverview() {
+    var activeStaff = employees.filter(isActiveEmployee);
+    var pendingStaff = employees.filter(function(e) { return norm(e.status) === "pending" || norm(empStatus(e)) === "pending"; });
+    var missingCritical = activeStaff.filter(function(e) { return missingEmployeeFields(e).length > 0; });
+    var pendingCorrections = corrections.filter(function(c) { return norm(c.status) === "pending"; });
+    var openLeave = leaveApplications.filter(function(a) { return norm(a.status) === "pending"; });
+    var submittedClaims = expenseClaims.filter(function(c) { return norm(c.status) === "submitted"; });
+    var approvedUnpaidClaims = expenseClaims.filter(function(c) { return norm(c.status) === "approved"; });
+    var draftRuns = payrollRuns.filter(function(r) { return norm(r.status) === "draft"; });
+    var pendingRuns = payrollRuns.filter(function(r) { return ["pending", "review", "processing"].indexOf(norm(r.status)) >= 0; });
+    var finalizedRuns = payrollRuns.filter(function(r) { return ["finalized", "completed", "complete"].indexOf(norm(r.status)) >= 0; });
+    var unassignedPay = activeStaff.filter(function(e) { return !hasAssignment(e); });
+
+    var setupWarnings = [];
+    if (!departments.length) setupWarnings.push("departments");
+    if (!designations.length) setupWarnings.push("designations");
+    if (!shifts.length) setupWarnings.push("shifts");
+    if (!payrollComponents.length) setupWarnings.push("pay components");
+    if (!payrollStructures.length) setupWarnings.push("pay structures");
+    if (!payrollSettings) setupWarnings.push("payroll settings");
+
+    var activeCount = pendingStaff.length + missingCritical.length + pendingCorrections.length + openLeave.length + submittedClaims.length + approvedUnpaidClaims.length + draftRuns.length + pendingRuns.length + unassignedPay.length + setupWarnings.length;
+    qs("hrOverviewPill").textContent = activeCount + " HR/payroll item" + (activeCount === 1 ? "" : "s") + " to review";
+
+    qs("hrKpiGrid").innerHTML = [
+      { label: "Active staff", value: activeStaff.length, note: employees.length + " total employee/staff records" },
+      { label: "Pending approvals", value: pendingStaff.length, note: "Staff accounts needing owner approval" },
+      { label: "Open leave", value: openLeave.length, note: "Pending leave applications" },
+      { label: "Payroll runs", value: draftRuns.length + pendingRuns.length, note: finalizedRuns.length + " finalized/internal summaries" },
+      { label: "Expense claims", value: submittedClaims.length + approvedUnpaidClaims.length, note: submittedClaims.length + " submitted, " + approvedUnpaidClaims.length + " approved unpaid" },
+      { label: "Record gaps", value: missingCritical.length, note: "Active staff missing critical HR/pay fields" },
+      { label: "Attendance issues", value: pendingCorrections.length, note: "Pending correction requests" },
+      { label: "Setup gaps", value: setupWarnings.length, note: setupWarnings.length ? setupWarnings.join(", ") : "Core setup found" },
+    ].map(function(k) {
+      return '<div class="hr-kpi"><div class="hr-kpi-label">' + esc(k.label) + '</div>' +
+        '<div class="hr-kpi-value">' + esc(k.value) + '</div>' +
+        '<div class="hr-kpi-note">' + esc(k.note) + '</div></div>';
+    }).join("");
+
+    var warnings = [];
+    warnings.push(warningCard(pendingStaff.length ? "critical" : "info", "Pending staff approvals", pendingStaff.length, "Approve or reject staff accounts so access is controlled.", "/crm/staff"));
+    warnings.push(warningCard(missingCritical.length ? "warning" : "info", "Employee records missing critical fields", missingCritical.length, "Employee records should have department, role/designation, hire date, contact, emergency contact, and pay assignment where applicable.", "/people/employees"));
+    warnings.push(warningCard(pendingCorrections.length ? "warning" : "info", "Attendance corrections need review", pendingCorrections.length, "Correction requests should be approved or rejected before payroll review.", "/people/attendance"));
+    warnings.push(warningCard(openLeave.length ? "warning" : "info", "Open leave requests", openLeave.length, "Pending leave should be reviewed before scheduling and payroll decisions.", "/people/leave"));
+    warnings.push(warningCard(submittedClaims.length ? "warning" : "info", "Submitted expense claims", submittedClaims.length, "Submitted claims need review before reimbursement or payroll processing.", "/people/expense-claims"));
+    warnings.push(warningCard(approvedUnpaidClaims.length ? "warning" : "info", "Approved claims not marked paid", approvedUnpaidClaims.length, "Approved reimbursements should be paid or intentionally held before payroll closeout.", "/people/expense-claims"));
+    warnings.push(warningCard((draftRuns.length + pendingRuns.length) ? "warning" : "info", "Payroll runs need owner review", draftRuns.length + pendingRuns.length, "Draft/review payroll runs are internal summaries only; external payroll filing and direct deposit are not connected.", "/people/payroll/runs"));
+    warnings.push(warningCard(unassignedPay.length ? "critical" : "info", "Active staff missing pay assignment", unassignedPay.length, "Payroll previews require salary/pay assignments before internal payroll can be reviewed.", "/people/payroll/structures"));
+    warnings.push(warningCard(setupWarnings.length ? "warning" : "info", "Payroll setup gaps", setupWarnings.length, setupWarnings.length ? "Setup still needed: " + setupWarnings.join(", ") + "." : "Departments, roles, shifts, pay components, structures, and settings are present enough for internal review.", "/people/payroll/settings"));
+
+    qs("hrWarningList").innerHTML = warnings.join("");
   }
 
   function render() {
@@ -60,7 +174,7 @@
 
     var body = qs("empBody");
     if (!filtered.length) {
-      body.innerHTML = '<tr><td colspan="5"><div class="empty"><strong>No employees found</strong>Try adjusting your filters.</div></td></tr>';
+      body.innerHTML = '<tr><td colspan="7"><div class="empty"><strong>No employees found</strong>Try adjusting your filters.</div></td></tr>';
       return;
     }
 
@@ -70,13 +184,32 @@
       var dn = deptName(e.department_id);
       var dsn = desigName(e.designation_id);
       var hire = e.hire_date ? e.hire_date.slice(0, 10) : "—";
+      var missing = missingEmployeeFields(e);
+      var assignment = latestAssignment(e);
+      var contact = e.personal_phone || e.phone || "";
+      var emergency = [e.emergency_contact_name, e.emergency_contact_phone].filter(Boolean).join(" · ");
+      var rowBadges = [];
+      if (missing.length) rowBadges.push(miniBadge("Missing: " + missing.slice(0, 3).join(", ") + (missing.length > 3 ? " +" + (missing.length - 3) : ""), "warn"));
+      else rowBadges.push(miniBadge("HR record OK", "good"));
+      if (norm(e.status) === "pending") rowBadges.push(miniBadge("Needs approval", "warn"));
+      if (assignment) rowBadges.push(miniBadge("Pay assigned", "good"));
+      else if (isActiveEmployee(e)) rowBadges.push(miniBadge("No pay assignment", "warn"));
+
+      var payText = assignment
+        ? (money(assignment.base_amount) + " · " + (assignment.currency || "USD") + (assignment.effective_date ? " · from " + assignment.effective_date : ""))
+        : '<span style="color:var(--muted)">No assignment</span>';
+
       return '<tr data-id="' + esc(e.staff_id) + '">' +
         '<td><div class="emp-name">' + esc(name) + '</div>' +
         (e.username ? '<div class="emp-meta">@' + esc(e.username) + '</div>' : '') +
+        '<div class="emp-badges">' + rowBadges.join("") + '</div>' +
         '</td>' +
         '<td>' + (dn ? esc(dn) : '<span style="color:var(--muted)">—</span>') + '</td>' +
         '<td>' + (dsn ? esc(dsn) : '<span style="color:var(--muted)">—</span>') + '</td>' +
         '<td>' + badgeHtml(es) + '</td>' +
+        '<td>' + (contact ? esc(contact) : '<span style="color:var(--muted)">—</span>') +
+          (emergency ? '<div class="emp-meta">Emergency: ' + esc(emergency) + '</div>' : '<div class="emp-meta">Emergency: —</div>') + '</td>' +
+        '<td>' + payText + '</td>' +
         '<td>' + esc(hire) + '</td>' +
         '</tr>';
     }).join("");
@@ -123,17 +256,39 @@
   async function loadAll() {
     try {
       var results = await Promise.all([
-        fetch("/api/hr/employees").then(function(r) { return r.json(); }),
-        fetch("/api/hr/departments").then(function(r) { return r.json(); }),
-        fetch("/api/hr/designations").then(function(r) { return r.json(); }),
+        safeFetch("/api/hr/employees", { ok: false, employees: [] }),
+        safeFetch("/api/hr/departments", { ok: false, departments: [] }),
+        safeFetch("/api/hr/designations", { ok: false, designations: [] }),
+        safeFetch("/api/hr/shifts", { ok: false, shifts: [] }),
+        safeFetch("/api/hr/corrections", { ok: false, corrections: [] }),
+        safeFetch("/api/hr/leave/applications", { ok: false, applications: [] }),
+        safeFetch("/api/hr/leave/policies", { ok: false, policies: [] }),
+        safeFetch("/api/hr/payroll/claims", { ok: false, claims: [] }),
+        safeFetch("/api/hr/payroll/runs", { ok: false, runs: [] }),
+        safeFetch("/api/hr/payroll/settings", { ok: false, settings: null }),
+        safeFetch("/api/hr/payroll/components", { ok: false, components: [] }),
+        safeFetch("/api/hr/payroll/structures", { ok: false, structures: [] }),
+        safeFetch("/api/hr/payroll/assignments", { ok: false, assignments: [] }),
       ]);
       if (results[0].ok) employees = results[0].employees || [];
       if (results[1].ok) departments = results[1].departments || [];
       if (results[2].ok) designations = results[2].designations || [];
+      if (results[3].ok) shifts = results[3].shifts || [];
+      if (results[4].ok) corrections = results[4].corrections || [];
+      if (results[5].ok) leaveApplications = results[5].applications || [];
+      if (results[6].ok) leavePolicies = results[6].policies || [];
+      if (results[7].ok) expenseClaims = results[7].claims || [];
+      if (results[8].ok) payrollRuns = results[8].runs || [];
+      if (results[9].ok) payrollSettings = results[9].settings || null;
+      if (results[10].ok) payrollComponents = results[10].components || [];
+      if (results[11].ok) payrollStructures = results[11].structures || [];
+      if (results[12].ok) salaryAssignments = results[12].assignments || [];
       populateFilterDropdowns();
+      renderOverview();
       render();
     } catch (err) {
-      qs("empBody").innerHTML = '<tr><td colspan="5"><div class="empty"><strong>Error loading employees</strong>' + esc(err.message) + '</div></td></tr>';
+      qs("empBody").innerHTML = '<tr><td colspan="7"><div class="empty"><strong>Error loading employees</strong>' + esc(err.message) + '</div></td></tr>';
+      qs("hrWarningList").innerHTML = warningCard("critical", "HR overview failed to load", null, err.message, "");
     }
   }
 
