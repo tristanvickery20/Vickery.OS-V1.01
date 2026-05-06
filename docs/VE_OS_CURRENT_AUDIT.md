@@ -2,6 +2,8 @@
 
 Audit date: 2026-05-06
 
+QA reviewed: 2026-05-06
+
 This audit documents what was found in the current repo. If something was not verified in the inspected files, it is marked as not found or not clearly implemented yet.
 
 ## Repository inspected
@@ -203,7 +205,8 @@ Primary storage appears to be Google Sheets.
 Confirmed:
 
 - `lib/sheets.js` requires `GOOGLE_SERVICE_ACCOUNT_JSON` and uses Google Sheets API via `googleapis`.
-- Most API/data modules read/write tabs using `process.env.CRM_SHEET_ID`.
+- `lib/sheets.js` creates and returns the authenticated Google Sheets client; it does not itself require `CRM_SHEET_ID`.
+- Most API/data modules that read or write Sheets use `process.env.CRM_SHEET_ID` as the spreadsheet ID.
 - `lib/staff.js`, `lib/hr.js`, `lib/hr-payroll.js`, `api/dashboard.js`, `api/leads.js`, `api/invoices.js`, `api/quote-engine.js`, and `api/traccar.js` all use Google Sheets or depend on helper functions that do.
 
 Confirmed or referenced tabs include:
@@ -344,6 +347,28 @@ Risk:
 
 - Some crew endpoints are described as public employee-facing in `index.js` comments. Future security pass should audit which endpoints are intentionally public, crew-session-gated, or CRM-auth-gated.
 
+## Fleet/tools/inventory notes
+
+What exists:
+
+- Traccar fleet tracking integration exists in `api/traccar.js`.
+- Live Fleet sidebar route exists as `/crm/fleet`.
+- Material price updater exists in `lib/materialPriceUpdater.js` and adjusts estimator `Materials` pricing from BLS PPI data.
+- Expenses can capture gas/material/parts style costs depending on sheet/UI values.
+
+Not found in current repo during QA spot-check:
+
+- `api/inventory.js`
+- `api/tools.js`
+- `api/assets.js`
+
+Not clearly implemented yet:
+
+- Dedicated tools inventory module.
+- Vehicle maintenance schedule/history module.
+- Tool/asset assignment workflow.
+- Truck stock/min-max inventory workflow.
+
 ## Current Render/build notes
 
 Found:
@@ -351,6 +376,7 @@ Found:
 - `package.json` has `main: index.js`.
 - No `start` script is defined.
 - No `build` script is defined.
+- No `check` script is defined.
 - No `render.yaml` found.
 - No `Procfile` found.
 
@@ -366,7 +392,7 @@ Likely Render setup depends on dashboard configuration outside the repo, probabl
 Required or referenced:
 
 - `GOOGLE_SERVICE_ACCOUNT_JSON` — required by `lib/sheets.js`.
-- `CRM_SHEET_ID` — used by most Google Sheets-backed modules.
+- `CRM_SHEET_ID` — used by most Google Sheets-backed modules as the spreadsheet ID.
 - `SESSION_SECRET` — required by CRM and crew session signing/password legacy verification.
 - `ESTIMATOR_V2_SHEET_ID` — optional switch for estimator V2 mode.
 - `TRACCAR_URL` — optional/enables Traccar fleet tracking.
