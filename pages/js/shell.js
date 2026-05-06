@@ -167,6 +167,15 @@ function loadQuickAdd() {
   document.body.appendChild(s);
 }
 
+function loadDashboardLifecycleControl() {
+  if (window.location.pathname !== "/crm/dashboard") return;
+  if (document.getElementById("pipelineCloseoutControlScript")) return;
+  var s = document.createElement("script");
+  s.id = "pipelineCloseoutControlScript";
+  s.src = "/pages/js/lifecycle-control.js";
+  document.body.appendChild(s);
+}
+
 function loadSidebar() {
   var mount = document.getElementById("sidebarMount");
   if (!mount) return;
@@ -177,11 +186,13 @@ function loadSidebar() {
       mount.innerHTML = html;
       initShell();
       loadQuickAdd();
+      loadDashboardLifecycleControl();
     })
     .catch(function(err) {
       console.error("Sidebar load error:", err);
       initShell();
       loadQuickAdd();
+      loadDashboardLifecycleControl();
     });
 }
 
