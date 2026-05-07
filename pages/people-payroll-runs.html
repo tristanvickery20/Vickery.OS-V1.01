@@ -12,19 +12,60 @@
     .page-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
     .btn-primary { padding:10px 20px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
     .btn-primary:hover { opacity:.88; }
+    .btn-primary[disabled] { opacity:.45; cursor:not-allowed; }
+    .btn-secondary { padding:10px 18px; background:transparent; border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
     .payroll-notice { margin-bottom:18px; border:1px solid rgba(96,165,250,.22); background:rgba(96,165,250,.07); border-radius:14px; padding:13px 15px; color:var(--muted); font-size:13px; line-height:1.45; }
     .payroll-notice strong { display:block; color:var(--text); font-size:14px; margin-bottom:3px; }
+    .payroll-layout { display:grid; grid-template-columns:minmax(320px, .92fr) minmax(360px, 1.35fr); gap:14px; align-items:start; }
+    @media (max-width: 980px) { .payroll-layout { grid-template-columns:1fr; } }
+    .readiness-panel, .review-panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px; }
+    .panel-title { font-size:15px; font-weight:900; margin-bottom:5px; }
+    .panel-sub { font-size:12px; color:var(--muted); line-height:1.4; margin-bottom:12px; }
+    .readiness-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+    @media (max-width: 560px) { .readiness-grid { grid-template-columns:1fr; } }
+    .mini-stat { border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; background:rgba(255,255,255,.03); }
+    .mini-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:800; }
+    .mini-value { font-size:20px; font-weight:950; margin-top:4px; }
+    .mini-note { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.35; }
     .runs-list { display:flex; flex-direction:column; gap:12px; }
-    .run-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; cursor:pointer; text-decoration:none; color:inherit; transition:border-color .15s; }
-    .run-card:hover { border-color:rgba(100,150,255,.35); }
-    .run-info { flex:1; min-width:0; }
-    .run-period { font-size:16px; font-weight:700; }
-    .run-meta { font-size:13px; color:var(--muted); margin-top:3px; }
-    .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 9px; }
-    .badge-draft { background:rgba(148,163,184,.18); color:#94a3b8; }
+    .run-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; color:inherit; transition:border-color .15s, background .15s; }
+    .run-card.active { border-color:rgba(96,165,250,.55); background:rgba(96,165,250,.06); }
+    .run-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .run-period { font-size:16px; font-weight:800; }
+    .run-meta { font-size:12px; color:var(--muted); margin-top:4px; line-height:1.35; }
+    .run-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .btn-sm { border:1px solid var(--line); border-radius:9px; background:transparent; color:var(--muted); cursor:pointer; padding:7px 10px; font-size:12px; font-weight:800; font-family:inherit; }
+    .btn-sm:hover { color:var(--text); border-color:rgba(100,150,255,.35); }
+    .btn-danger { color:#fca5a5; border-color:rgba(248,113,113,.25); }
+    .run-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin-top:12px; }
+    @media (max-width: 760px) { .run-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    .run-stat { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:10px; padding:8px; }
+    .run-stat span { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:800; }
+    .run-stat strong { display:block; margin-top:3px; font-size:13px; }
+    .badge { display:inline-block; font-size:11px; font-weight:800; border-radius:999px; padding:3px 9px; white-space:nowrap; }
+    .badge-draft { background:rgba(148,163,184,.18); color:#cbd5e1; }
     .badge-finalized { background:rgba(52,211,153,.18); color:#34d399; }
-    .run-arrow { color:var(--muted); font-size:18px; }
-    .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+    .badge-warning { background:rgba(251,191,36,.14); color:#fcd34d; }
+    .badge-critical { background:rgba(248,113,113,.14); color:#fca5a5; }
+    .badge-info { background:rgba(96,165,250,.14); color:#93c5fd; }
+    .warning-list { display:flex; flex-direction:column; gap:8px; }
+    .warning-item { display:grid; grid-template-columns:auto 1fr auto; gap:9px; align-items:flex-start; border:1px solid rgba(255,255,255,.075); background:rgba(0,0,0,.08); border-radius:11px; padding:9px; }
+    .dot { width:8px; height:8px; border-radius:50%; margin-top:5px; background:#60a5fa; }
+    .dot.critical { background:#fb7185; box-shadow:0 0 0 3px rgba(251,113,133,.11); }
+    .dot.warning { background:#fbbf24; box-shadow:0 0 0 3px rgba(251,191,36,.10); }
+    .warning-title { font-size:12px; font-weight:900; }
+    .warning-reason { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.35; }
+    .warning-count { min-width:28px; text-align:center; border-radius:999px; padding:3px 7px; background:rgba(255,255,255,.07); font-size:12px; font-weight:900; }
+    .review-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .review-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+    .review-kpis { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin-bottom:12px; }
+    @media (max-width: 760px) { .review-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    .review-table-wrap { overflow-x:auto; border:1px solid rgba(255,255,255,.07); border-radius:12px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:10px 11px; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; font-weight:900; white-space:nowrap; }
+    tr:last-child td { border-bottom:none; }
+    .empty { text-align:center; padding:42px 20px; color:var(--muted); }
     .empty strong { display:block; font-size:16px; margin-bottom:6px; color:var(--text); }
     .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
     .modal-backdrop.open { display:flex; }
@@ -35,10 +76,15 @@
     .form-row input, .form-row select { width:100%; box-sizing:border-box; padding:10px 12px; background:var(--bg); border:1px solid var(--line); border-radius:10px; color:var(--text); font-size:14px; font-family:inherit; }
     .form-row input:focus, .form-row select:focus { outline:none; border-color:var(--blue); }
     .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
-    .btn-secondary { padding:10px 18px; background:transparent; border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
     .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:#166534; color:#fff; padding:12px 24px; border-radius:12px; font-size:14px; font-weight:700; opacity:0; transition:all .25s; z-index:200; pointer-events:none; white-space:nowrap; }
     .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     .toast.error { background:#7f1d1d; }
+    @media print {
+      .sidebar, .page-header-row, .runs-col, .review-actions, .modal-backdrop, .toast { display:none !important; }
+      .payroll-layout { display:block; }
+      .review-panel { border:none; }
+      body { background:#fff; color:#000; }
+    }
   </style>
   <meta name="apple-mobile-web-app-capable" content="yes" />
 </head>
@@ -55,8 +101,24 @@
         <strong>Internal payroll review only</strong>
         VE OS can organize payroll runs, previews, additions, deductions, reimbursements, and salary slips for owner review/export. External payroll filing, payroll taxes, direct deposit, W-2/1099 filing, and government compliance filing are not connected.
       </div>
-      <div class="runs-list" id="runsList">
-        <div class="empty"><strong>Loading…</strong></div>
+
+      <div class="readiness-panel" id="payrollReadiness">
+        <div class="panel-title">Payroll Readiness</div>
+        <div class="panel-sub">Checks payroll setup, active staff pay assignments, submitted expense claims, attendance corrections, and existing payroll run status.</div>
+        <div class="readiness-grid" id="readinessGrid">
+          <div class="mini-stat"><div class="mini-label">Loading</div><div class="mini-value">—</div><div class="mini-note">Checking payroll data.</div></div>
+        </div>
+      </div>
+
+      <div class="payroll-layout">
+        <div class="runs-col">
+          <div class="runs-list" id="runsList">
+            <div class="empty"><strong>Loading…</strong></div>
+          </div>
+        </div>
+        <div class="review-panel" id="reviewPanel">
+          <div class="empty"><strong>Select a payroll run</strong>Choose a run to review staff, gross pay, deductions, reimbursements, net pay, readiness warnings, and internal export/report language.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -79,7 +141,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="cancelBtn">Cancel</button>
-      <button class="btn-primary" id="createBtn">Create Run</button>
+      <button class="btn-primary" id="createBtn">Create Draft Run</button>
     </div>
   </div>
 </div>
