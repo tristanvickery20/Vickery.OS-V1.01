@@ -176,6 +176,15 @@ function loadDashboardLifecycleControl() {
   document.body.appendChild(s);
 }
 
+function loadFleetOwnerOverview() {
+  if (window.location.pathname !== "/crm/fleet") return;
+  if (document.getElementById("fleetOwnerOverviewScript")) return;
+  var s = document.createElement("script");
+  s.id = "fleetOwnerOverviewScript";
+  s.src = "/pages/js/fleet-owner-overview.js";
+  document.body.appendChild(s);
+}
+
 function loadSidebar() {
   var mount = document.getElementById("sidebarMount");
   if (!mount) return;
@@ -187,12 +196,14 @@ function loadSidebar() {
       initShell();
       loadQuickAdd();
       loadDashboardLifecycleControl();
+      loadFleetOwnerOverview();
     })
     .catch(function(err) {
       console.error("Sidebar load error:", err);
       initShell();
       loadQuickAdd();
       loadDashboardLifecycleControl();
+      loadFleetOwnerOverview();
     });
 }
 
