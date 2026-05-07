@@ -19,6 +19,7 @@
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function norm(s) { return String(s || "").toLowerCase().trim(); }
   function money(n) { return "$" + (parseFloat(n) || 0).toFixed(2); }
+  function asArray(value) { return Array.isArray(value) ? value : []; }
 
   function showToast(msg, isError) {
     var t = qs("toast");
@@ -111,9 +112,10 @@
   }
 
   function renderOverview() {
-    var activeStaff = employees.filter(isActiveEmployee);
-    var pendingStaff = employees.filter(function(e) { return norm(e.status) === "pending" || norm(empStatus(e)) === "pending"; });
-    var missingCritical = activeStaff.filter(function(e) { return missingEmployeeFields(e).length > 0; });
+    var employeeDataAvailable = !!availability.employees;
+    var activeStaff = employeeDataAvailable ? employees.filter(isActiveEmployee) : [];
+    var pendingStaff = employeeDataAvailable ? employees.filter(function(e) { return norm(e.status) === "pending" || norm(empStatus(e)) === "pending"; }) : [];
+    var missingCritical = employeeDataAvailable ? activeStaff.filter(function(e) { return missingEmployeeFields(e).length > 0; }) : [];
     var pendingCorrections = availability.corrections ? corrections.filter(function(c) { return norm(c.status) === "pending"; }) : [];
     var openLeave = availability.leave ? leaveApplications.filter(function(a) { return norm(a.status) === "pending"; }) : [];
     var submittedClaims = availability.claims ? expenseClaims.filter(function(c) { return norm(c.status) === "submitted"; }) : [];
@@ -121,10 +123,11 @@
     var draftRuns = availability.runs ? payrollRuns.filter(function(r) { return norm(r.status) === "draft"; }) : [];
     var pendingRuns = availability.runs ? payrollRuns.filter(function(r) { return ["pending", "review", "processing"].indexOf(norm(r.status)) >= 0; }) : [];
     var finalizedRuns = availability.runs ? payrollRuns.filter(function(r) { return ["finalized", "completed", "complete"].indexOf(norm(r.status)) >= 0; }) : [];
-    var unassignedPay = availability.assignments ? activeStaff.filter(function(e) { return !hasAssignment(e); }) : [];
+    var unassignedPay = employeeDataAvailable && availability.assignments ? activeStaff.filter(function(e) { return !hasAssignment(e); }) : [];
 
     var setupWarnings = [];
     var limitedAreas = [];
+    if (!employeeDataAvailable) limitedAreas.push("employee records unavailable");
     addSetupWarning(setupWarnings, limitedAreas, availability.departments, departments.length, "departments");
     addSetupWarning(setupWarnings, limitedAreas, availability.designations, designations.length, "designations");
     addSetupWarning(setupWarnings, limitedAreas, availability.shifts, shifts.length, "shifts");
@@ -142,12 +145,12 @@
     qs("hrOverviewPill").textContent = activeCount + " HR/payroll item" + (activeCount === 1 ? "" : "s") + " to review";
 
     qs("hrKpiGrid").innerHTML = [
-      { label: "Active staff", value: availability.employees ? activeStaff.length : "—", note: availability.employees ? employees.length + " total employee/staff records" : "Employee data unavailable" },
-      { label: "Pending approvals", value: pendingStaff.length, note: "Staff accounts needing owner approval" },
+      { label: "Active staff", value: employeeDataAvailable ? activeStaff.length : "—", note: employeeDataAvailable ? employees.length + " total employee/staff records" : "Employee data unavailable" },
+      { label: "Pending approvals", value: employeeDataAvailable ? pendingStaff.length : "—", note: employeeDataAvailable ? "Staff accounts needing owner approval" : "Staff approval data unavailable" },
       { label: "Open leave", value: availability.leave ? openLeave.length : "—", note: availability.leave ? "Pending leave applications" : "Leave request data unavailable" },
       { label: "Payroll runs", value: availability.runs ? draftRuns.length + pendingRuns.length : "—", note: availability.runs ? finalizedRuns.length + " finalized/internal summaries" : "Payroll run data unavailable" },
       { label: "Expense claims", value: availability.claims ? submittedClaims.length + approvedUnpaidClaims.length : "—", note: availability.claims ? submittedClaims.length + " submitted, " + approvedUnpaidClaims.length + " approved unpaid" : "Expense claim data unavailable" },
-      { label: "Record gaps", value: missingCritical.length, note: "Active staff missing critical HR/pay fields" },
+      { label: "Record gaps", value: employeeDataAvailable ? missingCritical.length : "—", note: employeeDataAvailable ? "Active staff missing critical HR/pay fields" : "Employee data unavailable" },
       { label: "Attendance issues", value: availability.corrections ? pendingCorrections.length : "—", note: availability.corrections ? "Pending correction requests" : "Attendance correction data unavailable" },
       { label: "Setup gaps", value: setupWarnings.length + limitedAreas.length, note: setupWarnings.concat(limitedAreas).length ? setupWarnings.concat(limitedAreas).join(", ") : "Core setup found" },
     ].map(function(k) {
@@ -157,8 +160,12 @@
     }).join("");
 
     var warnings = [];
-    warnings.push(warningCard(pendingStaff.length ? "critical" : "info", "Pending staff approvals", pendingStaff.length, "Approve or reject staff accounts so access is controlled.", "/crm/staff"));
-    warnings.push(warningCard(missingCritical.length ? "warning" : "info", "Employee records missing critical fields", missingCritical.length, "Employee records should have department, role/designation, hire date, contact, emergency contact, and pay assignment where applicable.", "/people/employees"));
+    warnings.push(employeeDataAvailable
+      ? warningCard(pendingStaff.length ? "critical" : "info", "Pending staff approvals", pendingStaff.length, "Approve or reject staff accounts so access is controlled.", "/crm/staff")
+      : warningCard("info", "Staff approval check limited", null, "Employee/staff data is unavailable, so staff approval readiness cannot be confirmed.", "/crm/staff"));
+    warnings.push(employeeDataAvailable
+      ? warningCard(missingCritical.length ? "warning" : "info", "Employee records missing critical fields", missingCritical.length, "Employee records should have department, role/designation, hire date, contact, emergency contact, and pay assignment where applicable.", "/people/employees")
+      : warningCard("info", "Employee record quality check limited", null, "Employee/staff data is unavailable, so record gaps cannot be confirmed.", "/people/employees"));
     warnings.push(availability.corrections
       ? warningCard(pendingCorrections.length ? "warning" : "info", "Attendance corrections need review", pendingCorrections.length, "Correction requests should be approved or rejected before payroll review.", "/people/attendance")
       : warningCard("info", "Attendance correction check limited", null, "Attendance correction data is unavailable, so correction readiness cannot be confirmed.", "/people/attendance"));
@@ -174,15 +181,21 @@
     warnings.push(availability.runs
       ? warningCard((draftRuns.length + pendingRuns.length) ? "warning" : "info", "Payroll runs need owner review", draftRuns.length + pendingRuns.length, "Draft/review payroll runs are internal summaries only; external payroll filing and direct deposit are not connected.", "/people/payroll/runs")
       : warningCard("info", "Payroll run check limited", null, "Payroll run data is unavailable, so run readiness cannot be confirmed.", "/people/payroll/runs"));
-    warnings.push(availability.assignments
+    warnings.push(employeeDataAvailable && availability.assignments
       ? warningCard(unassignedPay.length ? "critical" : "info", "Active staff missing pay assignment", unassignedPay.length, "Payroll previews require salary/pay assignments before internal payroll can be reviewed.", "/people/payroll/structures")
-      : warningCard("info", "Pay assignment check limited", null, "Salary assignment data is unavailable, so pay assignment readiness cannot be confirmed.", "/people/payroll/structures"));
+      : warningCard("info", "Pay assignment check limited", null, employeeDataAvailable ? "Salary assignment data is unavailable, so pay assignment readiness cannot be confirmed." : "Employee/staff data is unavailable, so pay assignment readiness cannot be confirmed.", "/people/payroll/structures"));
     warnings.push(warningCard((setupWarnings.length || limitedAreas.length) ? "warning" : "info", "Payroll setup gaps", setupWarnings.length + limitedAreas.length, setupWarnings.concat(limitedAreas).length ? "Setup or data still needs review: " + setupWarnings.concat(limitedAreas).join(", ") + "." : "Departments, roles, shifts, leave policies, pay components, structures, assignments, and settings are present enough for internal review.", "/people/payroll/settings"));
 
     qs("hrWarningList").innerHTML = warnings.join("");
   }
 
   function render() {
+    var body = qs("empBody");
+    if (!availability.employees) {
+      body.innerHTML = '<tr><td colspan="7"><div class="empty"><strong>Employee data unavailable</strong>Could not load /api/hr/employees, so employee rows and record-gap checks are limited.</div></td></tr>';
+      return;
+    }
+
     var search = (qs("searchInput").value || "").toLowerCase();
     var deptF = qs("deptFilter").value;
     var desigF = qs("desigFilter").value;
@@ -199,7 +212,6 @@
       return true;
     });
 
-    var body = qs("empBody");
     if (!filtered.length) {
       body.innerHTML = '<tr><td colspan="7"><div class="empty"><strong>No employees found</strong>Try adjusting your filters.</div></td></tr>';
       return;
@@ -318,19 +330,19 @@
         structures: !!results[11].ok,
         assignments: !!results[12].ok,
       };
-      if (results[0].ok) employees = results[0].employees || [];
-      if (results[1].ok) departments = results[1].departments || [];
-      if (results[2].ok) designations = results[2].designations || [];
-      if (results[3].ok) shifts = results[3].shifts || [];
-      if (results[4].ok) corrections = results[4].corrections || [];
-      if (results[5].ok) leaveApplications = results[5].applications || [];
-      if (results[6].ok) leavePolicies = results[6].policies || [];
-      if (results[7].ok) expenseClaims = results[7].claims || [];
-      if (results[8].ok) payrollRuns = results[8].runs || [];
+      if (results[0].ok) employees = asArray(results[0].employees);
+      if (results[1].ok) departments = asArray(results[1].departments);
+      if (results[2].ok) designations = asArray(results[2].designations);
+      if (results[3].ok) shifts = asArray(results[3].shifts);
+      if (results[4].ok) corrections = asArray(results[4].corrections);
+      if (results[5].ok) leaveApplications = asArray(results[5].applications);
+      if (results[6].ok) leavePolicies = asArray(results[6].policies);
+      if (results[7].ok) expenseClaims = asArray(results[7].claims);
+      if (results[8].ok) payrollRuns = asArray(results[8].runs);
       if (results[9].ok) payrollSettings = results[9].settings || null;
-      if (results[10].ok) payrollComponents = results[10].components || [];
-      if (results[11].ok) payrollStructures = results[11].structures || [];
-      if (results[12].ok) salaryAssignments = results[12].assignments || [];
+      if (results[10].ok) payrollComponents = asArray(results[10].components);
+      if (results[11].ok) payrollStructures = asArray(results[11].structures);
+      if (results[12].ok) salaryAssignments = asArray(results[12].assignments);
       populateFilterDropdowns();
       renderOverview();
       render();
