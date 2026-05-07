@@ -248,6 +248,42 @@
     qs("reviewPanel").innerHTML = '<div class="review-head"><div><div class="panel-title">Payroll Run Review</div><div class="panel-sub">Loading preview for ' + esc(fmtDate(run.pay_period_start)) + ' – ' + esc(fmtDate(run.pay_period_end)) + '.</div></div></div><div class="empty"><strong>Loading payroll preview…</strong></div>';
   }
 
+  function renderAssignmentSection(run, finalized) {
+    var missing = missingAssignmentsForRun(run);
+    var missingList = missing === null
+      ? '<div class="empty"><strong>Pay assignment check limited</strong>Employee or salary assignment data could not be loaded.</div>'
+      : missing.length
+        ? '<div class="warning-list">' + missing.slice(0, 8).map(function (e) {
+            return warning("critical", employeeName(e.staff_id) + " is missing pay assignment", null, "Assign a pay structure and base amount before this employee can be included in payroll preview.");
+          }).join("") + (missing.length > 8 ? warning("info", "More employees missing assignments", missing.length - 8, "Additional active staff are missing assignments.") : "") + '</div>'
+        : '<div class="warning-list">' + warning("info", "No missing pay assignments found", 0, "Based on available data, active staff in this run have pay assignments as of the period end date.") + '</div>';
+
+    if (finalized) {
+      return '<div style="height:14px"></div><div class="panel-title">Pay assignment setup</div><div class="panel-sub">This run is finalized. Assignment changes should be made before creating or finalizing a future run.</div>' + missingList;
+    }
+
+    var staffOptions = activeEmployeesForRun(run).map(function (e) {
+      return '<option value="' + esc(e.staff_id) + '">' + esc(employeeName(e.staff_id)) + '</option>';
+    }).join("");
+    var structOptions = structures.map(function (s) {
+      return '<option value="' + esc(s.structure_id) + '">' + esc(s.name) + '</option>';
+    }).join("");
+    var defaultStaff = missing && missing.length ? missing[0].staff_id : "";
+
+    return '<div style="height:14px"></div><div class="panel-title">Pay assignment setup</div>' +
+      '<div class="panel-sub">Use this existing salary assignment API to assign active staff to a pay structure. This changes only VE OS internal payroll setup; it does not send payroll or file taxes.</div>' +
+      missingList +
+      '<div class="run-actions" style="margin-top:10px">' +
+        '<select id="assignStaff"><option value="">Select staff</option>' + staffOptions + '</select>' +
+        '<select id="assignStructure"><option value="">Select pay structure</option>' + structOptions + '</select>' +
+        '<input id="assignBase" type="number" min="0" step="0.01" placeholder="Base amount" style="max-width:130px" />' +
+        '<input id="assignDate" type="date" value="' + esc(run.pay_period_end || new Date().toISOString().slice(0, 10)) + '" style="max-width:150px" />' +
+        '<button class="btn-sm" id="assignPayBtn">Create Pay Assignment</button>' +
+      '</div>' +
+      '<div class="panel-sub" style="margin-top:7px">If the staff member already has a newer assignment, create a future-dated assignment intentionally. Existing assignments are not overwritten.</div>' +
+      '<script type="application/json" id="defaultAssignStaff">' + esc(JSON.stringify(defaultStaff)) + '</script>';
+  }
+
   function renderReview(run, previewData) {
     selectedPreview = previewData && previewData.ok ? previewData : null;
     var preview = selectedPreview || { ok:false, previews:[], additions:[], settings:null };
@@ -305,17 +341,23 @@
       '<div class="panel-title">Owner readiness warnings</div>' +
       '<div class="panel-sub">Critical: ' + critical + ' · Warnings: ' + warningCount + ' · ' + esc(claimsNote) + ' ' + esc(attendanceNote) + '</div>' +
       issueHtml +
+      renderAssignmentSection(run, finalized) +
       '<div style="height:14px"></div><div class="panel-title">Employee pay preview</div>' +
       '<div class="panel-sub">Amounts come from existing payroll settings, salary assignments, pay structures/components, run additions/deductions, attendance/leave rules, and the payroll preview API.</div>' +
       tableHtml +
       '<div style="height:14px"></div><div class="panel-title">Run additions / deductions</div>' +
       '<div class="panel-sub">Bonuses and deductions can be added to draft runs through the existing payroll additions API. Expense reimbursements are shown as readiness warnings until a dedicated reimbursement-to-run mapping is built.</div>' +
-      '<div class="run-actions"><select id="addStaff"><option value="">Select staff</option>' + activeEmployeesForRun(run).map(function (e) { return '<option value="' + esc(e.staff_id) + '">' + esc(employeeName(e.staff_id)) + '</option>'; }).join('') + '</select>' +
-      '<select id="addType"><option value="bonus">Bonus / earning</option><option value="deduction">Deduction</option></select>' +
-      '<input id="addAmount" type="number" min="0" step="0.01" placeholder="Amount" style="max-width:110px" />' +
-      '<input id="addDesc" type="text" placeholder="Description" style="min-width:160px" />' +
-      '<button class="btn-sm" id="addRunItemBtn">Add to Run</button></div>';
+      (finalized ? '<div class="empty"><strong>Run finalized</strong>Additions and deductions should be entered before finalization on a future run.</div>' :
+        '<div class="run-actions"><select id="addStaff"><option value="">Select staff</option>' + activeEmployeesForRun(run).map(function (e) { return '<option value="' + esc(e.staff_id) + '">' + esc(employeeName(e.staff_id)) + '</option>'; }).join('') + '</select>' +
+        '<select id="addType"><option value="bonus">Bonus / earning</option><option value="deduction">Deduction</option></select>' +
+        '<input id="addAmount" type="number" min="0" step="0.01" placeholder="Amount" style="max-width:110px" />' +
+        '<input id="addDesc" type="text" placeholder="Description" style="min-width:160px" />' +
+        '<button class="btn-sm" id="addRunItemBtn">Add to Run</button></div>');
 
+    var defaultStaffNode = qs("defaultAssignStaff");
+    if (defaultStaffNode && qs("assignStaff")) {
+      try { qs("assignStaff").value = JSON.parse(defaultStaffNode.textContent || '""'); } catch {}
+    }
     var printBtn = qs("printReportBtn");
     if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
     var refreshBtn = qs("refreshPreviewBtn");
@@ -324,6 +366,8 @@
     if (finalizeBtn) finalizeBtn.addEventListener("click", function () { finalizeRun(run); });
     var addBtn = qs("addRunItemBtn");
     if (addBtn) addBtn.addEventListener("click", function () { addRunItem(run); });
+    var assignBtn = qs("assignPayBtn");
+    if (assignBtn) assignBtn.addEventListener("click", function () { createPayAssignment(run); });
 
     renderRuns();
   }
@@ -361,6 +405,24 @@
     });
     if (!data.ok) return toast(data.error || "Could not add payroll item", true);
     toast("Added to draft run");
+    selectRun(run.run_id);
+  }
+
+  async function createPayAssignment(run) {
+    var staffId = qs("assignStaff") ? qs("assignStaff").value : "";
+    var structureId = qs("assignStructure") ? qs("assignStructure").value : "";
+    var baseAmount = qs("assignBase") ? qs("assignBase").value : "";
+    var effectiveDate = qs("assignDate") ? qs("assignDate").value : "";
+    if (!staffId || !structureId || !effectiveDate) return toast("Staff, pay structure, and effective date are required", true);
+    if (!baseAmount || Number(baseAmount) < 0) return toast("Enter a valid base amount", true);
+    var data = await tryEndpoints(["/api/hr/payroll/assignments"], {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ staff_id:staffId, structure_id:structureId, base_amount:baseAmount, effective_date:effectiveDate, currency:"USD" })
+    });
+    if (!data.ok) return toast(data.error || "Could not create pay assignment", true);
+    toast("Pay assignment created. Refreshing payroll preview.");
+    await loadAll();
     selectRun(run.run_id);
   }
 
