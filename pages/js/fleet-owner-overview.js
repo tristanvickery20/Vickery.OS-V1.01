@@ -12,7 +12,7 @@
   };
 
   function esc(s) {
-    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function norm(s) { return String(s || "").toLowerCase().trim(); }
   function asArray(v) { return Array.isArray(v) ? v : []; }
