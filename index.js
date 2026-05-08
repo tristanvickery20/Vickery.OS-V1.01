@@ -75,6 +75,7 @@ const { handleGeocode } = require("./api/schedule-geocode");
 const { handleOptimize, handleOptimizeSave } = require("./api/schedule-optimize");
 const { handleMapboxConfig } = require("./api/config-mapbox");
 const { handleGetPositions, handleGetTrips, startPolling: startTraccarPolling } = require("./api/traccar");
+const { handleFleetAssetsApi } = require("./api/fleet-assets");
 const { handleRescheduleRequest, handleRescheduleRespond } = require("./api/reschedule");
 const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
@@ -1737,6 +1738,14 @@ const server = http.createServer(async (req, res) => {
     const slipId = _epath.slice("/api/hr/payroll/slips/".length);
     return handleGetSlip(req, res, slipId);
   }
+  if (_epath.startsWith("/api/fleet-assets")) {
+    if (!isAuthed(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    return handleFleetAssetsApi(req, res);
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not Found");
 });
