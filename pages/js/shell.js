@@ -146,6 +146,47 @@ function closeDrawerOnNavClick() {
   });
 }
 
+function forceCloseQuickAdd() {
+  var modal = document.getElementById("ve-qa-modal");
+  var backdrop = document.getElementById("ve-qa-backdrop");
+  if (modal) modal.classList.remove("open");
+  if (backdrop) backdrop.classList.remove("open");
+}
+
+function openQuickAddOnlyOnClick() {
+  var modal = document.getElementById("ve-qa-modal");
+  var backdrop = document.getElementById("ve-qa-backdrop");
+  if (modal) modal.classList.add("open");
+  if (backdrop) backdrop.classList.add("open");
+}
+
+function bindQuickAddSafety() {
+  forceCloseQuickAdd();
+  setTimeout(forceCloseQuickAdd, 50);
+  setTimeout(forceCloseQuickAdd, 300);
+
+  if (window.__veQuickAddSafetyBound) return;
+  window.__veQuickAddSafetyBound = true;
+
+  document.addEventListener("click", function(e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    if (target.closest("#ve-qa-fab")) {
+      e.preventDefault();
+      openQuickAddOnlyOnClick();
+      return;
+    }
+    if (target.closest("#ve-qa-close") || target.closest("#ve-qa-backdrop")) {
+      e.preventDefault();
+      forceCloseQuickAdd();
+    }
+  }, true);
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") forceCloseQuickAdd();
+  });
+}
+
 function initShell() {
   ensureBackdrop().addEventListener("click", closeSidebar);
 
@@ -161,9 +202,13 @@ function initShell() {
 }
 
 function loadQuickAdd() {
-  if (document.getElementById("ve-qa-modal")) return;
+  if (document.getElementById("ve-qa-modal")) {
+    bindQuickAddSafety();
+    return;
+  }
   var s = document.createElement("script");
   s.src = "/pages/js/quick-add.js";
+  s.onload = bindQuickAddSafety;
   document.body.appendChild(s);
 }
 
@@ -185,6 +230,15 @@ function loadFleetOwnerOverview() {
   document.body.appendChild(s);
 }
 
+function loadLeadScheduleTechDropdown() {
+  if (window.location.pathname !== "/crm/lead") return;
+  if (document.getElementById("leadScheduleTechDropdownScript")) return;
+  var s = document.createElement("script");
+  s.id = "leadScheduleTechDropdownScript";
+  s.src = "/pages/js/lead-schedule-tech-dropdown.js";
+  document.body.appendChild(s);
+}
+
 function loadSidebar() {
   var mount = document.getElementById("sidebarMount");
   if (!mount) return;
@@ -197,6 +251,7 @@ function loadSidebar() {
       loadQuickAdd();
       loadDashboardLifecycleControl();
       loadFleetOwnerOverview();
+      loadLeadScheduleTechDropdown();
     })
     .catch(function(err) {
       console.error("Sidebar load error:", err);
@@ -204,6 +259,7 @@ function loadSidebar() {
       loadQuickAdd();
       loadDashboardLifecycleControl();
       loadFleetOwnerOverview();
+      loadLeadScheduleTechDropdown();
     });
 }
 
