@@ -43,12 +43,26 @@ async function handleGetClients(req, res) {
     const limitRaw = Number(parsed.query.limit) || 200;
     const limit = Math.min(Math.max(1, limitRaw), 500);
 
-    const [clientsTab, leadsTab, snapshots, bookings] = await Promise.all([
+    const [clientsTab, leadsTab, snapshots, bookings, staffRows] = await Promise.all([
       readTab("Clients").catch(() => []),
       readTab("Leads").catch(() => []),
       readTab("QuoteSnapshots").catch(() => []),
       readTab("Bookings").catch(() => []),
+      readTab("Staff").catch(() => []),
     ]);
+    const staffById = {};
+    const staffByName = {};
+    for (const s of staffRows) {
+      const sid = stripHtml(s.staff_id || "").trim();
+      const full = `${stripHtml(s.first_name || "").trim()} ${stripHtml(s.last_name || "").trim()}`.trim();
+      if (sid && full) staffById[sid] = full;
+      if (full) staffByName[full.toLowerCase()] = full;
+    }
+    function resolveCrewDisplay(rawCrew) {
+      const parts = String(rawCrew || "").split(",").map(x => stripHtml(x).trim()).filter(Boolean);
+      if (!parts.length) return "";
+      return parts.map((p) => staffById[p] || staffByName[p.toLowerCase()] || p).join(", ");
+    }
 
     // Build name lookup from QuoteSnapshots (prefer "locked" event)
     const snapByQuoteId = {}, snapByPhone = {};
@@ -69,7 +83,8 @@ async function handleGetClients(req, res) {
       const bName = stripHtml(b.customer_name  || "").trim();
       const bPhone= stripHtml(b.phone          || "").replace(/\D/g, "");
       const entry = { name: bName, phone: bPhone, email: stripHtml(b.email || "").trim(), address: stripHtml(b.address || "").trim() };
-      const crew = stripHtml(b.assigned_crew_names || b.assigned_to || b.assigned_tech_id || "").trim();
+      const fallbackIds = [b.assigned_tech_id, b.assigned_tech_ids].filter(Boolean).join(",");
+      const crew = resolveCrewDisplay(b.assigned_crew_names || b.assigned_to || fallbackIds);
       if (qid   && bName && !bookingByQuoteId[qid])    bookingByQuoteId[qid]   = entry;
       if (qid   && crew && !bookingCrewByQuoteId[qid]) bookingCrewByQuoteId[qid] = crew;
       if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;

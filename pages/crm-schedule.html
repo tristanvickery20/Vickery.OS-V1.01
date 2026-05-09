@@ -2206,6 +2206,7 @@
           ${b.address ? `<a class="detail-btn" href="${navHref(b.address)}" target="_blank" rel="noopener" style="text-align:center;">Navigate &#10132;</a>` : ""}
           ${b.phone ? `<button class="detail-btn amber" id="detailRequestReschedule">Send Reschedule Request</button>` : ""}
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/lead?quote_id=${esc(b.quote_id)}" target="_blank">&#9889; Open Full Report</a>` : ""}
+          <button class="detail-btn" id="detailPreviewJob">Preview Job</button>
           ${nfcWriteBtn}
           ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
         `;
@@ -2278,6 +2279,16 @@
             alert("Failed to save: " + err.message);
           }
         });
+        document.getElementById("detailPreviewJob")?.addEventListener("click", () => {
+          const ctx = {
+            booking_id: b.booking_id || "",
+            quote_id: b.quote_id || "",
+            assigned_tech_id: b.assigned_tech_id || "",
+            assigned_tech_ids: b.assigned_tech_ids || "",
+          };
+          console.log("[scheduler-detail] Preview Job clicked", ctx);
+          openPreviewModal(b, ctx);
+        });
 
         // Reschedule request button — opens the request modal for this booking
         document.getElementById("detailRequestReschedule")?.addEventListener("click", () => {
@@ -2291,6 +2302,59 @@
       function closeDetail() {
         detailPanel.classList.remove("open");
         detailBackdrop.classList.remove("show");
+      }
+
+      function renderPreviewMaterials(snapshot) {
+        const selectedJobQty = Number(snapshot.selected_job_qty || 1) || 1;
+        const materialTotals = Array.isArray(snapshot.material_totals) ? snapshot.material_totals : [];
+        if (!materialTotals.length) return `<div style="color:var(--muted);font-size:12px;">No material lines available.</div>`;
+        return `<div style="display:flex;flex-direction:column;gap:6px;">${materialTotals.map((m) => {
+          const unitQty = Number(m.unit_qty || m.qty || 0) || 0;
+          const totalQty = unitQty * selectedJobQty;
+          const label = m.name || m.material || m.item || "Material";
+          return `<div style="font-size:13px;">Qty: <strong>${esc(totalQty)}</strong> · ${esc(label)} <span style="opacity:.75;">(${esc(unitQty)} × ${esc(selectedJobQty)})</span></div>`;
+        }).join("")}</div>`;
+      }
+
+      function openPreviewModal(booking, ctx) {
+        let modal = document.getElementById("jobPreviewModal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "jobPreviewModal";
+          modal.className = "cal-modal-backdrop";
+          modal.innerHTML = `<div class="cal-modal" style="width:560px;max-height:85vh;overflow:auto;">
+            <div class="cal-modal-title">Job Preview</div>
+            <div id="jobPreviewError" style="display:none;color:#f87171;font-size:13px;font-weight:700;"></div>
+            <div id="jobPreviewBody" style="display:flex;flex-direction:column;gap:10px;font-size:13px;"></div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="cal-btn" id="jobPreviewClose">Close</button></div>
+          </div>`;
+          document.body.appendChild(modal);
+          modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("show"); });
+          modal.querySelector("#jobPreviewClose").addEventListener("click", () => modal.classList.remove("show"));
+        }
+        const errEl = modal.querySelector("#jobPreviewError");
+        const bodyEl = modal.querySelector("#jobPreviewBody");
+        const missing = [];
+        if (!ctx.booking_id) missing.push("booking_id");
+        if (!ctx.quote_id) missing.push("quote_id");
+        errEl.style.display = missing.length ? "block" : "none";
+        errEl.textContent = missing.length ? `Missing required value(s): ${missing.join(", ")}` : "";
+
+        let snapshot = {};
+        try { snapshot = booking.snapshot_json ? JSON.parse(booking.snapshot_json) : {}; } catch {}
+        const crewLabel = booking.assigned_crew_names || booking.assigned_tech_name || "Unassigned";
+        const crewWarning = (!booking.assigned_tech_id && !booking.assigned_tech_ids)
+          ? `<div style="color:#fbbf24;font-weight:700;">Warning: No crew assigned yet</div>` : "";
+
+        bodyEl.innerHTML = `
+          <div><strong>Booking ID:</strong> ${esc(ctx.booking_id || "—")}</div>
+          <div><strong>Quote ID:</strong> ${esc(ctx.quote_id || "—")}</div>
+          <div><strong>Crew:</strong> ${esc(crewLabel || "Unassigned")}</div>
+          ${crewWarning}
+          <div style="margin-top:6px;"><strong>Materials</strong></div>
+          ${renderPreviewMaterials(snapshot)}
+        `;
+        modal.classList.add("show");
       }
 
       // ── Reschedule Request modal ───────────────────────────────────
