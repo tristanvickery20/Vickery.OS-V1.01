@@ -108,7 +108,7 @@
         job_type:         b.job_type_id || "",
         price:            b.final_price,
         status:           b.status,
-        assigned_to:      "",
+        assigned_to:      b.assigned_crew_names || b.assigned_tech_id || "",
         duration_min:     b.duration_minutes,
         allocated_min:    b.block_allocated_minutes || b.duration_minutes || "",
         is_continuation:  b.is_continuation === "true",

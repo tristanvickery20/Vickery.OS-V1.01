@@ -777,6 +777,18 @@
       </div>
     </div>
 
+
+    <!-- Job Preview modal -->
+    <div class="cal-modal-backdrop" id="jobPreviewModal">
+      <div class="cal-modal" style="max-width:620px;">
+        <div class="cal-modal-title">Job Preview</div>
+        <div class="cal-modal-body" id="jobPreviewBody" style="max-height:60vh;overflow:auto;"></div>
+        <div class="cal-modal-footer">
+          <button class="cal-modal-cancel" id="jobPreviewClose">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Reschedule Request modal -->
     <div class="cal-modal-backdrop" id="rescheduleRequestModal">
       <div class="cal-modal">
@@ -2208,6 +2220,7 @@
           ${b.quote_id ? `<a class="detail-btn primary" href="/crm/lead?quote_id=${esc(b.quote_id)}" target="_blank">&#9889; Open Full Report</a>` : ""}
           ${nfcWriteBtn}
           ${S.staff.length > 0 ? `<button class="detail-btn primary" id="detailSaveTech">Save Crew</button>` : ""}
+          <button class="detail-btn" id="detailPreviewBtn">Preview Job</button>
         `;
 
         // NFC write — write booking_id to chip (Android Chrome only)
@@ -2280,6 +2293,37 @@
         });
 
         // Reschedule request button — opens the request modal for this booking
+
+        document.getElementById("detailPreviewBtn")?.addEventListener("click", async () => {
+          console.log("[schedule-preview] click", { booking_id: b.booking_id, quote_id: b.quote_id, assigned_tech_id: b.assigned_tech_id, assigned_tech_ids: b.assigned_tech_ids });
+          const modal = document.getElementById("jobPreviewModal");
+          const bodyEl = document.getElementById("jobPreviewBody");
+          const missing = [];
+          if (!b.booking_id) missing.push("booking_id");
+          if (!b.quote_id) missing.push("quote_id");
+          const hasCrew = !!(b.assigned_tech_id || b.assigned_tech_ids);
+          if (missing.length) {
+            bodyEl.innerHTML = `<div style="color:#f87171;font-weight:700;">Preview unavailable</div><div style="font-size:13px;color:#aaa;">Missing required data: ${esc(missing.join(", "))}</div>`;
+            modal.classList.add("show");
+            return;
+          }
+          bodyEl.innerHTML = `<div style="color:#aaa;">Loading preview…</div>`;
+          modal.classList.add("show");
+          try {
+            const r = await fetch(`/api/lead-snapshot?quote_id=${encodeURIComponent(b.quote_id)}`);
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.error || "Preview lookup failed");
+            const mats = Array.isArray(d.material_lines) ? d.material_lines : [];
+            const matHtml = mats.length ? mats.map(m => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);"><span>${esc(m.name)}</span><span>Qty: ${esc(String(m.total_qty))} <small style="opacity:.7">(${esc(String(m.unit_qty))} × ${esc(String(m.job_qty))})</small></span></div>`).join("") : `<div style="opacity:.7;">No material line items found in snapshot.</div>`;
+            const crewLabel = hasCrew ? (b.assigned_tech_ids || b.assigned_tech_id) : "Unassigned";
+            const warn = hasCrew ? "" : `<div style="margin-top:8px;color:#fbbf24;font-size:12px;">No crew assigned yet</div>`;
+            bodyEl.innerHTML = `<div><strong>${esc(d.job_type_label || d.job_type_id || "Job")}</strong></div><div style="font-size:12px;opacity:.8;">Booking: ${esc(b.booking_id)} · Quote: ${esc(b.quote_id)} · Crew: ${esc(crewLabel)}</div>${warn}<div style="margin-top:10px;font-size:12px;font-weight:700;">Materials (total quantities)</div>${matHtml}`;
+          } catch (err) {
+            console.error("[schedule-preview] open failed", err);
+            bodyEl.innerHTML = `<div style="color:#f87171;font-weight:700;">Preview failed</div><div style="font-size:13px;color:#aaa;">${esc(err.message)}</div>`;
+          }
+        });
+
         document.getElementById("detailRequestReschedule")?.addEventListener("click", () => {
           openRescheduleRequestModal(b);
         });
@@ -2948,8 +2992,10 @@
         await loadData();
         if (failed.length) alert(`${failed.length} job(s) failed to reassign.`);
       });
+      document.getElementById("jobPreviewClose")?.addEventListener("click", () => document.getElementById("jobPreviewModal")?.classList.remove("show"));
+
       // Close modals on backdrop click
-      [rescheduleModal, reassignModal].forEach(modal => {
+      [rescheduleModal, reassignModal, document.getElementById("jobPreviewModal")].filter(Boolean).forEach(modal => {
         modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("show"); });
       });
 

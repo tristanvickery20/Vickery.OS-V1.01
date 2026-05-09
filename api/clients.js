@@ -63,14 +63,17 @@ async function handleGetClients(req, res) {
     }
 
     // Build name lookup from Bookings — guaranteed to have customer_name
-    const bookingByQuoteId = {}, bookingByPhone = {};
+    const bookingByQuoteId = {}, bookingByPhone = {}, bookingCrewByQuoteId = {}, bookingCrewByPhone = {};
     for (const b of bookings) {
       const qid   = stripHtml(b.quote_id       || "").trim();
       const bName = stripHtml(b.customer_name  || "").trim();
       const bPhone= stripHtml(b.phone          || "").replace(/\D/g, "");
       const entry = { name: bName, phone: bPhone, email: stripHtml(b.email || "").trim(), address: stripHtml(b.address || "").trim() };
+      const crew = stripHtml(b.assigned_crew_names || b.assigned_to || b.assigned_tech_id || "").trim();
       if (qid   && bName && !bookingByQuoteId[qid])    bookingByQuoteId[qid]   = entry;
+      if (qid   && crew && !bookingCrewByQuoteId[qid]) bookingCrewByQuoteId[qid] = crew;
       if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;
+      if (bPhone && crew && !bookingCrewByPhone[bPhone]) bookingCrewByPhone[bPhone] = crew;
     }
 
     function enrichAndShape(l, idField, statusField, addressField) {
@@ -79,6 +82,7 @@ async function handleGetClients(req, res) {
       let email   = stripHtml(l.email   || "").trim();
       let address = stripHtml(l[addressField || "address"] || l.address || l.primary_address || "").trim();
       const status = stripHtml(l[statusField] || l.status || l.status_code || "").trim();
+      let assignedTo = stripHtml(l.assigned_to || "").trim();
 
       // Enrich missing fields via 4-layer lookup
       if (!name || !phone || !email) {
@@ -97,6 +101,12 @@ async function handleGetClients(req, res) {
         }
       }
 
+      if (!assignedTo) {
+        const cleanPh = phone.replace(/\D/g, "");
+        const qid     = stripHtml(l.last_quote_id || "").trim();
+        assignedTo = (qid && bookingCrewByQuoteId[qid]) || (cleanPh && bookingCrewByPhone[cleanPh]) || assignedTo;
+      }
+
       return {
         id:              stripHtml(l[idField] || l.id || ""),
         client_id:       stripHtml(l.client_id || l.id || ""),
@@ -108,7 +118,7 @@ async function handleGetClients(req, res) {
         status,
         estimated_value: l.estimated_value || "",
         scheduled_date:  l.scheduled_date  || "",
-        assigned_to:     l.assigned_to     || "",
+        assigned_to:     assignedTo || "",
         notes:           l.notes || l.job_description || "",
         created_at:      l.created_at || "",
       };

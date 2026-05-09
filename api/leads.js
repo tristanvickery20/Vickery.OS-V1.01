@@ -556,6 +556,7 @@ async function handleGetLeadSnapshot(req, res) {
     // Parse selected_options_json — shape: { answers: { MODULE_ID: "value" }, qty, classification }
     let answers = {};
     let qty = 1;
+    let equipmentLineItems = [];
     let classification = "";
     let selectedAddons = [];
     try {
@@ -566,6 +567,7 @@ async function handleGetLeadSnapshot(req, res) {
         answers        = raw.answers        || {};
         qty            = raw.qty            || 1;
         classification = raw.classification || "";
+        equipmentLineItems = Array.isArray(raw.equipment_line_items) ? raw.equipment_line_items : [];
       }
     } catch { /* ignore */ }
 
@@ -611,6 +613,20 @@ async function handleGetLeadSnapshot(req, res) {
       },
       answers: qaLines,
       addons: selectedAddons,
+      material_lines: equipmentLineItems.map((li) => {
+        const unitQty = Number(li.quantity || li.qty || 1) || 1;
+        const totalQty = Math.max(1, Number(qty) || 1) * unitQty;
+        return {
+          id: li.id || "",
+          name: li.title || li.name || li.description || "Material",
+          unit_qty: unitQty,
+          job_qty: Math.max(1, Number(qty) || 1),
+          total_qty: totalQty,
+          unit_label: li.unit || "each",
+          display: `${totalQty} × ${li.title || li.name || "Material"}`,
+        };
+      }),
+      selected_options_json: snap.selected_options_json || "",
     }));
   } catch (err) {
     res.writeHead(500, { "Content-Type": "application/json" });
