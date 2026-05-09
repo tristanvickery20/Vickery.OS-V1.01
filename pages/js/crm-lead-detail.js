@@ -6,6 +6,8 @@
   const quoteId = params.get('quote_id');
   const root   = document.getElementById('ldRoot');
 
+  let CURRENT_LEAD = null;
+
   const STATUS_LABELS = {
     awaiting_response: 'Awaiting Response',
     quoted:            'Quoted',
@@ -87,6 +89,7 @@
   }
 
   function render(lead) {
+    CURRENT_LEAD = lead;
     const status = lead.status_code || lead.status || '';
     const profit = Number(lead.gross_profit || 0);
     const margin = lead.gross_margin_pct != null ? lead.gross_margin_pct + '%' : '—';
@@ -145,7 +148,11 @@
 
           <!-- Scheduling -->
           <div class="ld-card">
-            <div class="ld-card-title">Scheduling</div>
+            <div class="ld-card-title">Scheduling
+              <div class="ld-card-title-actions">
+                <button class="ld-btn" id="ldEditScheduleBtn" style="padding:4px 10px;font-size:12px;">Edit</button>
+              </div>
+            </div>
             ${fieldRow('Scheduled Date', fmtDate(lead.scheduled_date))}
             ${fieldRow('Time Window', lead.schedule_window)}
             ${fieldRow('Preference', lead.schedule_preference)}
@@ -171,6 +178,12 @@
           </div>
 
           ${hasQuoteId ? `
+          <div class="ld-card" id="ldMaterialsCard">
+            <div class="ld-card-title">Estimated Materials</div>
+            <div class="ld-materials-helper">Preliminary pull list based on quote answers. Verify before dispatch.</div>
+            <div id="ldMaterialsContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading materials…</div>
+          </div>
+
           <!-- Quote Breakdown -->
           <div class="ld-card" id="ldSnapshotCard">
             <div class="ld-card-title">Quote Breakdown</div>
@@ -235,7 +248,10 @@
     `;
 
     attachEvents(lead);
-    if (hasQuoteId) loadSnapshot(lead.last_quote_id);
+    if (hasQuoteId) {
+      loadMaterials(lead.id || lead.lead_id);
+      loadSnapshot(lead.last_quote_id);
+    }
     loadLeadInvoice(lead.id || lead.lead_id, lead);
     loadBonusPanel(lead.id || lead.lead_id);
   }
@@ -318,6 +334,28 @@
     }
   }
 
+  async function loadMaterials(leadId) {
+    const el = document.getElementById('ldMaterialsContent');
+    if (!el || !leadId) return;
+    try {
+      const data = await window.Api.fetchJson('/api/leads/' + encodeURIComponent(leadId) + '/materials');
+      if (!data.ok) throw new Error(data.error || 'Failed to load materials');
+      const mats = Array.isArray(data.materials) ? data.materials : [];
+      if (!mats.length) {
+        el.innerHTML = '<div class="ld-notes-empty">No material list was captured for this quote yet.</div>';
+        return;
+      }
+      el.innerHTML = '<div class="ld-mat-list">' + mats.map((m) => `
+        <div class="ld-mat-row">
+          <div class="ld-mat-main">${esc(m.name || 'Material')}</div>
+          <div class="ld-mat-meta">${esc(String(m.quantity ?? 1))} ${esc(m.unit || 'each')} ${m.source ? '— ' + esc(m.source) : ''}</div>
+          ${m.notes ? `<div class="ld-mat-note">${esc(m.notes)}</div>` : ''}
+        </div>`).join('') + '</div>';
+    } catch (err) {
+      el.innerHTML = '<span style="color:hsl(0,70%,50%);font-size:13px;">Could not load materials: ' + esc(err.message) + '</span>';
+    }
+  }
+
   function showMsg(id, text, type) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -364,6 +402,9 @@
       });
     }
 
+    const editScheduleBtn = document.getElementById('ldEditScheduleBtn');
+    if (editScheduleBtn) editScheduleBtn.addEventListener('click', () => openScheduleModal(lead));
+
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
         const newNotes = notesEditor.value.trim();
@@ -394,6 +435,57 @@
         }
       });
     }
+  }
+
+  function ensureScheduleModal() {
+    if (document.getElementById('ldScheduleModal')) return;
+    const div = document.createElement('div');
+    div.id = 'ldScheduleModal';
+    div.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;';
+    div.innerHTML = `<div id="ldScheduleBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);"></div>
+      <div style="position:relative;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:20px;width:420px;max-width:calc(100vw - 24px);">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;margin-bottom:12px;">Edit Scheduling</div>
+        <div class="ld-sched-grid">
+          <label>Scheduled Date<input id="ldSchedDate" type="datetime-local" class="ld-status-select"></label>
+          <label>Time Window<input id="ldSchedWindow" type="text" class="ld-status-select" placeholder="Morning / Afternoon"></label>
+          <label>Schedule Preference<input id="ldSchedPref" type="text" class="ld-status-select" placeholder="Customer preference"></label>
+          <label>Duration Minutes<input id="ldSchedDuration" type="number" min="0" max="1440" class="ld-status-select"></label>
+          <label>Assigned To / Technician<input id="ldSchedAssigned" type="text" class="ld-status-select" placeholder="Technician name"></label>
+        </div>
+        <div id="ldSchedErr" style="display:none;color:hsl(0 70% 45%);font-size:12px;margin-top:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;"><button class="ld-btn" id="ldSchedCancel">Cancel</button><button class="ld-btn ld-btn-primary" id="ldSchedSave">Save</button></div>
+      </div>`;
+    document.body.appendChild(div);
+  }
+
+  function openScheduleModal(lead) {
+    ensureScheduleModal();
+    const modal = document.getElementById('ldScheduleModal');
+    const toLocal = (v) => { if (!v) return ''; const d = new Date(v); if (isNaN(d)) return String(v).slice(0,16); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+    document.getElementById('ldSchedDate').value = toLocal(lead.scheduled_date);
+    document.getElementById('ldSchedWindow').value = lead.schedule_window || '';
+    document.getElementById('ldSchedPref').value = lead.schedule_preference || '';
+    document.getElementById('ldSchedDuration').value = lead.duration_minutes || '';
+    document.getElementById('ldSchedAssigned').value = lead.assigned_to || '';
+    document.getElementById('ldSchedErr').style.display = 'none';
+    modal.style.display = 'flex';
+    const close = () => { modal.style.display = 'none'; };
+    document.getElementById('ldScheduleBackdrop').onclick = close;
+    document.getElementById('ldSchedCancel').onclick = close;
+    document.getElementById('ldSchedSave').onclick = async () => {
+      const btn = document.getElementById('ldSchedSave');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const body = { id: lead.id, scheduled_date: document.getElementById('ldSchedDate').value, schedule_window: document.getElementById('ldSchedWindow').value.trim(), schedule_preference: document.getElementById('ldSchedPref').value.trim(), duration_minutes: Number(document.getElementById('ldSchedDuration').value || 0), assigned_to: document.getElementById('ldSchedAssigned').value.trim() };
+        const r = await window.Api.fetchJson('/api/leads/schedule', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error(r.error || 'Schedule save failed');
+        Object.assign(lead, body, { status: 'Scheduled' });
+        close();
+        render(lead);
+      } catch (e) {
+        const errEl = document.getElementById('ldSchedErr'); errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally { btn.disabled = false; btn.textContent = 'Save'; }
+    };
   }
 
   /* =============================================

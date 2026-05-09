@@ -24,6 +24,7 @@ const { handleToday, handleWeekDay } = require("./api/today");
 const { handleBonusEligibility } = require("./api/bonus-eligibility");
 const { handleAppsLeadCreate } = require("./api/apps-lead-create");
 const { handleScheduleLead } = require("./api/leads-schedule");
+const { handleGetLeadMaterials } = require("./api/leads-materials");
 const { handleGetTime, handleCreateTime, handleUpdateTime } = require("./api/time");
 const { handleGetExpenses, handleCreateExpense } = require("./api/expenses");
 const { handleCreateQuote } = require("./api/quotes");
@@ -1162,6 +1163,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/lead-snapshot") && req.method === "GET") {
     return handleGetLeadSnapshot(req, res);
+  }
+
+  if (req.url.match(/^\/api\/leads\/[^/?]+\/materials/) && req.method === "GET") {
+    return handleGetLeadMaterials(req, res);
   }
 
   if (req.url === "/api/leads/status" && req.method === "PATCH") {
