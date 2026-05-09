@@ -1763,19 +1763,23 @@ const { isV2Mode } = require("./lib/estimatorV2Config");
 server.listen(5000, "0.0.0.0", () => {
   console.log("Server running on port 5000");
   console.log(`Estimator Mode: ${isV2Mode() ? "v2" : "v1"}`);
-  ensureAllHeaders()
-    .then(() => ensureConfigDefaults())
-    .then(() => ensureCalculatorDefaults())
-    .then(() => ensureStaffSheet())
-    .then(() => ensureHrSheets())
-    .then(() => ensureAttendanceSheets())
-    .then(() => ensureLeaveSheets())
-    .then(() => ensureRecruitingSheets())
-    .then(() => ensurePayrollSheets())
-    .then(() => seedQuoteSheetIfEmpty())
-    .then(() => backfillSegmentCategory())
-    .then(() => logQuoteHealth())
-    .catch((err) => console.error("[Startup]", err.message));
+  // Defer the heavy startup schema-check chain by 10 s so early API calls
+  // (e.g. /api/quote/config) can read from Sheets before the quota spike.
+  setTimeout(() => {
+    ensureAllHeaders()
+      .then(() => ensureConfigDefaults())
+      .then(() => ensureCalculatorDefaults())
+      .then(() => ensureStaffSheet())
+      .then(() => ensureHrSheets())
+      .then(() => ensureAttendanceSheets())
+      .then(() => ensureLeaveSheets())
+      .then(() => ensureRecruitingSheets())
+      .then(() => ensurePayrollSheets())
+      .then(() => seedQuoteSheetIfEmpty())
+      .then(() => backfillSegmentCategory())
+      .then(() => logQuoteHealth())
+      .catch((err) => console.error("[Startup]", err.message));
+  }, 10_000);
 
   // Google Calendar: bootstrap managed calendars on startup (non-blocking)
   const { bootstrapCalendars, runReverseSync, scheduleDailyOverdueAlerts } = require("./lib/googleCalendar");

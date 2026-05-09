@@ -56,13 +56,16 @@ function normalizeConfig(raw) {
 
 // ── GET /api/estimator/config ────────────────────────────────────────────────
 async function handleEstimatorConfig(req, res) {
+  if (!process.env.ESTIMATOR_V2_SHEET_ID) {
+    return json(res, 200, { ok: false, unavailable: true, services: [], modules: {} }, NO_CACHE);
+  }
   try {
     const raw = await getEstimatorConfig();
     const cfg = normalizeConfig(raw);
     json(res, 200, { ok: true, ...cfg }, NO_CACHE);
   } catch (err) {
     console.error("[estimator-config]", err.message);
-    json(res, 500, { ok: false, error: err.message }, NO_CACHE);
+    json(res, 200, { ok: false, unavailable: true, error: err.message, services: [], modules: {} }, NO_CACHE);
   }
 }
 
