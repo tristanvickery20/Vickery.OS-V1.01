@@ -22,11 +22,26 @@ async function handleGetBookings(req, res) {
   try {
     await ensureTabHeaders("Bookings");
     const sheets = await getSheetsClient();
-    const r = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID(),
-      range: "Bookings!A:Z",
-    });
+    const [r, staffResp] = await Promise.all([
+      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID(), range: "Bookings!A:Z" }),
+      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } })),
+    ]);
     const bookings = rowsToObjects(r.data.values || []);
+    const staffRows = staffResp.data.values || [];
+    const staffMap = {};
+    if (staffRows.length > 1) {
+      const [sh, ...sd] = staffRows;
+      const si = Object.fromEntries(sh.map((h, i) => [h, i]));
+      sd.forEach((row) => {
+        const sid = String(row[si.staff_id] || "").trim();
+        const name = `${String(row[si.first_name] || "").trim()} ${String(row[si.last_name] || "").trim()}`.trim();
+        if (sid) staffMap[sid] = name || sid;
+      });
+    }
+    bookings.forEach((b) => {
+      const ids = String(b.assigned_tech_ids || b.assigned_tech_id || "").split(",").map(s => s.trim()).filter(Boolean);
+      b.assigned_crew_names = ids.map(id => staffMap[id] || id).join(", ");
+    });
 
     // Optional filter: ?status=confirmed
     const url    = new URL(req.url, "http://localhost");
