@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "python-3.11", "bash"]
 [nix]
 channel = "stable-25_05"
 packages = ["glibcLocales", "unzip"]
@@ -6,6 +6,7 @@ packages = ["glibcLocales", "unzip"]
 [agent]
 expertMode = true
 integrations = ["google-drive:1.0.0"]
+stack = "BEST_EFFORT_FALLBACK"
 
 [workflows]
 runButton = "Project"
