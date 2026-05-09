@@ -192,6 +192,7 @@
       const scheduled = fmtShortDate(c.scheduled_date);
       const scheduledStr = scheduled ? ("Scheduled: " + scheduled) : "Scheduled: \u2014";
       const est = fmtMoney(c.estimated_value);
+      const crew = normalize(c.assigned_to);
       const estStr = "Est: " + (est || "\u2014");
       const jobNum = normalize(c.job_number);
       const jobStr = jobNum ? ("Job #" + jobNum) : "";
@@ -206,7 +207,7 @@
           '<div class="client-mid">' +
             '<div class="client-name">' + escH(c.name || "(No name)") + "</div>" +
             (subLine ? '<div class="client-sub">' + escH(subLine) + "</div>" : "") +
-            '<div class="client-sub2">' + escH(scheduledStr + "  \u00b7  " + estStr) + "</div>" +
+            '<div class="client-sub2">' + escH(scheduledStr + "  \u00b7  " + estStr + (crew ? "  \u00b7  Crew: " + crew : "")) + "</div>" +
           "</div>" +
           '<div class="client-right">' +
             statusPill(c.status) +
