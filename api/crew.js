@@ -7,7 +7,7 @@ const crypto                 = require("crypto");
 const { getSheetsClient }    = require("../lib/sheets");
 const { getConfig }          = require("../lib/config");
 const { getEstimatorConfig } = require("../lib/estimatorModulesConfig");
-const { getCrewSession }     = require("../lib/staff");
+const { getCrewSession, findStaffById } = require("../lib/staff");
 
 let ASSEMBLY_TO_SERVICE = {};
 try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
@@ -198,11 +198,70 @@ async function handleGetTodayJobs(req, res) {
 
     const today = todayLocalStr();
 
+    const norm = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const splitAssignmentValues = (value) => {
+      if (Array.isArray(value)) return value.flatMap(splitAssignmentValues);
+      const raw = String(value || "").trim();
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.flatMap(splitAssignmentValues);
+      } catch (_) {}
+      return raw
+        .split(/[|,;]/)
+        .map(v => norm(v))
+        .filter(Boolean);
+    };
+    const addAlias = (set, value) => {
+      const n = norm(value);
+      if (n) set.add(n);
+    };
+    const assignmentFields = [
+      "assigned_tech_id", "assigned_tech_ids", "assigned_to", "assigned_tech",
+      "tech", "technician", "crew", "staff_id", "staff_ids", "tech_id", "tech_ids",
+      "technician_id", "technician_ids", "assigned_user", "assigned_user_id",
+      "assigned_name", "assigned_email",
+    ];
+
     // Get the logged-in crew member's session so we can filter to their assigned jobs.
-    // Owners see all jobs; regular crew only see jobs assigned to them.
+    // Owners/admin see all jobs; regular crew only see jobs assigned to them.
     const session = getCrewSession(req);
-    const staffId = session ? session.staffId : null;
-    const isOwner = session ? session.role === "owner" : false;
+    const role = norm(session ? session.role : "");
+    const isPrivileged = role === "owner" || role === "admin";
+
+    const aliasSet = new Set();
+    if (session) {
+      addAlias(aliasSet, session.staffId);
+      addAlias(aliasSet, session.staff_id);
+      addAlias(aliasSet, session.id);
+      addAlias(aliasSet, session.username);
+      addAlias(aliasSet, session.email);
+      addAlias(aliasSet, session.phone);
+      addAlias(aliasSet, session.displayName);
+      addAlias(aliasSet, session.name);
+      const fullName = [session.firstName || session.first_name, session.lastName || session.last_name].filter(Boolean).join(" ");
+      addAlias(aliasSet, fullName);
+    }
+
+    const sessionStaffId = session ? String(session.staffId || session.staff_id || session.id || "").trim() : "";
+    if (sessionStaffId) {
+      const staffRow = await findStaffById(sessionStaffId).catch(() => null);
+      if (staffRow) {
+        addAlias(aliasSet, staffRow.staff_id);
+        addAlias(aliasSet, staffRow.username);
+        addAlias(aliasSet, staffRow.email);
+        addAlias(aliasSet, staffRow.phone);
+        addAlias(aliasSet, staffRow.name);
+        addAlias(aliasSet, [staffRow.first_name, staffRow.last_name].filter(Boolean).join(" "));
+      }
+    }
+
+    const assignmentMatchesCrew = (job) => {
+      const values = assignmentFields.flatMap((field) => splitAssignmentValues(job[field]));
+      if (values.length === 0) return true; // preserve existing unassigned visibility
+      if (aliasSet.size === 0) return true; // preserve existing no-session fallback
+      return values.some(v => aliasSet.has(v));
+    };
 
     const jobs = data
       .map(r => {
@@ -262,26 +321,30 @@ async function handleGetTodayJobs(req, res) {
           arrived_at:         get("arrived_at"),
           departed_at:        get("departed_at"),
           job_duration_minutes: get("job_duration_minutes") ? Number(get("job_duration_minutes")) : null,
-          // Tech assignment (single and multi)
+          // Tech assignment (single and multi + legacy aliases)
           assigned_tech_id:   get("assigned_tech_id"),
           assigned_tech_ids:  get("assigned_tech_ids"),
+          assigned_to:        get("assigned_to"),
+          assigned_tech:      get("assigned_tech"),
+          tech:               get("tech"),
+          technician:         get("technician"),
+          crew:               get("crew"),
+          staff_id:           get("staff_id"),
+          staff_ids:          get("staff_ids"),
+          tech_id:            get("tech_id"),
+          tech_ids:           get("tech_ids"),
+          technician_id:      get("technician_id"),
+          technician_ids:     get("technician_ids"),
+          assigned_user:      get("assigned_user"),
+          assigned_user_id:   get("assigned_user_id"),
+          assigned_name:      get("assigned_name"),
+          assigned_email:     get("assigned_email"),
         };
       })
       .filter(j => {
-        if (j.date !== today || j.status === "cancelled") return false;
-        // Owners see all jobs
-        if (isOwner) return true;
-        // No session — fall back to showing all (shouldn't normally happen)
-        if (!staffId) return true;
-        // Unassigned jobs: show to everyone so they can be picked up
-        const hasAnyAssignment = j.assigned_tech_id || j.assigned_tech_ids;
-        if (!hasAnyAssignment) return true;
-        // Only show jobs where this tech is assigned
-        if (j.assigned_tech_id === staffId) return true;
-        if (j.assigned_tech_ids) {
-          return j.assigned_tech_ids.split(",").map(s => s.trim()).includes(staffId);
-        }
-        return false;
+        if (j.date !== today || norm(j.status) === "cancelled") return false;
+        if (isPrivileged) return true;
+        return assignmentMatchesCrew(j);
       })
       .sort((a, b) => a.scheduled_datetime.localeCompare(b.scheduled_datetime));
 
