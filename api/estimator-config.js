@@ -60,11 +60,13 @@ async function handleEstimatorConfig(req, res) {
     const raw = await getEstimatorConfig();
     const cfg = normalizeConfig(raw);
 
-    // Guard against undersized payloads — seed should provide ≥5 services and ≥5 modules.
-    // An undersized result means something went wrong in the seed or sheet read.
+    // Guard against undersized payloads — seed provides 25 services and 20 modules.
+    // Use 80% of expected as the minimum threshold to catch partial load failures.
+    const EXPECTED_SERVICES = 25;
+    const EXPECTED_MODULES  = 20;
     const serviceCount = cfg.services.length;
     const moduleCount  = Object.keys(cfg.modules).length;
-    if (serviceCount < 5 || moduleCount < 5) {
+    if (serviceCount < Math.floor(EXPECTED_SERVICES * 0.8) || moduleCount < Math.floor(EXPECTED_MODULES * 0.8)) {
       console.warn(`[estimator-config] Undersized payload: ${serviceCount} services, ${moduleCount} modules — serving degraded response.`);
       json(res, 200, {
         ok: false,
