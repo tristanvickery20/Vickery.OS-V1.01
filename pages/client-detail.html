@@ -55,6 +55,22 @@
       .cd-photo-tile { position:relative; border-radius:var(--radius); overflow:hidden; border:1px solid hsl(var(--border)); aspect-ratio:1; }
       .cd-photo-tile img { width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
       .cd-photo-badge { position:absolute; top:6px; right:6px; font-size:10px; font-weight:600; text-transform:uppercase; padding:2px 7px; border-radius:8px; background:hsl(var(--primary)/.85); color:#fff; letter-spacing:.3px; }
+      /* ── Accordion cards ───────────────────────────── */
+      .cd-acc { border:1px solid hsl(var(--border)); border-radius:var(--radius); margin-bottom:6px; background:#fff; overflow:hidden; }
+      .cd-acc-hdr { display:flex; align-items:center; gap:8px; padding:12px 16px; cursor:pointer; user-select:none; background:transparent; border:none; width:100%; text-align:left; font-family:inherit; }
+      .cd-acc-hdr:hover { background:hsl(var(--secondary)); }
+      .cd-acc-summary { flex:1; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+      .cd-acc-title { font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; color:hsl(var(--foreground)); }
+      .cd-acc-meta { font-size:13px; color:hsl(var(--muted-foreground)); white-space:nowrap; }
+      .cd-acc-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+      .cd-acc-chevron { color:hsl(var(--muted-foreground)); font-size:11px; transition:transform .2s; display:inline-block; }
+      .cd-acc-hdr.is-open .cd-acc-chevron { transform:rotate(180deg); }
+      .cd-acc-body { display:none; padding:12px 16px 14px; border-top:1px solid hsl(var(--border)); font-size:13px; line-height:1.6; }
+      .cd-acc-body.open { display:block; }
+      .cd-acc-row { display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
+      .cd-acc-row-label { color:hsl(var(--muted-foreground)); }
+      .cd-acc-row-val { font-weight:600; text-align:right; }
+      .cd-acc-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid hsl(var(--border)); }
       .lightbox { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; }
       .lightbox.hidden { display:none; }
       .lightbox-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.82); }

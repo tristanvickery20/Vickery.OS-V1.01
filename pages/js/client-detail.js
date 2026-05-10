@@ -364,62 +364,53 @@
 
   function renderQuotes() {
     if (!quotesData.length) return '<div class="cd-empty">No quotes yet.</div>';
-    return (
-      '<div class="cd-list">' +
-      quotesData
-        .map(function (q) {
-          const line =
-            fmtShortDate(q.created_at) +
-            (q.quoted_price ? " \u00b7 " + fmtMoney(q.quoted_price) : "") +
-            (q.service_key ? " \u00b7 " + esc(q.service_key) : "");
-          return (
-            '<div class="cd-list-item">' +
-            '<div class="cd-list-main">' +
-            '<div class="cd-list-title">' +
-            esc(q.id || "Quote") +
+    return quotesData.map(function (q) {
+      const title = q.service_key || q.id || "Quote";
+      const meta = [fmtShortDate(q.created_at), q.quoted_price ? fmtMoney(q.quoted_price) : ""].filter(Boolean).join(" \u00b7 ");
+      const body =
+        (q.id && q.id !== q.service_key ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Quote ID</span><span class="cd-acc-row-val" style="font-family:monospace;font-size:12px;">' + esc(q.id) + "</span></div>" : "") +
+        (q.service_key ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Service</span><span class="cd-acc-row-val">' + esc(q.service_key) + "</span></div>" : "") +
+        (q.quoted_price ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Price</span><span class="cd-acc-row-val">' + fmtMoney(q.quoted_price) + "</span></div>" : "") +
+        '<div class="cd-acc-row"><span class="cd-acc-row-label">Created</span><span class="cd-acc-row-val">' + fmtDate(q.created_at) + "</span></div>";
+      return (
+        '<div class="cd-acc">' +
+          '<button class="cd-acc-hdr">' +
+            '<div class="cd-acc-summary">' +
+              '<span class="cd-acc-title">' + esc(title) + "</span>" +
+              (meta ? '<span class="cd-acc-meta">' + meta + "</span>" : "") +
             "</div>" +
-            '<div class="cd-list-sub">' +
-            line +
-            "</div>" +
-            "</div>" +
-            '<div class="cd-list-right">' +
-            statusBadge(q.status_code) +
-            "</div>" +
-            "</div>"
-          );
-        })
-        .join("") +
-      "</div>"
-    );
+            '<div class="cd-acc-right">' + statusBadge(q.status_code) + '<span class="cd-acc-chevron">&#9660;</span></div>' +
+          "</button>" +
+          '<div class="cd-acc-body">' + body + "</div>" +
+        "</div>"
+      );
+    }).join("");
   }
 
   function renderJobs() {
     if (!jobsData.length) return '<div class="cd-empty">No jobs yet.</div>';
-    return (
-      '<div class="cd-list">' +
-      jobsData
-        .map(function (j) {
-          const line =
-            fmtShortDate(j.created_at) + (j.completed_at ? " \u00b7 Done " + fmtShortDate(j.completed_at) : "");
-          return (
-            '<div class="cd-list-item">' +
-            '<div class="cd-list-main">' +
-            '<div class="cd-list-title">' +
-            esc(j.description || j.id || "Job") +
+    return jobsData.map(function (j) {
+      const title = (j.description || j.id || "Job").slice(0, 48);
+      const meta = [fmtShortDate(j.created_at), j.completed_at ? "Done " + fmtShortDate(j.completed_at) : ""].filter(Boolean).join(" \u00b7 ");
+      const body =
+        (j.id ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Job ID</span><span class="cd-acc-row-val" style="font-family:monospace;font-size:12px;">' + esc(j.id) + "</span></div>" : "") +
+        (j.description ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Description</span><span class="cd-acc-row-val">' + esc(j.description) + "</span></div>" : "") +
+        '<div class="cd-acc-row"><span class="cd-acc-row-label">Created</span><span class="cd-acc-row-val">' + fmtDate(j.created_at) + "</span></div>" +
+        (j.completed_at ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Completed</span><span class="cd-acc-row-val">' + fmtDate(j.completed_at) + "</span></div>" : "") +
+        (j.collected_revenue ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Collected</span><span class="cd-acc-row-val">' + fmtMoney(j.collected_revenue) + "</span></div>" : "");
+      return (
+        '<div class="cd-acc">' +
+          '<button class="cd-acc-hdr">' +
+            '<div class="cd-acc-summary">' +
+              '<span class="cd-acc-title">' + esc(title) + "</span>" +
+              (meta ? '<span class="cd-acc-meta">' + meta + "</span>" : "") +
             "</div>" +
-            '<div class="cd-list-sub">' +
-            line +
-            "</div>" +
-            "</div>" +
-            '<div class="cd-list-right">' +
-            statusBadge(j.status_code) +
-            "</div>" +
-            "</div>"
-          );
-        })
-        .join("") +
-      "</div>"
-    );
+            '<div class="cd-acc-right">' + statusBadge(j.status_code) + '<span class="cd-acc-chevron">&#9660;</span></div>' +
+          "</button>" +
+          '<div class="cd-acc-body">' + body + "</div>" +
+        "</div>"
+      );
+    }).join("");
   }
 
   const CD_INV_STATUS = {
@@ -436,23 +427,22 @@
     const totalPaid   = invoicesData.reduce((s, i) => s + Number(i.paid_amount || 0), 0);
     const totalBal    = invoicesData.reduce((s, i) => s + Number(i.balance_due || 0), 0);
 
-    const actionBarStyle = "display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;";
     const btnStyle = (primary) =>
-      "padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;" +
+      "padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;" +
       (primary
         ? "background:hsl(221,83%,53%);color:#fff;"
         : "background:hsl(220,15%,22%);color:hsl(220,15%,80%);border:1px solid hsl(220,15%,30%);");
 
     let html =
-      '<div style="' + actionBarStyle + '">' +
-        '<button id="cdInvCreate" style="' + btnStyle(true) + '">+ New Invoice</button>' +
-      '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">' +
+        '<button id="cdInvCreate" style="' + btnStyle(true) + 'padding:8px 16px;font-size:13px;">+ New Invoice</button>' +
+      "</div>" +
       (invoicesData.length
         ? '<div class="cd-overview-grid" style="margin-bottom:16px;">' +
             stat(fmtMoney(totalBilled), "Total Billed") +
             stat(fmtMoney(totalPaid),   "Total Paid") +
             stat(fmtMoney(totalBal),    "Balance Due") +
-          '</div><div class="cd-list">'
+          "</div>"
         : '<div class="cd-empty" style="margin-top:0;">No invoices yet.</div>');
 
     for (const inv of invoicesData) {
@@ -463,37 +453,42 @@
       const canSend = sc === "draft" || sc === "sent";
       const canPay  = sc !== "paid" && sc !== "void" && bal > 0;
 
-      html += '<div class="cd-list-item" style="flex-direction:column;align-items:stretch;gap:8px;">' +
-        '<div style="display:flex;align-items:flex-start;gap:8px;">' +
-          '<div class="cd-list-main" style="flex:1;">' +
-            '<div class="cd-list-title">' + esc(inv.invoice_number || inv.id) + '</div>' +
-            '<div class="cd-list-sub">' + fmtShortDate(inv.issued_at) +
-              (inv.due_at ? " \u00b7 Due " + fmtShortDate(inv.due_at) : "") +
-              (inv.sent_at ? " \u00b7 Sent" : "") +
-              (inv.notes ? " \u00b7 " + esc(inv.notes.slice(0, 40)) : "") +
+      const invNum = esc(inv.invoice_number || inv.id || "Invoice");
+      const totalFmt = fmtMoney(inv.total);
+      const statusLabel = overdue ? "Overdue" : esc(s.label);
+      const dotColor = overdue ? "hsl(0,70%,55%)" : s.dot;
+
+      const body =
+        '<div class="cd-acc-row"><span class="cd-acc-row-label">Invoice #</span><span class="cd-acc-row-val" style="font-family:monospace;font-size:12px;">' + invNum + "</span></div>" +
+        '<div class="cd-acc-row"><span class="cd-acc-row-label">Total</span><span class="cd-acc-row-val">' + totalFmt + "</span></div>" +
+        (bal > 0 ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Balance Due</span><span class="cd-acc-row-val" style="color:hsl(38,80%,40%);">' + fmtMoney(bal) + "</span></div>" : "") +
+        (inv.issued_at ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Issued</span><span class="cd-acc-row-val">' + fmtDate(inv.issued_at) + "</span></div>" : "") +
+        (inv.due_at ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Due</span><span class="cd-acc-row-val">' + fmtDate(inv.due_at) + "</span></div>" : "") +
+        (inv.sent_at ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Sent</span><span class="cd-acc-row-val">' + fmtDate(inv.sent_at) + "</span></div>" : "") +
+        (inv.notes ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Notes</span><span class="cd-acc-row-val">' + esc(inv.notes) + "</span></div>" : "") +
+        ((canSend || canPay)
+          ? '<div class="cd-acc-actions">' +
+              (canSend ? '<button class="cd-inv-send" data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + '">Send</button>' : "") +
+              (canPay  ? '<button class="cd-inv-pay"  data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + '">Record Payment</button>' : "") +
+            "</div>"
+          : "");
+
+      html +=
+        '<div class="cd-acc">' +
+          '<button class="cd-acc-hdr">' +
+            '<div class="cd-acc-summary">' +
+              '<span class="cd-acc-title">' + invNum + "</span>" +
+              '<span class="cd-acc-meta">' + totalFmt + "</span>" +
             "</div>" +
-          "</div>" +
-          '<div class="cd-list-right" style="text-align:right;flex-shrink:0;">' +
-            '<span class="cd-status">' +
-              '<span class="cd-dot" style="background:' + (overdue ? "hsl(0,70%,55%)" : s.dot) + ';"></span>' +
-              (overdue ? "Overdue" : esc(s.label)) +
-            "</span>" +
-            '<div style="font-size:13px;font-weight:700;margin-top:4px;">' + fmtMoney(inv.total) + '</div>' +
-            (bal > 0 ? '<div style="font-size:12px;color:hsl(38,80%,40%);">Bal: ' + fmtMoney(bal) + '</div>' : '') +
-          "</div>" +
-        "</div>" +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-          (canSend
-            ? '<button class="cd-inv-send" data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + 'font-size:12px;padding:5px 12px;">Send</button>'
-            : '') +
-          (canPay
-            ? '<button class="cd-inv-pay" data-id="' + esc(inv.id) + '" style="' + btnStyle(false) + 'font-size:12px;padding:5px 12px;">Record Payment</button>'
-            : '') +
-        '</div>' +
-      "</div>";
+            '<div class="cd-acc-right">' +
+              '<span class="cd-status"><span class="cd-dot" style="background:' + dotColor + ';"></span>' + statusLabel + "</span>" +
+              '<span class="cd-acc-chevron">&#9660;</span>' +
+            "</div>" +
+          "</button>" +
+          '<div class="cd-acc-body">' + body + "</div>" +
+        "</div>";
     }
 
-    if (invoicesData.length) html += "</div>";
     return html;
   }
 
@@ -852,6 +847,15 @@
         activeTab = btn.dataset.tab;
         renderTabs();
         renderTabContent();
+      });
+
+      document.getElementById("tabContent").addEventListener("click", function (e) {
+        const hdr = e.target.closest(".cd-acc-hdr");
+        if (!hdr) return;
+        const body = hdr.nextElementSibling;
+        if (!body || !body.classList.contains("cd-acc-body")) return;
+        const isOpen = body.classList.toggle("open");
+        hdr.classList.toggle("is-open", isOpen);
       });
     } catch (err) {
       showError("Error loading client data.");
