@@ -449,7 +449,33 @@ async function boot() {
       fetch("/api/quote/config"),
       fetch("/api/estimator/config?_=" + Date.now()),
     ]);
+
+    // Guard: non-2xx means transient failure (quota spike, connectivity)
+    if (!r1.ok) {
+      const retryAfter = r1.headers.get("Retry-After") || "10";
+      setContent(errHTML(
+        `Our services list is temporarily unavailable (HTTP ${r1.status}). ` +
+        `Please <a href="javascript:location.reload()" style="color:inherit;text-decoration:underline;">refresh the page</a> in ${retryAfter} seconds.`
+      ));
+      return;
+    }
+
     S.config = await r1.json();
+
+    // Guard: empty jobTypes means sheets returned no data (quota or cold-start)
+    if (!S.config.jobTypes || S.config.jobTypes.length === 0) {
+      setContent(errHTML(
+        "Could not load services. " +
+        `<a href="javascript:location.reload()" style="color:inherit;text-decoration:underline;">Refresh to try again.</a>`
+      ));
+      return;
+    }
+
+    // Quietly note if we're running on the embedded baseline (no sheet data)
+    if (S.config._fromSeed) {
+      console.warn("[quote] Running on V1 baseline seed — sheet config unavailable.");
+    }
+
     const est = await r2.json();
     enrichConfigWithModules(S.config, est);
     go("segment");
