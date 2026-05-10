@@ -106,7 +106,7 @@ async function handleGetBlocks(req, res) {
     const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
 
     const tz         = rules.timezone       || "America/Chicago";
-    const leadHours  = Number(rules.lead_time_hours || 24);
+    const leadHours  = Number(rules.lead_time_hours) || 4;
     const satEnabled = String(rules.saturday_start || "").length > 0;
     const sunEnabled = String(rules.sunday_enabled || "").toLowerCase() === "true";
     const mornCap    = Number(rules.morning_capacity   || 3);

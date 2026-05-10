@@ -9,7 +9,7 @@ const { generateSlots }     = require("../lib/slotEngine");
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
 const SCHEDULER_DEFAULTS = [
-  "America/Chicago", "24", "30", "180",
+  "America/Chicago", "4", "30", "180",
   "08:00", "17:00", "09:00", "13:00",
   "FALSE", "3",
 ];
@@ -36,6 +36,23 @@ async function ensureSchedulerRules(sheets, id) {
     });
     console.log("[SchedulerRules] Default row written.");
     rows[1] = SCHEDULER_DEFAULTS;
+  } else {
+    // Patch: if lead_time_hours is "0" (unsafe — allows same-day booking), update to "4"
+    const headers = rows[0] || [];
+    const data    = rows[1] || [];
+    const ltIdx   = headers.indexOf("lead_time_hours");
+    if (ltIdx >= 0 && (data[ltIdx] === "0" || data[ltIdx] === "" || !data[ltIdx])) {
+      data[ltIdx] = "4";
+      rows[1]     = data;
+      const colLetter = String.fromCharCode(65 + ltIdx);
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: id,
+        range:         `SchedulerRules!${colLetter}2`,
+        valueInputOption: "RAW",
+        requestBody:   { majorDimension: "ROWS", values: [["4"]] },
+      });
+      console.log("[SchedulerRules] lead_time_hours patched 0→4.");
+    }
   }
   return rows;
 }

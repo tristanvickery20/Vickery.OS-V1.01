@@ -228,8 +228,19 @@ async function handleBook(req, res) {
     }
 
     // ── Block-based path: hours-aware multi-block planning ───────────────────
-    const jobMins       = getJobMinsFromSnapshot(snapshot);
-    const capMins       = getBlockCapacityMins(rules);
+    const jobMins  = getJobMinsFromSnapshot(snapshot);
+    const capMins  = getBlockCapacityMins(rules);
+    const leadHours = Number(rules.lead_time_hours) || 4;
+
+    // Lead-time guard: reject if the requested block starts within the cutoff window
+    const reqBlockIso = blockStartIso(bookingDate, block, tz);
+    const cutoffMs    = Date.now() + leadHours * 3600000;
+    if (new Date(reqBlockIso).getTime() < cutoffMs) {
+      return json(res, 409, {
+        ok:    false,
+        error: `That slot is within the ${leadHours}-hour advance booking window. Please choose a later date.`,
+      });
+    }
 
     // Validate the requested start block has room
     const usedInStart   = getBlockUsedMins(existingBookings, bookingDate, block, tz);
@@ -245,6 +256,24 @@ async function handleBook(req, res) {
     const segments = planMultiBlockBooking(jobMins, bookingDate, block, existingBookings, rules, tz);
     if (!segments || segments.length === 0) {
       return json(res, 409, { ok: false, error: "Unable to find available blocks for this job." });
+    }
+
+    // ── Race-condition guard: re-read bookings fresh before writing ──────────
+    // Two simultaneous requests could both see capacity and both proceed.
+    // Re-reading here reduces the window to a tiny in-memory check.
+    const freshBookingsRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: id, range: "Bookings!A:P",
+    });
+    const freshBookings = rowsToObjects(freshBookingsRes.data.values || []);
+    for (const seg of segments) {
+      const freshUsed  = getBlockUsedMins(freshBookings, seg.date, seg.block, tz);
+      const freshAvail = capMins - freshUsed;
+      if (freshAvail < MIN_BOOKING_MINS) {
+        return json(res, 409, {
+          ok:    false,
+          error: `This slot just filled up (${seg.date} ${seg.block}). Please choose another time.`,
+        });
+      }
     }
 
     const groupId   = newId("GRP");
