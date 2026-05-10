@@ -2,7 +2,7 @@
 
 const crypto = require("crypto");
 const {
-  ensureStaffSheet, readAllStaff, findStaffByUsername, appendStaffRow, updateStaffRow,
+  ensureStaffSheet, readAllStaff, readAllStaffSafe, findStaffByUsername, appendStaffRow, updateStaffRow,
   hashPassword, verifyPassword, needsPasswordRehash, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
@@ -134,23 +134,34 @@ async function handleLogin(req, res) {
     if (!username || !password) {
       return json(res, 400, { ok: false, error: "Username and password are required." });
     }
-    let staff = await findStaffByUsername(username.trim());
 
-    // ── CRM_PIN owner bypass ──────────────────────────────────────────────────
-    // Allows the owner to regain access using the CRM_PIN secret when no crew
-    // account exists yet (fresh environment) or when the Staff sheet is
-    // temporarily unreadable due to quota throttling.
+    // Read all staff once — detects quota/network degradation vs. truly empty sheet.
+    const { rows: allStaff, degraded } = await readAllStaffSafe();
+
+    // ── Degraded sheet: surface a retry message, not a misleading auth error ──
+    if (degraded) {
+      console.warn("[crew-auth/login] Staff sheet temporarily unavailable; rejecting login");
+      return json(res, 503, { ok: false, error: "Service temporarily unavailable. Please try again in a moment." });
+    }
+
+    const staff = allStaff.find(s => (s.username || "").toLowerCase() === username.trim().toLowerCase()) || null;
+
+    // ── CRM_PIN emergency bypass (recovery mode only) ─────────────────────────
+    // Allowed only when the staff sheet has NO active owner account — i.e. this
+    // is a fresh environment or the owner account was wiped. Using CRM_PIN as
+    // the password in this state grants a synthetic owner session so the owner
+    // can log in and create a proper crew account via the signup flow.
     if (!staff) {
       const pin = process.env.CRM_PIN;
+      const hasActiveOwner = allStaff.some(s => s.role === "owner" && s.status === "active");
       let pinMatch = false;
-      if (pin) {
+      if (pin && !hasActiveOwner) {
         const pinBuf = Buffer.from(String(pin));
-        const pwdBuf = Buffer.from(String(password || "").padEnd(pin.length, "\0").slice(0, pin.length));
-        pinMatch = pinBuf.length === pwdBuf.length && crypto.timingSafeEqual(pinBuf, pwdBuf) &&
-          String(password) === String(pin);
+        const pwdBuf = Buffer.from(String(password || ""));
+        pinMatch = pinBuf.length === pwdBuf.length && crypto.timingSafeEqual(pinBuf, pwdBuf);
       }
       if (pinMatch) {
-        console.log(`[crew-auth/login] CRM_PIN bypass used for username: ${username}`);
+        console.log(`[crew-auth/login] CRM_PIN recovery bypass used for username: ${username} (no active owner in sheet)`);
         const syntheticStaff = {
           staff_id:   "owner",
           first_name: username.split(".")[0] || username,
