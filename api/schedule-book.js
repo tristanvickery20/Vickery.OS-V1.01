@@ -286,15 +286,18 @@ async function handleBook(req, res) {
       }
     }
 
-    // Acquire in-process lock — block any concurrent request for the same start block
-    const lockKey = `${bookingDate}:${block}`;
-    if (_bookingLocks.has(lockKey)) {
-      return json(res, 429, {
-        ok:    false,
-        error: "A booking for this slot is already in progress. Please wait a moment and try again.",
-      });
+    // Acquire in-process locks for ALL planned segment blocks — prevents concurrent
+    // requests from contending on any block in a multi-block job sequence.
+    const lockKeys = freshSegments.map(s => `${s.date}:${s.block}`);
+    for (const lk of lockKeys) {
+      if (_bookingLocks.has(lk)) {
+        return json(res, 409, {
+          ok:    false,
+          error: `This slot just filled up (${lk.replace(":", " ")}). Please choose another time.`,
+        });
+      }
     }
-    _bookingLocks.add(lockKey);
+    for (const lk of lockKeys) _bookingLocks.add(lk);
 
     try {
 
@@ -376,7 +379,7 @@ async function handleBook(req, res) {
     });
 
     } finally {
-      _bookingLocks.delete(lockKey);
+      for (const lk of lockKeys) _bookingLocks.delete(lk);
     }
 
   } catch (err) {
