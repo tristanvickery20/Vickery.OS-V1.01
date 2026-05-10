@@ -260,15 +260,20 @@ async function handleBook(req, res) {
 
     // ── Race-condition guard: re-read bookings fresh before writing ──────────
     // Two simultaneous requests could both see capacity and both proceed.
-    // Re-reading here reduces the window to a tiny in-memory check.
+    // Re-reading and recomputing segments from fresh data closes the window.
     const freshBookingsRes = await sheets.spreadsheets.values.get({
       spreadsheetId: id, range: "Bookings!A:P",
     });
     const freshBookings = rowsToObjects(freshBookingsRes.data.values || []);
-    for (const seg of segments) {
+    const freshSegments = planMultiBlockBooking(jobMins, bookingDate, block, freshBookings, rules, tz);
+    if (!freshSegments || freshSegments.length === 0) {
+      return json(res, 409, { ok: false, error: "This slot just filled up. Please choose another time." });
+    }
+    // Verify each planned segment still has enough room for its required allocation
+    for (const seg of freshSegments) {
       const freshUsed  = getBlockUsedMins(freshBookings, seg.date, seg.block, tz);
       const freshAvail = capMins - freshUsed;
-      if (freshAvail < MIN_BOOKING_MINS) {
+      if (freshAvail < seg.allocated_mins) {
         return json(res, 409, {
           ok:    false,
           error: `This slot just filled up (${seg.date} ${seg.block}). Please choose another time.`,
