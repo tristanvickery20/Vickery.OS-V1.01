@@ -374,14 +374,14 @@
         '<div class="cd-acc-row"><span class="cd-acc-row-label">Created</span><span class="cd-acc-row-val">' + fmtDate(q.created_at) + "</span></div>";
       return (
         '<div class="cd-acc">' +
-          '<button class="cd-acc-hdr" aria-expanded="false">' +
+          '<button class="cd-acc-hdr is-open" aria-expanded="true">' +
             '<div class="cd-acc-summary">' +
               '<span class="cd-acc-title">' + esc(title) + "</span>" +
               (meta ? '<span class="cd-acc-meta">' + meta + "</span>" : "") +
             "</div>" +
             '<div class="cd-acc-right">' + statusBadge(q.status_code) + '<span class="cd-acc-chevron">&#9660;</span></div>' +
           "</button>" +
-          '<div class="cd-acc-body" role="region">' + body + "</div>" +
+          '<div class="cd-acc-body open" role="region">' + body + "</div>" +
         "</div>"
       );
     }).join("");
@@ -400,14 +400,14 @@
         (j.collected_revenue ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Collected</span><span class="cd-acc-row-val">' + fmtMoney(j.collected_revenue) + "</span></div>" : "");
       return (
         '<div class="cd-acc">' +
-          '<button class="cd-acc-hdr" aria-expanded="false">' +
+          '<button class="cd-acc-hdr is-open" aria-expanded="true">' +
             '<div class="cd-acc-summary">' +
               '<span class="cd-acc-title">' + esc(title) + "</span>" +
               (meta ? '<span class="cd-acc-meta">' + meta + "</span>" : "") +
             "</div>" +
             '<div class="cd-acc-right">' + statusBadge(j.status_code) + '<span class="cd-acc-chevron">&#9660;</span></div>' +
           "</button>" +
-          '<div class="cd-acc-body" role="region">' + body + "</div>" +
+          '<div class="cd-acc-body open" role="region">' + body + "</div>" +
         "</div>"
       );
     }).join("");
@@ -475,7 +475,7 @@
 
       html +=
         '<div class="cd-acc">' +
-          '<button class="cd-acc-hdr" aria-expanded="false">' +
+          '<button class="cd-acc-hdr is-open" aria-expanded="true">' +
             '<div class="cd-acc-summary">' +
               '<span class="cd-acc-title">' + invNum + "</span>" +
               '<span class="cd-acc-meta">' + totalFmt + "</span>" +
@@ -485,7 +485,7 @@
               '<span class="cd-acc-chevron">&#9660;</span>' +
             "</div>" +
           "</button>" +
-          '<div class="cd-acc-body" role="region">' + body + "</div>" +
+          '<div class="cd-acc-body open" role="region">' + body + "</div>" +
         "</div>";
     }
 

@@ -64,7 +64,7 @@ async function handleSignup(req, res) {
     const all = await readAllStaff();
     const hasActiveOwner = all.some(s => s.role === "owner" && s.status === "active");
     const isOwner = !hasActiveOwner;
-    if (isOwner && !ownerSetupCodeMatches(setup_code)) {
+    if (isOwner && process.env.OWNER_SETUP_CODE && !ownerSetupCodeMatches(setup_code)) {
       return json(res, 403, { ok: false, error: "Owner setup code required." });
     }
 
