@@ -1760,6 +1760,16 @@ const { ensureConfigDefaults, ensureCalculatorDefaults } = require("./lib/config
 const { seedQuoteSheetIfEmpty, backfillSegmentCategory, logQuoteHealth } = require("./lib/quoteSeedInit");
 const { isV2Mode } = require("./lib/estimatorV2Config");
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error("[server] Port 5000 already in use — exiting so the process manager can restart cleanly.");
+    process.exit(1);
+  } else {
+    console.error("[server] Unexpected error:", err.message);
+    process.exit(1);
+  }
+});
+
 server.listen(5000, "0.0.0.0", () => {
   console.log("Server running on port 5000");
   console.log(`Estimator Mode: ${isV2Mode() ? "v2" : "v1"}`);

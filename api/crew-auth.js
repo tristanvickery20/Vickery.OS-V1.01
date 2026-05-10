@@ -134,8 +134,46 @@ async function handleLogin(req, res) {
     if (!username || !password) {
       return json(res, 400, { ok: false, error: "Username and password are required." });
     }
-    const staff = await findStaffByUsername(username.trim());
+    let staff = await findStaffByUsername(username.trim());
+
+    // ── CRM_PIN owner bypass ──────────────────────────────────────────────────
+    // Allows the owner to regain access using the CRM_PIN secret when no crew
+    // account exists yet (fresh environment) or when the Staff sheet is
+    // temporarily unreadable due to quota throttling.
     if (!staff) {
+      const pin = process.env.CRM_PIN;
+      let pinMatch = false;
+      if (pin) {
+        const pinBuf = Buffer.from(String(pin));
+        const pwdBuf = Buffer.from(String(password || "").padEnd(pin.length, "\0").slice(0, pin.length));
+        pinMatch = pinBuf.length === pwdBuf.length && crypto.timingSafeEqual(pinBuf, pwdBuf) &&
+          String(password) === String(pin);
+      }
+      if (pinMatch) {
+        console.log(`[crew-auth/login] CRM_PIN bypass used for username: ${username}`);
+        const syntheticStaff = {
+          staff_id:   "owner",
+          first_name: username.split(".")[0] || username,
+          last_name:  username.split(".")[1] || "",
+          username:   username.trim(),
+          role:       "owner",
+          permissions: "",
+          status:     "active",
+        };
+        setCrewSessionCookie(res, syntheticStaff);
+        setAuthCookie(res);
+        return json(res, 200, {
+          ok: true,
+          redirect: "/clients",
+          role: "owner",
+          staff: {
+            firstName:   syntheticStaff.first_name,
+            lastName:    syntheticStaff.last_name,
+            username:    syntheticStaff.username,
+            permissions: [],
+          },
+        });
+      }
       return json(res, 401, { ok: false, error: "No account found with that username." });
     }
     if (staff.status === "pending") {
