@@ -59,6 +59,23 @@ async function handleEstimatorConfig(req, res) {
   try {
     const raw = await getEstimatorConfig();
     const cfg = normalizeConfig(raw);
+
+    // Guard against undersized payloads — seed should provide ≥5 services and ≥5 modules.
+    // An undersized result means something went wrong in the seed or sheet read.
+    const serviceCount = cfg.services.length;
+    const moduleCount  = Object.keys(cfg.modules).length;
+    if (serviceCount < 5 || moduleCount < 5) {
+      console.warn(`[estimator-config] Undersized payload: ${serviceCount} services, ${moduleCount} modules — serving degraded response.`);
+      json(res, 200, {
+        ok: false,
+        degraded: true,
+        services: cfg.services,
+        modules:  cfg.modules,
+        warning:  `Config appears incomplete (${serviceCount} services, ${moduleCount} modules). Estimator may not function correctly.`,
+      }, NO_CACHE);
+      return;
+    }
+
     json(res, 200, { ok: true, ...cfg }, NO_CACHE);
   } catch (err) {
     console.error("[estimator-config]", err.message);

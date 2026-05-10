@@ -37,8 +37,10 @@ async function handleQuoteConfig(req, res) {
     res.end(JSON.stringify(publicConfig));
   } catch (err) {
     console.error("[quote-config] error:", err.message);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Failed to load quote config", detail: err.message }));
+    // 503 signals transient/retryable failure (quota spike, connectivity)
+    // so the frontend can display "try again" rather than a blank wizard.
+    res.writeHead(503, { "Content-Type": "application/json", "Retry-After": "10" });
+    res.end(JSON.stringify({ error: "Quote config temporarily unavailable — please retry", detail: err.message }));
   }
 }
 
