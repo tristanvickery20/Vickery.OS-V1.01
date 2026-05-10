@@ -2,7 +2,7 @@
 
 const crypto = require("crypto");
 const {
-  ensureStaffSheet, readAllStaff, readAllStaffSafe, findStaffByUsername, appendStaffRow, updateStaffRow,
+  ensureStaffSheet, readAllStaff, readAllStaffSafe, appendStaffRow, updateStaffRow,
   hashPassword, verifyPassword, needsPasswordRehash, setCrewSessionCookie, clearCrewSessionCookie,
   getCrewSession, sendSms, pendingCount,
 } = require("../lib/staff");
@@ -168,7 +168,7 @@ async function handleLogin(req, res) {
           last_name:  username.split(".")[1] || "",
           username:   username.trim(),
           role:       "owner",
-          permissions: "",
+          permissions: "owner",
           status:     "active",
         };
         setCrewSessionCookie(res, syntheticStaff);
