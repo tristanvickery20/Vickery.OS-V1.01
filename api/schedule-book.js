@@ -23,6 +23,11 @@ const crypto = require("crypto");
 const { getSheetsClient }  = require("../lib/sheets");
 const { generateSlots }    = require("../lib/slotEngine");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
+
+// In-process booking lock — prevents two simultaneous requests from both
+// passing the fresh-read check before either append executes.
+// Key: "YYYY-MM-DD:Block" of the requested start block.
+const _bookingLocks = new Set();
 const {
   getBlockCapacityMins,
   getBlockUsedMins,
@@ -281,13 +286,25 @@ async function handleBook(req, res) {
       }
     }
 
+    // Acquire in-process lock — block any concurrent request for the same start block
+    const lockKey = `${bookingDate}:${block}`;
+    if (_bookingLocks.has(lockKey)) {
+      return json(res, 429, {
+        ok:    false,
+        error: "A booking for this slot is already in progress. Please wait a moment and try again.",
+      });
+    }
+    _bookingLocks.add(lockKey);
+
+    try {
+
     const groupId   = newId("GRP");
     const now       = nowIso();
     const primaryIso = blockStartIso(bookingDate, block, tz);
 
-    // Write one Bookings row per segment
+    // Write one Bookings row per segment (use freshSegments — fresh allocation amounts)
     const bookingRows = [];
-    for (const seg of segments) {
+    for (const seg of freshSegments) {
       const bookingId  = newId("BK");
       const segStartIso = blockStartIso(seg.date, seg.block, tz);
       bookingRows.push({
@@ -326,7 +343,7 @@ async function handleBook(req, res) {
     // Update lead schedule to primary block
     await updateLeadSchedule(sheets, quote_id, bookingDate, block, primaryIso, snapshot);
 
-    const blocksReserved = segments.map((seg, i) => ({
+    const blocksReserved = freshSegments.map((seg, i) => ({
       date:             seg.date,
       block:            seg.block,
       window_label:     WINDOW_LABELS[seg.block] || "",
@@ -357,6 +374,10 @@ async function handleBook(req, res) {
       final_price:        snapshot.final_price,
       quote_id,
     });
+
+    } finally {
+      _bookingLocks.delete(lockKey);
+    }
 
   } catch (err) {
     console.error("[schedule-book]", err.message);

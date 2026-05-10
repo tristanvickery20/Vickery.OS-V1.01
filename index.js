@@ -1755,7 +1755,7 @@ const server = http.createServer(async (req, res) => {
   res.end("Not Found");
 });
 
-const { ensureAllHeaders } = require("./lib/sheetsSchema");
+const { ensureAllHeaders, patchSchedulerRuleDefaults } = require("./lib/sheetsSchema");
 const { ensureConfigDefaults, ensureCalculatorDefaults } = require("./lib/config");
 const { seedQuoteSheetIfEmpty, backfillSegmentCategory, logQuoteHealth } = require("./lib/quoteSeedInit");
 const { isV2Mode } = require("./lib/estimatorV2Config");
@@ -1788,6 +1788,7 @@ server.listen(5000, "0.0.0.0", () => {
       .then(() => seedQuoteSheetIfEmpty())
       .then(() => backfillSegmentCategory())
       .then(() => logQuoteHealth())
+      .then(() => patchSchedulerRuleDefaults())
       .catch((err) => console.error("[Startup]", err.message));
   }, 10_000);
 

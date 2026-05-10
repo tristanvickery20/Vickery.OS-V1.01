@@ -1,0 +1,59 @@
+assembly_id	serviceType	category	niche_name	base_fee	description	active	override_markup_pct	risk_factor	travel_miles_default	quote_class	baseline_labor_hours	blended_labor_hours	risk_class	dynamic_risk_multiplier	travel_zone	risk_mult	drive_time_hours
+A001	residential	Lighting	Recessed (Can) Lighting	0	Install recessed can or retrofit LED lighting	TRUE			10	INSTANT	1.55	1.55	LOW	1.15	Local	1.05	0.25
+A002	residential	Lighting	Under-Cabinet Lighting	0	Install LED under-cabinet strip or puck lights	TRUE			10	INSTANT	1.075	1.075	LOW	1.15	Local	1.05	0.25
+A003	residential	Lighting	Chandelier & Fixture Installation	0	Install or replace hanging chandelier or pendant	TRUE			10	INSTANT	1.03	1.03	LOW	1.15	Local	1.05	0.25
+A004	residential	Lighting	Ceiling Fan Installation	0	Install new or replacement ceiling fan	TRUE			10	INSTANT	1.005	1.005	LOW	1.15	Local	1.05	0.25
+A005	residential	Lighting	Outdoor & Landscape Lighting	0	Install or repair exterior or landscape lighting	TRUE			10	INSTANT	0.845	0.845	LOW	1.15	Local	1.05	0.25
+A006	residential	Lighting	Motion Sensor & Security Lighting	0	Install floodlight or motion-sensor security light	TRUE			10	INSTANT	0.88	0.88	LOW	1.15	Local	1.05	0.25
+A007	residential	Lighting	LED Lighting Upgrades (Retrofits)	0	Upgrade existing fixtures to LED for energy efficiency	TRUE			10	INSTANT	0.855	0.855	LOW	1.15	Local	1.05	0.25
+A008	residential	Lighting	Dimmer Switch Installation	0	Install dimmer switch for existing lighting circuit	TRUE			10	INSTANT	0.685	0.685	LOW	1.15	Local	1.05	0.25
+A009	residential	Lighting	Light Fixture Repair	0	Diagnose and repair existing lighting fixture	TRUE			10	INSTANT	0.48	0.48	LOW	1.15	Local	1.05	0.25
+A010	residential	Lighting	Troubleshooting (Flickering lights	0	Diagnose circuit or fixture issues causing flicker or outage	TRUE			10	INSTANT	0.575	0.575	LOW	1.15	Local	1.05	0.25
+A011	residential	Power and Wiring	New Outlet Installation	0	Install new outlet with proper grounding and GFCI if required	TRUE			10	INSTANT	0.78	0.78	LOW	1.15	Local	1.05	0.25
+A012	residential	Power and Wiring	GFCI Outlet Installation (for kitchens	0	Install GFCI outlet in moisture-prone area	TRUE			10	INSTANT	0.73	0.73	LOW	1.15	Local	1.05	0.25
+A013	residential	Power and Wiring	Switch & Outlet Repair	0	Repair or replace damaged switches or outlets	TRUE			10	INSTANT	0.54	0.54	LOW	1.15	Local	1.05	0.25
+A014	residential	Power and Wiring	Smart Switch & Smart Outlet Installation	0	Install Wi-Fi or smart-enabled switch or receptacle	TRUE			10	INSTANT	0.73	0.73	LOW	1.15	Local	1.05	0.25
+A015	residential	Power and Wiring	Whole-House Rewiring	0	Full or partial rewire of existing dwelling	TRUE			10	RANGE	6.86	6.86	HIGH	1.15	Local	1.2	0.25
+A016	residential	Power and Wiring	Partial Home Rewiring (e.g.	0	Rewire addition or remodel section of home	TRUE			10	RANGE	3.21	3.21	HIGH	1.15	Local	1.2	0.25
+A017	residential	Power and Wiring	Adding Dedicated Circuits (for appliances like microwaves	0	Install new dedicated 120V/240V circuit for appliance	TRUE			10	INSTANT	1.56	1.56	LOW	1.15	Local	1.05	0.25
+A018	residential	Power and Wiring	Code Compliance & Correction	0	Correct wiring issues to bring installation to NEC compliance	TRUE			10	RANGE	0.695	0.695	HIGH	1.15	Local	1.2	0.25
+A019	residential	Electrical Panel and Service	Service Panel Upgrade (e.g.	0	Upgrade existing panel to higher ampacity service	TRUE			10	INSTANT	3.76	3.76	LOW	1.15	Local	1.05	0.25
+A020	residential	Electrical Panel and Service	Subpanel Installation (for garages	0	Install subpanel for detached or auxiliary space	TRUE			10	INSTANT	2.475	2.475	LOW	1.15	Local	1.05	0.25
+A021	residential	Electrical Panel and Service	Fuse Box to Breaker Panel Conversion	0	Replace fuse box with modern breaker panel	TRUE			10	RANGE	2.695	2.695	HIGH	1.15	Local	1.2	0.25
+A022	residential	Electrical Panel and Service	Breaker Tripping Issues	0	Diagnose and correct breaker overloads or faults	TRUE			10	RANGE	0.61	0.61	HIGH	1.15	Local	1.2	0.25
+A023	residential	Electrical Panel and Service	Panel or Breaker Repair	0	Repair or replace defective breakers or bus connections	TRUE			10	INSTANT	0.61	0.61	LOW	1.15	Local	1.05	0.25
+A024	residential	Electrical Panel and Service	Surge Protection (Whole-house)	0	Install whole-home surge protection at main service	TRUE			10	INSTANT	1.01	1.01	LOW	1.15	Local	1.05	0.25
+A025	residential	Home System & Appliances	Installation for New Appliances (e.g.	0	Install appliance circuit and receptacle	TRUE			10	INSTANT	1.56	1.56	LOW	1.15	Local	1.05	0.25
+A026	residential	Home System & Appliances	Standby Generator Installation	0	Install standby generator with transfer switch	TRUE			10	INSTANT	5.305	5.305	LOW	1.15	Local	1.05	0.25
+A027	residential	Home System & Appliances	Portable Generator Hookup (Transfer Switch)	0	Install manual transfer switch for portable generator	TRUE			10	RANGE	2.29	2.29	HIGH	1.15	Local	1.2	0.25
+A028	residential	Home System & Appliances	Electric Vehicle (EV) Charger Installation	0	Install 240V EV charging circuit or hardwired unit	TRUE			10	INSTANT	1.73	1.73	LOW	1.15	Local	1.05	0.25
+A029	residential	Home System & Appliances	Hot Tub & Pool Wiring	0	Install or repair circuits for spa or pool equipment	TRUE			10	RANGE	1.57	1.57	HIGH	1.15	Local	1.2	0.25
+A030	residential	Home System & Appliances	Smoke & Carbon Monoxide Detector Installation	0	Install hardwired or interconnected life-safety detectors	TRUE			10	INSTANT	0.6	0.6	LOW	1.15	Local	1.05	0.25
+A031	residential	Home System & Appliances	Home Automation & Smart Home Integration	0	Integrate lighting	TRUE			10	INSTANT	0.875	0.875	LOW	1.15	Local	1.05	0.25
+A032	commercial	Commercial Lighting	Office & Warehouse Lighting	0	Install or retrofit commercial troffers	TRUE			10	RANGE	2.26	2.26	HIGH	1.15	Local	1.2	0.25
+A033	commercial	Commercial Lighting	Parking Lot & Exterior Security Lighting	0	Install pole or wall-mounted exterior fixtures	TRUE			10	RANGE	2.07	2.07	HIGH	1.15	Local	1.2	0.25
+A034	commercial	Commercial Lighting	Emergency & Exit Lighting	0	Install exit or emergency combo units per code	TRUE			10	RANGE	0.93	0.93	HIGH	1.15	Local	1.2	0.25
+A035	commercial	Commercial Lighting	Signage & Display Lighting	0	Install display lighting or illuminated signage circuits	TRUE			10	RANGE	0.72	0.72	HIGH	1.15	Local	1.2	0.25
+A036	commercial	Commercial Lighting	Ballast & Bulb Replacement	0	Replace fluorescent or HID ballast and lamps	TRUE			10	INSTANT	0.94	0.94	LOW	1.15	Local	1.05	0.25
+A037	commercial	Commercial Lighting	LED Lighting Retrofits (for energy savings)	0	Retrofit existing lighting to LED fixtures	TRUE			10	INSTANT	0.99	0.99	LOW	1.15	Local	1.05	0.25
+A038	commercial	Commercial Lighting	Lighting Control Systems & Timers	0	Install photocells	TRUE			10	INSTANT	0.615	0.615	LOW	1.15	Local	1.05	0.25
+A039	commercial	Commercial Power & Wiring	New Circuit Installation	0	Install new branch or feeder circuit in conduit	TRUE			10	INSTANT	1.67	1.67	LOW	1.15	Local	1.05	0.25
+A040	commercial	Commercial Power & Wiring	Commercial Rewiring	0	Rewire tenant or industrial spaces for upgrades	TRUE			10	INSTANT	2.78	2.78	LOW	1.15	Local	1.05	0.25
+A041	commercial	Commercial Power & Wiring	Data & Network Cabling (e.g.	0	Install CAT6	TRUE			10	RANGE	0.8	0.8	HIGH	1.15	Local	1.2	0.25
+A042	commercial	Commercial Power & Wiring	Low-Voltage Wiring (for security	0	Run low-voltage cabling for systems	TRUE			10	RANGE	0.8	0.8	HIGH	1.15	Local	1.2	0.25
+A043	commercial	Commercial Power & Wiring	New Outlet & Switch Installation	0	Install or replace commercial-grade outlets/switches	TRUE			10	RANGE	1.06	1.06	HIGH	1.15	Local	1.2	0.25
+A044	commercial	Commercial Power & Wiring	Service Upgrades	0	Upgrade service or feeder capacity	TRUE			10	RANGE	3.37	3.37	HIGH	1.15	Local	1.2	0.25
+A045	commercial	Electrical Panels & Distribution	Panel & Service Upgrades	0	Upgrade or replace distribution panels	TRUE			10	RANGE	3.37	3.37	HIGH	1.15	Local	1.2	0.25
+A046	commercial	Electrical Panels & Distribution	Transformer Installation	0	Install or replace step-up/down transformer	TRUE			10	RANGE	1.18	1.18	HIGH	1.15	Local	1.2	0.25
+A047	commercial	Electrical Panels & Distribution	Subpanel Installation	0	Install new subpanel for additional circuits	TRUE			10	RANGE	2.195	2.195	HIGH	1.15	Local	1.2	0.25
+A048	commercial	Electrical Panels & Distribution	Bus Duct & Conduit Installation	0	Install conduit or bus duct runs	TRUE			10	RANGE	2.305	2.305	HIGH	1.15	Local	1.2	0.25
+A049	commercial	Electrical Panels & Distribution	Breaker Tripping Issues	0	Diagnose and replace faulty breakers	TRUE			10	RANGE	0.625	0.625	HIGH	1.15	Local	1.2	0.25
+A050	commercial	Electrical Panels & Distribution	Panel or Breaker Repair	0	Repair or replace distribution breakers	TRUE			10	RANGE	0.38	0.38	HIGH	1.15	Local	1.2	0.25
+A051	commercial	Equipment & Systems	Dedicated Circuits for Heavy Machinery	0	Install dedicated circuits for heavy machinery	TRUE			10	RANGE	1.67	1.67	HIGH	1.15	Local	1.2	0.25
+A052	commercial	Equipment & Systems	Wiring for HVAC	0	Install or repair power to HVAC/refrigeration	TRUE			10	RANGE	1.45	1.45	HIGH	1.15	Local	1.2	0.25
+A053	commercial	Equipment & Systems	Backup Generator Installation & Maintenance	0	Install or service backup generator systems	TRUE			10	RANGE	3.635	3.635	HIGH	1.15	Local	1.2	0.25
+A054	commercial	Equipment & Systems	Uninterruptible Power Supply (UPS) Installation	0	Install UPS system for data/equipment protection	TRUE			10	RANGE	0.84	0.84	HIGH	1.15	Local	1.2	0.25
+A055	commercial	Safety & Code Compliance	Fire alarm systems	0	Install or service fire alarm notification loops	TRUE			10	RANGE	1.44	1.44	HIGH	1.15	Local	1.2	0.25
+A056	commercial	Safety & Code Compliance	Surge protection	0	Install surge protection at distribution or panels	TRUE			10	RANGE	0.84	0.84	HIGH	1.15	Local	1.2	0.25
+																	
+																	
