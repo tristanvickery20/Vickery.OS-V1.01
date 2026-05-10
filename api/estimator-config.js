@@ -56,9 +56,6 @@ function normalizeConfig(raw) {
 
 // ── GET /api/estimator/config ────────────────────────────────────────────────
 async function handleEstimatorConfig(req, res) {
-  if (!process.env.ESTIMATOR_V2_SHEET_ID) {
-    return json(res, 200, { ok: false, unavailable: true, services: [], modules: {} }, NO_CACHE);
-  }
   try {
     const raw = await getEstimatorConfig();
     const cfg = normalizeConfig(raw);
