@@ -141,6 +141,15 @@ function loadTimerState() {
     const state = JSON.parse(raw);
     const today = new Date().toISOString().slice(0, 10);
     if (state.date !== today) { localStorage.removeItem(TIMER_KEY); return null; }
+    // Validate startTime is a real date when timer is not paused
+    if (!state.isPaused) {
+      const startMs = new Date(state.startTime).getTime();
+      if (!isFinite(startMs) || startMs > Date.now()) {
+        // Corrupt or future startTime — clear the stale state
+        localStorage.removeItem(TIMER_KEY);
+        return null;
+      }
+    }
     return state;
   } catch { return null; }
 }
@@ -192,11 +201,12 @@ function tickTimer() {
 
 // ── Global Timer Banner ────────────────────────────────────────────────────────
 function updateTimerBanner() {
-  const banner    = document.getElementById("timerBanner");
-  const jobEl     = document.getElementById("timerBannerJob");
-  const elapsedEl = document.getElementById("timerBannerElapsed");
-  const pauseBtn  = document.getElementById("btnBannerPause");
-  const stopBtn   = document.getElementById("btnBannerStop");
+  const banner     = document.getElementById("timerBanner");
+  const jobEl      = document.getElementById("timerBannerJob");
+  const elapsedEl  = document.getElementById("timerBannerElapsed");
+  const pauseBtn   = document.getElementById("btnBannerPause");
+  const stopBtn    = document.getElementById("btnBannerStop");
+  const resetBtn   = document.getElementById("btnBannerReset");
   if (!banner) return;
 
   if (!timerState) {
@@ -211,8 +221,9 @@ function updateTimerBanner() {
   if (jobEl) jobEl.textContent = job ? (job.customer_name || "Job") : "Active job";
 
   // Elapsed
+  const elapsedMs = getElapsedMs();
   if (elapsedEl) {
-    elapsedEl.textContent = formatElapsed(getElapsedMs());
+    elapsedEl.textContent = formatElapsed(elapsedMs);
     elapsedEl.className = "timer-banner-elapsed" + (timerState.isPaused ? " paused" : "");
   }
 
@@ -226,6 +237,20 @@ function updateTimerBanner() {
     stopBtn.disabled = false;
     stopBtn.textContent = "■ Stop";
     stopBtn.onclick = () => stopTimer();
+  }
+
+  // Reset button — show when elapsed is 0 and timer is not paused (stuck/corrupt state)
+  if (resetBtn) {
+    const isStuck = !timerState.isPaused && elapsedMs <= 0;
+    resetBtn.hidden = !isStuck;
+    resetBtn.onclick = () => {
+      clearTimerState();
+      timerState = null;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      updateTimerBanner();
+      showToast("Clock reset");
+    };
   }
 }
 
@@ -411,9 +436,11 @@ async function stopTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
 
-  // Disable the Stop button to prevent double-submit while saving
-  const stopBtn = document.querySelector(".btn-stop-clock");
-  if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = "Saving…"; }
+  // Disable Stop buttons (both banner and any job-card stop button) to prevent double-submit
+  const stopBtnBanner = document.getElementById("btnBannerStop");
+  if (stopBtnBanner) { stopBtnBanner.disabled = true; stopBtnBanner.textContent = "Saving…"; }
+  const stopBtnCard = document.querySelector(".btn-stop-clock");
+  if (stopBtnCard) { stopBtnCard.disabled = true; stopBtnCard.textContent = "Saving…"; }
 
   const geo = await getGeo();
 

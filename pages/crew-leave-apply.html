@@ -158,9 +158,9 @@
 
     async function load() {
       var meRes = await fetch("/api/crew/me").then(function(r) { return r.json(); });
-      if (!meRes.staffId) { document.getElementById("formCard").innerHTML = '<p style="color:hsl(0 60% 60%);">Session expired. Please <a href="/crew/login">log in</a>.</p>'; return; }
-      myStaffId = meRes.staffId;
-      var name = [meRes.firstName, meRes.lastName].filter(Boolean).join(" ");
+      if (!meRes.ok || !meRes.staff || !meRes.staff.staffId) { document.getElementById("formCard").innerHTML = '<p style="color:hsl(0 60% 60%);">Session expired. Please <a href="/crew/login">log in</a>.</p>'; return; }
+      myStaffId = meRes.staff.staffId;
+      var name = [meRes.staff.firstName, meRes.staff.lastName].filter(Boolean).join(" ");
       var badge = document.getElementById("whoBadge");
       badge.textContent = "Submitting as: " + name;
       badge.style.display = "";

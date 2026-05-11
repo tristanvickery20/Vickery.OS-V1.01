@@ -1093,13 +1093,14 @@
     <!-- Global timer status banner (shown when a timer is active) -->
     <div class="timer-banner" id="timerBanner" hidden>
       <div class="timer-banner-info">
-        <div class="timer-banner-label">&#9679; Clock Running</div>
+        <div class="timer-banner-label" id="timerBannerLabel">&#9679; Clock Running</div>
         <div class="timer-banner-job" id="timerBannerJob">—</div>
         <div class="timer-banner-elapsed" id="timerBannerElapsed">00:00:00</div>
       </div>
       <div class="timer-banner-actions">
         <button class="btn-banner-pause" id="btnBannerPause">Pause</button>
         <button class="btn-banner-stop" id="btnBannerStop">&#9632; Stop</button>
+        <button class="btn-banner-reset" id="btnBannerReset" hidden style="padding:9px 10px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid hsl(0 40% 30%);background:transparent;color:hsl(0 60% 60%);">Reset</button>
       </div>
     </div>
 
