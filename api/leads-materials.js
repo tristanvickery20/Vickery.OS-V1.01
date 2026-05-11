@@ -48,6 +48,8 @@ async function handleGetLeadMaterials(req, res) {
 
     const selectedOptions = parseJsonSafe(String(snap[sOpts] || '{}'), {});
     const answers = selectedOptions && typeof selectedOptions === 'object' ? (selectedOptions.answers || {}) : {};
+    // qty = number of assemblies ordered (e.g. 3 receptacle replacements → 3×)
+    const qty = Math.max(1, Math.round(Number((selectedOptions && selectedOptions.qty) || 1)));
     const addonIds = parseJsonSafe(String(snap[sAdds] || '[]'), []);
     const jobTypeId = String(snap[sJob] || '').trim();
 
@@ -85,7 +87,9 @@ async function handleGetLeadMaterials(req, res) {
       if (String(r[itemH.indexOf('assembly_id')] || '').trim() !== jobTypeId) continue;
       if (String(r[itemH.indexOf('item_type')] || '').trim().toLowerCase() !== 'material') continue;
       const refId = String(r[itemH.indexOf('item_ref_id')] || '').trim();
-      add(matNameById[refId] || refId, Number(r[itemH.indexOf('qty_per_unit')] || 0), String(r[itemH.indexOf('unit')] || 'each'), 'Base service', String(r[itemH.indexOf('notes')] || ''));
+      // Multiply qty_per_unit by qty so 3 receptacle replacements → 3× materials
+      const lineQty = Number(r[itemH.indexOf('qty_per_unit')] || 0) * qty;
+      add(matNameById[refId] || refId, lineQty, String(r[itemH.indexOf('unit')] || 'each'), 'Base service', String(r[itemH.indexOf('notes')] || ''));
     }
 
     const addonSet = new Set(Array.isArray(addonIds) ? addonIds.map(String) : []);

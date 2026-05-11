@@ -78,6 +78,8 @@ async function handleGetClients(req, res) {
 
     // Build name lookup from Bookings — guaranteed to have customer_name
     const bookingByQuoteId = {}, bookingByPhone = {}, bookingCrewByQuoteId = {}, bookingCrewByPhone = {};
+    // Name-keyed fallback: lets us find a phone for records that have a name but no quote_id or phone
+    const bookingPhoneByNormName = {};
     for (const b of bookings) {
       const qid   = stripHtml(b.quote_id       || "").trim();
       const bName = stripHtml(b.customer_name  || "").trim();
@@ -89,6 +91,11 @@ async function handleGetClients(req, res) {
       if (qid   && crew && !bookingCrewByQuoteId[qid]) bookingCrewByQuoteId[qid] = crew;
       if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;
       if (bPhone && crew && !bookingCrewByPhone[bPhone]) bookingCrewByPhone[bPhone] = crew;
+      // Name → phone fallback (normalized: lowercase, collapsed spaces)
+      if (bName && bPhone) {
+        const normKey = bName.toLowerCase().replace(/\s+/g, " ");
+        if (!bookingPhoneByNormName[normKey]) bookingPhoneByNormName[normKey] = bPhone;
+      }
     }
 
     function enrichAndShape(l, idField, statusField, addressField) {
@@ -114,6 +121,15 @@ async function handleGetClients(req, res) {
           if (!email   && src.email)   email   = src.email;
           if (!address && src.address) address = src.address;
         }
+      }
+      // 5th-layer fallback: if phone is still empty but we have a name,
+      // try matching against bookings by normalized name to recover the phone.
+      // This lets Clients-tab records (which may lack a phone column) still
+      // group with the matching Leads-tab record that was created by the quote flow.
+      if (!phone && name) {
+        const normKey = name.toLowerCase().replace(/\s+/g, " ");
+        const recovered = bookingPhoneByNormName[normKey];
+        if (recovered) phone = recovered;
       }
 
       if (!assignedTo) {

@@ -184,7 +184,13 @@ async function handleGetCalendar(req, res) {
 
     // Also include unscheduled regardless of date range
     const staffOut = rawStaff
-      .filter(s => s.staff_id && (s.status === "active" || s.status === "approved" || !s.status))
+      .filter(s => s.staff_id && (
+        !s.status ||
+        s.status === "active" || s.status === "approved" ||
+        // HR module uses employment_status instead of status
+        s.employment_status === "active" || s.employment_status === "employed" ||
+        s.employment_status === "full_time" || s.employment_status === "part_time"
+      ))
       .map(s => ({
         staff_id:   s.staff_id,
         first_name: s.first_name || "",
