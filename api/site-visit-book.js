@@ -146,7 +146,7 @@ async function handleSiteVisitBook(req, res) {
     });
 
     // ── Write Lead row matching sheet schema ───────────────────────────────────
-    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Leads!A1:Z1" });
+    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Leads!A1:AZ1" });
     const leadHeaders = (leadsRes.data.values || [[]])[0] || [];
 
     const leadFields = {
