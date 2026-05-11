@@ -15,6 +15,7 @@ const S = {
   sameForAll: true,
   activeUnit: 0,
   uncertain: null,
+  consents: {},           // { ie_scope: bool } — pre-booking consent
 };
 
 // ── Product Catalog ───────────────────────────────────────────────────────────
@@ -1046,9 +1047,24 @@ async function renderResult(siteVisitForced) {
       ${equipSummary}
       ${summary}
       <div style="font-size:.75rem;color:var(--muted);margin-bottom:16px">Reference: ${esc(d.lead_id||"")}</div>
+      <div class="ie-consent-section" style="margin:16px 0 4px;padding:14px 16px;border:1px solid rgba(255,255,255,0.13);border-radius:12px;background:rgba(255,255,255,0.06);">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:10px;">Before You Book</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="ie_consent_scope" style="margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;">
+          <span style="font-size:13px;line-height:1.55;color:var(--muted);">I understand the estimate is based on the information I provided. If actual site conditions differ — location, access, wiring, wall type, or scope — Vickery Electric will pause and discuss any price change before continuing. I agree to provide safe access and be reachable during the appointment.</span>
+        </label>
+      </div>
       <div class="actions" style="justify-content:center">${retryBtn}
-        <a class="btn btn-primary" href="/contact">Book Appointment →</a></div>
+        <button class="btn btn-primary" id="ieBookBtn" disabled>Book Appointment →</button></div>
     </div>${renderDebug()}`);
+    document.getElementById("ie_consent_scope")?.addEventListener("change", e => {
+      S.consents.ie_scope = e.target.checked;
+      const btn = document.getElementById("ieBookBtn");
+      if (btn) btn.disabled = !e.target.checked;
+    });
+    document.getElementById("ieBookBtn")?.addEventListener("click", () => {
+      if (S.consents.ie_scope) window.location.href = "/contact";
+    });
   } catch (e) {
     show(`<div class="status-msg error-msg">Network error: ${esc(e.message)}</div>${renderDebug()}`);
   }

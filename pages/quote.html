@@ -530,6 +530,48 @@
     .q-addon-fee  { font-size: 13px; font-weight: 700; color: hsl(var(--accent)); margin-top: 2px; }
     .q-addon-desc { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 4px; }
 
+    /* ── Location question pills ─────────────────────────────────────── */
+    .q-loc-options { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .q-loc-option {
+      padding: 11px 16px;
+      border: 1.5px solid hsl(var(--border));
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: hsl(var(--foreground));
+      background: white;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .q-loc-option:hover { border-color: hsl(var(--accent)); background: hsl(var(--primary) / 0.02); }
+    .q-loc-option.selected { border-color: hsl(var(--primary)); color: hsl(var(--primary)); background: hsl(var(--primary) / 0.05); font-weight: 600; }
+
+    /* ── Consent section ─────────────────────────────────────────────── */
+    .q-consent-section {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid hsl(var(--primary) / 0.22);
+      border-radius: 12px;
+      background: hsl(var(--primary) / 0.04);
+    }
+    .q-consent-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .q-consent-item + .q-consent-item { margin-top: 12px; }
+    .q-consent-item input[type="checkbox"] {
+      margin-top: 3px;
+      width: 18px;
+      height: 18px;
+      accent-color: hsl(var(--primary));
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .q-consent-item span { font-size: 13px; line-height: 1.55; color: hsl(var(--muted-foreground)); }
+
     /* ── Review — slots section ─────────────────────────────────────── */
     .q-review-slots-section { margin-top: 24px; }
     .q-review-slots-heading {
@@ -960,6 +1002,11 @@
     html.dark .q-option.selected { background: hsl(var(--primary) / 0.12) !important; color: hsl(var(--primary)); }
     html.dark .q-addon { border-color: hsl(220 10% 24%); }
     html.dark .q-addon.selected { background: hsl(var(--primary) / 0.12) !important; }
+    html.dark .q-loc-option { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); background: transparent; }
+    html.dark .q-loc-option:hover { border-color: hsl(var(--primary)); }
+    html.dark .q-loc-option.selected { background: hsl(var(--primary) / 0.14) !important; color: hsl(var(--primary)); }
+    html.dark .q-consent-section { border-color: hsl(var(--primary) / 0.28); background: hsl(var(--primary) / 0.08); }
+    html.dark .q-consent-item span { color: hsl(210 15% 65%); }
     html.dark .q-slot { border-color: hsl(220 10% 24%); color: hsl(210 18% 87%); }
     html.dark .q-slot.selected { background: hsl(var(--primary)) !important; color: #fff; }
     html.dark .q-block-btn { border-color: hsl(220 10% 24%); }

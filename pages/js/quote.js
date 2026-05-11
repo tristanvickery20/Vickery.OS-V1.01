@@ -31,6 +31,10 @@ const S = {
   photoGateUploading: false,   // true while gate photo is being uploaded to server
   confirmedPhotoModules: {},   // { [module]: true } — modules confirmed by successful server upload
   consultData: null,           // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
+  locationAnswers: {},         // { distance: str, attendance: str } — universal location questions
+  locationPhotos: [],          // File[] — area photos captured in questions step
+  locationPhotoUploaded: false,// true once area photo successfully uploaded to server
+  consents: {},                // { scope: bool, unattended: bool, location: bool }
 };
 
 // ── Equipment / Material catalog ───────────────────────────────────────────────
@@ -108,6 +112,22 @@ const PHOTO_MODULE_GUIDES = {
     exampleImg: "/pages/img/example-ev-location.svg",
     exampleAlt: "Example of a correctly photographed EV charger installation area showing wall, floor, and existing outlet",
   },
+  AREA_PHOTO: {
+    title:   "Mark the Work Location",
+    steps: [
+      "Stand in front of the wall, ceiling, or area where the work will happen.",
+      "Mark the exact spot with tape, a sticky note, or point your finger at it — this helps us confirm the location before we start.",
+      "Step back 3–4 feet so we can see the full area, including any nearby outlets, switches, or fixtures.",
+      "If possible, take a second shot showing the path to your electrical panel from this room.",
+    ],
+    tips: [
+      "Mark the exact spot clearly — tape X, sticker, or finger pointing works great",
+      "Show 2–3 feet of wall or ceiling on all sides of the target spot",
+      "Turn on the room lights for the best image clarity",
+    ],
+    exampleImg: "/pages/img/example-area-location.svg",
+    exampleAlt: "Example of a wall with a blue tape X marking the exact outlet location and surrounding area visible",
+  },
 };
 
 // ── Module-level question overrides ───────────────────────────────────────────
@@ -137,6 +157,34 @@ const MODULE_OVERRIDES = {
     prompt: "How far is your electrical panel from the work area? (from the work area)",
   },
 };
+
+// ── Location-based service detection ──────────────────────────────────────────
+// Categories that get three universal location questions injected into the
+// questions step: distance from panel, work area photo, and attendance/access.
+const LOCATION_BASED_CATS = new Set(["Outlets & Switches", "Lighting & Fans"]);
+
+function isLocationJob() {
+  if (!S.selectedServices.length || !S.config) return false;
+  const types = S.config.jobTypes || [];
+  return S.selectedServices.some(svc => {
+    const jt = types.find(j => j.job_type_id === svc.job_type_id);
+    return jt && LOCATION_BASED_CATS.has(jt.category);
+  });
+}
+
+// Returns true when all required location questions are answered and photo uploaded.
+function locationQsComplete() {
+  if (!isLocationJob()) return true;
+  return !!(S.locationAnswers.distance && S.locationAnswers.attendance && S.locationPhotoUploaded);
+}
+
+// Returns true when all required consent boxes are checked.
+function consentsComplete() {
+  if (!S.consents.scope) return false;
+  if (S.locationAnswers.attendance === "no_phone" && !S.consents.unattended) return false;
+  if (isLocationJob() && !S.consents.location) return false;
+  return true;
+}
 
 const PRODUCT_CATALOG = {
   // ── Recessed Lighting ───────────────────────────────────────────────────────
@@ -856,14 +904,111 @@ function renderQuestions() {
         </div>
       ` : ""}
     </div>
+    ${isLocationJob() ? renderLocationSection() : ""}
     <div class="q-nav-row">
       <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-      <button class="q-btn-next" id="seePriceBtn" aria-label="See My Price">
+      <button class="q-btn-next" id="seePriceBtn" aria-label="See My Price"
+        ${isLocationJob() && !locationQsComplete() ? "disabled" : ""}>
         <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
         <span>See My Price</span>
       </button>
     </div>
     ${NOTE}`;
+}
+
+// ── Location questions section ─────────────────────────────────────────────────
+// Injected after service-specific questions for outlets/switches/lighting/fans.
+// Collects three required inputs: distance from panel, work area photo, attendance.
+function renderLocationSection() {
+  const DIST_OPTIONS = [
+    { id: "within_3ft", label: "Right there \u2014 within 3 feet" },
+    { id: "3_10ft",     label: "3\u201310 feet away" },
+    { id: "10_25ft",    label: "10\u201325 feet away" },
+    { id: "25_50ft",    label: "25\u201350 feet away" },
+    { id: "over_50ft",  label: "Over 50 feet" },
+    { id: "not_sure",   label: "Not sure" },
+  ];
+  const ATTEND_OPTIONS = [
+    { id: "yes_me",   label: "Yes \u2014 I\u2019ll be there" },
+    { id: "someone",  label: "Someone else will be there to meet you" },
+    { id: "no_phone", label: "No \u2014 I\u2019ll provide access and be reachable by phone" },
+  ];
+
+  const guide         = PHOTO_MODULE_GUIDES.AREA_PHOTO;
+  const photoUploaded = S.locationPhotoUploaded;
+
+  const stepsHtml = (guide.steps || []).map((s, i) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+      <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:hsl(var(--primary));color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i + 1}</div>
+      <p style="margin:0;font-size:13px;line-height:1.5;padding-top:1px;">${escHtml(s)}</p>
+    </div>`).join("");
+
+  const tipsHtml = (guide.tips || []).length ? `
+    <div style="background:hsl(210 20% 97%);border-radius:8px;padding:10px 12px;margin:10px 0;">
+      <p style="margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground));">Quick tips</p>
+      ${guide.tips.map(t => `
+        <div style="display:flex;gap:8px;align-items:flex-start;margin-top:3px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px;"><polyline points="20 6 9 17 4 12"/></svg>
+          <span style="font-size:12px;color:hsl(var(--muted-foreground));">${escHtml(t)}</span>
+        </div>`).join("")}
+    </div>` : "";
+
+  const photoAction = photoUploaded ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:hsl(120 60% 97%);border:1.5px solid hsl(120 60% 80%);border-radius:10px;padding:12px 14px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(120 60% 40%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="7 12 10.5 15.5 17 8.5"/></svg>
+        <div>
+          <p style="margin:0;font-size:13px;font-weight:700;color:hsl(120 60% 35%);">Area photo uploaded</p>
+          <p style="margin:2px 0 0;font-size:11px;color:hsl(120 60% 50%);">Ready to continue</p>
+        </div>
+      </div>
+      <label style="cursor:pointer;font-size:12px;color:hsl(var(--muted-foreground));text-decoration:underline;white-space:nowrap;">
+        Replace
+        <input type="file" accept="image/*" multiple id="locAreaPhotoInput" style="display:none;">
+      </label>
+    </div>` : `
+    <div style="border:2px dashed hsl(var(--border));border-radius:10px;padding:18px;text-align:center;">
+      <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:13px;font-weight:700;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose Photo
+        <input type="file" accept="image/*" multiple id="locAreaPhotoInput" style="display:none;">
+      </label>
+      <p style="margin:10px 0 0;font-size:12px;color:hsl(var(--muted-foreground));">JPG, PNG or HEIC &bull; up to 5 photos</p>
+      <div id="locPhotoErr" style="display:none;margin-top:8px;padding:8px 10px;background:hsl(0 84% 97%);border:1px solid hsl(0 84% 85%);border-radius:8px;font-size:12px;color:hsl(0 72% 45%);"></div>
+    </div>`;
+
+  return `
+    <div class="q-card-section q-loc-section" style="margin-top:14px;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));margin-bottom:16px;">
+        &#128205; Job Location Details
+      </div>
+
+      <div class="q-question">
+        <div class="q-question-prompt">How far is the desired location from the nearest outlet or panel? <span class="q-req">*</span></div>
+        <div class="q-loc-options">
+          ${DIST_OPTIONS.map(o => `
+            <div class="q-loc-option${S.locationAnswers.distance === o.id ? " selected" : ""}"
+                 data-field="distance" data-val="${escHtml(o.id)}">${escHtml(o.label)}</div>`).join("")}
+        </div>
+      </div>
+
+      <div class="q-question" style="margin-top:20px;">
+        <div class="q-question-prompt">&#128247; Photo of the work area <span class="q-req">*</span></div>
+        <p class="q-muted" style="font-size:13px;margin:4px 0 12px;">Mark the exact spot with tape or a sticky note before taking the photo &mdash; it takes 30 seconds and prevents scope confusion on job day.</p>
+        ${stepsHtml}
+        ${tipsHtml}
+        <div style="margin-top:12px;">${photoAction}</div>
+      </div>
+
+      <div class="q-question" style="margin-top:20px;">
+        <div class="q-question-prompt">Will someone be there to confirm the location? <span class="q-req">*</span></div>
+        <div class="q-loc-options">
+          ${ATTEND_OPTIONS.map(o => `
+            <div class="q-loc-option${S.locationAnswers.attendance === o.id ? " selected" : ""}"
+                 data-field="attendance" data-val="${escHtml(o.id)}">${escHtml(o.label)}</div>`).join("")}
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderQuestion(q) {
@@ -1162,10 +1307,27 @@ function renderConfirm() {
           </span>
         </label>
       </div>
+      <div class="q-consent-section">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));margin-bottom:12px;">Before You Book</div>
+        <label class="q-consent-item">
+          <input type="checkbox" id="consent_scope" class="q-consent-check" ${S.consents.scope ? "checked" : ""}>
+          <span>I understand the price is based on the information I provided. If actual site conditions differ &mdash; location, access, wiring, panel condition, wall type, or scope &mdash; Vickery Electric will pause and request my approval before continuing. I agree to provide safe access, secure pets, and be reachable during the appointment.</span>
+        </label>
+        ${S.locationAnswers.attendance === "no_phone" ? `
+        <label class="q-consent-item">
+          <input type="checkbox" id="consent_unattended" class="q-consent-check" ${S.consents.unattended ? "checked" : ""}>
+          <span>I authorize Vickery Electric to access the property using the instructions I will provide. Pets are secured, alarm issues are handled, and the work location is clearly marked. If the technician cannot safely access or confirm the work area, the job may be paused, rescheduled, or subject to a trip fee.</span>
+        </label>` : ""}
+        ${isLocationJob() ? `
+        <label class="q-consent-item">
+          <input type="checkbox" id="consent_location" class="q-consent-check" ${S.consents.location ? "checked" : ""}>
+          <span>I confirm the location shown in my area photo is accurate. If the exact location changes on the day of service, the final price may be adjusted before work begins.</span>
+        </label>` : ""}
+      </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
       <div class="q-nav-row" style="margin-top:16px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-        <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book">
+        <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book" ${consentsComplete() ? "" : "disabled"}>
           <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
           <span>Confirm &amp; Book</span>
         </button>
@@ -1889,8 +2051,73 @@ function bindEvents() {
   });
 
   document.getElementById("seePriceBtn")?.addEventListener("click", () => {
+    if (!locationQsComplete()) {
+      document.querySelector(".q-loc-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (hasEquipmentCatalog()) go("equipment");
     else checkPhotoGate();
+  });
+
+  // Location questions — option pills (distance + attendance)
+  document.querySelectorAll(".q-loc-option").forEach(el => {
+    el.addEventListener("click", () => {
+      const field = el.dataset.field;
+      const val   = el.dataset.val;
+      S.locationAnswers[field] = val;
+      el.closest(".q-loc-options")?.querySelectorAll(".q-loc-option")
+        .forEach(o => o.classList.toggle("selected", o === el));
+      const btn = document.getElementById("seePriceBtn");
+      if (btn) btn.disabled = !locationQsComplete();
+    });
+  });
+
+  // Location area photo — inline upload in questions step
+  document.getElementById("locAreaPhotoInput")?.addEventListener("change", async e => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    S.locationPhotos = files;
+    if (!S.quoteId) {
+      try {
+        const sr = await fetch("/api/quote/start", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+        });
+        const sd = await sr.json();
+        if (!sd.quote_id) throw new Error("Could not start session.");
+        S.quoteId = sd.quote_id;
+      } catch {}
+    }
+    try {
+      for (const file of files) {
+        const base64 = await fileToBase64(file);
+        const r = await fetch("/api/quote/photo", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quote_id: S.quoteId, base64,
+            mime_type: file.type || "image/jpeg",
+            filename: file.name,
+            module: "AREA_PHOTO",
+          }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || "Upload failed.");
+      }
+      S.locationPhotoUploaded = true;
+    } catch (err) {
+      const errEl = document.getElementById("locPhotoErr");
+      if (errEl) { errEl.textContent = "Upload failed: " + err.message; errEl.style.display = "block"; }
+      return;
+    }
+    go("questions");
+  });
+
+  // Consent checkboxes — enable/disable submit button
+  document.querySelectorAll(".q-consent-check").forEach(cb => {
+    cb.addEventListener("change", () => {
+      S.consents[cb.id.replace("consent_", "")] = cb.checked;
+      const submitBtn = document.getElementById("submitLockBtn");
+      if (submitBtn) submitBtn.disabled = !consentsComplete();
+    });
   });
 
   // Equipment card picker — radio-style within each service section
@@ -2357,6 +2584,7 @@ async function submitLock() {
   if (!S.addressConfirmed)  return show("Please confirm your address — select it from the suggestions or tap \"Yes, that's it\" when it appears.");
   if (!/^\d{5}$/.test(zip)) return show("Please enter a valid 5-digit ZIP code.");
   if (!source)              return show("Please let us know how you found us.");
+  if (!consentsComplete())  return show("Please review and check all required agreements before booking.");
 
   const btn = document.getElementById("submitLockBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Locking\u2026"; }
