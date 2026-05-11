@@ -7,6 +7,61 @@ let amountRaw      = "";
 let timeCategory   = "On-site";
 let expCategory    = "Materials";
 
+// ── Date navigation state ─────────────────────────────────────────────────────
+let _selectedDate = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+function _todayStr() { return new Date().toISOString().slice(0, 10); }
+function _isViewingToday() { return _selectedDate === _todayStr(); }
+
+function updateDateNav() {
+  const label  = document.getElementById("dateNavLabel");
+  const sub    = document.getElementById("dateNavSub");
+  const todayBtn = document.getElementById("btnGoToday");
+  if (!label) return;
+
+  const d = new Date(_selectedDate + "T12:00:00");
+  const todayD = new Date(_todayStr() + "T12:00:00");
+  const diffDays = Math.round((d - todayD) / 86400000);
+
+  label.textContent = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  if (diffDays === 0)       sub.textContent = "Today";
+  else if (diffDays === -1) sub.textContent = "Yesterday";
+  else if (diffDays === 1)  sub.textContent = "Tomorrow";
+  else                      sub.textContent = "";
+
+  if (todayBtn) todayBtn.hidden = _isViewingToday();
+
+  const noJobsMsg = document.getElementById("noJobsMsg");
+  if (noJobsMsg) {
+    noJobsMsg.textContent = _isViewingToday()
+      ? "No jobs scheduled today"
+      : `No jobs scheduled for ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  }
+}
+
+function crewPrevDay() {
+  const d = new Date(_selectedDate + "T12:00:00");
+  d.setDate(d.getDate() - 1);
+  _selectedDate = d.toISOString().slice(0, 10);
+  updateDateNav();
+  loadTodayEntries().then(() => loadTodayJobs());
+}
+
+function crewNextDay() {
+  const d = new Date(_selectedDate + "T12:00:00");
+  d.setDate(d.getDate() + 1);
+  _selectedDate = d.toISOString().slice(0, 10);
+  updateDateNav();
+  loadTodayEntries().then(() => loadTodayJobs());
+}
+
+function crewGoToday() {
+  _selectedDate = _todayStr();
+  updateDateNav();
+  loadTodayEntries().then(() => loadTodayJobs());
+}
+
 // Map state
 let _todayJobs    = [];
 let _crewMap      = null;
@@ -80,6 +135,7 @@ function setupHeader() {
       weekday: "long", month: "long", day: "numeric",
     });
   }
+  updateDateNav();
   const hr    = new Date().getHours();
   const greet = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
   const el    = document.getElementById("greeting");
@@ -551,8 +607,8 @@ async function stopTimer() {
 async function loadTodayEntries() {
   try {
     const [timeRes, expRes] = await Promise.all([
-      fetch("/api/crew/time-today").then(r => r.json()).catch(() => ({ entries: [] })),
-      fetch("/api/crew/expenses-today").then(r => r.json()).catch(() => ({ entries: [] })),
+      fetch(`/api/crew/time-today?date=${_selectedDate}`).then(r => r.json()).catch(() => ({ entries: [] })),
+      fetch(`/api/crew/expenses-today?date=${_selectedDate}`).then(r => r.json()).catch(() => ({ entries: [] })),
     ]);
 
     todayTimeMap = {};
@@ -579,7 +635,7 @@ async function loadTodayJobs() {
   if (!list) return;
   list.innerHTML = `<div style="padding:20px;text-align:center;color:hsl(220 15% 45%);">Loading…</div>`;
   try {
-    const res  = await fetch("/api/crew/today");
+    const res  = await fetch(`/api/crew/today?date=${_selectedDate}`);
     const data = await res.json();
     const jobs = data.jobs || [];
     _todayJobs = jobs;
@@ -591,7 +647,7 @@ async function loadTodayJobs() {
     if (noJobs) noJobs.hidden = true;
     renderJobCards();
   } catch {
-    list.innerHTML = `<div style="color:hsl(0 60% 55%);padding:16px;">Could not load today's jobs.</div>`;
+    list.innerHTML = `<div style="color:hsl(0 60% 55%);padding:16px;">Could not load jobs.</div>`;
   }
 }
 
@@ -815,9 +871,11 @@ function jobCard(j) {
       </button>
     </div>` : "";
 
-  // Clock button
+  // Clock button — hidden when browsing a date other than today
   let clockBtn;
-  if (isActive) {
+  if (!_isViewingToday()) {
+    clockBtn = `<span style="font-size:12px;color:hsl(220 15% 45%);font-style:italic;">View only — clock available on today's jobs</span>`;
+  } else if (isActive) {
     clockBtn = `<button class="btn-stop-clock">■ Stop &amp; Log</button>`;
   } else {
     const disabled = anyActive ? 'disabled title="Stop the current timer first"' : "";

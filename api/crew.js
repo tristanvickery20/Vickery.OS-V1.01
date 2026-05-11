@@ -196,7 +196,12 @@ async function handleGetTodayJobs(req, res) {
       });
     }
 
-    const today = todayLocalStr();
+    // Accept optional ?date=YYYY-MM-DD to view a specific day
+    const urlObj   = new URL(req.url, "http://x");
+    const dateParam = urlObj.searchParams.get("date");
+    const today = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam))
+      ? dateParam
+      : todayLocalStr();
 
     const norm = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
     const splitAssignmentValues = (value) => {

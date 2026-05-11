@@ -355,7 +355,7 @@ const server = http.createServer(async (req, res) => {
   }
   // Crew-session-gated GETs for today's own time + expenses (sanitized, user-scoped)
   // Returns only minimal fields needed by job-card UI; strips lat/lng, notes, IDs.
-  if (req.url === "/api/crew/time-today" && req.method === "GET") {
+  if (req.url.split("?")[0] === "/api/crew/time-today" && req.method === "GET") {
     const crewSess = getCrewSession(req);
     if (!crewSess) {
       res.writeHead(401, { "Content-Type": "application/json" });
@@ -368,7 +368,9 @@ const server = http.createServer(async (req, res) => {
         spreadsheetId: process.env.CRM_SHEET_ID,
         range: "Time!A1:L2000",
       });
-      const today    = new Date().toISOString().slice(0, 10);
+      const _ttUrl   = new URL(req.url, "http://x");
+      const _ttDate  = _ttUrl.searchParams.get("date");
+      const today    = (_ttDate && /^\d{4}-\d{2}-\d{2}$/.test(_ttDate)) ? _ttDate : new Date().toISOString().slice(0, 10);
       const techId   = `${crewSess.firstName} ${crewSess.lastName}`;
       const values   = resp.data.values || [];
       const entries  = values.slice(1)
@@ -383,7 +385,7 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: false, error: err.message }));
     }
   }
-  if (req.url === "/api/crew/expenses-today" && req.method === "GET") {
+  if (req.url.split("?")[0] === "/api/crew/expenses-today" && req.method === "GET") {
     const crewSess = getCrewSession(req);
     if (!crewSess) {
       res.writeHead(401, { "Content-Type": "application/json" });
@@ -396,7 +398,9 @@ const server = http.createServer(async (req, res) => {
         spreadsheetId: process.env.CRM_SHEET_ID,
         range: "Expenses!A1:J2000",
       });
-      const today   = new Date().toISOString().slice(0, 10);
+      const _etUrl  = new URL(req.url, "http://x");
+      const _etDate = _etUrl.searchParams.get("date");
+      const today   = (_etDate && /^\d{4}-\d{2}-\d{2}$/.test(_etDate)) ? _etDate : new Date().toISOString().slice(0, 10);
       const techId  = `${crewSess.firstName} ${crewSess.lastName}`;
       const values  = resp.data.values || [];
       const entries = values.slice(1)

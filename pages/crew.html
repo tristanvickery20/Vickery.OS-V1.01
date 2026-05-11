@@ -1111,10 +1111,23 @@
       </button>
     </div>
 
-    <div class="section-label" style="margin-top:4px;">Today's Jobs</div>
+    <!-- Date navigation bar -->
+    <div id="dateNavBar" style="display:flex;align-items:center;gap:8px;margin:4px 0 2px;">
+      <button id="btnPrevDay" onclick="crewPrevDay()" aria-label="Previous day"
+        style="background:hsl(220 14% 14%);border:1px solid hsl(220 10% 22%);color:hsl(220 15% 80%);border-radius:9px;width:34px;height:34px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">&#8249;</button>
+      <div style="flex:1;text-align:center;">
+        <div id="dateNavLabel" style="font-size:14px;font-weight:700;color:hsl(220 15% 88%);line-height:1.2;"></div>
+        <div id="dateNavSub" style="font-size:11px;color:hsl(220 15% 50%);margin-top:1px;"></div>
+      </div>
+      <button id="btnNextDay" onclick="crewNextDay()" aria-label="Next day"
+        style="background:hsl(220 14% 14%);border:1px solid hsl(220 10% 22%);color:hsl(220 15% 80%);border-radius:9px;width:34px;height:34px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">&#8250;</button>
+      <button id="btnGoToday" onclick="crewGoToday()" hidden
+        style="background:hsl(217 70% 35%);border:none;color:#fff;border-radius:9px;padding:0 12px;height:34px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Today</button>
+    </div>
+
     <div id="jobList"></div>
     <div id="noJobs" class="no-jobs" hidden>
-      <strong>No jobs scheduled today</strong>
+      <strong id="noJobsMsg">No jobs scheduled today</strong>
       You can still log time or expenses below.
     </div>
 
