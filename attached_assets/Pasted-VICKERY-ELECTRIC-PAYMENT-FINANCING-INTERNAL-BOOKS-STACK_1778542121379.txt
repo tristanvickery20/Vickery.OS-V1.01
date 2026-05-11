@@ -1,0 +1,511 @@
+VICKERY ELECTRIC PAYMENT + FINANCING + INTERNAL BOOKS STACK GOAL
+
+Update the Vickery Electric CRM / instant quote / booking / job closeout system around the correct payment and financing stack.
+
+Important correction:
+Do NOT assume QuickBooks is part of the stack.
+Do NOT build around QuickBooks.
+Do NOT make QuickBooks the accounting source of truth.
+
+Vickery Electric wants most books, payment tracking, job financials, deposits, fees, balances, cash records, financing status, payouts, and job-level profitability tracked inside the CRM itself.
+
+This is not a tiny label change. Treat this as a serious payment, financing, and internal bookkeeping system build.
+
+The CRM is the business operating system.
+
+CORE STACK
+
+1. Square = primary regular payment processor
+
+Square should be the main payment tool for normal payments.
+
+Square handles:
+- In-person card payments
+- Tap to Pay
+- Apple Pay
+- Google Pay
+- Card payments
+- Payment links
+- Invoice-style payment requests
+- Deposits
+- Final balances
+- Remote payments
+- Cash recording support
+- Small-ticket pay-later through Afterpay if eligible
+
+2. Square Afterpay = small-ticket pay-later
+
+Afterpay should be treated as the small-ticket pay-later option.
+
+Use it for:
+- Tickets starting around $100
+- Small service jobs
+- Tickets under $500
+- Some medium jobs where eligible
+
+Customer-facing language:
+- “Pay Later”
+- “Split payments if eligible”
+- “Pay over time if eligible”
+
+Do NOT call this true contractor financing.
+
+3. Wisetack = larger home-service financing
+
+Wisetack should be treated as the main larger-ticket financing provider.
+
+Use it for:
+- Jobs $500+
+- Medium electrical jobs
+- Large electrical jobs
+- Panel-related work
+- Generator-related work
+- Bundled service packages
+- Projects up to at least $15,000
+
+Customer-facing language:
+- “Monthly payment options”
+- “Check financing options”
+- “See if this project qualifies for monthly payments”
+
+4. CRM = internal books / financial command center
+
+The CRM should track the business financial picture directly.
+
+The CRM needs to track:
+- Quotes
+- Deposits
+- Final balances
+- Payments received
+- Payment method
+- Processing fees
+- Financing fees
+- Cash payments
+- Refunds
+- Failed payments
+- Balance due
+- Labor cost
+- Material cost
+- Expense cost
+- Job gross profit
+- Job gross margin
+- Daily revenue
+- Weekly revenue
+- Monthly revenue
+- Accounts receivable
+- Unpaid jobs
+- Partially paid jobs
+- Paid jobs
+- Collected vs uncollected money
+- Financing status
+- Net payout after fees
+- Owner dashboard numbers
+
+There should be no QuickBooks dependency for this build.
+
+MAIN BUSINESS GOAL
+
+Vickery Electric needs an easy customer payment experience and a strong internal financial tracking system.
+
+Customers should be able to pay in person or virtually.
+
+Customers should be able to use:
+- Cash
+- Card
+- Tap to Pay
+- Apple Pay
+- Google Pay
+- Payment link
+- ACH / bank transfer if Square supports it
+- Pay Later for small tickets
+- Monthly financing for larger tickets
+- Deposit + final balance
+- Remote payment from spouse / landlord / property manager
+
+The CRM should clearly know:
+- What the customer owes
+- What has been paid
+- How it was paid
+- What fees were taken
+- What net amount Vickery Electric actually receives
+- Whether the job is allowed to schedule
+- Whether the job is allowed to close
+- Whether the job is financially complete
+
+CUSTOMER-FACING PAYMENT LOGIC
+
+Under $100:
+- Show normal payment options only
+- Cash
+- Card
+- Tap to Pay
+- Digital wallet
+- Payment link
+- Do not emphasize pay-later
+- Do not show Wisetack
+
+$100 to $499:
+- Show normal payment options
+- Show Pay Later / Afterpay if available
+- Do not prioritize Wisetack
+- Label as “Pay later if eligible”
+- This is a convenience option, not formal financing
+
+$500 to $2,000:
+- Show normal payment options
+- Show Pay Later if available
+- Show Wisetack monthly payment options
+- Customer can choose:
+  - Pay now
+  - Pay deposit
+  - Pay at completion if allowed
+  - Payment link
+  - Pay Later
+  - Monthly financing
+
+$2,000 to $15,000:
+- Prioritize Wisetack / monthly payment options
+- Still allow card, ACH, deposit, and payment link
+- Larger jobs may require manual review before full booking
+- Financing accepted or deposit paid can satisfy scheduling/payment gate depending on settings
+
+High-risk jobs:
+- If the quote has risk flags, photo gates, generator scope, panel scope, attic uncertainty, unknown wiring conditions, or large labor uncertainty, the system should be able to block auto-booking until review/payment requirements are met
+
+CUSTOMER-FACING PAYMENT LANGUAGE
+
+Use clean wording like:
+
+“Flexible payment options available.”
+
+“Pay by cash, card, Apple Pay, Google Pay, payment link, or approved pay-later options.”
+
+“Small-ticket pay-later may be available on eligible jobs.”
+
+“For qualifying larger projects, monthly payment options may be available.”
+
+Avoid:
+- Guaranteed approval
+- Everyone qualifies
+- No credit needed
+- We finance everyone
+- 0% financing
+- Only $X/month unless provided directly by the provider
+- Card surcharge language
+- Any lending promises Vickery Electric cannot legally make
+
+ONLINE QUOTE / BOOKING GOAL
+
+The instant quote flow should show payment options based on the quote total and risk level.
+
+Customer should be able to:
+- See price
+- See payment options
+- Pay now
+- Pay deposit
+- Request/send payment link
+- Choose pay-later if eligible
+- Check monthly payment options if eligible
+- Upload photos if required
+- Book only when payment/financing/review rules allow it
+
+Important:
+Do not allow “financing link sent” to count as paid.
+Do not allow “customer started financing” to count as paid.
+Financing accepted/funded can count as satisfying the payment requirement, depending on provider status.
+
+FIELD TECH PAYMENT GOAL
+
+On the job screen, the tech should eventually have clear payment actions:
+
+- Collect Card / Tap to Pay
+- Record Cash
+- Send Payment Link
+- Send Pay-Later Link
+- Send Financing Link
+- Mark Deposit Paid
+- Mark Paid in Full
+- View Balance Due
+- View Payment Status
+- View Financing Status
+- View Payment Notes
+- Add Cash Handoff Note
+- Add Payment Issue Note
+
+The tech should not act like a lender.
+
+The tech should only send the correct link and let Square, Afterpay, or Wisetack handle approval, terms, APR, disclosures, and customer financing decisions.
+
+PAYMENT STATUS MODEL
+
+Regular payment status should be separate from financing status.
+
+Regular payment statuses should include:
+
+- unpaid
+- deposit_required
+- deposit_link_sent
+- deposit_paid
+- payment_link_sent
+- partially_paid
+- paid
+- failed
+- refunded
+- cash_recorded
+- cash_pending_handoff
+- cash_verified
+- payment_disputed
+- write_off
+
+Financing statuses should include:
+
+- not_offered
+- eligible
+- link_sent
+- customer_started
+- approved
+- declined
+- accepted
+- funded
+- expired
+- canceled
+- manual_followup_required
+
+Pay-later statuses should include:
+
+- not_offered
+- eligible
+- link_sent
+- selected
+- approved
+- declined
+- completed
+- failed
+- canceled
+
+INTERNAL BOOKKEEPING GOAL
+
+Because QuickBooks is not being used as the core source of truth, the CRM needs its own internal books foundation.
+
+The CRM should track each money event as a ledger-style record.
+
+A payment or financial event should be stored as something like:
+
+- payment_id
+- job_id
+- quote_id
+- client_id
+- created_at
+- payment_type
+- payment_provider
+- payment_method
+- gross_amount
+- fee_amount
+- net_amount
+- status
+- external_reference_id
+- notes
+- collected_by
+- received_at
+- verified_at
+
+Payment types may include:
+- deposit
+- progress_payment
+- final_payment
+- refund
+- cash_payment
+- financing_payout
+- financing_fee
+- card_processing_fee
+- pay_later_fee
+- adjustment
+- write_off
+
+Payment providers may include:
+- square
+- square_afterpay
+- wisetack
+- cash
+- manual
+- other
+
+Payment methods may include:
+- cash
+- card
+- tap_to_pay
+- apple_pay
+- google_pay
+- ach
+- payment_link
+- afterpay
+- wisetack
+- manual_adjustment
+
+JOB FINANCIAL MODEL
+
+Each job should be able to calculate:
+
+- quoted_price
+- approved_price
+- change_order_total
+- invoice_total
+- deposit_required
+- deposit_paid
+- total_paid
+- balance_due
+- processing_fees_total
+- financing_fees_total
+- net_collected
+- material_cost
+- labor_cost
+- expense_cost
+- total_job_cost
+- gross_profit
+- gross_margin_percent
+- payment_status
+- financial_closeout_status
+
+Financial closeout should not just mean the work is done.
+
+A job should only be financially closed when:
+- final price is known
+- all payments are accounted for
+- cash is verified if cash was used
+- fees are recorded
+- balance due is zero or intentionally written off
+- job costs are entered
+- gross profit/margin can be calculated
+
+DASHBOARD GOAL
+
+The owner dashboard should eventually show:
+
+- Revenue booked
+- Revenue collected
+- Revenue uncollected
+- Deposits collected
+- Open balances
+- Jobs unpaid
+- Jobs partially paid
+- Jobs paid
+- Cash pending handoff
+- Payment links sent but unpaid
+- Financing links sent
+- Financing approved
+- Financing accepted/funded
+- Failed payments
+- Refunds
+- Processing fees
+- Financing fees
+- Net collected
+- Gross profit by job
+- Gross margin by job
+- Gross margin by service type
+- Average ticket
+- Average deposit
+- Collection rate
+
+ADMIN SETTINGS GOAL
+
+Thresholds and payment rules should be configurable by admin settings, not permanently hardcoded.
+
+Settings should include:
+
+- allow_cash
+- allow_card
+- allow_tap_to_pay
+- allow_payment_links
+- allow_ach
+- allow_pay_later
+- allow_financing
+- pay_later_provider
+- financing_provider
+- pay_later_min_amount
+- wisetack_min_amount
+- max_online_financing_display_amount
+- large_job_review_threshold
+- deposit_required_threshold
+- default_deposit_percent
+- minimum_deposit_amount
+- allow_pay_at_completion
+- allow_pay_at_completion_by_service
+- require_deposit_for_large_jobs
+- require_manual_review_for_large_jobs
+- require_manual_review_for_risk_flags
+- require_cash_verification
+- square_fee_percent
+- square_fixed_fee
+- afterpay_fee_percent
+- afterpay_fixed_fee
+- wisetack_fee_percent
+
+DEFAULT BUSINESS RULES
+
+Use these as initial business assumptions unless current config already has better values:
+
+- pay_later_min_amount = 100
+- wisetack_min_amount = 500
+- large_job_review_threshold = 2500
+- max_online_financing_display_amount = 15000
+- allow_cash = true
+- allow_card = true
+- allow_tap_to_pay = true
+- allow_payment_links = true
+- allow_pay_later = true
+- allow_financing = true
+- financing_provider = Wisetack
+- pay_later_provider = Square Afterpay
+
+BOOKING GATE GOAL
+
+The system should eventually support rules like:
+
+- Small jobs can be booked with pay-at-completion if allowed
+- Jobs requiring deposit cannot move to Scheduled until deposit is paid or financing is accepted
+- Large/high-risk jobs can require manual review before scheduling
+- Financing link sent does not equal approved
+- Financing approved does not equal accepted
+- Financing accepted/funded can satisfy the payment requirement
+- Cash jobs need collection/handoff/verification tracking
+- Jobs cannot be financially closed with unresolved balance
+- Jobs cannot be financially closed with unverified cash
+- Jobs cannot be financially closed without job costs entered unless admin override is used
+
+WHAT NOT TO DO
+
+Do not build fake lending logic.
+
+Do not calculate APR.
+
+Do not promise approval.
+
+Do not make Vickery Electric responsible for underwriting.
+
+Do not add card surcharge language.
+
+Do not assume QuickBooks exists.
+
+Do not build around QuickBooks.
+
+Do not remove the CRM’s internal financial tracking direction.
+
+Do not make payment status and financing status the same thing.
+
+Do not count a sent financing link as payment.
+
+Do not count started financing as payment.
+
+Do not clutter the customer quote page.
+
+Do not make the tech explain financing terms.
+
+Do not delete or rewrite existing working quote/booking/job logic unless necessary.
+
+SUCCESS CRITERIA
+
+When finished, the system should clearly reflect this business goal:
+
+Vickery Electric uses Square for regular in-person and virtual payments, Square Afterpay for small-ticket pay-later starting around $100, Wisetack for larger home-service financing starting around $500, and the Vickery Electric CRM itself as the financial command center and internal books system.
+
+The CRM should understand payment status, financing status, pay-later status, deposits, balances, cash, fees, payouts, job profitability, and financial closeout without depending on QuickBooks.

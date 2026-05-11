@@ -1,12 +1,19 @@
 // scripts/delete-dead-tabs.js
-// T015: Delete dead/redundant tabs from the live CRM sheet.
+// Delete dead/redundant tabs from the live CRM sheet.
 //
-// Tabs removed from CRM:
-//   Clients, Properties, Requests, Jobs, ServiceAreas, Actuals_Rollup_30D,
-//   Time (dup of TimeEntries), all 26 HR_* tabs
+// Tabs removed from CRM (reason):
+//   Clients, Properties, Requests, Jobs   → flattened into Leads
+//   ServiceAreas                           → Estimator sheet only
+//   Actuals_Rollup_30D                     → deprecated rollup
+//   Time                                   → duplicate of TimeEntries
+//   Reviews, Templates, ReferralLedger     → moved to MARKETING_SHEET_ID
+//   FleetVehicles, FleetMaintenance,
+//     ToolAssets, ToolIssues,
+//     InventoryItems, TruckStock,
+//     MaterialRequests                     → moved to TRUCK_STOCK_ID (Ops sheet)
+//   HR_* (26 tabs)                         → moved to HR_SHEET_ID
 //
 // Bookings is intentionally KEPT — still used by the scheduling engine.
-// Staff and Techs are intentionally KEPT on HR sheet (already migrated).
 // QuoteSnapshots is intentionally KEPT — still written by schedule-book.js.
 //
 // Usage:
@@ -36,6 +43,18 @@ const DEAD_TABS = [
   "Actuals_Rollup_30D",
   // Duplicate of TimeEntries
   "Time",
+  // Moved to MARKETING_SHEET_ID
+  "Reviews",
+  "Templates",
+  "ReferralLedger",
+  // Moved to TRUCK_STOCK_ID (Ops sheet)
+  "FleetVehicles",
+  "FleetMaintenance",
+  "ToolAssets",
+  "ToolIssues",
+  "InventoryItems",
+  "TruckStock",
+  "MaterialRequests",
   // HR tabs migrated to HR sheet
   "HR_Departments",
   "HR_Designations",
