@@ -1554,6 +1554,36 @@ function openJobDetail(j) {
   if (genBtn)    { genBtn.disabled = false; genBtn.textContent = "Generate Invoice"; }
   clearCustomLineItems();
 
+  // Pull list — fetch materials for this lead if lead_id is available
+  const matSection = document.getElementById("jdMaterialsSection");
+  const matList    = document.getElementById("jdMaterialsList");
+  if (matSection && matList) {
+    matSection.style.display = "none";
+    matList.innerHTML = "";
+    const leadId = j.lead_id || "";
+    if (leadId) {
+      fetch(`/api/leads/${encodeURIComponent(leadId)}/materials`)
+        .then(r => r.json())
+        .then(data => {
+          const mats = (data && Array.isArray(data.materials)) ? data.materials : [];
+          matSection.style.display = "block";
+          if (mats.length === 0) {
+            matList.innerHTML = `<div class="jd-pull-empty">No pull list on file — check with office</div>`;
+          } else {
+            matList.innerHTML = mats.map(m => {
+              const qty  = m.quantity || 1;
+              let name   = String(m.name || m.material_name || "").trim();
+              if (qty > 1 && name && !/s$/i.test(name)) name += "s";
+              return `<div class="jd-pull-row">${qty} ${name}</div>`;
+            }).join("");
+          }
+        })
+        .catch(() => {
+          matSection.style.display = "none";
+        });
+    }
+  }
+
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");
   if (typeof _lockBody === "function") _lockBody();

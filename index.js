@@ -1101,7 +1101,7 @@ const server = http.createServer(async (req, res) => {
     return handleCreateLead(req, res);
   }
 
-  if (req.url === "/api/leads" && req.method === "GET") {
+  if (req.url.split("?")[0] === "/api/leads" && req.method === "GET") {
     return handleGetLeads(req, res);
   }
 

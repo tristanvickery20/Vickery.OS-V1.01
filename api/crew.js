@@ -12,6 +12,9 @@ const { getCrewSession, findStaffById } = require("../lib/staff");
 let ASSEMBLY_TO_SERVICE = {};
 try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
 
+// 60-second in-memory cache for today's jobs — guards against Sheets quota spikes
+const _todayJobsCache = {};  // key: dateStr → { ts: epoch, payload: { ok, jobs, today } }
+
 // Internal-only modules that should not appear as scope rows
 const SKIP_MODULES = new Set(["UNCERTAINTY_BUFFER"]);
 // Modules that contain photo URLs — collected separately and returned as photos[]
@@ -344,6 +347,7 @@ async function handleGetTodayJobs(req, res) {
           assigned_user_id:   get("assigned_user_id"),
           assigned_name:      get("assigned_name"),
           assigned_email:     get("assigned_email"),
+          lead_id:            get("lead_id"),
         };
       })
       .filter(j => {
@@ -353,8 +357,16 @@ async function handleGetTodayJobs(req, res) {
       })
       .sort((a, b) => a.scheduled_datetime.localeCompare(b.scheduled_datetime));
 
-    json(res, 200, { ok: true, jobs, today });
+    const payload = { ok: true, jobs, today };
+    _todayJobsCache[today] = { ts: Date.now(), payload };
+    json(res, 200, payload);
   } catch (err) {
+    // On Sheets quota / network error, serve stale cache for today if available
+    const fallbackDate = todayLocalStr();
+    const cached = _todayJobsCache[fallbackDate];
+    if (cached && Date.now() - cached.ts < 60_000) {
+      return json(res, 200, cached.payload);
+    }
     json(res, 500, { ok: false, error: err.message, jobs: [] });
   }
 }

@@ -487,6 +487,24 @@
     .btn-nfc:hover { background: hsl(250 60% 24%); }
     .btn-nfc.scanning { border-color: hsl(142 55% 35%); background: hsl(142 55% 14%); color: hsl(142 60% 68%); animation: nfc-pulse .9s ease-in-out infinite; }
     @keyframes nfc-pulse { 0%,100%{opacity:1}50%{opacity:.55} }
+    .jd-pull-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .jd-pull-row {
+      font-size: 14px;
+      color: hsl(220 15% 82%);
+      padding: 6px 10px;
+      background: hsl(220 10% 15%);
+      border-radius: 8px;
+      border: 1px solid hsl(220 10% 22%);
+    }
+    .jd-pull-empty {
+      font-size: 13px;
+      color: hsl(220 15% 45%);
+      font-style: italic;
+    }
     .jd-gps-row {
       font-size: 12px;
       color: #34d399;
@@ -1355,6 +1373,11 @@
     <div class="jd-section" id="jdScopeSection">
       <div class="jd-label">Scope of Work</div>
       <div class="scope-box" id="jdScope"></div>
+    </div>
+
+    <div class="jd-section" id="jdMaterialsSection" style="display:none;">
+      <div class="jd-label">Pull List</div>
+      <div id="jdMaterialsList" class="jd-pull-list"></div>
     </div>
 
     <div class="jd-section" id="jdNotifySection" style="display:none;">
