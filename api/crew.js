@@ -20,7 +20,7 @@ const _todayJobsCache = {};  // key: dateStr → { ts: epoch, bookingRows, quote
 // Internal-only modules that should not appear as scope rows
 const SKIP_MODULES = new Set(["UNCERTAINTY_BUFFER"]);
 // Modules that contain photo URLs — collected separately and returned as photos[]
-const PHOTO_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "JOB_PHOTOS", "SITE_PHOTO", "BEFORE_PHOTO", "AFTER_PHOTO"]);
+const PHOTO_MODULES = new Set(["WORK_AREA_PHOTO", "PANEL_PHOTO", "CEILING_PHOTO", "OUTLET_PHOTO", "SWITCH_PHOTO", "OUTDOOR_PHOTO", "JOB_PHOTOS", "SITE_PHOTO", "BEFORE_PHOTO", "AFTER_PHOTO"]);
 
 // Short plain-English labels for scope item fields shown to crew.
 // Falls back to title-casing the moduleId (e.g. CEILING_HEIGHT → "Ceiling Height").

@@ -263,6 +263,18 @@ const MODULES_LIBRARY = [
     options:[{value:"business",label:"Business hours"},{value:"after_hours",label:"After-hours",multiplier:1.25},{value:"weekend",label:"Weekend",multiplier:1.25},{value:"not_sure",label:"Not sure",uncertain:true}] },
   { module_id:"FIRE_ALARM_SCOPE", question:"What fire alarm work is needed?", input_type:"single_select",
     options:[{value:"new",label:"New install",disqualify:true},{value:"repair",label:"Repair / service",disqualify:true},{value:"inspect",label:"Inspection / testing",disqualify:true},{value:"not_sure",label:"Not sure",disqualify:true}] },
+
+  // ── Additional canonical IDs used by service question maps ───────────────
+  { module_id:"DISTANCE_FROM_PANEL", question:"Approximately how far is the installation location from your electrical panel?", input_type:"single_select",
+    options:[{value:"same_room",label:"Same room or closet (under 15 ft)",multiplier:1.0},{value:"nearby",label:"Adjacent room (15–30 ft)",multiplier:1.1},{value:"far",label:"Across the house (30–60 ft)",multiplier:1.25},{value:"very_far",label:"More than 60 ft / separate structure",multiplier:1.45},{value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}] },
+  { module_id:"EXISTING_BOX", question:"Is there an existing electrical box at this location?", input_type:"single_select",
+    options:[{value:"yes_rated",label:"Yes — and it's the correct type",multiplier:1.0},{value:"yes_wrong",label:"Yes — but it may be the wrong type",multiplier:1.1},{value:"no",label:"No box yet",multiplier:1.2},{value:"not_sure",label:"Not sure",multiplier:1.05,uncertain:true}] },
+  { module_id:"SMOKE_TYPE", question:"What type of smoke / CO detector do you need?", input_type:"single_select",
+    options:[{value:"smoke_only",label:"Smoke only",multiplier:1.0},{value:"co_only",label:"Carbon monoxide only",multiplier:1.0},{value:"combo",label:"Combo smoke + CO",multiplier:1.05},{value:"not_sure",label:"Not sure / let tech decide",multiplier:1.0,uncertain:true}] },
+  { module_id:"CUSTOMER_UNSURE", question:"Is there anything else about your situation that might affect the estimate?", input_type:"text",
+    options:[], notes:"Open-ended triage field — captures unknowns for tech review." },
+  { module_id:"CONDUIT_REQUIRED", question:"Will the wiring run through exposed conduit (surface-mounted)?", input_type:"single_select",
+    options:[{value:"yes",label:"Yes — exposed conduit required",multiplier:1.45},{value:"no",label:"No — wiring will be concealed in walls",multiplier:1.0},{value:"not_sure",label:"Not sure / electrician's call",multiplier:1.1,uncertain:true}] },
 ];
 
 // ─── Per-service module assignment map ───────────────────────────────────────
@@ -431,7 +443,7 @@ function assignModules(service_name, current_tier, segment) {
   // 19. Smoke / CO detectors
   if (/smoke|detector|\bco\b/.test(n)) {
     return { tier:null,
-      modules_csv:"SMOKE_TYPE,SERVICE_QUANTITY,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,PRODUCT_TYPE,HOME_AGE,ROOM_LOCATION,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"SMOKE_TYPE,SERVICE_QUANTITY,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,PRODUCT_TYPE,HOME_AGE,ROOM_LOCATION,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // Default
