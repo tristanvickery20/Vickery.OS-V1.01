@@ -77,6 +77,10 @@ const MODULES_LIBRARY = [
     options:[{value:"standard",label:"Standard (under 35 lb)",multiplier:1.0},{value:"heavy",label:"Heavy / oversized (35–70 lb)",multiplier:1.35},{value:"very_heavy",label:"Very heavy / chandelier (70+ lb)",multiplier:1.5},{value:"not_sure",label:"Not sure",multiplier:1.15,uncertain:true}] },
   { module_id:"MOUNTING_SURFACE", question:"What surface will the fixture or device mount to?", input_type:"single_select",
     options:[{value:"siding",label:"Siding",multiplier:1.0},{value:"soffit",label:"Soffit / eave",multiplier:1.1},{value:"brick_masonry",label:"Brick / masonry",multiplier:1.3},{value:"stucco",label:"Stucco",multiplier:1.2},{value:"wood",label:"Wood / fascia",multiplier:1.0},{value:"metal",label:"Metal panel / post",multiplier:1.1},{value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}] },
+  { module_id:"OUTDOOR_EXPOSURE", question:"Will this installation be exposed to rain or outdoor weather?", input_type:"single_select",
+    options:[{value:"covered",label:"Covered — under eave, not directly rained on",multiplier:1.0},{value:"exposed",label:"Exposed — rain can reach it directly",multiplier:1.15},{value:"not_sure",label:"Not sure",multiplier:1.05,uncertain:true}] },
+  { module_id:"EXISTING_POWER_PRESENT", question:"Is there an existing power source (outlet, circuit, or conduit run) near the install location?", input_type:"single_select",
+    options:[{value:"yes_nearby",label:"Yes — within 20 ft",multiplier:1.0},{value:"yes_far",label:"Yes — more than 20 ft away",multiplier:1.15},{value:"no",label:"No — new run from panel",multiplier:1.45},{value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}] },
 
   // ── Tailored — Fans ───────────────────────────────────────────────────────
   { module_id:"FAN_EXISTING_BOX", question:"Is there an existing rated electrical box at the fan location?", input_type:"single_select",
@@ -210,7 +214,7 @@ function assignModules(service_name, current_tier, segment) {
   // 6. Recessed / can lighting (specific subset of lighting — before generic)
   if (/recessed|can light/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,RECESSED_LIGHT_COUNT,CEILING_HEIGHT,ATTIC_ACCESS,RECESSED_LIGHT_CEILING_TYPE,RECESSED_LIGHT_INSULATION,CEILING_HEIGHT,ROOM_LOCATION,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,RECESSED_LIGHT_COUNT,CEILING_HEIGHT,ATTIC_ACCESS,RECESSED_LIGHT_CEILING_TYPE,RECESSED_LIGHT_INSULATION,ROOM_LOCATION,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 7. Outdoor / landscape lighting (specific — before generic lighting rule)
