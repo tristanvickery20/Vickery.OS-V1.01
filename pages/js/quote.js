@@ -76,6 +76,11 @@ const HIDDEN_MODULES = new Set([
 const PHOTO_MODULE_LABELS = {
   PANEL_PHOTO:      "a panel photo",
   WORK_AREA_PHOTOS: "a photo of the installation area",
+  AREA_PHOTO:       "a photo of the work area",
+  CEILING_PHOTO:    "a photo of the ceiling location",
+  OUTLET_PHOTO:     "a photo of the outlet area",
+  SWITCH_PHOTO:     "a photo of the switch location",
+  OUTDOOR_PHOTO:    "a photo of the outdoor mounting area",
 };
 
 // Per-module photo guidance: step-by-step instructions + example image shown in the gate UI.
@@ -127,6 +132,70 @@ const PHOTO_MODULE_GUIDES = {
     ],
     exampleImg: "/pages/img/example-area-location.svg",
     exampleAlt: "Example of a wall with a blue tape X marking the exact outlet location and surrounding area visible",
+  },
+  CEILING_PHOTO: {
+    title:   "Ceiling / Mounting Location",
+    steps: [
+      "Stand directly under where the fan, light, or fixture will go.",
+      "Tilt your phone upward and frame the ceiling — the existing box or blank ceiling area should be centered in the shot.",
+      "Step back enough to show 3–4 feet of ceiling on all sides of the target spot.",
+      "Turn on the room lights and, if there's an attic above, a second photo of the attic access hatch is very helpful.",
+    ],
+    tips: [
+      "The existing ceiling box or knockout should be clearly visible",
+      "If you can reach the attic, a quick shot of what's above helps us plan the wiring run",
+      "Portrait orientation works best when looking straight up",
+    ],
+    exampleImg: "/pages/img/example-ceiling-location.svg",
+    exampleAlt: "Example of a ceiling viewed from below showing a junction box in the center with room walls at the edges",
+  },
+  OUTLET_PHOTO: {
+    title:   "Outlet / Work Area",
+    steps: [
+      "Stand facing the wall where the outlet will go — position yourself about 3–4 feet back.",
+      "If you know the exact spot, mark it with a piece of tape in an X — this is the single most helpful thing you can do.",
+      "Frame the shot to show 2–3 feet of wall on each side of the target spot.",
+      "Make sure any nearby existing outlets or switches are in the frame for distance reference.",
+    ],
+    tips: [
+      "A tape X on the target spot removes all guesswork about location",
+      "Show the nearest existing outlet — it helps us plan the circuit run",
+      "Include the baseboard so we can see the floor-to-target height",
+    ],
+    exampleImg: "/pages/img/example-outlet-location.svg",
+    exampleAlt: "Example of a wall with a blue tape X marking the outlet target and a nearby existing outlet visible for reference",
+  },
+  SWITCH_PHOTO: {
+    title:   "Switch Location",
+    steps: [
+      "Stand facing the switch — step back about 2–3 feet so the wall around it is visible.",
+      "If it's safe, remove the cover plate so we can see the box and wiring inside (never required, just helpful).",
+      "Frame the shot to show the switch, the cover plate or box, and a few feet of wall on each side.",
+      "If there are multiple switches in the same box, make sure all of them are in the frame.",
+    ],
+    tips: [
+      "A photo with the cover plate off shows neutral wire availability — important for smart switches",
+      "Show any other devices in the same box (outlets, switches side by side)",
+      "Good lighting matters — a flashlight or room lamp helps a lot",
+    ],
+    exampleImg: "/pages/img/example-switch-location.svg",
+    exampleAlt: "Example of a Decora switch cover plate on a wall with surrounding wall area visible",
+  },
+  OUTDOOR_PHOTO: {
+    title:   "Outdoor Mounting Location",
+    steps: [
+      "Stand outside facing the wall, soffit, or eave where the light will mount.",
+      "Step back far enough to show the full mounting area — at least 4–6 feet on all sides.",
+      "Include any existing outdoor lights, outlets, or conduit runs in the frame.",
+      "If you can, take a second photo showing the path from the mounting point back toward the nearest interior light switch or panel entry point.",
+    ],
+    tips: [
+      "Show the mounting surface — siding, soffit, brick, or stucco affects the install approach",
+      "Any existing nearby conduit or outdoor outlet helps us plan the circuit path",
+      "A photo showing the full height from ground to mounting point is very useful",
+    ],
+    exampleImg: "/pages/img/example-outdoor-location.svg",
+    exampleAlt: "Example of a house exterior wall and soffit showing a mounting target zone and existing nearby outdoor light",
   },
 };
 

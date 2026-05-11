@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 210">
+  <defs>
+    <marker id="arr3" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#1d6ed8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="280" height="210" fill="#f0f2f4" rx="10"/>
+
+  <!-- Wall surface -->
+  <rect x="0" y="0" width="280" height="178" fill="#f5f3f0" rx="10"/>
+  <rect x="0" y="168" width="280" height="10" fill="#f5f3f0"/>
+
+  <!-- Baseboard -->
+  <rect x="0" y="178" width="280" height="10" fill="#e0dbd4"/>
+  <line x1="0" y1="178" x2="280" y2="178" stroke="#ccc5bc" stroke-width="1.5"/>
+  <rect x="0" y="188" width="280" height="22" fill="#e8e3de"/>
+
+  <!-- Wall stud lines (very subtle) -->
+  <line x1="56" y1="0" x2="56" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="112" y1="0" x2="112" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="168" y1="0" x2="168" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="224" y1="0" x2="224" y2="178" stroke="#edeae5" stroke-width="1"/>
+
+  <!-- Existing outlet (left side, for reference) -->
+  <rect x="44" y="108" width="36" height="48" rx="4" fill="white" stroke="#b8b0a8" stroke-width="1.8"/>
+  <rect x="50" y="114" width="24" height="36" rx="2" fill="none" stroke="#ddd5cc" stroke-width="1"/>
+  <!-- Top slot -->
+  <ellipse cx="62" cy="124" rx="3.5" ry="5" fill="#c8c0b8" stroke="#a8a098" stroke-width="0.8"/>
+  <!-- Bottom slot -->
+  <ellipse cx="62" cy="140" rx="3.5" ry="5" fill="#c8c0b8" stroke="#a8a098" stroke-width="0.8"/>
+  <text x="62" y="167" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="#94a3b8">existing</text>
+  <text x="62" y="175" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="#94a3b8">outlet</text>
+
+  <!-- Dashed measurement arrow from existing outlet to target -->
+  <line x1="84" y1="132" x2="162" y2="132" stroke="#1d6ed8" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.55"/>
+  <polygon points="166,127.5 175,132 166,136.5" fill="#1d6ed8" opacity="0.55"/>
+  <text x="125" y="122" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" fill="#1d6ed8" font-weight="600" opacity="0.8">show distance</text>
+
+  <!-- Blue tape X at target location -->
+  <g transform="translate(210,132)">
+    <rect x="-45" y="-6.5" width="90" height="13" rx="3.5" fill="#1d6ed8" opacity="0.75" transform="rotate(-38)"/>
+    <rect x="-45" y="-6.5" width="90" height="13" rx="3.5" fill="#1d6ed8" opacity="0.75" transform="rotate(38)"/>
+    <circle r="8" fill="white" stroke="#1d50c0" stroke-width="2.5"/>
+    <circle r="3" fill="#1d50c0"/>
+  </g>
+  <text x="210" y="166" text-anchor="middle" font-family="Arial,sans-serif" font-size="8.5" fill="#1d50c0" font-weight="700">tape X = outlet spot</text>
+
+  <!-- Callout label top-right -->
+  <text x="210" y="45" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">step back 3 ft —</text>
+  <text x="210" y="55" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">show full wall area</text>
+
+  <!-- Caption -->
+  <text x="140" y="204" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="Arial,sans-serif">Example — mark the spot with tape X and show the nearest existing outlet</text>
+</svg>

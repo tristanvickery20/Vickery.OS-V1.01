@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 210">
+  <defs>
+    <marker id="arr4" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#1d6ed8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="280" height="210" fill="#f0f2f4" rx="10"/>
+
+  <!-- Wall surface -->
+  <rect x="0" y="0" width="280" height="178" fill="#f5f3f0" rx="10"/>
+  <rect x="0" y="168" width="280" height="10" fill="#f5f3f0"/>
+
+  <!-- Baseboard -->
+  <rect x="0" y="178" width="280" height="10" fill="#e0dbd4"/>
+  <line x1="0" y1="178" x2="280" y2="178" stroke="#ccc5bc" stroke-width="1.5"/>
+  <rect x="0" y="188" width="280" height="22" fill="#e8e3de"/>
+
+  <!-- Wall stud lines (very subtle) -->
+  <line x1="56" y1="0" x2="56" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="112" y1="0" x2="112" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="168" y1="0" x2="168" y2="178" stroke="#edeae5" stroke-width="1"/>
+  <line x1="224" y1="0" x2="224" y2="178" stroke="#edeae5" stroke-width="1"/>
+
+  <!-- Switch cover plate (Decora / paddle style, centered) -->
+  <rect x="108" y="60" width="64" height="96" rx="6" fill="white" stroke="#c8c0b8" stroke-width="2"/>
+  <!-- Plate screw holes (top and bottom) -->
+  <circle cx="140" cy="70" r="3" fill="#e0d8d0"/>
+  <circle cx="140" cy="146" r="3" fill="#e0d8d0"/>
+
+  <!-- Paddle switch face (Decora rocker) -->
+  <rect x="118" y="80" width="44" height="64" rx="4" fill="#f0ede8" stroke="#d0c8c0" stroke-width="1.5"/>
+  <!-- Rocker divider line (neutral position) -->
+  <line x1="118" y1="112" x2="162" y2="112" stroke="#c8c0b8" stroke-width="1"/>
+  <!-- ON side indicator dot -->
+  <circle cx="140" cy="98" r="3" fill="#b8d0e8"/>
+  <!-- OFF side label -->
+  <text x="140" y="132" text-anchor="middle" fill="#c8c0b8" font-size="8" font-family="Arial,sans-serif">OFF</text>
+
+  <!-- Blue dashed frame showing what area to capture -->
+  <rect x="70" y="32" width="140" height="130" rx="8" fill="none" stroke="#1d6ed8" stroke-width="1.8" stroke-dasharray="7,4" opacity="0.5"/>
+
+  <!-- Callout arrow from "show this area" label to dashed frame -->
+  <line x1="52" y1="60" x2="68" y2="75" stroke="#1d6ed8" stroke-width="1.8" marker-end="url(#arr4)"/>
+  <text x="40" y="47" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">show this</text>
+  <text x="40" y="57" text-anchor="middle" fill="#1d6ed8" font-size="7" font-weight="bold" font-family="Arial,sans-serif">full area</text>
+
+  <!-- Side note: remove cover if safe -->
+  <rect x="186" y="95" width="82" height="32" rx="5" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="227" y="108" text-anchor="middle" fill="#94a3b8" font-size="6.5" font-family="Arial,sans-serif">remove cover plate</text>
+  <text x="227" y="118" text-anchor="middle" fill="#94a3b8" font-size="6.5" font-family="Arial,sans-serif">if it's safe to do so</text>
+
+  <!-- Arrow from note to switch -->
+  <line x1="185" y1="112" x2="165" y2="112" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr4)" opacity="0.5"/>
+
+  <!-- Caption -->
+  <text x="140" y="204" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="Arial,sans-serif">Example — show switch cover plate and wall on all sides</text>
+</svg>
