@@ -1560,11 +1560,14 @@ function openJobDetail(j) {
   if (matSection && matList) {
     matSection.style.display = "none";
     matList.innerHTML = "";
-    const leadId = j.lead_id || "";
+    const leadId   = j.lead_id   || "";
+    const bookingId = j.booking_id || "";
     if (leadId) {
       fetch(`/api/leads/${encodeURIComponent(leadId)}/materials`)
         .then(r => r.json())
         .then(data => {
+          // Guard: discard response if the user has already opened a different job
+          if (_detailJob && _detailJob.booking_id !== bookingId) return;
           const mats = (data && Array.isArray(data.materials)) ? data.materials : [];
           matSection.style.display = "block";
           if (mats.length === 0) {
@@ -1572,9 +1575,18 @@ function openJobDetail(j) {
           } else {
             matList.innerHTML = mats.map(m => {
               const qty  = m.quantity || 1;
-              let name   = String(m.name || m.material_name || "").trim();
-              if (qty > 1 && name && !/s$/i.test(name)) name += "s";
-              return `<div class="jd-pull-row">${esc(String(qty))} ${esc(name)}</div>`;
+              const unit = String(m.unit || "each").trim().toLowerCase();
+              let   name = String(m.name || m.material_name || "").trim();
+              let   line;
+              if (!unit || unit === "each") {
+                // Countable item — pluralise name when qty > 1
+                if (qty > 1 && name && !/s$/i.test(name)) name += "s";
+                line = `${esc(String(qty))} ${esc(name)}`;
+              } else {
+                // Measured item (ft, lbs, rolls, etc.) — include unit, no plural
+                line = `${esc(String(qty))} ${esc(unit)} ${esc(name)}`;
+              }
+              return `<div class="jd-pull-row">${line}</div>`;
             }).join("");
           }
         })

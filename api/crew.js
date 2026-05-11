@@ -181,8 +181,13 @@ async function handleGetTodayJobs(req, res) {
       // user identity is ever embedded in the cache.
       _todayJobsCache[today] = { ts: Date.now(), bookingRows, quoteRows, estCfg };
     } catch (err) {
-      // Sheets quota / network error and no usable cache — return error
-      return json(res, 500, { ok: false, error: err.message, jobs: [] });
+      // Sheets quota / network error — fall back to stale cache if any exists,
+      // regardless of TTL, so crew never sees a blank list after a quota spike.
+      if (cached) {
+        ({ bookingRows, quoteRows, estCfg } = cached);
+      } else {
+        return json(res, 500, { ok: false, error: err.message, jobs: [] });
+      }
     }
   }
 
