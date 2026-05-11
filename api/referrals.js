@@ -1,9 +1,11 @@
 // api/referrals.js — Referral Center API
+// ReferralLedger, Templates tabs → MARKETING_SHEET_ID; Leads → CRM_SHEET_ID
 "use strict";
 
 const crypto = require("crypto");
 const { getSheetsClient }  = require("../lib/sheets");
 const { hrSpreadsheetId }  = require("../lib/hrSheetClient");
+const { marketingSpreadsheetId } = require("../lib/marketingSheetClient");
 const { sendSms } = require("../lib/staff");
 const { getConfig } = require("../lib/config");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
@@ -76,9 +78,10 @@ const LEDGER_HEADERS = [
 // ── GET /api/referrals ─────────────────────────────────────────────────────
 async function handleGetReferrals(req, res) {
   try {
-    await ensureTabHeaders("ReferralLedger").catch(() => {});
+    const mktIdForEnsure = marketingSpreadsheetId();
+    await ensureTabHeaders("ReferralLedger", mktIdForEnsure).catch(() => {});
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
+    const sid    = mktIdForEnsure;
     const { headers, rows } = await readTabRows(sheets, sid, "ReferralLedger");
 
     const all = rows
@@ -115,8 +118,9 @@ async function handleGetReferrals(req, res) {
 // Also writes a lead to Leads tab for backward-compatible CRM visibility.
 async function handleCreateReferral(req, res) {
   try {
-    // Ensure the tab exists (safe no-op if already present)
-    await ensureTabHeaders("ReferralLedger").catch(() => {});
+    // Ensure the tab exists on the Marketing sheet (safe no-op if already present)
+    const mktIdForEnsure = marketingSpreadsheetId();
+    await ensureTabHeaders("ReferralLedger", mktIdForEnsure).catch(() => {});
 
     const body = await readBody(req);
 
@@ -135,12 +139,13 @@ async function handleCreateReferral(req, res) {
     }
 
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
+    const mktSid = marketingSpreadsheetId();
+    const crmSid = process.env.CRM_SHEET_ID;
     const now    = new Date().toISOString();
     const id     = uid();
     const referrerType = employeeId ? "employee" : "customer";
 
-    // Write to ReferralLedger
+    // Write to ReferralLedger (on Marketing sheet)
     const row = LEDGER_HEADERS.map(h => {
       switch (h) {
         case "id":               return id;
@@ -164,13 +169,13 @@ async function handleCreateReferral(req, res) {
     });
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId: sid,
+      spreadsheetId: mktSid,
       range:            "ReferralLedger!A:U",
       valueInputOption: "RAW",
       requestBody:      { values: [row] },
     });
 
-    // Also write a lead for CRM pipeline visibility (legacy path preserved)
+    // Also write a lead for CRM pipeline visibility (CRM sheet)
     const nowShort  = now.slice(0, 16).replace("T", " ");
     const leadNotes = referrerName + " (" + referrerPhone + ")";
     const leadRow   = [
@@ -178,7 +183,7 @@ async function handleCreateReferral(req, res) {
       "Referral", leadNotes, "", "New",
     ];
     await sheets.spreadsheets.values.append({
-      spreadsheetId: sid,
+      spreadsheetId: crmSid,
       range:            "Leads!A:I",
       valueInputOption: "USER_ENTERED",
       requestBody:      { values: [leadRow] },
@@ -195,7 +200,7 @@ async function handleUpdateReferral(req, res, referralId) {
   try {
     const body   = await readBody(req);
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
+    const sid    = marketingSpreadsheetId();
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: sid,
@@ -277,7 +282,7 @@ async function handleGetReferralEmployees(req, res) {
 async function handleNotifyReferrer(req, res, referralId) {
   try {
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
+    const sid    = marketingSpreadsheetId();
 
     const { headers, rows } = await readTabRows(sheets, sid, "ReferralLedger");
     const idIdx = headers.indexOf("id");
@@ -366,8 +371,8 @@ const REFERRAL_TEMPLATE_SEEDS = [
 async function seedReferralTemplates() {
   try {
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
-    if (!sid) return;
+    let sid;
+    try { sid = marketingSpreadsheetId(); } catch { return; }
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: sid,

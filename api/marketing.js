@@ -1,7 +1,9 @@
 // api/marketing.js — Marketing Hub: Overview scoreboard, Segments, Follow-up queue
+// Reviews, Templates tabs → MARKETING_SHEET_ID
 const { getSheetsClient } = require("../lib/sheets");
 const { sendSms } = require("../lib/staff");
 const { getConfig, setConfigKeys } = require("../lib/config");
+const { marketingSpreadsheetId } = require("../lib/marketingSheetClient");
 
 const COMPLETE_STATUSES = ["complete", "completed", "paid", "closed", "invoiced"];
 const BOOKED_STATUSES   = ["scheduled", "in progress", "complete", "completed", "paid", "closed", "invoiced"];
@@ -60,8 +62,9 @@ function renderTemplate(body, vars) {
   return body.replace(/\{(\w+)\}/g, (_, k) => vars[k] || "");
 }
 
-async function getActiveTemplate(sheets, spreadsheetId, category) {
+async function getActiveTemplate(sheets, _unused, category) {
   try {
+    const spreadsheetId = marketingSpreadsheetId();
     const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Templates!A:H" });
     const rows = resp.data.values || [];
     if (rows.length < 2) return null;
@@ -82,9 +85,10 @@ async function handleGetOverview(req, res) {
     const config = await getConfig();
     const hvThreshold = Number(config.high_value_threshold || "1000");
 
+    const mktId = marketingSpreadsheetId();
     const [clientsData, reviewsData] = await Promise.all([
       readTabRows(sheets, spreadsheetId, "Leads"),
-      readTabRows(sheets, spreadsheetId, "Reviews").catch(() => ({ headers: [], rows: [] })),
+      readTabRows(sheets, mktId, "Reviews").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const { headers, rows } = clientsData;
@@ -245,9 +249,10 @@ async function handleGetSegments(req, res) {
     const config = await getConfig();
     const hvThreshold = Number(config.high_value_threshold || "1000");
 
+    const mktId = marketingSpreadsheetId();
     const [clientsData, reviewsData] = await Promise.all([
       readTabRows(sheets, spreadsheetId, "Leads"),
-      readTabRows(sheets, spreadsheetId, "Reviews").catch(() => ({ headers: [], rows: [] })),
+      readTabRows(sheets, mktId, "Reviews").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const { headers, rows } = clientsData;

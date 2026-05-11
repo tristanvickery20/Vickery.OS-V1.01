@@ -1,7 +1,9 @@
 // api/reviews.js — Review Engine: queue, send asks, track receipts, testimonial library
+// Reviews, Templates tabs → MARKETING_SHEET_ID; Leads → CRM_SHEET_ID
 const { getSheetsClient } = require("../lib/sheets");
 const { sendSms } = require("../lib/staff");
 const { getConfig } = require("../lib/config");
+const { marketingSpreadsheetId } = require("../lib/marketingSheetClient");
 
 const LEADS_TAB   = "Leads";
 const REVIEWS_TAB  = "Reviews";
@@ -62,8 +64,9 @@ function renderTemplate(body, vars) {
   return body.replace(/\{(\w+)\}/g, (_, k) => vars[k] || "");
 }
 
-async function getActiveTemplate(sheets, spreadsheetId, category) {
+async function getActiveTemplate(sheets, _unused, category) {
   try {
+    const spreadsheetId = marketingSpreadsheetId();
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId, range: "Templates!A:H",
     });
@@ -138,10 +141,11 @@ async function handleGetReviews(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
     if (!spreadsheetId) return json(res, 500, { ok: false, error: "No CRM_SHEET_ID" });
+    const mktId = marketingSpreadsheetId();
 
     const [clientsData, reviewsData] = await Promise.all([
       readTab(sheets, spreadsheetId, LEADS_TAB, "A:ZZ"),
-      readTab(sheets, spreadsheetId, REVIEWS_TAB, "A:T").catch(() => ({ headers: [], rows: [] })),
+      readTab(sheets, mktId, REVIEWS_TAB, "A:T").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     // Index reviews by lead_id
@@ -272,6 +276,7 @@ async function handleSendAsk(req, res) {
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+    const mktId = marketingSpreadsheetId();
 
     // Prevent duplicate ask — check current review_status on this client
     const clientsResp = await sheets.spreadsheets.values.get({
@@ -298,7 +303,7 @@ async function handleSendAsk(req, res) {
     const config = await getConfig();
 
     const reviewUrl = config.google_review_url || "https://g.page/r/vickeryelectric/review";
-    const template = await getActiveTemplate(sheets, spreadsheetId, "review_ask");
+    const template = await getActiveTemplate(sheets, null, "review_ask");
 
     const firstName = firstN(name);
     const service = job_type || "your recent electrical work";
@@ -317,9 +322,9 @@ async function handleSendAsk(req, res) {
 
     const now = nowIso();
 
-    // Create Reviews row
+    // Create Reviews row (on Marketing sheet)
     const reviewId = "REV-" + Date.now();
-    const revHeaders = (await readTab(sheets, spreadsheetId, REVIEWS_TAB, "1:1")).headers;
+    const revHeaders = (await readTab(sheets, mktId, REVIEWS_TAB, "1:1")).headers;
     const revObj = {
       id: reviewId, created_at: now, lead_id,
       customer_name: name || "", phone: phone || "",
@@ -332,13 +337,13 @@ async function handleSendAsk(req, res) {
       : Object.values(revObj);
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId, range: `${REVIEWS_TAB}!A:A`,
+      spreadsheetId: mktId, range: `${REVIEWS_TAB}!A:A`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { majorDimension: "ROWS", values: [revRow] },
     });
 
-    // Update Clients review_status
+    // Update Leads review_status (on CRM sheet)
     await updateClientField(sheets, spreadsheetId, lead_id, {
       review_status: "asked",
       review_ask_sent_at: now,
@@ -359,6 +364,7 @@ async function handleSendReminder(req, res) {
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+    const mktId = marketingSpreadsheetId();
 
     // Enforce eligibility: must be status=asked, 48h+ elapsed, not already reminded
     const clientsResp = await sheets.spreadsheets.values.get({
@@ -395,7 +401,7 @@ async function handleSendReminder(req, res) {
     const config = await getConfig();
 
     const reviewUrl = config.google_review_url || "https://g.page/r/vickeryelectric/review";
-    const template = await getActiveTemplate(sheets, spreadsheetId, "review_reminder");
+    const template = await getActiveTemplate(sheets, null, "review_reminder");
 
     const firstName = firstN(name);
     let smsBody = template
@@ -413,8 +419,8 @@ async function handleSendReminder(req, res) {
 
     const now = nowIso();
 
-    // Update Reviews row
-    const reviewsData = await readTab(sheets, spreadsheetId, REVIEWS_TAB, "A:T");
+    // Update Reviews row (on Marketing sheet)
+    const reviewsData = await readTab(sheets, mktId, REVIEWS_TAB, "A:T");
     const lidIdx = reviewsData.headers.indexOf("lead_id");
     const remIdx = reviewsData.headers.indexOf("reminder_sent_at");
     if (lidIdx >= 0 && remIdx >= 0) {
@@ -423,7 +429,7 @@ async function handleSendReminder(req, res) {
         if (rowLid === lead_id) {
           const colLetter = c => String.fromCharCode(65 + c);
           await sheets.spreadsheets.values.update({
-            spreadsheetId,
+            spreadsheetId: mktId,
             range: `${REVIEWS_TAB}!${colLetter(remIdx)}${i + 2}`,
             valueInputOption: "RAW",
             requestBody: { values: [[now]] },
@@ -433,7 +439,7 @@ async function handleSendReminder(req, res) {
       }
     }
 
-    // Update Leads review fields
+    // Update Leads review fields (on CRM sheet)
     await updateClientField(sheets, spreadsheetId, lead_id, {
       review_status: "reminded",
       review_reminder_sent_at: now,
@@ -451,9 +457,10 @@ async function handleUpdateReview(req, res, reviewId) {
     const body = await readBody(req);
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
+    const mktId = marketingSpreadsheetId();
 
     const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId, range: `${REVIEWS_TAB}!A:T`,
+      spreadsheetId: mktId, range: `${REVIEWS_TAB}!A:T`,
     });
     const rows = resp.data.values || [];
     if (rows.length < 2) return json(res, 404, { ok: false, error: "Review not found" });
@@ -488,11 +495,11 @@ async function handleUpdateReview(req, res, reviewId) {
 
     if (updates.length) {
       await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId, requestBody: { valueInputOption: "RAW", data: updates },
+        spreadsheetId: mktId, requestBody: { valueInputOption: "RAW", data: updates },
       });
     }
 
-    // If marking received, also update Leads review_status
+    // If marking received, also update Leads review_status (on CRM sheet)
     if (body.review_received_at || body.star_rating || body.review_text) {
       const lidIdx2 = headers.indexOf("lead_id");
       const leadId = String(rows[rowIndex][lidIdx2] || "").trim();
