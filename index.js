@@ -1794,8 +1794,34 @@ const server = http.createServer(async (req, res) => {
 
 const { ensureAllHeaders, patchSchedulerRuleDefaults } = require("./lib/sheetsSchema");
 const { ensureConfigDefaults, ensureCalculatorDefaults } = require("./lib/config");
-const { seedQuoteSheetIfEmpty, backfillSegmentCategory, logQuoteHealth } = require("./lib/quoteSeedInit");
 const { isV2Mode } = require("./lib/estimatorV2Config");
+
+// ── Fatal startup validation ──────────────────────────────────────────────────
+// CRM_SHEET_ID is non-negotiable — the entire app is backed by this sheet.
+if (!process.env.CRM_SHEET_ID) {
+  console.error(
+    "[FATAL] CRM_SHEET_ID is not set. The server cannot start without a CRM Google Sheet.\n" +
+    "        Set CRM_SHEET_ID in the environment variables (Replit Secrets) and restart."
+  );
+  process.exit(1);
+}
+// ESTIMATOR_V2_SHEET_ID is required — V1 engine has been removed.
+if (!process.env.ESTIMATOR_V2_SHEET_ID) {
+  console.error(
+    "[FATAL] ESTIMATOR_V2_SHEET_ID is not set. The V1 estimator has been removed.\n" +
+    "        Set ESTIMATOR_V2_SHEET_ID in the environment variables and restart."
+  );
+  process.exit(1);
+}
+// HR_SHEET_ID is required — all HR_* tabs live on the dedicated HR sheet.
+if (!process.env.HR_SHEET_ID) {
+  console.error(
+    "[FATAL] HR_SHEET_ID is not set. The HR module requires a dedicated Google Sheet.\n" +
+    "        Create a new Google Sheet for HR data, share it with the service account,\n" +
+    "        and set HR_SHEET_ID in Replit Secrets, then restart."
+  );
+  process.exit(1);
+}
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
@@ -1809,7 +1835,32 @@ server.on("error", (err) => {
 
 server.listen(5000, "0.0.0.0", () => {
   console.log("Server running on port 5000");
-  console.log(`Estimator Mode: ${isV2Mode() ? "v2" : "v1"}`);
+  // ── Sheet architecture summary ────────────────────────────────────────────
+  const maskId = id => id && id.length > 12 ? `${id.slice(0, 8)}...${id.slice(-4)}` : (id || "");
+  const crmSheetId = process.env.CRM_SHEET_ID;
+  const hrSheetId  = process.env.HR_SHEET_ID;
+  const v2SheetId  = process.env.ESTIMATOR_V2_SHEET_ID;
+  // Log masked IDs immediately; tab counts are fetched async and logged when ready.
+  console.log(`[Sheets] CRM:       ${maskId(crmSheetId)}  (ops/pipeline/scheduling)`);
+  console.log(`[Sheets] HR:        ${maskId(hrSheetId)}  (hr/people/recruiting)`);
+  console.log(`[Sheets] Estimator: ${maskId(v2SheetId)}  (assemblies/pricing/modules)`);
+  console.log(`[Estimator] Mode:   ${isV2Mode() ? "v2 (active)" : "DISABLED — ESTIMATOR_V2_SHEET_ID not set"}`);
+  // Fetch tab counts for each sheet and log as a follow-up line.
+  const { getSheetsClient } = require("./lib/sheets");
+  getSheetsClient().then(async sheets => {
+    async function tabCount(id, label) {
+      try {
+        const meta = await sheets.spreadsheets.get({ spreadsheetId: id, fields: "sheets.properties.title" });
+        const n = (meta.data.sheets || []).length;
+        console.log(`[Sheets] ${label}: ${maskId(id)}  (${n} tab${n !== 1 ? "s" : ""})`);
+      } catch { /* non-fatal — runs after startup */ }
+    }
+    await Promise.all([
+      tabCount(crmSheetId, "CRM       "),
+      tabCount(v2SheetId,  "Estimator "),
+      hrSheetId ? tabCount(hrSheetId, "HR        ") : Promise.resolve(),
+    ]);
+  }).catch(() => {});
   // Defer the heavy startup schema-check chain by 10 s so early API calls
   // (e.g. /api/quote/config) can read from Sheets before the quota spike.
   setTimeout(() => {
@@ -1822,9 +1873,6 @@ server.listen(5000, "0.0.0.0", () => {
       .then(() => ensureLeaveSheets())
       .then(() => ensureRecruitingSheets())
       .then(() => ensurePayrollSheets())
-      .then(() => seedQuoteSheetIfEmpty())
-      .then(() => backfillSegmentCategory())
-      .then(() => logQuoteHealth())
       .then(() => patchSchedulerRuleDefaults())
       .then(() => seedReferralTemplates())
       .catch((err) => console.error("[Startup]", err.message));

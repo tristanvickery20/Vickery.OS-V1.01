@@ -1,6 +1,6 @@
 // api/quote-config.js
 // GET /api/quote/config — returns sanitized quote engine config (public, no auth needed).
-// Uses V2 config when ESTIMATOR_V2_SHEET_ID is set, otherwise falls back to V1.
+// V2 engine only — requires ESTIMATOR_V2_SHEET_ID. Startup will exit(1) if missing.
 
 const { getActiveConfig } = require("../lib/estimatorV2Config");
 const { CLASSIFICATIONS, ASSEMBLY_TO_SERVICE } = require("../lib/serviceClassification");

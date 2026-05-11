@@ -415,14 +415,14 @@ async function handleGenerateInvoice(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
     if (!spreadsheetId) return json(res, 500, { ok: false, error: "CRM_SHEET_ID not configured." });
 
-    // Fetch bookings, QuoteSnapshots, Estimator config, Invoices headers, JobTypes, Rates in parallel
-    const [bookingsResp, quotesResp, estCfg, invHdrResp, jtResp, rateResp] = await Promise.all([
+    // Fetch bookings, QuoteSnapshots, Estimator config, Invoices headers in parallel
+    // Note: JobTypes and Rates tabs have been removed (V1 engine eliminated).
+    // Cost breakdown now derives from QuoteSnapshots or falls back to flat-rate service line.
+    const [bookingsResp, quotesResp, estCfg, invHdrResp] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:AZ" }),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:AZ" }).catch(() => ({ data: { values: [] } })),
       getEstimatorConfig().catch(() => null),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Invoices!1:1" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "JobTypes!A:AZ" }).catch(() => ({ data: { values: [] } })),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Rates!A:AZ" }).catch(() => ({ data: { values: [] } })),
     ]);
 
     // Find booking
@@ -493,8 +493,10 @@ async function handleGenerateInvoice(req, res) {
       return json(res, 422, { ok: false, error: "No price found for this booking. Add line items or set a final_price first." });
     }
 
-    // Build line items — use detailed snapshot breakdown when available
+    // Build line items — use detailed snapshot breakdown when available.
+    // V1 JobTypes/Rates tabs have been removed; cost breakdown comes from QuoteSnapshot fields only.
     let lineItems = [];
+    let snapEquipItems = []; // hoisted so customLineItems merge block can reference it
     if (foundSnap && snapHeaders.length) {
       const qi2  = Object.fromEntries(snapHeaders.map((h, i) => [h, i]));
       const sGet = col => String(foundSnap[qi2[col] ?? -1] ?? "").trim();
@@ -506,55 +508,10 @@ async function handleGenerateInvoice(req, res) {
       let totalHours = parseFloat(sGet("total_hours"))        || 0;
       let addons = [];
       try { addons = JSON.parse(sGet("selected_addons_json") || "[]"); } catch {}
-      let snapEquipItems = [];
       try {
         const snapOpts = JSON.parse(sGet("selected_options_json") || "{}");
         if (Array.isArray(snapOpts.equipment_line_items)) snapEquipItems = snapOpts.equipment_line_items;
       } catch {}
-
-      // Snapshot has no cost breakdown — derive proportional breakdown from CRM JobTypes + Rates
-      if (laborCost === 0 && materials === 0) {
-        const snapJobType    = sGet("job_type_id") || jobTypeId;
-        const normalizedSnap = LEGACY_JT_MAP[snapJobType] || snapJobType;
-        const refPrice       = snapPrice > 0 ? snapPrice : subtotal;
-
-        const jtRowsI = jtResp.data.values   || [];
-        const rRowsI  = rateResp.data.values || [];
-        let bh = 0, ma = 0, lRate = 125, oRate = 25;
-
-        if (jtRowsI.length > 1) {
-          const [jtH2, ...jtData2] = jtRowsI;
-          const jti2 = Object.fromEntries(jtH2.map((h, i) => [h, i]));
-          const jtRow2 = jtData2.find(r =>
-            String(r[jti2["job_type_id"] ?? -1] ?? "").trim() === normalizedSnap
-          );
-          if (jtRow2) {
-            bh = parseFloat(String(jtRow2[jti2["base_hours"]        ?? -1] ?? "0")) || 0;
-            ma = parseFloat(String(jtRow2[jti2["material_allowance"] ?? -1] ?? "0")) || 0;
-          }
-        }
-        if (rRowsI.length > 1) {
-          const [rH2, ...rData2] = rRowsI;
-          const ri2  = Object.fromEntries(rH2.map((h, i) => [h, i]));
-          const rRow2 = rData2[0];
-          if (rRow2) {
-            lRate = parseFloat(String(rRow2[ri2["crew_loaded_hourly"] ?? -1] ?? "125")) || 125;
-            oRate = parseFloat(String(rRow2[ri2["overhead_per_hour"]  ?? -1] ?? "25"))  || 25;
-          }
-        }
-
-        const rawLaborAmt = bh * (lRate + oRate);
-        const rawTotal    = rawLaborAmt + ma;
-        if (rawTotal > 0 && refPrice > 0) {
-          const scale = refPrice / rawTotal;
-          materials  = Math.round(ma * scale);            // whole dollars
-          laborCost  = Math.round((refPrice - materials) * 100) / 100; // absorbs remainder
-          totalHours = bh;
-          console.log(`[crew/generate-invoice] CRM breakdown for ${normalizedSnap} (mapped from "${snapJobType}"): labor=${laborCost} mat=${materials} hours=${bh}`);
-        } else {
-          console.warn(`[crew/generate-invoice] No CRM JobType found for "${normalizedSnap}" (original: "${snapJobType}") — falling to single Labor line`);
-        }
-      }
 
       // Flat-rate service line — shows the agreed price, not a labor/materials breakdown.
       // Travel and add-ons are listed separately since those are discrete charges.
@@ -623,33 +580,8 @@ async function handleGenerateInvoice(req, res) {
       lineItems = [...customMapped, ...equipMerge];
     }
 
-    // Fallback: compute proportional breakdown from JobTypes + Rates when snapshot had no cost data
+    // Fallback: flat-rate service line when no snapshot breakdown was available
     if (!lineItems.length && subtotal > 0) {
-      const jtRows   = jtResp.data.values   || [];
-      const rRows    = rateResp.data.values || [];
-      let baseHours = 0, matAllowance = 0, laborRate = 0, overheadRate = 0;
-
-      if (jtRows.length > 1 && normalizedJobTypeId) {
-        const [jtH, ...jtData] = jtRows;
-        const jti = Object.fromEntries(jtH.map((h, i) => [h, i]));
-        const jtRow = jtData.find(r => String(r[jti["job_type_id"] ?? -1] ?? "").trim() === normalizedJobTypeId);
-        if (jtRow) {
-          baseHours    = parseFloat(String(jtRow[jti["base_hours"]        ?? -1] ?? "0")) || 0;
-          matAllowance = parseFloat(String(jtRow[jti["material_allowance"] ?? -1] ?? "0")) || 0;
-        }
-      }
-
-      if (rRows.length > 1) {
-        const [rH, ...rData] = rRows;
-        const ri  = Object.fromEntries(rH.map((h, i) => [h, i]));
-        const rRow = rData[0];
-        if (rRow) {
-          laborRate    = parseFloat(String(rRow[ri["crew_loaded_hourly"] ?? -1] ?? "0")) || 0;
-          overheadRate = parseFloat(String(rRow[ri["overhead_per_hour"]  ?? -1] ?? "0")) || 0;
-        }
-      }
-
-      // Flat-rate fallback — single service line regardless of cost breakdown
       lineItems.push({
         id: "LI-service", title: serviceName,
         description: address || "",

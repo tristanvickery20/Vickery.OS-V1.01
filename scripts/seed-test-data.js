@@ -151,9 +151,9 @@ const TEST_QUOTES = [
 
 // ── Tabs to clear (keeps header row, wipes all data rows) ─────────────────────
 const TABS_TO_CLEAR = [
-  "Leads", "Quotes", "QuoteSnapshots", "Bookings",
-  "Clients", "Properties", "Requests", "Jobs", "Visits",
-  "Time", "Expenses", "Leads_QuoteSnapshots",
+  "Leads", "QuoteSnapshots", "Bookings",
+  "Clients", "Properties", "Requests", "Jobs",
+  "Time", "Expenses",
 ];
 
 async function clearTab(sheets, tabName) {

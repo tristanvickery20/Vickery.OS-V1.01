@@ -1,14 +1,11 @@
 // api/seed-quote.js — GET /admin/seed-quote?token=XXXX
-// Idempotent seeder for V3 quote machine tabs.
+// Idempotent seeder for V2 CRM tabs (ServiceAreas, SchedulerRules).
+// V1 tabs (JobTypes, Questions, AnswerOptions, AddOns, Rates) have been removed
+// from the CRM schema and are no longer seeded here.
 
 const { getSheetsClient }  = require("../lib/sheets");
 const { ensureTabHeaders }  = require("../lib/sheetsSchema");
-const {
-  RATE_H, RATES, SCHED_H, SCHED,
-  JT_H, JOB_TYPES, SA_H, SERVICE_AREAS,
-  Q_H, QUESTIONS, AO_H, ANSWER_OPTIONS,
-  ADDON_H, ADD_ONS,
-} = require("../lib/quoteSeedData");
+const { SA_H, SERVICE_AREAS, SCHED_H, SCHED } = require("../lib/quoteSeedData");
 
 const ID = () => process.env.CRM_SHEET_ID;
 
@@ -17,7 +14,7 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload, null, 2));
 }
 
-// Write a single data row (row 2) to a tab — used for Rates + SchedulerRules.
+// Write a single data row (row 2) to a tab — used for SchedulerRules.
 async function writeRow2(sheets, tabName, headers, row) {
   const r = await sheets.spreadsheets.values.get({ spreadsheetId: ID(), range: `${tabName}!A1:1` });
   const sheetH = ((r.data.values || [[]])[0]).map(h => String(h).trim());
@@ -44,7 +41,6 @@ async function upsertRows(sheets, tabName, headers, rows, keyCol) {
   const toAppend = [];
 
   for (const seedRow of rows) {
-    // Build a row in sheet-column order
     const sheetRow = sheetH.map(h => { const i = headers.indexOf(h); return i >= 0 ? String(seedRow[i]) : ""; });
     const keyVal = String(seedRow[headers.indexOf(keyCol)]).trim();
 
@@ -57,14 +53,12 @@ async function upsertRows(sheets, tabName, headers, rows, keyCol) {
     }
   }
 
-  // Write updated existing rows
   if (updated > 0 && dataRows.length > 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: ID(), range: `${tabName}!A2`, valueInputOption: "RAW",
       requestBody: { majorDimension: "ROWS", values: dataRows },
     });
   }
-  // Append new rows
   if (toAppend.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: ID(), range: `${tabName}!A:A`, valueInputOption: "RAW",
@@ -82,12 +76,12 @@ async function handleSeedQuote(req, res) {
   }
 
   const sheets = await getSheetsClient();
-  const createdTabs = [];
   const upsertCounts = {};
   const warnings = [];
 
-  // Ensure all tabs have correct headers (creates tabs if missing)
-  const ENSURE_TABS = ["Rates","SchedulerRules","JobTypes","Questions","AnswerOptions","AddOns","ServiceAreas","QuoteSnapshots","Bookings"];
+  // Ensure valid V2/CRM tabs have correct headers (creates tabs if missing).
+  // V1 tabs (JobTypes, Questions, AnswerOptions, AddOns, Rates) are no longer managed here.
+  const ENSURE_TABS = ["ServiceAreas", "SchedulerRules", "QuoteSnapshots", "Bookings"];
   for (const tab of ENSURE_TABS) {
     try {
       await ensureTabHeaders(tab);
@@ -96,31 +90,13 @@ async function handleSeedQuote(req, res) {
     }
   }
 
-  // Seed single-row tables
-  try { upsertCounts.Rates = await writeRow2(sheets, "Rates", RATE_H, RATES); }
-  catch (e) { warnings.push("Rates: " + e.message); }
-
   try { upsertCounts.SchedulerRules = await writeRow2(sheets, "SchedulerRules", SCHED_H, SCHED); }
   catch (e) { warnings.push("SchedulerRules: " + e.message); }
 
-  // Seed upsert tables
-  const TABLES = [
-    ["JobTypes",      JT_H,    JOB_TYPES,      "job_type_id"],
-    ["ServiceAreas",  SA_H,    SERVICE_AREAS,  "zip"],
-    ["Questions",     Q_H,     QUESTIONS,      "question_id"],
-    ["AnswerOptions", AO_H,    ANSWER_OPTIONS, "option_id"],
-    ["AddOns",        ADDON_H, ADD_ONS,        "addon_id"],
-  ];
+  try { upsertCounts.ServiceAreas = await upsertRows(sheets, "ServiceAreas", SA_H, SERVICE_AREAS, "zip"); }
+  catch (e) { warnings.push("ServiceAreas: " + e.message); }
 
-  for (const [tab, headers, rows, key] of TABLES) {
-    try {
-      upsertCounts[tab] = await upsertRows(sheets, tab, headers, rows, key);
-    } catch (e) {
-      warnings.push(`${tab}: ${e.message}`);
-    }
-  }
-
-  json(res, 200, { ok: true, createdTabs, upsertCounts, warnings });
+  json(res, 200, { ok: true, upsertCounts, warnings });
 }
 
 module.exports = { handleSeedQuote };

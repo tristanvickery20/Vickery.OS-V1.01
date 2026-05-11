@@ -55,6 +55,9 @@ async function handleGetLeadMaterials(req, res) {
 
     if (!estId) return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials: [], warnings: ['Estimator V2 sheet is not configured for material extraction.'] });
 
+    // All four tabs are read from the V2 estimator sheet (ESTIMATOR_V2_SHEET_ID),
+    // not the CRM sheet. AddOns here is the V2 estimator AddOns tab, not the
+    // deleted CRM V1 AddOns tab.
     const [materialsRows, itemsRows, multRows, addonsRows] = await Promise.all([
       readTab(sheets, estId, 'Materials!A1:Z3000').catch(() => []),
       readTab(sheets, estId, 'AssemblyItems!A1:Z5000').catch(() => []),

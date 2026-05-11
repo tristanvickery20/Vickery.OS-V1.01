@@ -3,9 +3,7 @@
 // POST /api/quote/calc    — price without address, log priced event
 // POST /api/quote/lock    — final price with travel fee, log locked event
 //
-// Engine selection:
-//   ESTIMATOR_V2_SHEET_ID set → V2 engine (lib/quoteEngineV2)
-//   otherwise                 → V1 engine (lib/quoteEngine)
+// V2 engine only (lib/quoteEngineV2). ESTIMATOR_V2_SHEET_ID is required at startup.
 //
 // Classification enforcement (lib/serviceClassification):
 //   MANUAL_QUOTE_ONLY      → blocked; returns manual_review response (no price)
@@ -15,10 +13,9 @@
 
 const crypto = require("crypto");
 const { getSheetsClient }       = require("../lib/sheets");
-const { getActiveConfig, isV2Mode } = require("../lib/estimatorV2Config");
+const { getActiveConfig }       = require("../lib/estimatorV2Config");
 const { hasGatePhoto }          = require("./photo-upload");
 const { getEstimatorConfig }    = require("../lib/estimatorModulesConfig");
-const { calculateQuote }        = require("../lib/quoteEngine");
 const { calculateQuoteV2 }      = require("../lib/quoteEngineV2");
 const { getClassification, resolveServiceId } = require("../lib/serviceClassification");
 
@@ -234,7 +231,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
 
 // ── Option resolvers ──────────────────────────────────────────────────────────
 
-// V1 — resolve AnswerOption objects from config
+// Resolve AnswerOption objects from V2 config (used for module driver mapping).
 function resolveOptions(config, answers) {
   const opts = [];
   for (const [qid, oid] of Object.entries(answers || {})) {
@@ -243,30 +240,6 @@ function resolveOptions(config, answers) {
     if (match) opts.push(match);
   }
   return opts;
-}
-
-// V1 — resolve selected AddOn objects
-function resolveAddons(config, jobTypeId, addonIds) {
-  const all = config.addonsByType[jobTypeId] || [];
-  return all.filter(a => (addonIds || []).includes(a.addon_id));
-}
-
-// ── Qty application for V1 (server-side so client doesn't multiply) ───────────
-// Scales a V1 pricing result by qty while keeping travel fee flat.
-function applyQtyV1(pricing, qty) {
-  qty = Math.max(1, Math.round(Number(qty) || 1));
-  if (qty === 1) return pricing;
-  const travel   = Number(pricing.travel_fee) || 0;
-  const baseUnit = pricing.final_price - travel;
-  const scaled   = baseUnit * qty + travel;
-  return {
-    ...pricing,
-    final_price:        Math.round(scaled / 5) * 5,
-    hours:              Math.round(pricing.hours * qty * 100) / 100,
-    labor_cost:         Math.round(pricing.labor_cost * qty * 100) / 100,
-    overhead_cost:      Math.round(pricing.overhead_cost * qty * 100) / 100,
-    material_allowance: Math.round(pricing.material_allowance * qty * 100) / 100,
-  };
 }
 
 // ── Module-answer resolver ────────────────────────────────────────────────────
@@ -318,7 +291,7 @@ function checkDisqualify(config, modulesById, answers) {
 function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriverOptions, stackCap }) {
   qty = Math.max(1, Math.round(Number(qty) || 1));
 
-  if (isV2Mode() && config._v2) {
+  if (config._v2) {
     // V2 path: find full assembly row and call V2 engine
     const assembly = (config._v2.assemblies || []).find(
       a => a.assembly_id === jobType.job_type_id
@@ -341,18 +314,8 @@ function computePrice({ config, jobType, answers, addons, qty, zip, prebuiltDriv
     });
   }
 
-  // V1 path: existing engine + qty scaling
-  const selectedOptions = resolveOptions(config, answers);
-  const selectedAddons  = resolveAddons(config, jobType.job_type_id, addons);
-  const pricing = calculateQuote({
-    jobType,
-    selectedOptions,
-    selectedAddons,
-    rates:        config.rates,
-    serviceAreas: config.serviceAreas,
-    zip,
-  });
-  return applyQtyV1(pricing, qty);
+  // No V2 assembly found — unclassified service type, cannot price.
+  throw new Error(`No V2 assembly found for job type: ${jobType?.job_type_id || "unknown"}`);
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────

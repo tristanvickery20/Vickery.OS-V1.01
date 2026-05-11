@@ -92,11 +92,10 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, quotesData, snapshotsData, config, attachData, clientsData, invoicesData] = await Promise.all([
+    const [leadsData, timeData, expData, snapshotsData, config, attachData, clientsData, invoicesData] = await Promise.all([
       fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
-      fetchTabRows(sheets, spreadsheetId, "Quotes!A1:G2000"),
       fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A1:Z"),
       getConfig(),
       fetchTabRows(sheets, spreadsheetId, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
@@ -183,27 +182,10 @@ async function handleDashboard(req, res) {
     };
 
     // ── Money card ──
-    const quotesHeaders = quotesData.headers;
-    const qCreatedIdx = quotesHeaders.indexOf("created_at");
-    const qPriceIdx   = quotesHeaders.indexOf("quoted_price");
-    const qIdIdx      = quotesHeaders.indexOf("quote_id");
     let quoted_7d = 0;
-    // Shared deduplication set spans BOTH sources to prevent double-counting
-    // (old api/quotes.js writes to Quotes tab; new quote-engine writes to QuoteSnapshots)
     const seenQuoteIds = new Set();
 
-    // Old quote system (Quotes tab)
-    for (const row of quotesData.rows) {
-      const qid = qIdIdx >= 0 ? String(row[qIdIdx] || "").trim() : "";
-      if (qid && seenQuoteIds.has(qid)) continue;
-      const d = parseDateStr(row[qCreatedIdx]);
-      if (d && d >= ago7) {
-        if (qid) seenQuoteIds.add(qid);
-        quoted_7d += num(row[qPriceIdx]);
-      }
-    }
-
-    // New quote engine (QuoteSnapshots tab) — count only "locked" events
+    // Quote engine (QuoteSnapshots tab) — count only "locked" events
     {
       const sh = snapshotsData.headers;
       const sEventTypeIdx  = sh.indexOf("event_type");

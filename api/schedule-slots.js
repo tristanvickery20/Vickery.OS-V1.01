@@ -76,12 +76,14 @@ async function loadLockedSnapshot(sheets, id, quoteId) {
   return rows.filter(r => r.quote_id === quoteId && r.event_type === "locked").pop() || null;
 }
 
-async function loadJobType(sheets, id, jobTypeId) {
+async function getJobTypeDurationMins(jobTypeId) {
+  if (!jobTypeId) return 90;
   try {
-    const r = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "JobTypes!A:Z" });
-    const rows = rowsToObjects(r.data.values || []);
-    return rows.find(r => r.job_type_id === jobTypeId) || null;
-  } catch { return null; }
+    const { getActiveConfig } = require("../lib/estimatorV2Config");
+    const cfg = await getActiveConfig();
+    const jt = (cfg.jobTypes || []).find(t => t.job_type_id === jobTypeId || t.assembly_id === jobTypeId);
+    return Number(jt?.default_duration_minutes) || 90;
+  } catch { return 90; }
 }
 
 async function handleGetSlots(req, res) {
@@ -110,10 +112,7 @@ async function handleGetSlots(req, res) {
     if (quoteId) {
       const snapshot = await loadLockedSnapshot(sheets, id, quoteId);
       if (snapshot) {
-        const jobType = snapshot.job_type_id
-          ? await loadJobType(sheets, id, snapshot.job_type_id)
-          : null;
-        duration = Number(jobType?.default_duration_minutes) || 90;
+        duration = await getJobTypeDurationMins(snapshot.job_type_id);
         quote = {
           quote_id:      quoteId,
           job_type_id:   snapshot.job_type_id,
