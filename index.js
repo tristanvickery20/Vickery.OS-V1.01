@@ -51,6 +51,7 @@ const {
   handleGetClientNotes,
   handleGetClientAttachments,
   handleGetClientTimeline,
+  handleMergeClients,
 } = require("./api/clients");
 const { handleCreateNote } = require("./api/notes");
 const { handleCreateAttachment } = require("./api/attachments");
@@ -1282,6 +1283,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/audit") && req.method === "GET") {
     return handleGetAudit(req, res);
+  }
+
+  if (_epath === "/api/clients/merge" && req.method === "POST") {
+    return handleMergeClients(req, res);
   }
 
   if (req.url.startsWith("/api/clients") && req.method === "GET") {

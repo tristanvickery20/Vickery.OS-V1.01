@@ -1,4 +1,6 @@
 const { readTab, parseISODateSafe, normalizeStr } = require("../lib/readTab");
+const { getSheetsClient, colToLetter, invalidateCache } = require("../lib/sheets");
+const { logAudit, genRequestId } = require("../lib/audit");
 const url = require("url");
 
 function json(res, code, data) {
@@ -556,6 +558,200 @@ async function handleGetClientTimeline(req, res) {
   }
 }
 
+async function readTabRaw(sheets, spreadsheetId, tabName) {
+  try {
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${tabName}!A1:AZ5000`,
+    });
+    const values = resp.data.values || [];
+    const headers = values[0] || [];
+    const rows = values.length >= 2 ? values.slice(1) : [];
+    return { headers, rows };
+  } catch {
+    return { headers: [], rows: [] };
+  }
+}
+
+async function handleMergeClients(req, res) {
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+
+    const primaryId   = String(body.primary_id   || "").trim();
+    const secondaryId = String(body.secondary_id || "").trim();
+
+    if (!primaryId || !secondaryId) {
+      return json(res, 400, { ok: false, error: "primary_id and secondary_id are required" });
+    }
+    if (primaryId === secondaryId) {
+      return json(res, 400, { ok: false, error: "Cannot merge a record with itself" });
+    }
+
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    if (!spreadsheetId) return json(res, 500, { ok: false, error: "CRM_SHEET_ID not configured" });
+
+    const sheets = await getSheetsClient();
+
+    const [leadsRaw, clientsRaw] = await Promise.all([
+      readTabRaw(sheets, spreadsheetId, "Leads"),
+      readTabRaw(sheets, spreadsheetId, "Clients"),
+    ]);
+
+    const lh = leadsRaw.headers;
+    const l_id    = lh.indexOf("id");
+    const l_name  = lh.indexOf("name");
+    const l_phone = lh.indexOf("phone");
+
+    const ch = clientsRaw.headers;
+    const c_id    = ch.indexOf("id");
+    const c_name  = ch.indexOf("name");
+    const c_phone = ch.indexOf("phone");
+
+    // ── Step 1: Resolve primary's canonical phone + name ──────────────────
+    let primaryName = "";
+    let primaryPhone = "";
+
+    for (const row of leadsRaw.rows) {
+      const rid = l_id >= 0 ? String(row[l_id] || "").trim() : "";
+      if (rid === primaryId) {
+        if (l_name  >= 0 && !primaryName)  primaryName  = String(row[l_name]  || "").trim();
+        if (l_phone >= 0 && !primaryPhone) primaryPhone = String(row[l_phone] || "").trim();
+      }
+    }
+    for (const row of clientsRaw.rows) {
+      const rid = c_id >= 0 ? String(row[c_id] || "").trim() : "";
+      if (rid === primaryId) {
+        if (c_name  >= 0 && !primaryName)  primaryName  = String(row[c_name]  || "").trim();
+        if (c_phone >= 0 && !primaryPhone) primaryPhone = String(row[c_phone] || "").trim();
+      }
+    }
+
+    if (!primaryPhone) {
+      return json(res, 404, { ok: false, error: "Primary record not found or has no phone number" });
+    }
+    const normPrimary = primaryPhone.replace(/\D/g, "");
+
+    // ── Step 2: Resolve secondary's canonical phone (grouping key) ─────────
+    // Secondary may represent a whole phone group; find its phone from any row
+    // that matches by id, then treat ALL rows with that phone as the group.
+    let secondaryPhone = "";
+
+    for (const row of leadsRaw.rows) {
+      const rid = l_id >= 0 ? String(row[l_id] || "").trim() : "";
+      if (rid === secondaryId) {
+        if (l_phone >= 0) secondaryPhone = String(row[l_phone] || "").trim();
+        break;
+      }
+    }
+    if (!secondaryPhone) {
+      for (const row of clientsRaw.rows) {
+        const rid = c_id >= 0 ? String(row[c_id] || "").trim() : "";
+        if (rid === secondaryId) {
+          if (c_phone >= 0) secondaryPhone = String(row[c_phone] || "").trim();
+          break;
+        }
+      }
+    }
+
+    // secondaryPhone may be empty if the duplicate record has no phone at all.
+    // That is explicitly a valid use case (task description). We still need to
+    // match rows by id and by phone group (when a phone exists).
+    const normSecondary = secondaryPhone ? secondaryPhone.replace(/\D/g, "") : "";
+
+    // Safeguard: if both sides have a phone and they already match, nothing to do.
+    if (normPrimary && normSecondary && normPrimary === normSecondary) {
+      return json(res, 400, { ok: false, error: "These records already share the same phone number and are already grouped together" });
+    }
+
+    // ── Step 3: Update ALL rows in the secondary's group ─────────────────
+    // A row belongs to the secondary group if:
+    //   (a) its id exactly equals secondaryId, OR
+    //   (b) normSecondary is non-empty AND the row's normalized phone matches it
+    //       (covers multi-job customers grouped by phone)
+    // When a secondary has no phone, only path (a) matches — still correct.
+    //
+    // Name policy: write primary's canonical name to every affected row so
+    // grouping is fully consistent going forward (not just blank rows).
+    let leadsUpdated = 0;
+    let clientsUpdated = 0;
+    const batchRequests = [];
+
+    for (let i = 0; i < leadsRaw.rows.length; i++) {
+      const row = leadsRaw.rows[i];
+      const rid = l_id    >= 0 ? String(row[l_id]    || "").trim() : "";
+      const rph = l_phone >= 0 ? String(row[l_phone] || "").replace(/\D/g, "") : "";
+      const inGroup = rid === secondaryId || (normSecondary && rph === normSecondary);
+      if (!inGroup) continue;
+
+      const sheetRow = i + 2;
+      if (l_phone >= 0) {
+        batchRequests.push({ range: `Leads!${colToLetter(l_phone)}${sheetRow}`, values: [[primaryPhone]] });
+      }
+      if (l_name >= 0 && primaryName) {
+        batchRequests.push({ range: `Leads!${colToLetter(l_name)}${sheetRow}`, values: [[primaryName]] });
+      }
+      leadsUpdated++;
+    }
+
+    for (let i = 0; i < clientsRaw.rows.length; i++) {
+      const row = clientsRaw.rows[i];
+      const rid = c_id    >= 0 ? String(row[c_id]    || "").trim() : "";
+      const rph = c_phone >= 0 ? String(row[c_phone] || "").replace(/\D/g, "") : "";
+      const inGroup = rid === secondaryId || (normSecondary && rph === normSecondary);
+      if (!inGroup) continue;
+
+      const sheetRow = i + 2;
+      if (c_phone >= 0) {
+        batchRequests.push({ range: `Clients!${colToLetter(c_phone)}${sheetRow}`, values: [[primaryPhone]] });
+      }
+      if (c_name >= 0 && primaryName) {
+        batchRequests.push({ range: `Clients!${colToLetter(c_name)}${sheetRow}`, values: [[primaryName]] });
+      }
+      clientsUpdated++;
+    }
+
+    if (leadsUpdated === 0 && clientsUpdated === 0) {
+      return json(res, 404, { ok: false, error: "No rows found for the secondary record — merge aborted" });
+    }
+
+    if (batchRequests.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: "RAW", data: batchRequests },
+      });
+    }
+
+    invalidateCache(spreadsheetId, "Leads");
+    invalidateCache(spreadsheetId, "Clients");
+
+    await logAudit({
+      actor: "staff",
+      action: "merge_clients",
+      entity_type: "client",
+      entity_id: primaryId,
+      field: "merge",
+      old_value: secondaryId,
+      new_value: primaryId,
+      note: `Merged secondary record ${secondaryId} (phone: ${secondaryPhone || "none"}) into primary ${primaryId} (phone: ${primaryPhone}). Updated ${leadsUpdated} lead row(s) and ${clientsUpdated} client row(s).`,
+      source: "crm",
+      request_id: genRequestId(),
+    });
+
+    json(res, 200, {
+      ok: true,
+      primary_id: primaryId,
+      secondary_id: secondaryId,
+      leads_updated: leadsUpdated,
+      clients_updated: clientsUpdated,
+      message: `Merged ${secondaryId} into ${primaryId}. Updated ${leadsUpdated + clientsUpdated} row(s).`,
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   handleGetClients,
   handleGetClientById,
@@ -565,4 +761,5 @@ module.exports = {
   handleGetClientNotes,
   handleGetClientAttachments,
   handleGetClientTimeline,
+  handleMergeClients,
 };
