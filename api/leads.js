@@ -379,8 +379,17 @@ async function handleGetLeads(req, res) {
       }
     }
 
-    const leads = [...clientLeads, ...legacyLeads]
+    let leads = [...clientLeads, ...legacyLeads]
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+    // Optional phone filter — used by the "Other jobs for this customer" panel
+    try {
+      const qp = new URL("http://x" + req.url).searchParams;
+      const phoneFilter = (qp.get("phone") || "").replace(/\D/g, "");
+      if (phoneFilter) {
+        leads = leads.filter((l) => l.phone.replace(/\D/g, "") === phoneFilter);
+      }
+    } catch (_) { /* malformed URL — ignore filter */ }
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, leads }));

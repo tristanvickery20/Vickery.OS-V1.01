@@ -177,6 +177,12 @@
             <div class="ld-msg" id="ldNoteMsg"></div>
           </div>
 
+          <!-- Other jobs for this customer (populated by loadRelatedJobs) -->
+          <div class="ld-card" id="ldRelatedJobsCard" style="display:none;">
+            <div class="ld-card-title">Other jobs for this customer</div>
+            <div id="ldRelatedJobsContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+          </div>
+
           ${hasQuoteId ? `
           <div class="ld-card" id="ldMaterialsCard">
             <div class="ld-card-title">Estimated Materials</div>
@@ -254,6 +260,7 @@
     }
     loadLeadInvoice(lead.id || lead.lead_id, lead);
     loadBonusPanel(lead.id || lead.lead_id);
+    loadRelatedJobs(lead);
   }
 
   async function loadSnapshot(quoteId) {
@@ -832,6 +839,70 @@
       el.innerHTML = html;
     } catch (err) {
       el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
+    }
+  }
+
+  async function loadRelatedJobs(lead) {
+    const card = document.getElementById('ldRelatedJobsCard');
+    const el   = document.getElementById('ldRelatedJobsContent');
+    if (!card || !el) return;
+
+    const rawPhone = (lead.phone || '').replace(/\D/g, '');
+    if (!rawPhone) return;
+
+    const currentId = String(lead.id || lead.lead_id || '');
+
+    try {
+      const data = await window.Api.fetchJson('/api/leads?phone=' + encodeURIComponent(rawPhone));
+      const others = (data.leads || []).filter(l =>
+        String(l.id || l.lead_id || '') !== currentId
+      );
+
+      if (!others.length) return;
+
+      card.style.display = '';
+
+      const rows = others.map(j => {
+        const jId     = j.id || j.lead_id || '';
+        const desc    = j.job_description || j.notes || j.job_type || '—';
+        const status  = j.status_code || j.status || '';
+        const sc      = STATUS_COLORS[status] || { bg: 'hsl(220 15% 88%)', color: 'hsl(220 10% 35%)' };
+        const slabel  = STATUS_LABELS[status] || status || 'Unknown';
+        const val     = Number(j.quoted_price || j.estimated_value || 0);
+        const valStr  = val > 0 ? fmt$(val) : '—';
+        const dateStr = fmtDate(j.created_at);
+        const shortDesc = desc.length > 60 ? desc.slice(0, 58) + '…' : desc;
+
+        return `
+          <a href="/crm/lead?id=${encodeURIComponent(jId)}"
+             style="display:flex;align-items:center;gap:10px;padding:9px 0;
+                    border-bottom:1px solid hsl(var(--border));
+                    text-decoration:none;color:inherit;transition:opacity .15s;"
+             onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:hsl(var(--foreground));
+                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${esc(shortDesc)}
+              </div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:2px;">
+                ${esc(dateStr)}
+              </div>
+            </div>
+            <div style="flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              <span style="display:inline-block;padding:2px 8px;border-radius:20px;
+                           font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+                           background:${sc.bg};color:${sc.color};">${esc(slabel)}</span>
+              <span style="font-size:12px;font-weight:600;color:hsl(var(--foreground));">${esc(valStr)}</span>
+            </div>
+          </a>`;
+      });
+
+      el.innerHTML = rows.join('') +
+        `<div style="font-size:11px;color:hsl(var(--muted-foreground));padding-top:8px;">
+           ${others.length} other job${others.length !== 1 ? 's' : ''} on file for this phone number
+         </div>`;
+    } catch (err) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);">Could not load: ${esc(err.message)}</span>`;
     }
   }
 
