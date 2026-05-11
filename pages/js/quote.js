@@ -597,11 +597,11 @@ const _JT_CATEGORY = {
   A025: "CIRCUIT", A029: "CIRCUIT",
   // Panel / breaker
   A019: "PANEL", A020: "PANEL", A021: "PANEL",
-  A022: "PANEL", A023: "PANEL", A024: "PANEL",
+  A023: "PANEL", A024: "PANEL",
   // EV charger
   A028: "EV",
-  // Diagnostics
-  A010: "DIAGNOSTICS", A018: "DIAGNOSTICS", A030: "DIAGNOSTICS",
+  // Diagnostics — A022 (BREAKER_TRIPPING) is a diagnostic, not panel work
+  A010: "DIAGNOSTICS", A018: "DIAGNOSTICS", A022: "DIAGNOSTICS", A030: "DIAGNOSTICS",
   // Generators
   A026: "GENERATOR", A027: "GENERATOR", A053: "GENERATOR",
   // Commercial
@@ -616,6 +616,10 @@ const _LIGHTING_FAN_CATS = new Set(["LIGHTING", "FAN"]);
 // Panel / diagnostic categories that must not have circuit-distance modules.
 const _PANEL_DIAG_CATS   = new Set(["PANEL", "DIAGNOSTICS", "GENERATOR",
                                      "WIRING", "COMMERCIAL", "OTHER"]);
+// Categories that must receive ZERO online module questions regardless of fuzzy
+// match result — these services always route to a site-visit screen.
+const _ZERO_QUESTION_CATS = new Set(["DIAGNOSTICS", "GENERATOR", "COMMERCIAL",
+                                      "WIRING", "OTHER"]);
 
 function enrichConfigWithModules(config, est) {
   if (!est?.services || !est?.modules) return;
@@ -624,6 +628,29 @@ function enrichConfigWithModules(config, est) {
   config.optionsByQuestion = config.optionsByQuestion || {};
 
   for (const jt of (config.jobTypes || [])) {
+    // Determine the service category for blocklist/allowlist enforcement.
+    // jt.category comes from the Assemblies sheet (e.g. "Lighting & Fans").
+    // Fall back to the hardcoded assembly map for V2 IDs, then name heuristics.
+    const jtCatRaw  = (jt.category || "").toLowerCase();
+    let   jtCat     = _JT_CATEGORY[jt.job_type_id] || null;
+    if (!jtCat) {
+      if (jtCatRaw.includes("light") || jtCatRaw.includes("fan"))              jtCat = "LIGHTING";
+      else if (jtCatRaw.includes("outlet") || jtCatRaw.includes("switch"))     jtCat = "OUTLET";
+      else if (jtCatRaw.includes("panel") || jtCatRaw.includes("breaker"))     jtCat = "PANEL";
+      else if (jtCatRaw.includes("ev") || jtCatRaw.includes("charger"))        jtCat = "EV";
+      else if (jtCatRaw.includes("diagnos") || jtCatRaw.includes("troubleshoot")) jtCat = "DIAGNOSTICS";
+      else if (jtCatRaw.includes("generat"))                                   jtCat = "GENERATOR";
+      else if (jtCatRaw.includes("commercial") || jtCatRaw.includes("ballast")) jtCat = "COMMERCIAL";
+      else if (jtCatRaw.includes("rewire") || jtCatRaw.includes("wiring"))     jtCat = "WIRING";
+    }
+
+    // Hard enforcement: zero-question categories must never receive module questions,
+    // regardless of what the fuzzy matcher finds. Set empty and move on.
+    if (_ZERO_QUESTION_CATS.has(jtCat)) {
+      config.questionsByType[jt.job_type_id] = [];
+      continue;
+    }
+
     // Find the best-matching estimator service
     let best = null, bestSim = 0;
     for (const svc of est.services) {
@@ -632,18 +659,6 @@ function enrichConfigWithModules(config, est) {
     }
     if (!best || bestSim < 0.52 || !best.modules?.length) continue;
 
-    // Determine the service category for blocklist enforcement.
-    // jt.category comes from the Assemblies sheet (e.g. "Lighting & Fans").
-    // Fall back to the hardcoded assembly map for V2 IDs.
-    const jtCatRaw  = (jt.category || "").toLowerCase();
-    let   jtCat     = _JT_CATEGORY[jt.job_type_id] || null;
-    if (!jtCat) {
-      if (jtCatRaw.includes("light") || jtCatRaw.includes("fan"))  jtCat = "LIGHTING";
-      else if (jtCatRaw.includes("outlet") || jtCatRaw.includes("switch")) jtCat = "OUTLET";
-      else if (jtCatRaw.includes("panel") || jtCatRaw.includes("breaker")) jtCat = "PANEL";
-      else if (jtCatRaw.includes("ev") || jtCatRaw.includes("charger"))    jtCat = "EV";
-      else if (jtCatRaw.includes("diagnos") || jtCatRaw.includes("troubleshoot")) jtCat = "DIAGNOSTICS";
-    }
     const isLightingFan  = _LIGHTING_FAN_CATS.has(jtCat);
     const isPanelOrDiag  = _PANEL_DIAG_CATS.has(jtCat);
 
