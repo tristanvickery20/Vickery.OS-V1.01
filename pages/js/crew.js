@@ -56,6 +56,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindCrewCorrections();
   initNFCScan();
 
+  // After jobs are loaded, validate the persisted bookingId against today's list.
+  // If the job is no longer scheduled today, clear the stale timer state.
+  if (timerState && timerState.bookingId) {
+    const jobExists = _todayJobs.some(j => j.booking_id === timerState.bookingId);
+    if (!jobExists) {
+      clearTimerState();
+      timerState = null;
+    }
+  }
+
   if (timerState) {
     startTimerTick();
     updateTimerBanner();
@@ -239,10 +249,20 @@ function updateTimerBanner() {
     stopBtn.onclick = () => stopTimer();
   }
 
-  // Reset button — show when elapsed is 0 and timer is not paused (stuck/corrupt state)
+  // Reset button — only show after 3 seconds of stuck-at-zero (not paused).
+  // This avoids a false positive during the normal first-second of a new clock-in.
   if (resetBtn) {
     const isStuck = !timerState.isPaused && elapsedMs <= 0;
-    resetBtn.hidden = !isStuck;
+    if (!isStuck) {
+      resetBtn.hidden = true;
+    } else if (resetBtn.hidden) {
+      // Schedule reveal after 3 s if still stuck
+      setTimeout(() => {
+        if (timerState && !timerState.isPaused && getElapsedMs() <= 0) {
+          resetBtn.hidden = false;
+        }
+      }, 3000);
+    }
     resetBtn.onclick = () => {
       clearTimerState();
       timerState = null;
@@ -516,16 +536,14 @@ async function stopTimer() {
     renderJobCards();
     updateTimerBanner();
   } catch (err) {
-    // Server failed — restore timer so user can retry; resume tick from frozen elapsed
-    timerState = snapshot;
-    timerState.isPaused  = true;
-    timerState.pausedMs  = elapsedMs;
-    timerState.pausedAt  = new Date().toISOString();
-    saveTimerState(timerState);
+    // Save failed — clear local timer state so the UI doesn't stay frozen.
+    // The initial clock-in record (timeId) was already written to the sheet when
+    // the timer started, so partial time data is preserved server-side.
+    timerState = null;
+    clearTimerState();
     renderJobCards();
     updateTimerBanner();
-    startTimerTick(); // Resume display so elapsed stays visible
-    showToast("Failed to save time: " + err.message + " — clock paused, tap Resume when ready", true);
+    showToast("Clock stopped — save failed (" + err.message + "). Time may need manual review.", true);
   }
 }
 
