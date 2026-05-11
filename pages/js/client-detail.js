@@ -387,30 +387,72 @@
     }).join("");
   }
 
+  const JOB_STATUS_COLORS = {
+    new:               { bg: "hsl(220,15%,88%)", color: "hsl(220,10%,35%)" },
+    awaiting_response: { bg: "hsl(220,15%,88%)", color: "hsl(220,10%,35%)" },
+    scheduled:         { bg: "hsl(214,90%,90%)", color: "hsl(217,70%,35%)" },
+    in_progress:       { bg: "hsl(214,90%,90%)", color: "hsl(217,70%,35%)" },
+    awaiting_payment:  { bg: "hsl(40,90%,88%)",  color: "hsl(38,70%,30%)"  },
+    complete:          { bg: "hsl(142,60%,88%)",  color: "hsl(142,50%,28%)" },
+    complete_invoiced: { bg: "hsl(142,60%,88%)",  color: "hsl(142,50%,28%)" },
+    overdue:           { bg: "hsl(0,80%,90%)",    color: "hsl(0,65%,38%)"   },
+    cancelled:         { bg: "hsl(0,10%,88%)",    color: "hsl(0,5%,40%)"    },
+  };
+
+  const JOB_STATUS_LABELS = {
+    new:               "New",
+    awaiting_response: "Awaiting Response",
+    scheduled:         "Scheduled",
+    in_progress:       "In Progress",
+    awaiting_payment:  "Awaiting Payment",
+    complete:          "Complete",
+    complete_invoiced: "Invoiced",
+    overdue:           "Overdue",
+    cancelled:         "Cancelled",
+  };
+
   function renderJobs() {
-    if (!jobsData.length) return '<div class="cd-empty">No jobs yet.</div>';
-    return jobsData.map(function (j) {
-      const title = (j.description || j.id || "Job").slice(0, 48);
-      const meta = [fmtShortDate(j.created_at), j.completed_at ? "Done " + fmtShortDate(j.completed_at) : ""].filter(Boolean).join(" \u00b7 ");
-      const body =
-        (j.id ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Job ID</span><span class="cd-acc-row-val" style="font-family:monospace;font-size:12px;">' + esc(j.id) + "</span></div>" : "") +
-        (j.description ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Description</span><span class="cd-acc-row-val">' + esc(j.description) + "</span></div>" : "") +
-        '<div class="cd-acc-row"><span class="cd-acc-row-label">Created</span><span class="cd-acc-row-val">' + fmtDate(j.created_at) + "</span></div>" +
-        (j.completed_at ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Completed</span><span class="cd-acc-row-val">' + fmtDate(j.completed_at) + "</span></div>" : "") +
-        (j.collected_revenue ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Collected</span><span class="cd-acc-row-val">' + fmtMoney(j.collected_revenue) + "</span></div>" : "");
-      return (
-        '<div class="cd-acc">' +
-          '<button class="cd-acc-hdr is-open" aria-expanded="true">' +
-            '<div class="cd-acc-summary">' +
-              '<span class="cd-acc-title">' + esc(title) + "</span>" +
-              (meta ? '<span class="cd-acc-meta">' + meta + "</span>" : "") +
-            "</div>" +
-            '<div class="cd-acc-right">' + statusBadge(j.status_code) + '<span class="cd-acc-chevron">&#9660;</span></div>' +
-          "</button>" +
-          '<div class="cd-acc-body open" role="region">' + body + "</div>" +
-        "</div>"
-      );
-    }).join("");
+    if (!jobsData.length) return '<div class="cd-empty">No jobs on file yet.</div>';
+
+    const rows = jobsData.map(function (j) {
+      const jId    = j.id || "";
+      const desc   = j.job_description || j.description || j.notes || j.job_type || "\u2014";
+      const status = (j.status_code || j.status || "").toLowerCase();
+      const sc     = JOB_STATUS_COLORS[status] || { bg: "hsl(220,15%,88%)", color: "hsl(220,10%,35%)" };
+      const slabel = JOB_STATUS_LABELS[status] || j.status_code || j.status || "Unknown";
+      const val    = Number(j.quoted_price || j.estimated_value || 0);
+      const valStr = val > 0 ? fmtMoney(val) : "\u2014";
+      const dateStr = fmtDate(j.created_at);
+      const shortDesc = desc.length > 60 ? desc.slice(0, 58) + "\u2026" : desc;
+
+      const inner =
+        '<div class="cd-list-main">' +
+          '<div class="cd-list-title">' + esc(shortDesc) + '</div>' +
+          '<div class="cd-list-sub">' + esc(dateStr) + '</div>' +
+        '</div>' +
+        '<div class="cd-list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">' +
+          '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:' + sc.bg + ';color:' + sc.color + ';">' + esc(slabel) + '</span>' +
+          '<span style="font-size:12px;font-weight:600;">' + esc(valStr) + '</span>' +
+        '</div>';
+
+      if (jId) {
+        return (
+          '<a href="/crm/lead?id=' + encodeURIComponent(jId) + '"' +
+             ' class="cd-list-item cd-job-row"' +
+             ' style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px;">' +
+            inner +
+          '</a>'
+        );
+      }
+      return '<div class="cd-list-item" style="display:flex;align-items:center;gap:12px;">' + inner + '</div>';
+    });
+
+    return (
+      '<div class="cd-list">' + rows.join("") + '</div>' +
+      '<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:10px;">' +
+        jobsData.length + " job" + (jobsData.length !== 1 ? "s" : "") + " on file" +
+      '</div>'
+    );
   }
 
   const CD_INV_STATUS = {
@@ -808,23 +850,28 @@
 
     try {
       const base = "/api/clients/" + encodeURIComponent(clientId);
-      const [cRes, rRes, qRes, jRes, nRes, aRes, invRes, tlRes] = await Promise.all([
-        fetchJSON(base),
+
+      // Fetch client first so we have the phone number for the leads-by-phone lookup
+      const cRes = await fetchJSON(base);
+      if (!cRes.ok) return showError("Client not found.");
+      clientData = cRes.client;
+
+      const phone = (clientData.phone || "").replace(/\D/g, "");
+      const [rRes, qRes, leadsRes, nRes, aRes, invRes, tlRes] = await Promise.all([
         fetchJSON(base + "/requests"),
         fetchJSON(base + "/quotes"),
-        fetchJSON(base + "/jobs"),
+        phone
+          ? fetchJSON("/api/leads?phone=" + encodeURIComponent(phone))
+          : Promise.resolve({ ok: true, leads: [] }),
         fetchJSON(base + "/notes"),
         fetchJSON(base + "/attachments"),
         fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
         fetchJSON(base + "/timeline").catch(() => ({ ok: false })),
       ]);
 
-      if (!cRes.ok) return showError("Client not found.");
-
-      clientData = cRes.client;
       requestsData = rRes.ok ? rRes.requests : [];
       quotesData = qRes.ok ? qRes.quotes : [];
-      jobsData = jRes.ok ? jRes.jobs : [];
+      jobsData = leadsRes.ok ? (leadsRes.leads || []) : [];
       notesData = nRes.ok ? nRes.notes : [];
       attachmentsData = aRes.ok ? aRes.attachments : [];
       invoicesData = invRes.ok ? invRes.invoices : [];
