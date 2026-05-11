@@ -12,8 +12,10 @@ const { getCrewSession, findStaffById } = require("../lib/staff");
 let ASSEMBLY_TO_SERVICE = {};
 try { ASSEMBLY_TO_SERVICE = require("../lib/serviceClassification").ASSEMBLY_TO_SERVICE || {}; } catch { /* optional */ }
 
-// 60-second in-memory cache for today's jobs — guards against Sheets quota spikes
-const _todayJobsCache = {};  // key: dateStr → { ts: epoch, payload: { ok, jobs, today } }
+// 60-second in-memory cache for raw Sheets data — guards against quota spikes.
+// IMPORTANT: caches *unfiltered* raw rows so per-user access-control filtering always
+// runs fresh on every request, even when the cache is used as a fallback.
+const _todayJobsCache = {};  // key: dateStr → { ts: epoch, bookingRows, quoteRows, estCfg }
 
 // Internal-only modules that should not appear as scope rows
 const SKIP_MODULES = new Set(["UNCERTAINTY_BUFFER"]);
@@ -148,22 +150,47 @@ async function handleGetCrewMembers(req, res) {
 }
 
 async function handleGetTodayJobs(req, res) {
+  const spreadsheetId = process.env.CRM_SHEET_ID;
+  if (!spreadsheetId) return json(res, 200, { ok: true, jobs: [] });
+
+  // Accept optional ?date=YYYY-MM-DD to view a specific day (resolved early so
+  // the cache key is date-based, not user-based — raw rows are user-agnostic).
+  const urlObj    = new URL(req.url, "http://x");
+  const dateParam = urlObj.searchParams.get("date");
+  const today = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam))
+    ? dateParam
+    : todayLocalStr();
+
+  // ── 1. Fetch raw sheet data (cached by date, never by user) ──────────────
+  let bookingRows, quoteRows, estCfg;
+  const cached = _todayJobsCache[today];
+  if (cached && Date.now() - cached.ts < 60_000) {
+    ({ bookingRows, quoteRows, estCfg } = cached);
+  } else {
+    try {
+      const sheets = await getSheetsClient();
+      const [bookingsResp, quotesResp, estCfgResult] = await Promise.all([
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
+        getEstimatorConfig().catch(() => null),
+      ]);
+      bookingRows = bookingsResp.data.values || [];
+      quoteRows   = quotesResp.data.values   || [];
+      estCfg      = estCfgResult;
+      // Store raw unfiltered rows — filtering always runs per-request so no
+      // user identity is ever embedded in the cache.
+      _todayJobsCache[today] = { ts: Date.now(), bookingRows, quoteRows, estCfg };
+    } catch (err) {
+      // Sheets quota / network error and no usable cache — return error
+      return json(res, 500, { ok: false, error: err.message, jobs: [] });
+    }
+  }
+
+  // ── 2. Prepare lookups from raw rows ─────────────────────────────────────
   try {
-    const sheets = await getSheetsClient();
-    const spreadsheetId = process.env.CRM_SHEET_ID;
-    if (!spreadsheetId) return json(res, 200, { ok: true, jobs: [] });
-
-    // Fetch bookings, quote snapshots, and estimator config in parallel
-    const [bookingsResp, quotesResp, estCfg] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
-      getEstimatorConfig().catch(() => null),
-    ]);
-
     const modulesById = estCfg ? estCfg.modulesById : {};
     const services    = estCfg ? estCfg.services    : [];
 
-    // Build job type name lookup: job_type_id (or assembly ID) → service_name
     function resolveJobTypeName(rawId) {
       if (!rawId) return "";
       const serviceId = ASSEMBLY_TO_SERVICE[rawId] || rawId;
@@ -171,22 +198,19 @@ async function handleGetTodayJobs(req, res) {
       return svc ? svc.service_name : rawId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
 
-    const rows = bookingsResp.data.values || [];
-    if (rows.length < 2) return json(res, 200, { ok: true, jobs: [] });
+    if (bookingRows.length < 2) return json(res, 200, { ok: true, jobs: [], today });
 
-    const [headers, ...data] = rows;
+    const [headers, ...data] = bookingRows;
     const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 
-    // Build QuoteSnapshots lookup: quote_id → { selected_options_json, selected_addons_json, job_type_id }
-    // Prefer "locked" event rows (same as Lead Detail page)
+    // Build QuoteSnapshots lookup: quote_id → snapshot (prefer "locked" rows)
     const snapshotMap = {};
-    const qRows = quotesResp.data.values || [];
-    if (qRows.length > 1) {
-      const [qHeaders, ...qData] = qRows;
+    if (quoteRows.length > 1) {
+      const [qHeaders, ...qData] = quoteRows;
       const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
       qData.forEach(r => {
-        const qid      = String(r[qi["quote_id"]              ?? -1] ?? "").trim();
-        const evtType  = String(r[qi["event_type"]            ?? -1] ?? "").trim();
+        const qid     = String(r[qi["quote_id"]   ?? -1] ?? "").trim();
+        const evtType = String(r[qi["event_type"] ?? -1] ?? "").trim();
         if (!qid) return;
         const entry = {
           selected_options_json: String(r[qi["selected_options_json"] ?? -1] ?? "").trim(),
@@ -194,18 +218,11 @@ async function handleGetTodayJobs(req, res) {
           job_type_id:           String(r[qi["job_type_id"]           ?? -1] ?? "").trim(),
           notes:                 String(r[qi["notes"]                 ?? -1] ?? "").trim(),
         };
-        // Prefer the "locked" snapshot (same preference as Lead Detail)
         if (!snapshotMap[qid] || evtType === "locked") snapshotMap[qid] = entry;
       });
     }
 
-    // Accept optional ?date=YYYY-MM-DD to view a specific day
-    const urlObj   = new URL(req.url, "http://x");
-    const dateParam = urlObj.searchParams.get("date");
-    const today = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam))
-      ? dateParam
-      : todayLocalStr();
-
+    // ── 3. Per-request access-control (always runs fresh, never cached) ────
     const norm = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
     const splitAssignmentValues = (value) => {
       if (Array.isArray(value)) return value.flatMap(splitAssignmentValues);
@@ -215,15 +232,9 @@ async function handleGetTodayJobs(req, res) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed.flatMap(splitAssignmentValues);
       } catch (_) {}
-      return raw
-        .split(/[|,;]/)
-        .map(v => norm(v))
-        .filter(Boolean);
+      return raw.split(/[|,;]/).map(v => norm(v)).filter(Boolean);
     };
-    const addAlias = (set, value) => {
-      const n = norm(value);
-      if (n) set.add(n);
-    };
+    const addAlias = (set, value) => { const n = norm(value); if (n) set.add(n); };
     const assignmentFields = [
       "assigned_tech_id", "assigned_tech_ids", "assigned_to", "assigned_tech",
       "tech", "technician", "crew", "staff_id", "staff_ids", "tech_id", "tech_ids",
@@ -231,8 +242,6 @@ async function handleGetTodayJobs(req, res) {
       "assigned_name", "assigned_email",
     ];
 
-    // Get the logged-in crew member's session so we can filter to their assigned jobs.
-    // Owners/admin see all jobs; regular crew only see jobs assigned to them.
     const session = getCrewSession(req);
     const role = norm(session ? session.role : "");
     const isPrivileged = role === "owner" || role === "admin";
@@ -266,11 +275,12 @@ async function handleGetTodayJobs(req, res) {
 
     const assignmentMatchesCrew = (job) => {
       const values = assignmentFields.flatMap((field) => splitAssignmentValues(job[field]));
-      if (values.length === 0) return true; // preserve existing unassigned visibility
-      if (aliasSet.size === 0) return true; // preserve existing no-session fallback
+      if (values.length === 0) return true;
+      if (aliasSet.size === 0) return true;
       return values.some(v => aliasSet.has(v));
     };
 
+    // ── 4. Map + filter rows (filter uses fresh per-request identity) ───────
     const jobs = data
       .map(r => {
         const get = col => String(r[idx[col] ?? -1] ?? "").trim();
@@ -279,7 +289,6 @@ async function handleGetTodayJobs(req, res) {
         const qid       = get("quote_id");
         const jobTypeId = get("job_type_id");
 
-        // Decode scope from quote snapshot answers using estimator module system
         const snap = snapshotMap[qid] || {};
         const scopeResult = buildScopeItems(
           snap.selected_options_json,
@@ -287,7 +296,6 @@ async function handleGetTodayJobs(req, res) {
           modulesById,
         );
 
-        // Plain-text fallback for manually-created bookings with no quote snapshot
         const scopeRaw     = get("scope_of_work");
         const bookingNotes = get("notes");
         const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
@@ -295,59 +303,53 @@ async function handleGetTodayJobs(req, res) {
           ? ([scopeRaw, bookingNotes, snap.notes].find(v => v && !isInternalId(v)) || "")
           : "";
 
-        // Resolve human-readable job type name (handles both assembly IDs like "A001" and service IDs)
         const jobTypeName = resolveJobTypeName(snap.job_type_id || jobTypeId);
-
         const latRaw = get("lat");
         const lngRaw = get("lng");
         return {
-          booking_id:         get("booking_id"),
-          quote_id:           qid,
-          customer_name:      get("customer_name"),
-          address:            get("address"),
-          phone:              get("phone"),
-          email:              get("email"),
-          scheduled_datetime: dt,
-          date:               dateStr,
-          schedule_block:     get("schedule_block"),
-          duration_minutes:   Number(r[idx["duration_minutes"] ?? -1] || 0),
-          status:             get("status"),
-          final_price:        get("final_price"),
-          job_type_id:        jobTypeId,
-          job_type_name:      jobTypeName,
-          lat:                latRaw ? parseFloat(latRaw) : null,
-          lng:                lngRaw ? parseFloat(lngRaw) : null,
-          // Structured scope (from quote answers)
-          scope_items:        scopeResult.items,
-          scope_qty:          scopeResult.qty,
-          scope_status:       scopeResult.classification,
-          scope_addons:       scopeResult.addons,
-          scope_photos:       scopeResult.photos,
-          // Plain-text fallback (manually-created bookings)
-          scope_of_work:      plainScope,
-          // GPS arrival / departure (auto-stamped by Traccar)
-          arrived_at:         get("arrived_at"),
-          departed_at:        get("departed_at"),
+          booking_id:           get("booking_id"),
+          quote_id:             qid,
+          customer_name:        get("customer_name"),
+          address:              get("address"),
+          phone:                get("phone"),
+          email:                get("email"),
+          scheduled_datetime:   dt,
+          date:                 dateStr,
+          schedule_block:       get("schedule_block"),
+          duration_minutes:     Number(r[idx["duration_minutes"] ?? -1] || 0),
+          status:               get("status"),
+          final_price:          get("final_price"),
+          job_type_id:          jobTypeId,
+          job_type_name:        jobTypeName,
+          lat:                  latRaw ? parseFloat(latRaw) : null,
+          lng:                  lngRaw ? parseFloat(lngRaw) : null,
+          scope_items:          scopeResult.items,
+          scope_qty:            scopeResult.qty,
+          scope_status:         scopeResult.classification,
+          scope_addons:         scopeResult.addons,
+          scope_photos:         scopeResult.photos,
+          scope_of_work:        plainScope,
+          arrived_at:           get("arrived_at"),
+          departed_at:          get("departed_at"),
           job_duration_minutes: get("job_duration_minutes") ? Number(get("job_duration_minutes")) : null,
-          // Tech assignment (single and multi + legacy aliases)
-          assigned_tech_id:   get("assigned_tech_id"),
-          assigned_tech_ids:  get("assigned_tech_ids"),
-          assigned_to:        get("assigned_to"),
-          assigned_tech:      get("assigned_tech"),
-          tech:               get("tech"),
-          technician:         get("technician"),
-          crew:               get("crew"),
-          staff_id:           get("staff_id"),
-          staff_ids:          get("staff_ids"),
-          tech_id:            get("tech_id"),
-          tech_ids:           get("tech_ids"),
-          technician_id:      get("technician_id"),
-          technician_ids:     get("technician_ids"),
-          assigned_user:      get("assigned_user"),
-          assigned_user_id:   get("assigned_user_id"),
-          assigned_name:      get("assigned_name"),
-          assigned_email:     get("assigned_email"),
-          lead_id:            get("lead_id"),
+          assigned_tech_id:     get("assigned_tech_id"),
+          assigned_tech_ids:    get("assigned_tech_ids"),
+          assigned_to:          get("assigned_to"),
+          assigned_tech:        get("assigned_tech"),
+          tech:                 get("tech"),
+          technician:           get("technician"),
+          crew:                 get("crew"),
+          staff_id:             get("staff_id"),
+          staff_ids:            get("staff_ids"),
+          tech_id:              get("tech_id"),
+          tech_ids:             get("tech_ids"),
+          technician_id:        get("technician_id"),
+          technician_ids:       get("technician_ids"),
+          assigned_user:        get("assigned_user"),
+          assigned_user_id:     get("assigned_user_id"),
+          assigned_name:        get("assigned_name"),
+          assigned_email:       get("assigned_email"),
+          lead_id:              get("lead_id"),
         };
       })
       .filter(j => {
@@ -357,16 +359,8 @@ async function handleGetTodayJobs(req, res) {
       })
       .sort((a, b) => a.scheduled_datetime.localeCompare(b.scheduled_datetime));
 
-    const payload = { ok: true, jobs, today };
-    _todayJobsCache[today] = { ts: Date.now(), payload };
-    json(res, 200, payload);
+    json(res, 200, { ok: true, jobs, today });
   } catch (err) {
-    // On Sheets quota / network error, serve stale cache for today if available
-    const fallbackDate = todayLocalStr();
-    const cached = _todayJobsCache[fallbackDate];
-    if (cached && Date.now() - cached.ts < 60_000) {
-      return json(res, 200, cached.payload);
-    }
     json(res, 500, { ok: false, error: err.message, jobs: [] });
   }
 }
