@@ -850,7 +850,8 @@
     const rawPhone = (lead.phone || '').replace(/\D/g, '');
     if (!rawPhone) return;
 
-    const currentId = String(lead.id || lead.lead_id || '');
+    const currentId  = String(lead.id || lead.lead_id || '');
+    const clientName = esc(lead.name || lead.customer_name || '');
 
     try {
       const data = await window.Api.fetchJson('/api/leads?phone=' + encodeURIComponent(rawPhone));
@@ -859,48 +860,72 @@
       );
 
       if (!others.length) return;
-
       card.style.display = '';
 
-      const rows = others.map(j => {
-        const jId     = j.id || j.lead_id || '';
-        const desc    = j.job_description || j.notes || j.job_type || '—';
-        const status  = j.status_code || j.status || '';
-        const sc      = STATUS_COLORS[status] || { bg: 'hsl(220 15% 88%)', color: 'hsl(220 10% 35%)' };
-        const slabel  = STATUS_LABELS[status] || status || 'Unknown';
-        const val     = Number(j.quoted_price || j.estimated_value || 0);
-        const valStr  = val > 0 ? fmt$(val) : '—';
-        const dateStr = fmtDate(j.created_at);
-        const shortDesc = desc.length > 60 ? desc.slice(0, 58) + '…' : desc;
+      const accItems = others.map((j, i) => {
+        const jId    = j.id || j.lead_id || '';
+        const desc   = j.job_description || j.notes || j.job_type || '—';
+        const status = j.status_code || j.status || '';
+        const sc     = STATUS_COLORS[status] || { bg: 'hsl(220 15% 20%)', color: 'hsl(220 15% 70%)' };
+        const slabel = STATUS_LABELS[status] || status || 'Unknown';
+        const val    = Number(j.quoted_price || j.estimated_value || 0);
+        const valStr = val > 0 ? fmt$(val) : '';
+
+        // Short date: "May 5" format
+        const shortDate = (() => {
+          if (!j.created_at) return '';
+          const d = new Date(j.created_at);
+          if (isNaN(d)) return '';
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        })();
+
+        const shortDesc = desc.length > 40 ? desc.slice(0, 38) + '…' : desc;
+        const bulletParts = [clientName, shortDate, shortDesc].filter(Boolean);
+        const summaryText = bulletParts.join(' • ');
+
+        const bodyHtml =
+          `<div class="rj-row">
+             <span class="rj-row-label">Status</span>
+             <span class="rj-row-val">
+               <span style="display:inline-block;padding:2px 9px;border-radius:20px;
+                            font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+                            background:${sc.bg};color:${sc.color};">${esc(slabel)}</span>
+             </span>
+           </div>` +
+          (valStr ? `<div class="rj-row"><span class="rj-row-label">Value</span><span class="rj-row-val">${esc(valStr)}</span></div>` : '') +
+          (j.notes && j.notes !== desc ? `<div class="rj-row"><span class="rj-row-label">Notes</span><span class="rj-row-val" style="max-width:180px;white-space:normal;word-break:break-word;text-align:right;">${esc(j.notes)}</span></div>` : '') +
+          (jId ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid hsl(var(--border));">
+                    <a href="/crm/lead?id=${encodeURIComponent(jId)}"
+                       style="display:inline-block;padding:7px 16px;border-radius:9px;
+                              background:hsl(var(--primary));color:#fff;font-size:13px;
+                              font-weight:600;text-decoration:none;">Open job →</a>
+                  </div>` : '');
 
         return `
-          <a href="/crm/lead?id=${encodeURIComponent(jId)}"
-             style="display:flex;align-items:center;gap:10px;padding:9px 0;
-                    border-bottom:1px solid hsl(var(--border));
-                    text-decoration:none;color:inherit;transition:opacity .15s;"
-             onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:hsl(var(--foreground));
-                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${esc(shortDesc)}
-              </div>
-              <div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:2px;">
-                ${esc(dateStr)}
-              </div>
-            </div>
-            <div style="flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-              <span style="display:inline-block;padding:2px 8px;border-radius:20px;
-                           font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
-                           background:${sc.bg};color:${sc.color};">${esc(slabel)}</span>
-              <span style="font-size:12px;font-weight:600;color:hsl(var(--foreground));">${esc(valStr)}</span>
-            </div>
-          </a>`;
+          <div class="rj-acc">
+            <button class="rj-hdr" data-rj-idx="${i}" type="button">
+              <span class="rj-hdr-text">${summaryText}</span>
+              <span class="rj-chevron">&#9660;</span>
+            </button>
+            <div class="rj-body">${bodyHtml}</div>
+          </div>`;
       });
 
-      el.innerHTML = rows.join('') +
-        `<div style="font-size:11px;color:hsl(var(--muted-foreground));padding-top:8px;">
+      el.innerHTML = accItems.join('') +
+        `<div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:4px;">
            ${others.length} other job${others.length !== 1 ? 's' : ''} on file for this phone number
          </div>`;
+
+      // Wire accordion toggles
+      el.querySelectorAll('.rj-hdr').forEach(hdr => {
+        hdr.addEventListener('click', () => {
+          const body = hdr.nextElementSibling;
+          if (!body) return;
+          const isOpen = body.classList.toggle('open');
+          hdr.classList.toggle('open', isOpen);
+        });
+      });
+
     } catch (err) {
       el.innerHTML = `<span style="color:hsl(0,70%,50%);">Could not load: ${esc(err.message)}</span>`;
     }
