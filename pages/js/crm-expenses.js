@@ -131,14 +131,10 @@
     rows.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
 
     const heading = document.getElementById("expHeading");
-    if (qbConnected) {
-      heading.innerHTML = `Expenses <span style="font-size:13px;font-weight:500;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:2px 10px;border-radius:20px;vertical-align:middle;">CRM + QuickBooks</span>`;
-    } else {
-      heading.textContent = "Expenses";
-    }
+    if (heading) heading.textContent = "Expenses";
 
     statusEl.textContent = rows.length
-      ? `${rows.length} expense(s)${qbConnected ? " — CRM & QB combined" : ""}.`
+      ? `${rows.length} expense(s).`
       : "No expenses yet.";
 
     for (const r of rows) {

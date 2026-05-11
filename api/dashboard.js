@@ -584,9 +584,8 @@ async function handleDashboard(req, res) {
 }
 
 // GET /api/dashboard/financials
-// Returns AR summary and cash snapshot from the accounting provider.
-// Uses mock-computed totals from Invoices/Payments sheets by default.
-// When QuickBooks is connected, the same endpoint returns live QB data.
+// Returns AR summary and cash snapshot computed from the CRM Invoices/Payments sheets.
+// CRM is the source of truth — no external accounting dependency.
 async function handleDashboardFinancials(req, res) {
   try {
     const [arResult, cashResult] = await Promise.all([

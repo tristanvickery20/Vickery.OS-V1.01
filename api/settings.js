@@ -1,34 +1,6 @@
-// api/settings.js — Notifications, QuickBooks, and Staff & Access settings
-const crypto = require("crypto");
+// api/settings.js — Notifications and Staff & Access settings
+// QuickBooks has been removed from this stack. CRM is the source of truth.
 const { getConfig, setConfigKeys } = require("../lib/config");
-
-// QB SECRET ENCRYPTION — fail-closed. CRM_PIN env var is REQUIRED.
-// If CRM_PIN is absent, all QB credential save/token operations are rejected with a 500.
-// This prevents credentials from ever being stored under a guessable fallback key.
-function _encKey() {
-  const pin = process.env.CRM_PIN;
-  if (!pin) throw new Error("CRM_PIN environment variable is required for QuickBooks credential encryption. Set it before saving QB credentials.");
-  return crypto.createHash("sha256").update(pin).digest();
-}
-function encryptSecret(text) {
-  if (!text) return "";
-  const iv  = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv("aes-256-cbc", _encKey(), iv);
-  const enc = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
-  return iv.toString("hex") + ":" + enc.toString("hex");
-}
-function decryptSecret(stored) {
-  if (!stored || !stored.includes(":")) return "";
-  const key = crypto.createHash("sha256").update(process.env.CRM_PIN || "").digest();
-  try {
-    const [ivHex, encHex] = stored.split(":");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", key, Buffer.from(ivHex, "hex"));
-    const dec = Buffer.concat([decipher.update(Buffer.from(encHex, "hex")), decipher.final()]);
-    return dec.toString("utf8");
-  } catch {
-    return "";
-  }
-}
 
 async function readBody(req) {
   return new Promise((resolve) => {
@@ -53,11 +25,13 @@ async function handleGetNotifications(req, res) {
     const cfg = await getConfig();
     json(res, 200, {
       ok: true,
-      smsReminderEnabled:    cfg.notif_sms_reminder_enabled    !== "false",
-      reviewRequestEnabled:  cfg.notif_review_request_enabled  !== "false",
-      reviewDelayDays:       Number(cfg.notif_review_delay_days || 3),
-      ccOwnerEnabled:        cfg.notif_cc_owner_enabled        === "true",
-      overdueHoursBefore:    Number(cfg.notif_overdue_hours_before || 0),
+      smsEnabled:           cfg.sms_enabled           === "true",
+      smsProvider:          cfg.sms_provider           || "twilio",
+      newLeadAlert:         cfg.notify_new_lead        !== "false",
+      scheduledAlert:       cfg.notify_scheduled       !== "false",
+      depositAlert:         cfg.notify_deposit         !== "false",
+      reviewAlert:          cfg.notify_review          !== "false",
+      reviewReminderDays:   Number(cfg.review_reminder_days || "3"),
     });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
@@ -69,173 +43,15 @@ async function handleSaveNotifications(req, res) {
   try {
     const body = await readBody(req);
     const pairs = {};
-    if (body.smsReminderEnabled   !== undefined) pairs.notif_sms_reminder_enabled   = String(!!body.smsReminderEnabled);
-    if (body.reviewRequestEnabled !== undefined) pairs.notif_review_request_enabled = String(!!body.reviewRequestEnabled);
-    if (body.reviewDelayDays      !== undefined) pairs.notif_review_delay_days      = String(Number(body.reviewDelayDays) || 3);
-    if (body.ccOwnerEnabled       !== undefined) pairs.notif_cc_owner_enabled       = String(!!body.ccOwnerEnabled);
-    if (body.overdueHoursBefore   !== undefined) pairs.notif_overdue_hours_before   = String(Number(body.overdueHoursBefore) || 0);
+    if (body.smsEnabled           !== undefined) pairs.sms_enabled           = String(!!body.smsEnabled);
+    if (body.smsProvider          !== undefined) pairs.sms_provider           = String(body.smsProvider || "twilio");
+    if (body.newLeadAlert         !== undefined) pairs.notify_new_lead        = String(!!body.newLeadAlert);
+    if (body.scheduledAlert       !== undefined) pairs.notify_scheduled       = String(!!body.scheduledAlert);
+    if (body.depositAlert         !== undefined) pairs.notify_deposit         = String(!!body.depositAlert);
+    if (body.reviewAlert          !== undefined) pairs.notify_review          = String(!!body.reviewAlert);
+    if (body.reviewReminderDays   !== undefined) pairs.review_reminder_days   = String(Number(body.reviewReminderDays) || 3);
     await setConfigKeys(pairs);
     json(res, 200, { ok: true });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// QUICKBOOKS
-// ─────────────────────────────────────────────────────────────
-
-// GET /api/settings/quickbooks
-async function handleGetQuickBooks(req, res) {
-  try {
-    const cfg = await getConfig();
-    const credentialsSaved = cfg.qb_credentials_saved === "true";
-    const connected        = cfg.qb_connected === "true";
-    json(res, 200, {
-      ok: true,
-      connected,
-      credentialsSaved,
-      // Never expose secrets — only show presence
-      hasClientId:       !!cfg.qb_client_id,
-      hasClientSecret:   !!cfg.qb_client_secret,
-      realmId:           cfg.qb_realm_id || "",
-      autoSyncExpenses:  cfg.qb_auto_sync_expenses === "true",
-      autoSyncTime:      cfg.qb_auto_sync_time     === "true",
-      environment:       cfg.qb_environment        || "sandbox",
-      connectedAt:       cfg.qb_connected_at       || "",
-      credentialsSavedAt: cfg.qb_credentials_saved_at || "",
-    });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
-}
-
-// POST /api/settings/quickbooks — save credentials + toggles
-async function handleSaveQuickBooks(req, res) {
-  try {
-    const body = await readBody(req);
-    const pairs = {};
-
-    // Credentials — client secret is AES-encrypted before storing in Config sheet
-    if (body.clientId     !== undefined && body.clientId     !== "") pairs.qb_client_id     = String(body.clientId);
-    if (body.clientSecret !== undefined && body.clientSecret !== "") pairs.qb_client_secret = encryptSecret(String(body.clientSecret));
-    if (body.realmId      !== undefined) pairs.qb_realm_id      = String(body.realmId || "");
-    if (body.environment  !== undefined) pairs.qb_environment   = body.environment === "production" ? "production" : "sandbox";
-
-    // Auto-sync toggles
-    if (body.autoSyncExpenses !== undefined) pairs.qb_auto_sync_expenses = String(!!body.autoSyncExpenses);
-    if (body.autoSyncTime     !== undefined) pairs.qb_auto_sync_time     = String(!!body.autoSyncTime);
-
-    // Mark credentials as saved (not yet OAuth-verified)
-    // qb_connected is only "true" once a real OAuth access token is stored
-    if (body.clientId && body.clientSecret && body.realmId) {
-      pairs.qb_credentials_saved    = "true";
-      pairs.qb_credentials_saved_at = new Date().toISOString();
-      // Do NOT set qb_connected here — that requires a real OAuth token exchange
-    }
-
-    await setConfigKeys(pairs);
-    json(res, 200, { ok: true });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
-}
-
-// DELETE /api/settings/quickbooks — disconnect (clear all QB credentials + tokens)
-async function handleDisconnectQuickBooks(req, res) {
-  try {
-    // Attempt to revoke tokens with Intuit before clearing locally
-    try {
-      const cfg = await getConfig();
-      const clientId     = cfg.qb_client_id || "";
-      const clientSecret = decryptSecret(cfg.qb_client_secret || "");
-      const accessToken  = decryptSecret(cfg.qb_access_token  || "");
-      const refreshToken = decryptSecret(cfg.qb_refresh_token || "");
-      if (clientId && clientSecret && (accessToken || refreshToken)) {
-        const { revokeToken } = require("../lib/accounting/qb-oauth");
-        await revokeToken(clientId, clientSecret, refreshToken || accessToken);
-      }
-    } catch { /* non-fatal */ }
-
-    await setConfigKeys({
-      qb_connected:              "false",
-      qb_credentials_saved:      "false",
-      qb_client_id:              "",
-      qb_client_secret:          "",
-      qb_access_token:           "",
-      qb_refresh_token:          "",
-      qb_token_expires_at:       "",
-      qb_refresh_expires_at:     "",
-      qb_realm_id:               "",
-      qb_connected_at:           "",
-      qb_credentials_saved_at:   "",
-      qb_oauth_state:            "",
-    });
-    json(res, 200, { ok: true });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
-}
-
-// POST /api/settings/quickbooks/token — internal: store OAuth tokens after code exchange.
-// Called by the OAuth callback handler, not directly by the UI.
-async function handleSaveQuickBooksToken(req, res) {
-  try {
-    const body = await readBody(req);
-    if (!body.accessToken) {
-      return json(res, 400, { ok: false, error: "accessToken is required" });
-    }
-    const pairs = {
-      qb_access_token: encryptSecret(String(body.accessToken)),
-      qb_connected:    "true",
-      qb_connected_at: new Date().toISOString(),
-    };
-    if (body.refreshToken)      pairs.qb_refresh_token      = encryptSecret(String(body.refreshToken));
-    if (body.expiresAt)         pairs.qb_token_expires_at   = String(body.expiresAt);
-    if (body.refreshExpiresAt)  pairs.qb_refresh_expires_at = String(body.refreshExpiresAt);
-    if (body.realmId)           pairs.qb_realm_id           = String(body.realmId);
-    await setConfigKeys(pairs);
-    json(res, 200, { ok: true, message: "QuickBooks connected — sync is now active." });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
-}
-
-// POST /api/settings/quickbooks/test — attempt a live QB API call and report result
-async function handleTestQuickBooks(req, res) {
-  try {
-    const cfg = await getConfig();
-    if (!cfg.qb_client_id || !cfg.qb_realm_id) {
-      return json(res, 200, { ok: false, error: "No credentials configured. Enter Client ID and Realm ID first." });
-    }
-    const accessToken = decryptSecret(cfg.qb_access_token || "");
-    const base = cfg.qb_environment === "production"
-      ? "https://quickbooks.api.intuit.com"
-      : "https://sandbox-quickbooks.api.intuit.com";
-    const url = `${base}/v3/company/${cfg.qb_realm_id}/companyinfo/${cfg.qb_realm_id}?minorversion=65`;
-    let status = 0;
-    let body = "";
-    try {
-      const r = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
-      });
-      status = r.status;
-      body = await r.text();
-    } catch (netErr) {
-      return json(res, 200, { ok: false, error: `Network error: ${netErr.message}` });
-    }
-    if (status === 200) {
-      let name = "";
-      try { name = JSON.parse(body).CompanyInfo?.CompanyName || ""; } catch {}
-      return json(res, 200, { ok: true, message: `Connected — company: ${name || cfg.qb_realm_id}` });
-    }
-    if (status === 401) {
-      return json(res, 200, { ok: false, error: "Credentials accepted but OAuth token missing or expired. Full OAuth flow is required to complete sync." });
-    }
-    return json(res, 200, { ok: false, error: `QB returned HTTP ${status}` });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -251,19 +67,12 @@ async function handleGetStaffSettings(req, res) {
     const cfg = await getConfig();
     let defaultPermissions = ["jobs", "time", "expenses"];
     try {
-      // Key is "default_permissions" — matches crew-auth.js signup path
       const raw = cfg.default_permissions || "";
       if (raw) defaultPermissions = JSON.parse(raw);
     } catch { /* use built-in defaults */ }
 
-    // Default to true (require approval) when unset — matches signup path behaviour
     const requireApproval = cfg.staff_require_approval !== "false";
-
-    json(res, 200, {
-      ok: true,
-      defaultPermissions,
-      requireApproval,
-    });
+    json(res, 200, { ok: true, defaultPermissions, requireApproval });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });
   }
@@ -275,7 +84,6 @@ async function handleSaveStaffSettings(req, res) {
     const body = await readBody(req);
     const pairs = {};
     if (Array.isArray(body.defaultPermissions)) {
-      // Use "default_permissions" — read by crew-auth.js during new-account creation
       pairs.default_permissions = JSON.stringify(body.defaultPermissions);
     }
     if (body.requireApproval !== undefined) {
@@ -289,174 +97,21 @@ async function handleSaveStaffSettings(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// QB PUSH UTILITIES — called by expenses.js and time.js after save
+// PUSH STUBS — QB removed; these are kept as no-ops so expenses.js
+// and time.js don't need changes.
 // ─────────────────────────────────────────────────────────────
 
-// Build a QuickBooks Purchase payload from an expense entry.
-// Bank/checking account and expense category account IDs come from Config
-// (qb_bank_account_id, qb_expense_account_id) so they match the company's chart of accounts.
-function _buildQbPurchase(entry, cfg) {
-  const bankAccountId = cfg.qb_bank_account_id || "35";
-  // Use QB account ID from the entry (set when user picks a category in the form).
-  // Fall back to the configured default expense account (Cost of Goods Sold = 80).
-  const expenseAccountId = entry.qb_account_id || cfg.qb_expense_account_id || "80";
-  const category = entry.category || entry.type || "";
-  const payee    = entry.payee    || entry.vendor || "";
-  const noteStr  = [
-    `CRM Expense ${entry.id}`,
-    category ? `Category: ${category}` : "",
-    payee,
-    entry.notes || "",
-  ].filter(Boolean).join(" — ").trim();
-
-  const payload = {
-    PaymentType: "Cash",
-    AccountRef: { value: bankAccountId },
-    TotalAmt: Number(entry.amount) || 0,
-    TxnDate: entry.date || new Date().toISOString().slice(0, 10),
-    PrivateNote: noteStr,
-    Line: [{
-      Amount: Number(entry.amount) || 0,
-      DetailType: "AccountBasedExpenseLineDetail",
-      AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } },
-    }],
-  };
-
-  // Set Payee/EntityRef if a payee name is provided
-  if (payee) {
-    payload.EntityRef = { name: payee, type: "Vendor" };
-  }
-
-  return payload;
+async function pushExpenseToQuickBooks() {
+  // QuickBooks removed — CRM tracks all expenses internally.
 }
 
-// Build a QuickBooks TimeActivity payload from a time entry.
-// Labor account ID comes from Config (qb_labor_account_id).
-function _buildQbTimeActivity(entry, cfg) {
-  const hours   = Math.floor((Number(entry.minutes) || 0) / 60);
-  const minutes = (Number(entry.minutes) || 0) % 60;
-  return {
-    TxnDate:    entry.date || new Date().toISOString().slice(0, 10),
-    NameOf:     "Employee",
-    Hours:      hours,
-    Minutes:    minutes,
-    Description: `CRM Time Entry ${entry.id} — ${entry.category || ""} — tech: ${entry.tech_id || ""}`.trim(),
-    BillableStatus: "NotBillable",
-  };
-}
-
-// ─── Shared: get a valid (auto-refreshed) QB access token ────────────────────
-// Refreshes the token if it is expired or expiring within 5 minutes.
-// Updates the Config sheet and invalidates the accounting provider cache.
-async function _getValidQbToken(cfg) {
-  let accessToken = decryptSecret(cfg.qb_access_token || "");
-  const expiresIso = cfg.qb_token_expires_at || "";
-  const needsRefresh = !expiresIso || new Date(expiresIso) < new Date(Date.now() + 5 * 60 * 1000);
-
-  if (needsRefresh) {
-    const { refreshAccessToken, encryptSecret: enc, expiresAt } = require("../lib/accounting/qb-oauth");
-    const clientSecret = decryptSecret(cfg.qb_client_secret || "");
-    const refreshToken = decryptSecret(cfg.qb_refresh_token || "");
-
-    if (!cfg.qb_client_id || !clientSecret || !refreshToken) {
-      throw new Error("QB token expired and no refresh token available — reconnect in Settings → Billing.");
-    }
-    const newTokens = await refreshAccessToken(cfg.qb_client_id, clientSecret, refreshToken);
-    accessToken = newTokens.access_token;
-    await setConfigKeys({
-      qb_access_token:       enc(newTokens.access_token),
-      qb_refresh_token:      enc(newTokens.refresh_token),
-      qb_token_expires_at:   expiresAt(newTokens.expires_in),
-      qb_refresh_expires_at: expiresAt(newTokens.x_refresh_token_expires_in),
-      qb_connected:          "true",
-    });
-    try { require("../lib/accounting").invalidateCache(); } catch {}
-    console.log("[QB] Access token auto-refreshed in push function.");
-  }
-  return accessToken;
-}
-
-// Push an expense record to QuickBooks.
-// Exercises the real QB API call path; logs/swallows errors so it never blocks saves.
-async function pushExpenseToQuickBooks(entry) {
-  try {
-    const cfg = await getConfig();
-    if (cfg.qb_auto_sync_expenses !== "true") return;
-    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB MOCK] Expense push (not connected) — would POST Purchase for entry ${entry.id}`);
-      return;
-    }
-    const accessToken = await _getValidQbToken(cfg);
-    const base = cfg.qb_environment === "production"
-      ? "https://quickbooks.api.intuit.com"
-      : "https://sandbox-quickbooks.api.intuit.com";
-    const url = `${base}/v3/company/${cfg.qb_realm_id}/purchase?minorversion=65`;
-    const payload = _buildQbPurchase(entry, cfg);
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (r.status === 200 || r.status === 201) {
-      const d = await r.json();
-      console.log(`[QB] Expense pushed → Purchase Id: ${d?.Purchase?.Id || "?"} for entry ${entry.id}`);
-    } else {
-      const text = await r.text();
-      console.warn(`[QB] Expense push failed (HTTP ${r.status}) for entry ${entry.id}: ${text.slice(0, 200)}`);
-    }
-  } catch (err) {
-    console.error("[QB] pushExpenseToQuickBooks error:", err.message);
-  }
-}
-
-// Push a time entry record to QuickBooks.
-async function pushTimeToQuickBooks(entry) {
-  try {
-    const cfg = await getConfig();
-    if (cfg.qb_auto_sync_time !== "true") return;
-    if (cfg.qb_connected !== "true" || !cfg.qb_client_id || !cfg.qb_realm_id) {
-      console.log(`[QB MOCK] Time push (not connected) — would POST TimeActivity for entry ${entry.id}`);
-      return;
-    }
-    const accessToken = await _getValidQbToken(cfg);
-    const base = cfg.qb_environment === "production"
-      ? "https://quickbooks.api.intuit.com"
-      : "https://sandbox-quickbooks.api.intuit.com";
-    const url = `${base}/v3/company/${cfg.qb_realm_id}/timeactivity?minorversion=65`;
-    const payload = _buildQbTimeActivity(entry, cfg);
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (r.status === 200 || r.status === 201) {
-      const d = await r.json();
-      console.log(`[QB] Time entry pushed → TimeActivity Id: ${d?.TimeActivity?.Id || "?"} for entry ${entry.id}`);
-    } else {
-      const text = await r.text();
-      console.warn(`[QB] Time push failed (HTTP ${r.status}) for entry ${entry.id}: ${text.slice(0, 200)}`);
-    }
-  } catch (err) {
-    console.error("[QB] pushTimeToQuickBooks error:", err.message);
-  }
+async function pushTimeToQuickBooks() {
+  // QuickBooks removed — CRM tracks all time entries internally.
 }
 
 module.exports = {
   handleGetNotifications,
   handleSaveNotifications,
-  handleGetQuickBooks,
-  handleSaveQuickBooks,
-  handleDisconnectQuickBooks,
-  handleSaveQuickBooksToken,
-  handleTestQuickBooks,
   handleGetStaffSettings,
   handleSaveStaffSettings,
   pushExpenseToQuickBooks,

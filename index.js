@@ -91,9 +91,8 @@ const { handleProtocolsToDrive } = require("./api/protocols");
 const { handleWeeklyPulse } = require("./api/weekly-pulse");
 const { handleGetTasks, handleCreateTask, handleUpdateTask } = require("./api/tasks");
 const { handleGCalStatus, handleGCalSaveSettings, handleGCalBootstrap, handleGCalSync, handleGCalBackfill, handleGCalVerifyPersonal, handleGCalShareWithUser, handleGCalRegisterWatchChannels } = require("./api/gcal-settings");
-const { handleGetNotifications, handleSaveNotifications, handleGetQuickBooks, handleSaveQuickBooks, handleDisconnectQuickBooks, handleSaveQuickBooksToken, handleTestQuickBooks, handleGetStaffSettings, handleSaveStaffSettings } = require("./api/settings");
-const { handleQbConnect, handleQbCallback } = require("./api/qb-oauth-routes");
-const { handleGetTransactions, handleGetProfitLoss, handleGetAccounts } = require("./api/accounting-transactions");
+const { handleGetNotifications, handleSaveNotifications, handleGetStaffSettings, handleSaveStaffSettings } = require("./api/settings");
+const { handleGetPaymentOptions } = require("./api/payment-options");
 const { resolveZone, shouldReject, ZONE_RULES } = require("./lib/serviceArea");
 const {
   handleListDepartments, handleCreateDepartment, handleUpdateDepartment, handleDeleteDepartment,
@@ -809,6 +808,10 @@ const server = http.createServer(async (req, res) => {
     return handleWeeklyPulse(req, res);
   }
 
+  // ── Payment options — public, no auth required ────────────────────────────
+  // Used by the quote flow and public-facing pages to show payment/financing options
+  if (_epath === "/api/payment-options" && req.method === "GET") return handleGetPaymentOptions(req, res);
+
   // ── Zone check — public, no auth required ─────────────────────────────────
   // GET /api/zone/check?zip=77630 or ?zip=77657&estimated_total=500&batched=false
   if (_epath === "/api/zone/check" && req.method === "GET") {
@@ -1242,19 +1245,8 @@ const server = http.createServer(async (req, res) => {
 
   if (_epath === "/api/settings/notifications" && req.method === "GET")  return handleGetNotifications(req, res);
   if (_epath === "/api/settings/notifications" && req.method === "POST") return handleSaveNotifications(req, res);
-  if (_epath === "/api/settings/quickbooks"         && req.method === "GET")    return handleGetQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks"         && req.method === "POST")   return handleSaveQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks"         && req.method === "DELETE") return handleDisconnectQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks/test"    && req.method === "POST")   return handleTestQuickBooks(req, res);
-  if (_epath === "/api/settings/quickbooks/token"   && req.method === "POST")   return handleSaveQuickBooksToken(req, res);
-  if (_epath === "/api/accounting/qb/connect"       && req.method === "GET")    return handleQbConnect(req, res);
-  if (_epath === "/api/accounting/qb/callback"      && req.method === "GET")    return handleQbCallback(req, res);
-  if (_epath.startsWith("/api/accounting/transactions") && req.method === "GET") return handleGetTransactions(req, res);
-  if (_epath.startsWith("/api/accounting/profit-loss")  && req.method === "GET") return handleGetProfitLoss(req, res);
-  if (_epath.startsWith("/api/accounting/accounts")     && req.method === "GET") return handleGetAccounts(req, res);
   if (_epath === "/api/settings/staff"         && req.method === "GET")  return handleGetStaffSettings(req, res);
   if (_epath === "/api/settings/staff"         && req.method === "POST") return handleSaveStaffSettings(req, res);
-
   if (req.url === "/api/notes" && req.method === "POST") {
     return handleCreateNote(req, res);
   }
@@ -1793,6 +1785,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 const { ensureAllHeaders, patchSchedulerRuleDefaults } = require("./lib/sheetsSchema");
+const { seedPaymentConfigDefaults } = require("./lib/paymentSettings");
 const { ensureConfigDefaults, ensureCalculatorDefaults } = require("./lib/config");
 const { isV2Mode } = require("./lib/estimatorV2Config");
 
@@ -1880,6 +1873,7 @@ server.listen(5000, "0.0.0.0", () => {
       .then(() => ensureRecruitingSheets())
       .then(() => ensurePayrollSheets())
       .then(() => patchSchedulerRuleDefaults())
+      .then(() => seedPaymentConfigDefaults())
       .then(() => seedReferralTemplates())
       .catch((err) => console.error("[Startup]", err.message));
   }, 10_000);
