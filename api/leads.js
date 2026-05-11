@@ -581,7 +581,7 @@ async function handleGetLeadSnapshot(req, res) {
     try { selectedAddons = JSON.parse(snap.selected_addons_json || "[]"); } catch { selectedAddons = []; }
 
     // Modules to suppress (photo uploads / internal only)
-    const SKIP_MODULES = new Set(["WORK_AREA_PHOTOS", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
+    const SKIP_MODULES = new Set(["WORK_AREA_PHOTO", "CEILING_PHOTO", "OUTLET_PHOTO", "SWITCH_PHOTO", "OUTDOOR_PHOTO", "PANEL_PHOTO", "UNCERTAINTY_BUFFER"]);
 
     // Resolve each answer to a human-readable Q&A pair
     const qaLines = [];

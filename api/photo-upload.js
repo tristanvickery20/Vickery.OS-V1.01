@@ -1,6 +1,6 @@
 // api/photo-upload.js
 // POST /api/quote/photo — accept base64-encoded photo, save to /uploads/, log snapshot event.
-// Supports optional `module` field for photo-gate tracking (e.g. PANEL_PHOTO, WORK_AREA_PHOTOS).
+// Supports optional `module` field for photo-gate tracking (e.g. PANEL_PHOTO, WORK_AREA_PHOTO, CEILING_PHOTO).
 
 const fs = require("fs");
 const path = require("path");

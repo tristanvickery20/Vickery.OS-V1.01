@@ -537,7 +537,7 @@ async function main() {
     if (r.svc.segment !== "residential") continue; // residential first
     scenLines.push(`## ${r.svc.service_id} — ${r.svc.service_name}`);
     scenLines.push(`**Assembly:** ${r.asmId || "NONE"} | **Labor hours (base):** ${r.laborUnit} | **Risk class:** ${r.riskClass} | **Dynamic mult:** ${r.dynamicMult}x`);
-    scenLines.push(`**Active modules:** ${r.modules.filter(m => !["UNCERTAINTY_BUFFER","WORK_AREA_PHOTOS","PANEL_PHOTO"].includes(m)).join(", ")}`);
+    scenLines.push(`**Active modules:** ${r.modules.filter(m => !["UNCERTAINTY_BUFFER","WORK_AREA_PHOTO","CEILING_PHOTO","OUTLET_PHOTO","SWITCH_PHOTO","OUTDOOR_PHOTO","PANEL_PHOTO"].includes(m)).join(", ")}`);
     scenLines.push("");
     scenLines.push("| Scenario | Drivers Applied | Total Hours | Labor Cost | Final Price | Notes |");
     scenLines.push("|----------|----------------|-------------|-----------|-------------|-------|");
