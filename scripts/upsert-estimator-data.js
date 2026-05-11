@@ -150,6 +150,100 @@ const MODULES_LIBRARY = [
   { module_id:"TRANSFER_SWITCH_LOCATION", question:"Where will the transfer switch be installed?", input_type:"single_select",
     options:[{value:"near_panel",label:"Near the panel",multiplier:1.0},{value:"garage",label:"Garage",multiplier:1.1},{value:"exterior",label:"Exterior wall",multiplier:1.15},{value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}] },
 
+  // ── Canonical Module IDs (per spec question-map document) ────────────────
+  // These are the authoritative reusable codes referenced across all 27 assemblies.
+
+  { module_id:"SURFACE_TYPE", question:"What surface will it mount to?", input_type:"single_select",
+    options:[
+      {value:"drywall",label:"Drywall",multiplier:1.0},
+      {value:"wood",label:"Wood / wood siding",multiplier:1.0},
+      {value:"vinyl",label:"Vinyl soffit / siding",multiplier:1.1},
+      {value:"stucco",label:"Stucco / EIFS",multiplier:1.3},
+      {value:"plaster",label:"Plaster",multiplier:1.35},
+      {value:"brick",label:"Brick or concrete block",multiplier:1.0,disqualify:true},
+      {value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}
+    ]},
+  { module_id:"EXISTING_WIRING", question:"Is there already power or wiring at this location?", input_type:"single_select",
+    options:[
+      {value:"yes_full",label:"Yes — full circuit and box already there",multiplier:1.0},
+      {value:"yes_nearby",label:"Nearby circuit within 20 ft",multiplier:1.15},
+      {value:"no",label:"No — needs new circuit run from panel",multiplier:1.45},
+      {value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}
+    ]},
+  { module_id:"FAN_RATED_BOX", question:"Is the existing electrical box fan-rated?", input_type:"single_select",
+    options:[
+      {value:"yes_fan_rated",label:"Yes — fan-rated box installed",multiplier:1.0},
+      {value:"yes_light_only",label:"Light box only — not fan-rated",multiplier:1.1},
+      {value:"no_box",label:"No box — new location",multiplier:1.55},
+      {value:"not_sure",label:"Not sure / needs review",multiplier:1.15,uncertain:true}
+    ]},
+  { module_id:"CONTROL_TYPE", question:"How will this be controlled?", input_type:"single_select",
+    options:[
+      {value:"existing",label:"Use existing switch / control",multiplier:1.0},
+      {value:"new_switch",label:"Add new wall switch",multiplier:1.1},
+      {value:"dimmer",label:"Wall dimmer",multiplier:1.1},
+      {value:"remote",label:"Remote / receiver kit",multiplier:1.15},
+      {value:"smart",label:"Smart / app control",multiplier:1.2},
+      {value:"not_sure",label:"Not sure",multiplier:1.05,uncertain:true}
+    ]},
+  { module_id:"NEUTRAL_PRESENT", question:"Is there a neutral (white) wire in the switch box?", input_type:"single_select",
+    options:[
+      {value:"yes",label:"Yes",multiplier:1.0},
+      {value:"no",label:"No",multiplier:1.2},
+      {value:"not_sure",label:"Not sure",multiplier:1.15,uncertain:true}
+    ]},
+  { module_id:"VOLTAGE_AMPERAGE", question:"What voltage and amperage does the circuit or appliance need?", input_type:"single_select",
+    options:[
+      {value:"120_15",label:"120V / 15A (standard)",multiplier:1.0},
+      {value:"120_20",label:"120V / 20A (kitchen / bath)",multiplier:1.0},
+      {value:"240_30",label:"240V / 30A (dryer, range)",multiplier:1.25},
+      {value:"240_40",label:"240V / 40–50A (range, hot tub)",multiplier:1.35},
+      {value:"240_60",label:"240V / 60A (large hot tub, sub)",multiplier:1.5},
+      {value:"not_sure",label:"Not sure — check appliance label",multiplier:1.1,uncertain:true}
+    ]},
+  { module_id:"EXTERIOR_EXPOSURE", question:"Will this installation be exposed to rain or outdoor weather?", input_type:"single_select",
+    options:[
+      {value:"dry_indoor",label:"Dry indoor — no moisture risk",multiplier:1.0},
+      {value:"damp",label:"Damp / bathroom / garage",multiplier:1.05},
+      {value:"covered",label:"Covered outdoor — under eave",multiplier:1.1},
+      {value:"exposed",label:"Fully exposed — direct rain",multiplier:1.2},
+      {value:"not_sure",label:"Not sure",multiplier:1.1,uncertain:true}
+    ]},
+  { module_id:"PERMIT_NEEDED", question:"Do you know if this type of work requires a permit in your area?", input_type:"single_select",
+    options:[
+      {value:"yes",label:"Yes — permit required",multiplier:1.0},
+      {value:"no",label:"No permit needed",multiplier:1.0},
+      {value:"not_sure",label:"Not sure — we handle if required",multiplier:1.0,uncertain:true}
+    ]},
+  { module_id:"CUSTOMER_SUPPLIED_MATERIAL", question:"Is the fixture, device, or equipment already purchased and on-hand?", input_type:"single_select",
+    options:[
+      {value:"yes",label:"Yes — I already have it",multiplier:1.0},
+      {value:"no",label:"No — need to order it",multiplier:1.0},
+      {value:"need_help",label:"Not sure / need a recommendation",multiplier:1.0,uncertain:true}
+    ]},
+  { module_id:"PRODUCT_TYPE", question:"What type of fixture or device is being installed?", input_type:"single_select",
+    options:[
+      {value:"flush_mount",label:"Flush mount / drum light",multiplier:1.0},
+      {value:"pendant",label:"Pendant / hanging light",multiplier:1.1},
+      {value:"chandelier",label:"Chandelier / multi-arm",multiplier:1.2},
+      {value:"vanity",label:"Vanity / bar light",multiplier:1.0},
+      {value:"track",label:"Track lighting",multiplier:1.15},
+      {value:"outdoor",label:"Outdoor / security light",multiplier:1.1},
+      {value:"smart_switch",label:"Smart switch / smart dimmer",multiplier:1.1},
+      {value:"other",label:"Other / not sure",multiplier:1.1,uncertain:true}
+    ]},
+  { module_id:"LOAD_TYPE", question:"What will this outlet, circuit, or device power?", input_type:"single_select",
+    options:[
+      {value:"general",label:"General use — lamps, chargers, etc.",multiplier:1.0},
+      {value:"kitchen",label:"Kitchen appliance (counter)",multiplier:1.05},
+      {value:"appliance",label:"Major appliance (washer, fridge)",multiplier:1.0},
+      {value:"hvac",label:"HVAC / heating / cooling",multiplier:1.1},
+      {value:"ev",label:"EV charger",multiplier:1.15},
+      {value:"tools",label:"Power tools / workshop",multiplier:1.0},
+      {value:"computer",label:"Computer / home office",multiplier:1.0},
+      {value:"not_sure",label:"Not sure / general purpose",multiplier:1.0,uncertain:true}
+    ]},
+
   // ── Tailored — Surge / Panel ─────────────────────────────────────────────
   { module_id:"SURGE_TYPE", question:"What type of surge protection are you looking for?", input_type:"single_select",
     options:[{value:"whole_home",label:"Whole-home (at panel)",multiplier:1.0},{value:"point_of_use",label:"Point-of-use",multiplier:1.0},{value:"not_sure",label:"Not sure",uncertain:true}] },
@@ -196,37 +290,37 @@ function assignModules(service_name, current_tier, segment) {
   // 3. Ceiling fans (before lighting to avoid "fixture" conflict)
   if (/ceiling fan/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,FAN_EXISTING_BOX,FIXTURE_PURCHASED,FAN_CONTROL_TYPE,THREE_WAY_SWITCHING,OUTDOOR_EXPOSURE,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"REPLACE_OR_NEW,EXISTING_WIRING,FAN_RATED_BOX,CEILING_HEIGHT,ATTIC_ACCESS,SERVICE_QUANTITY,CUSTOMER_SUPPLIED_MATERIAL,CONTROL_TYPE,THREE_WAY_SWITCHING,EXTERIOR_EXPOSURE,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 4. Dimmers (before smart — "Dimmer / Smart Switch" → dimmer rule wins)
   if (/dimmer/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,WALL_TYPE,REPLACE_OR_NEW,DIMMER_LOAD_TYPE,DIMMER_LED_COMPAT,THREE_WAY_SWITCHING,SMART_NEUTRAL_WIRE,DIMMER_STYLE,UNSAFE_SYMPTOMS,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"REPLACE_OR_NEW,LOAD_TYPE,SERVICE_QUANTITY,WALL_TYPE,THREE_WAY_SWITCHING,CUSTOMER_SUPPLIED_MATERIAL,NEUTRAL_PRESENT,UNSAFE_SYMPTOMS,HOME_AGE,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 5. Smart switches / home automation
   if (/\bsmart\b|home automation/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,WALL_TYPE,REPLACE_OR_NEW,SMART_PLATFORM,SMART_NEUTRAL_WIRE,THREE_WAY_SWITCHING,WIFI_AVAILABLE,DEVICE_BRAND,FIXTURE_PURCHASED,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"PRODUCT_TYPE,LOAD_TYPE,THREE_WAY_SWITCHING,NEUTRAL_PRESENT,SERVICE_QUANTITY,WIFI_AVAILABLE,SMART_PLATFORM,WALL_TYPE,HOME_AGE,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 6. Recessed / can lighting (specific subset of lighting — before generic)
   if (/recessed|can light/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,RECESSED_LIGHT_COUNT,CEILING_HEIGHT,ATTIC_ACCESS,RECESSED_LIGHT_CEILING_TYPE,RECESSED_LIGHT_INSULATION,ROOM_LOCATION,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"SERVICE_QUANTITY,REPLACE_OR_NEW,ROOM_LOCATION,ATTIC_ACCESS,CEILING_HEIGHT,WALL_TYPE,THREE_WAY_SWITCHING,HOME_AGE,CEILING_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 7. Outdoor / landscape lighting (specific — before generic lighting rule)
   if (/outdoor lighting|landscape light|exterior light|porch light|flood light/.test(n)) {
-    return { tier:"site_visit_required",
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,MOUNTING_SURFACE,OUTDOOR_EXPOSURE,TRENCHING_NEEDED,EXISTING_POWER_PRESENT,OUTDOOR_PHOTO,UNCERTAINTY_BUFFER" };
+    return { tier:"instant_with_safeguards",
+      modules_csv:"PRODUCT_TYPE,REPLACE_OR_NEW,ROOM_LOCATION,SURFACE_TYPE,CEILING_HEIGHT,EXISTING_WIRING,EXTERIOR_EXPOSURE,TRENCHING_NEEDED,HOME_AGE,OUTDOOR_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 8. Motion / security lights
   if (/motion|security light/.test(n)) {
-    return { tier:"site_visit_required",
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,CEILING_HEIGHT,MOUNTING_SURFACE,OUTDOOR_EXPOSURE,EXISTING_POWER_PRESENT,FIXTURE_PURCHASED,OUTDOOR_PHOTO,UNCERTAINTY_BUFFER" };
+    return { tier:null,
+      modules_csv:"REPLACE_OR_NEW,PRODUCT_TYPE,CUSTOMER_SUPPLIED_MATERIAL,CEILING_HEIGHT,SURFACE_TYPE,EXISTING_WIRING,CONTROL_TYPE,WIFI_AVAILABLE,EXTERIOR_EXPOSURE,OUTDOOR_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 9. Generic lighting installs (after fans/dimmers/recessed/outdoor)
@@ -261,45 +355,83 @@ function assignModules(service_name, current_tier, segment) {
 
   // 13. Outlets / receptacles / switches (not transfer switch)
   if (/(outlet|receptacle)/.test(n) && !/transfer/.test(n)) {
+    const isGfci = /gfci/.test(n);
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,SERVICE_QUANTITY,OUTLET_LOCATION_TYPE,ROOM_LOCATION,WALL_TYPE,EXISTING_POWER_PRESENT,OUTLET_TYPE_NEEDED,OUTLET_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv: isGfci
+        ? "REPLACE_OR_NEW,ROOM_LOCATION,SERVICE_QUANTITY,EXISTING_WIRING,EXTERIOR_EXPOSURE,EXISTING_BOX,UNSAFE_SYMPTOMS,WALL_TYPE,HOME_AGE,OUTLET_PHOTO,UNCERTAINTY_BUFFER"
+        : "REPLACE_OR_NEW,SERVICE_QUANTITY,ROOM_LOCATION,WALL_TYPE,EXISTING_WIRING,CRAWLSPACE_ACCESS,LOAD_TYPE,PRODUCT_TYPE,HOME_AGE,OUTLET_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 14. Switches (not transfer/smart/dimmer — already handled above)
   if (/\bswitch\b/.test(n) && !/transfer|smart|dimmer/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,WALL_TYPE,REPLACE_OR_NEW,THREE_WAY_SWITCHING,SMART_NEUTRAL_WIRE,UNSAFE_SYMPTOMS,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"REPLACE_OR_NEW,WALL_TYPE,THREE_WAY_SWITCHING,NEUTRAL_PRESENT,UNSAFE_SYMPTOMS,HOME_AGE,SWITCH_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 15. Dedicated circuits / new circuits / appliances
-  if (/dedicated|new circuit|appliance circuit/.test(n)) {
+  if (/dedicated|new circuit/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,DEDICATED_CIRCUIT_APPLIANCE,DEDICATED_CIRCUIT_VOLTAGE,DEDICATED_CIRCUIT_DISTANCE,ROUTE_TYPE,PANEL_SPACE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"LOAD_TYPE,VOLTAGE_AMPERAGE,DISTANCE_FROM_PANEL,ROUTE_TYPE,WALL_TYPE,PANEL_SPACE,PANEL_BRAND,HOME_AGE,PERMIT_NEEDED,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
+  }
+
+  // 15b. Appliance circuits
+  if (/appliance circuit/.test(n)) {
+    return { tier:null,
+      modules_csv:"LOAD_TYPE,REPLACE_OR_NEW,VOLTAGE_AMPERAGE,ROOM_LOCATION,DISTANCE_FROM_PANEL,CUSTOMER_SUPPLIED_MATERIAL,PANEL_SPACE,WALL_TYPE,HOME_AGE,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 16. Surge protection
   if (/surge/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,SURGE_TYPE,PANEL_BRAND,PANEL_AMPERAGE,PANEL_SPACE,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"PANEL_SPACE,PANEL_BRAND,UNSAFE_SYMPTOMS,ROOM_LOCATION,HOME_AGE,PANEL_AMPERAGE,PERMIT_NEEDED,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
-  // 17. Generators / transfer switch
-  if (/generator|transfer switch/.test(n)) {
-    const isStandby = /standby|backup/.test(n);
-    return { tier: isStandby ? "site_visit_required" : null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,GENERATOR_TYPE,TRANSFER_SWITCH_LOCATION,PANEL_AMPERAGE,PANEL_SPACE,DEDICATED_CIRCUIT_DISTANCE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  // 17a. Generator transfer switch / interlock (before generic generator rule)
+  if (/transfer switch|interlock/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"PRODUCT_TYPE,PANEL_BRAND,PANEL_SPACE,PANEL_AMPERAGE,DISTANCE_FROM_PANEL,ROOM_LOCATION,VOLTAGE_AMPERAGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
   }
 
-  // 18. Panel / subpanel / breaker / fuse box / service upgrade
-  if (/panel|subpanel|fuse box|breaker|service upgrade/.test(n)) {
+  // 17b. Generators (standby / backup / hookup)
+  if (/generator/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"CUSTOMER_SUPPLIED_MATERIAL,LOAD_TYPE,PANEL_AMPERAGE,PANEL_SPACE,DISTANCE_FROM_PANEL,TRENCHING_NEEDED,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  }
+
+  // 18a. Code compliance / inspection
+  if (/code compliance|code inspect|electrical inspect/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,HOME_AGE,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PANEL_BRAND,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  }
+
+  // 18b. Fuse box conversion
+  if (/fuse box|fuse panel/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"HOME_AGE,UNSAFE_SYMPTOMS,PANEL_AMPERAGE,PANEL_BRAND,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  }
+
+  // 18c. Panel repair / breaker repair
+  if (/breaker|panel repair/.test(n) && !/tripping/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,PANEL_BRAND,HOME_AGE,PANEL_SPACE,EXTERIOR_EXPOSURE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  }
+
+  // 18d. Panel upgrade / subpanel / service upgrade
+  if (/panel upgrade|subpanel|service upgrade/.test(n)) {
+    return { tier:"site_visit_required",
+      modules_csv:"UNSAFE_SYMPTOMS,PANEL_BRAND,PANEL_AMPERAGE,VOLTAGE_AMPERAGE,PROPERTY_TYPE,HOME_AGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+  }
+
+  // 18e. Generic panel / breaker fallback
+  if (/panel|breaker/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,UNSAFE_SYMPTOMS,PANEL_WORK_TYPE,PANEL_BRAND,PANEL_AMPERAGE,PANEL_SPACE,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
+      modules_csv:"UNSAFE_SYMPTOMS,PANEL_BRAND,PANEL_AMPERAGE,PANEL_SPACE,HOME_AGE,PERMIT_NEEDED,PANEL_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 19. Smoke / CO detectors
   if (/smoke|detector|\bco\b/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,REPLACE_OR_NEW,SERVICE_QUANTITY,EXISTING_POWER_PRESENT,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"SMOKE_TYPE,SERVICE_QUANTITY,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,PRODUCT_TYPE,HOME_AGE,ROOM_LOCATION,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
   }
 
   // Default
