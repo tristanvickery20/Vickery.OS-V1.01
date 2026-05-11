@@ -200,7 +200,7 @@ async function handleGetTodayJobs(req, res) {
       if (!rawId) return "";
       const serviceId = ASSEMBLY_TO_SERVICE[rawId] || rawId;
       const svc = services.find(s => s.service_id === serviceId);
-      return svc ? svc.service_name : rawId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      return svc ? svc.service_name : serviceId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
 
     if (bookingRows.length < 2) return json(res, 200, { ok: true, jobs: [], today });
@@ -452,7 +452,7 @@ async function handleGenerateInvoice(req, res) {
       if (!rawId) return "Electrical Services";
       const serviceId = (typeof ASSEMBLY_TO_SERVICE !== "undefined" && ASSEMBLY_TO_SERVICE[rawId]) || rawId;
       const svc = services.find(s => s.service_id === serviceId);
-      return svc ? svc.service_name : rawId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      return svc ? svc.service_name : serviceId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
 
     // Get best quote snapshot for this booking

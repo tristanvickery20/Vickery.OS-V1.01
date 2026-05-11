@@ -1280,6 +1280,17 @@ function renderConfirm() {
           <option value="Other">Other</option>
         </select>
       </div>
+      <div id="referralFields" style="display:none;margin-top:10px;padding:14px 16px;border:1px solid var(--q-border,#2d3348);border-radius:10px;background:rgba(45,106,224,0.05);">
+        <div style="font-size:12px;font-weight:700;color:var(--q-accent,#2d6ae0);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Who referred you?</div>
+        <div class="q-field" style="margin-bottom:10px;">
+          <label class="q-label">Referrer Name <span class="q-req">*</span></label>
+          <input type="text" id="ref_name" class="q-input" placeholder="Their first and last name" autocomplete="off">
+        </div>
+        <div class="q-field">
+          <label class="q-label">Referrer Phone <span class="q-req">*</span></label>
+          <input type="tel" id="ref_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+        </div>
+      </div>
       <div class="q-field" style="margin-top:20px;border:1px solid var(--q-border,#2d3348);border-radius:10px;padding:14px 16px;background:rgba(45,106,224,0.06);">
         <div style="font-size:13px;font-weight:700;color:var(--q-accent,#2d6ae0);margin-bottom:10px;letter-spacing:.03em;">
           &#128241; Text Message Preferences
@@ -2155,6 +2166,20 @@ function bindEvents() {
     go("confirm");
   });
 
+  // Confirm: referral sub-fields toggle
+  document.getElementById("ld_source")?.addEventListener("change", e => {
+    const box = document.getElementById("referralFields");
+    if (!box) return;
+    const isRef = e.target.value === "Referral";
+    box.style.display = isRef ? "block" : "none";
+    if (!isRef) {
+      const n = document.getElementById("ref_name");
+      const p = document.getElementById("ref_phone");
+      if (n) n.value = "";
+      if (p) p.value = "";
+    }
+  });
+
   // Confirm: ZIP reprice
   document.getElementById("ld_zip")?.addEventListener("input", e => {
     const zip = e.target.value.replace(/\D/g, "").slice(0, 5);
@@ -2573,6 +2598,8 @@ async function submitLock() {
   S.lead_source = source || "";
   const smsOps  = document.getElementById("sms_ops_consent")?.checked ? "true" : "false";
   const smsMkt  = document.getElementById("sms_mkt_consent")?.checked  ? "true" : "false";
+  const refName  = val("ref_name");
+  const refPhone = val("ref_phone");
 
   const errEl = document.getElementById("leadErr");
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
@@ -2584,6 +2611,8 @@ async function submitLock() {
   if (!S.addressConfirmed)  return show("Please confirm your address — select it from the suggestions or tap \"Yes, that's it\" when it appears.");
   if (!/^\d{5}$/.test(zip)) return show("Please enter a valid 5-digit ZIP code.");
   if (!source)              return show("Please let us know how you found us.");
+  if (source === "Referral" && !refName) return show("Please enter the name of the person who referred you.");
+  if (source === "Referral" && !refPhone) return show("Please enter the referrer's phone number.");
   if (!consentsComplete())  return show("Please review and check all required agreements before booking.");
 
   const btn = document.getElementById("submitLockBtn");
@@ -2593,13 +2622,13 @@ async function submitLock() {
     // ── Site-visit path: skip quote lock, book directly ──────────────────────
     if (S.isSiteVisit) {
       S.lock = { customer_name: name, phone, email, address, zip, final_price: S.pricing?.final_price };
-      await submitSiteVisitBooking(name, phone, email, address, source);
+      await submitSiteVisitBooking(name, phone, email, address, source, refName, refPhone);
       return;
     }
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems() }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
@@ -2853,7 +2882,7 @@ async function submitBooking() {
 }
 
 // ── Site-visit booking (bypasses quote lock — books directly) ─────────────────
-async function submitSiteVisitBooking(name, phone, email, address, lead_source) {
+async function submitSiteVisitBooking(name, phone, email, address, lead_source, referrer_name, referrer_phone) {
   const errEl = document.getElementById("leadErr");
   const showErr = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
   const btn = document.getElementById("submitLockBtn");
@@ -2865,14 +2894,16 @@ async function submitSiteVisitBooking(name, phone, email, address, lead_source) 
       body: JSON.stringify({
         name,
         phone,
-        email:        email || "",
+        email:          email || "",
         address,
-        lead_source:  lead_source || "Website",
-        service_id:   S.consultData?.service_id   || null,
-        service_name: S.consultData?.service_name || null,
-        block:        S.selectedBlock?.block      || null,
-        date:         S.selectedBlock?.date        || null,
-        quote_id:     S.quoteId || null,
+        lead_source:    lead_source || "Website",
+        service_id:     S.consultData?.service_id   || null,
+        service_name:   S.consultData?.service_name || null,
+        block:          S.selectedBlock?.block      || null,
+        date:           S.selectedBlock?.date        || null,
+        quote_id:       S.quoteId || null,
+        referrer_name:  referrer_name  || "",
+        referrer_phone: referrer_phone || "",
       }),
     });
     const d = await r.json();

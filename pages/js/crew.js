@@ -1485,7 +1485,14 @@ function openJobDetail(j) {
     }
   } else {
     const notice = clsLabel ? `<div class="scope-status">${esc(clsLabel)}</div>` : "";
-    html = notice + `<span class="scope-empty">No quote details on file — this job was booked manually. Check with the office for scope.</span>`;
+    const isOnline = !!j.quote_id;
+    if (isOnline) {
+      const svcLine = j.job_type_name ? `<strong>${esc(j.job_type_name)}</strong>` : "electrical service";
+      const priceNote = j.final_price ? ` &bull; Quoted: <strong>${esc(j.final_price)}</strong>` : "";
+      html = notice + `<div class="scope-plain">Booked online &mdash; ${svcLine}${priceNote}. No additional site-specific details on file.</div>`;
+    } else {
+      html = notice + `<span class="scope-empty">No quote details on file — this job was booked manually. Check with the office for scope.</span>`;
+    }
   }
   scopeEl.innerHTML = html;
 
