@@ -414,41 +414,49 @@
   function renderJobs() {
     if (!jobsData.length) return '<div class="cd-empty">No jobs on file yet.</div>';
 
+    const clientName = (clientData && clientData.name) ? clientData.name : "";
+
     const rows = jobsData.map(function (j) {
       const jId    = j.id || "";
       const desc   = j.job_description || j.description || j.notes || j.job_type || "\u2014";
       const status = (j.status_code || j.status || "").toLowerCase();
-      const sc     = JOB_STATUS_COLORS[status] || { bg: "hsl(220,15%,88%)", color: "hsl(220,10%,35%)" };
+      const sc     = JOB_STATUS_COLORS[status] || { bg: "hsl(220,15%,20%)", color: "hsl(220,15%,70%)" };
       const slabel = JOB_STATUS_LABELS[status] || j.status_code || j.status || "Unknown";
       const val    = Number(j.quoted_price || j.estimated_value || 0);
-      const valStr = val > 0 ? fmtMoney(val) : "\u2014";
-      const dateStr = fmtDate(j.created_at);
-      const shortDesc = desc.length > 60 ? desc.slice(0, 58) + "\u2026" : desc;
+      const valStr = val > 0 ? fmtMoney(val) : "";
+      const dateShort = fmtShortDate(j.created_at || j.scheduled_date);
+      const shortDesc = desc.length > 45 ? desc.slice(0, 43) + "\u2026" : desc;
 
-      const inner =
-        '<div class="cd-list-main">' +
-          '<div class="cd-list-title">' + esc(shortDesc) + '</div>' +
-          '<div class="cd-list-sub">' + esc(dateStr) + '</div>' +
+      // Summary line: Name • Date • Job desc  (matching the reference design)
+      const bulletParts = [clientName, dateShort, shortDesc].filter(Boolean);
+      const summaryText = bulletParts.join(" \u2022 ");
+
+      // Expanded body
+      const body =
+        '<div class="cd-acc-row"><span class="cd-acc-row-label">Status</span>' +
+          '<span class="cd-acc-row-val"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:' + sc.bg + ';color:' + sc.color + ';">' + esc(slabel) + '</span></span>' +
         '</div>' +
-        '<div class="cd-list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">' +
-          '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:' + sc.bg + ';color:' + sc.color + ';">' + esc(slabel) + '</span>' +
-          '<span style="font-size:12px;font-weight:600;">' + esc(valStr) + '</span>' +
-        '</div>';
+        (val > 0 ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Estimated Value</span><span class="cd-acc-row-val">' + esc(valStr) + '</span></div>' : '') +
+        (j.notes && j.notes !== desc ? '<div class="cd-acc-row"><span class="cd-acc-row-label">Notes</span><span class="cd-acc-row-val" style="max-width:200px;white-space:normal;word-break:break-word;">' + esc(j.notes) + '</span></div>' : '') +
+        (jId ? '<div class="cd-acc-actions"><a href="/crm/lead?id=' + encodeURIComponent(jId) + '" style="display:inline-block;padding:7px 16px;border-radius:9px;background:hsl(var(--primary));color:#fff;font-size:13px;font-weight:600;text-decoration:none;">Open in CRM &rarr;</a></div>' : '');
 
-      if (jId) {
-        return (
-          '<a href="/crm/lead?id=' + encodeURIComponent(jId) + '"' +
-             ' class="cd-list-item cd-job-row"' +
-             ' style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px;">' +
-            inner +
-          '</a>'
-        );
-      }
-      return '<div class="cd-list-item" style="display:flex;align-items:center;gap:12px;">' + inner + '</div>';
+      return (
+        '<div class="cd-acc" style="margin-bottom:8px;">' +
+          '<button class="cd-acc-hdr" aria-expanded="false">' +
+            '<div class="cd-acc-summary">' +
+              '<span class="cd-acc-title" style="max-width:none;white-space:normal;line-height:1.4;">' + esc(summaryText) + '</span>' +
+            '</div>' +
+            '<div class="cd-acc-right">' +
+              '<span class="cd-acc-chevron">&#9660;</span>' +
+            '</div>' +
+          '</button>' +
+          '<div class="cd-acc-body" role="region">' + body + '</div>' +
+        '</div>'
+      );
     });
 
     return (
-      '<div class="cd-list">' + rows.join("") + '</div>' +
+      rows.join("") +
       '<div style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:10px;">' +
         jobsData.length + " job" + (jobsData.length !== 1 ? "s" : "") + " on file" +
       '</div>'
