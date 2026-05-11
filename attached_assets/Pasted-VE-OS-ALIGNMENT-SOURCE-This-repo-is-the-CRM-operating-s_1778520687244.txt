@@ -1,0 +1,597 @@
+VE OS ALIGNMENT SOURCE
+
+This repo is the CRM / operating system for Vickery Electric, a launch-stage residential electrical service business.
+
+The system is not a generic CRM. It is the operating command center for a residential electrical service company that uses:
+- Google Sheets as the source of truth for estimator/pricing data
+- A customer-facing instant quote flow
+- CRM lead/quote/schedule handoff
+- Quote snapshot JSON storage
+- Risk flags, photo gates, manual review gates, and service assumptions
+
+Main doctrine:
+- Predictable
+- Profitable
+- Replicable
+- Low-chaos
+- Structure creates freedom
+- Chaos is a tax on profit
+
+The owner is not a coder. Make practical, visible, working changes. Do not make vague backend-only changes that cannot be verified in the UI.
+
+IMPORTANT EXISTING SHEET STRUCTURE
+
+The live Google Sheet is “Vickery Electric – CRM Master”.
+
+The active estimator tabs already found are:
+
+1. JobTypes
+Columns:
+job_type_id, name_public, base_hours, min_price, default_duration_minutes, requires_photo, instant_book_allowed, material_allowance, active, segment, category
+
+Current examples:
+REPLACE_DEVICE
+ADD_OUTLET
+REPLACE_FIXTURE
+INSTALL_FAN
+REPLACE_BATH_FAN
+SURGE_PROTECTOR
+TROUBLESHOOT
+INSTALL_GFCI_BREAKER
+EV_CHARGER_STD
+PANEL_LABEL
+
+2. Questions
+Columns:
+question_id, job_type_id, prompt, input_type, required, sort_order
+
+Current examples:
+ADDOUTLET_DIST
+ADDOUTLET_ACCESS
+ADDOUTLET_LOC
+ADDOUTLET_DRYWALL
+FIXTURE_HEIGHT
+FIXTURE_LOC
+FAN_HEIGHT
+FAN_BOX
+BATH_ACCESS
+BATH_SAMESIZE
+TS_HAZARD
+TS_SCOPE
+EV_DIST
+EV_TRENCH
+EV_SPACES
+LABEL_COUNT
+
+3. AnswerOptions
+Columns:
+option_id, question_id, label, effect_type, effect_value
+
+Current effect types include:
+ADD_HOURS
+REQUIRE_PHOTO
+FLAG_EVALUATION
+
+Do not remove or rename these. Preserve existing pricing behavior.
+
+4. Estimator_Modules
+Currently exists but is basically empty.
+Columns:
+module_id, question, input_type, options_json, applies_to, notes
+
+5. Estimator_ServiceMatrix
+Currently exists but is basically empty.
+Columns:
+service_id, service_name, segment, tier, modules_csv, qty_min, qty_max, disqualify_rules_json, base_price_mode, enabled
+
+6. QuoteSnapshots / Leads / Bookings
+Already exist and quote snapshot JSON / pricing version / last_quote_id style handoff already exists.
+Do not break quote snapshot storage.
+
+TASK GOAL
+
+Expand the estimator so it can ask smarter, risk-minded service questions while preserving the existing variable effect system.
+
+The goal is not to create a brand-new estimator from scratch.
+
+The goal is to:
+1. Inspect the current code and sheet integration.
+2. Preserve existing JobTypes / Questions / AnswerOptions behavior.
+3. Add a smarter question architecture that supports at least 7 questions per service where possible.
+4. Add generator-related services into the equipment/service ecosystem.
+5. Improve photo gates and review gates.
+6. Keep instant quoting aggressive, but honest and safe.
+7. Let risky jobs show a price/range or intake result, but block final booking when review is required.
+8. Save all questions, answers, equipment selections, assumptions, photo requirements, and review flags into quote_snapshot_json.
+
+IMPORTANT BUSINESS LOGIC
+
+Vickery Electric wants to instant quote as much as possible.
+
+Do not turn everything into “site visit required.”
+
+Use this approach:
+
+Low-risk routine work:
+- Show instant price.
+- Allow booking if no risky answers.
+
+Medium-risk work:
+- Show instant price or estimated price.
+- Require photos before booking or mark review_required.
+- Allow lead/quote creation.
+
+High-risk work:
+- Collect intake.
+- Show “review required” or estimated range if supported.
+- Block final booking until reviewed.
+- Still save the quote/session/lead cleanly.
+
+Never blindly auto-book:
+- unsafe symptoms
+- burning smell
+- sparking
+- hot panel/breaker
+- panel/service upgrades
+- fuse box conversion
+- generator work
+- trenching
+- hot tub circuits
+- unclear panel capacity
+- full panels
+- old/damaged/recalled panel brands
+- exterior underground work
+- work likely requiring permit/master review
+- customer “not sure” on critical safety questions
+
+CUSTOMER EXPERIENCE PRINCIPLE
+
+Do not make the form feel like a giant interrogation.
+
+Use conditional questions where the code supports it.
+
+If conditional logic does not exist yet, add it carefully using the smallest practical change.
+
+Customer-facing wording should feel like:
+
+“We ask these questions so we can price this like we already walked the job. If you’re not sure, choose ‘Not sure’ and we may ask for photos before confirming.”
+
+Photo-gated wording should feel like:
+
+“Your instant price is based on these answers. For this job type, photos help us confirm the price before booking.”
+
+Review-required wording should feel like:
+
+“Based on your answers, this needs review before final booking. You can still submit it now and we’ll confirm the price/scope.”
+
+SCOPE OF WORK
+
+Part 1 — Inspect before changing
+
+Before editing, inspect the repo and report:
+- Files/routes/components that load JobTypes, Questions, AnswerOptions
+- Files/routes/components that calculate quote price
+- Files/routes/components that handle quote snapshots
+- Files/routes/components that handle photo requirements
+- Files/routes/components that handle booking and review flags
+- Any Google Sheets read/write helpers
+- Any hardcoded estimator service list
+- Any equipment/material/product section already implemented
+
+Output this first in your final summary:
+- Files inspected
+- Current estimator flow discovered
+- Whether Questions/AnswerOptions are sheet-driven or partly hardcoded
+- Whether photo upload exists
+- Whether conditional questions exist
+- Whether review_required / manual review flags exist
+- Whether equipment/product selection exists
+
+Part 2 — Preserve current tabs and add safe schema support
+
+Do not delete existing columns.
+
+If needed, add optional columns to existing tabs rather than replacing them.
+
+Preferred additions:
+
+Questions tab optional columns:
+- helper_text
+- risk_role
+- show_if_json
+- photo_trigger
+- review_trigger
+- blocks_booking_if
+- assumption_text
+- customer_visible
+
+AnswerOptions optional columns:
+- review_required
+- booking_blocked
+- photo_required
+- assumption_text
+- risk_level
+- material_effect_json
+- equipment_filter_json
+
+JobTypes optional columns:
+- quote_mode
+- review_policy
+- photo_policy
+- equipment_category
+- allows_equipment_selection
+- customer_scope_note
+- exclusion_note
+- instant_price_confidence
+
+Use backward-compatible code so missing optional columns do not break existing rows.
+
+Part 3 — Populate smarter questions
+
+For each active JobTypes service, bring the customer-facing question count to at least 7 where practical.
+
+Existing services to expand:
+
+REPLACE_DEVICE — Replace outlet or switch
+ADD_OUTLET — Install a new standard outlet
+REPLACE_FIXTURE — Replace a light fixture
+INSTALL_FAN — Install a ceiling fan
+REPLACE_BATH_FAN — Replace bathroom exhaust fan
+SURGE_PROTECTOR — Install whole-home surge protector
+TROUBLESHOOT — Electrical troubleshooting
+INSTALL_GFCI_BREAKER — Install GFCI/AFCI breaker
+EV_CHARGER_STD — Install EV charger
+PANEL_LABEL — Panel labeling
+
+Add smart questions that capture:
+- quantity
+- replace vs new
+- room/location
+- indoor/outdoor/damp/exterior exposure
+- ceiling height
+- attic/crawlspace/access
+- wall/ceiling/surface type
+- distance from panel
+- existing wiring present
+- existing box/device condition
+- panel brand
+- panel space
+- panel amperage if relevant
+- equipment/customer-supplied product status
+- unsafe symptoms
+- customer uncertainty
+- photo need
+- review need
+
+Do not overwrite existing question IDs. Add new IDs.
+
+Question IDs should be stable, uppercase, and service-readable.
+
+Examples:
+DEVICE_COUNT
+DEVICE_TYPE
+DEVICE_LOCATION
+DEVICE_GFCI_NEED
+DEVICE_WALL_TYPE
+DEVICE_HOME_AGE
+DEVICE_EXISTING_DAMAGE
+
+ADDOUTLET_COUNT
+ADDOUTLET_NEAREST_POWER
+ADDOUTLET_WALL_TYPE
+ADDOUTLET_LOAD_TYPE
+ADDOUTLET_HOME_AGE
+
+FIXTURE_TYPE
+FIXTURE_WEIGHT
+FIXTURE_EXISTING_BOX
+FIXTURE_CUSTOMER_SUPPLIED
+FIXTURE_CONTROL_CHANGE
+FIXTURE_CEILING_TYPE
+
+FAN_EXISTING
+FAN_BOX
+FAN_HEIGHT
+FAN_CONTROL_TYPE
+FAN_OUTDOOR_RATED
+FAN_SIZE
+FAN_CUSTOMER_SUPPLIED
+FAN_ATTIC_ACCESS
+
+SURGE_PANEL_BRAND
+SURGE_PANEL_SPACE
+SURGE_PANEL_LOCATION
+SURGE_HOME_AGE
+SURGE_SENSITIVE_EQUIPMENT
+SURGE_GROUNDING_UNSURE
+SURGE_PANEL_PHOTO
+
+EV_INSTALL_TYPE
+EV_CHARGER_MODEL
+EV_DISTANCE
+EV_PANEL_SPACE
+EV_PANEL_AMPERAGE
+EV_LARGE_LOADS
+EV_ROUTE_TYPE
+EV_TRENCH
+EV_EXTERIOR
+EV_PANEL_PHOTO
+
+TS_HAZARD
+TS_SCOPE
+TS_WHEN_HAPPENS
+TS_AFFECTED_AREA
+TS_RECENT_CHANGE
+TS_BREAKER_TYPE
+TS_HOME_AGE
+TS_PANEL_PHOTO
+
+For every “Not sure” option:
+- Prefer review_required = TRUE or photo_required = TRUE.
+- Only add hours if the existing pricing logic already supports that style and it makes sense.
+- Do not silently ignore uncertainty on risk-sensitive services.
+
+Part 4 — Equipment section
+
+Find the existing equipment/material/product section in code and sheet, if any.
+
+The customer wants the equipment section to be smart for:
+- receptacles
+- GFCI receptacles
+- switches
+- dimmers
+- smart switches
+- light fixtures
+- ceiling fans
+- EV chargers
+- generators / generator-related equipment
+
+Generators need to be included in the equipment/service ecosystem.
+
+Add or support equipment categories like:
+- RECEPTACLE
+- GFCI_RECEPTACLE
+- SWITCH
+- DIMMER
+- SMART_SWITCH
+- LIGHT_FIXTURE
+- CEILING_FAN
+- EV_CHARGER
+- GENERATOR_PORTABLE
+- GENERATOR_INLET
+- GENERATOR_TRANSFER_SWITCH
+- GENERATOR_STANDBY
+- SURGE_PROTECTOR
+- SMOKE_CO_DETECTOR
+
+Equipment should support:
+- equipment_id
+- equipment_category
+- public_name
+- short_description
+- image_url
+- color_finish
+- customer_supplied_allowed
+- price_mode
+- material_cost
+- install_notes
+- compatible_services_csv
+- requires_review
+- active
+
+If there is already an Equipment/Materials/Product tab, extend it.
+If there is no good tab, create a new tab named EquipmentCatalog.
+
+Do not force the customer to choose a specific product for every service.
+Use equipment selection this way:
+
+Required before quote:
+- EV charger if hardwired/customer has model
+- generator transfer/inlet/standby equipment type
+- smart switch brand/type if customer-supplied
+
+Optional upgrade/add-on:
+- receptacle style/color
+- GFCI/weather-resistant option
+- dimmer/smart switch
+- fan/light fixture customer product selection
+- surge protector tier
+
+Hidden/internal material assumption:
+- standard device stock
+- standard boxes/connectors/plates
+- wire/conduit allowances unless service requires route-specific selection
+
+Part 5 — Add generator quoting/intake support
+
+Do not treat generator work as fully routine auto-booking.
+
+Add generator services if not already present:
+
+GENERATOR_PORTABLE_INLET
+Public name: Portable generator inlet / hookup
+Category: Generator Backup
+quote_mode: ESTIMATE_REVIEW
+requires_photo: TRUE
+instant_book_allowed: FALSE
+
+GENERATOR_TRANSFER_SWITCH
+Public name: Generator transfer switch / interlock
+Category: Generator Backup
+quote_mode: ESTIMATE_REVIEW
+requires_photo: TRUE
+instant_book_allowed: FALSE
+
+GENERATOR_STANDBY
+Public name: Standby generator electrical hookup
+Category: Generator Backup
+quote_mode: REVIEW_ONLY
+requires_photo: TRUE
+instant_book_allowed: FALSE
+
+GENERATOR_BACKUP_PLANNING
+Public name: Backup power planning
+Category: Generator Backup
+quote_mode: INTAKE_ONLY or DIAGNOSTIC
+requires_photo: FALSE or TRUE depending on implementation
+instant_book_allowed: FALSE
+
+Generator questions should include at least:
+- What are you trying to install? portable inlet / transfer switch / standby / unsure
+- Do you already own the generator?
+- Generator size or model if known
+- Fuel type if standby
+- What do you want powered?
+- Main panel location
+- Panel brand
+- Open breaker spaces
+- Distance from panel to inlet/generator location
+- Desired inlet/generator location
+- Trenching needed?
+- Upload photos of panel, panel label, generator outlet/model plate, proposed inlet/generator location
+
+Generator rules:
+- If standby generator: review required and booking blocked.
+- If trenching: review required and booking blocked.
+- If panel full: review required and booking blocked.
+- If customer unsure about generator type/model: review required.
+- If portable inlet and simple same-wall install: allow instant estimate, but still require panel/generator photos before booking.
+- Save equipment selection and generator details into quote snapshot JSON.
+
+Part 6 — Photo gates
+
+Implement photo gates as structured data, not random text.
+
+Photo labels should include:
+- PANEL_PHOTO
+- PANEL_LABEL_PHOTO
+- WORK_AREA_PHOTO
+- EXISTING_DEVICE_PHOTO
+- EXISTING_BOX_PHOTO
+- EQUIPMENT_LABEL_PHOTO
+- ROUTE_PHOTO
+- GENERATOR_PHOTO
+- CHARGER_PHOTO
+- INSPECTION_REPORT_UPLOAD
+
+Photo rules:
+- Photos should not necessarily block price preview for all jobs.
+- Photos should block booking when service/risk requires review.
+- For EV/generator/panel/surge/high-risk diagnostics, photo should be required before booking.
+- For simple device/fixture/fan jobs, photo can be optional unless risky answers selected.
+- Photo requirements must be saved in quote_snapshot_json.
+
+Part 7 — Quote snapshot JSON
+
+Make sure quote snapshot JSON captures:
+
+- selected service/job_type_id
+- pricing_version
+- base_hours
+- base_price/min_price
+- material_allowance
+- selected questions
+- selected answers
+- all effects applied
+- added_hours_total
+- photo_required true/false
+- photo_requirements array
+- review_required true/false
+- booking_blocked true/false
+- risk_flags array
+- assumptions array
+- exclusions array
+- equipment selections
+- equipment category
+- customer-supplied equipment notes
+- quote_mode
+- instant_price_confidence
+- final quoted price or price range if supported
+
+Part 8 — Booking logic
+
+Do not allow final instant booking if:
+- booking_blocked = TRUE
+- review_required = TRUE and review not completed
+- required photo gate is missing
+- unsafe symptoms selected
+- service is quote_mode REVIEW_ONLY
+- generator/EV/panel work has unresolved panel/photo risk
+
+But still allow:
+- quote/session save
+- lead creation
+- “request review”
+- CRM handoff
+- customer-friendly message
+
+Part 9 — Customer-facing assumptions
+
+At quote result, show a clean assumptions panel:
+
+Example:
+“Your price assumes:
+- Existing wiring is usable
+- Work area matches your answers
+- No unsafe panel conditions are found
+- No trenching or permit-sensitive scope is discovered unless included
+- Photos, if requested, match the submitted answers”
+
+For review-gated jobs:
+“Next step: upload photos so we can confirm this without making you schedule a full site visit.”
+
+Part 10 — Safety and legal posture
+
+Do not publicly claim:
+- licensed and insured unless already true in config/content
+- emergency service
+- commercial service
+- permit-free work
+- generator contractor authority
+
+Do not let an apprentice/operator override technical review gates.
+
+High-risk/code-sensitive/panel/permit/generator work should be routed to master/manual review.
+
+Part 11 — Testing requirements
+
+Create or update tests/test cases for:
+
+1. Simple replace device, no review, instant booking allowed.
+2. Add outlet, far from panel, adds hours.
+3. Add outlet, customer unsure, requires photo/review.
+4. Fixture install, heavy chandelier, review/photo required.
+5. Fan install, no fan-rated box, photo/review required and extra labor.
+6. Smart switch/dimmer scenario with neutral unknown, photo/review.
+7. Surge protector, panel full/not sure, review/photo required.
+8. Troubleshooting with burning smell/sparking, booking blocked.
+9. EV charger simple garage install, price shown but panel photo required.
+10. EV charger with trenching or no panel space, booking blocked until review.
+11. Generator portable inlet, estimate/review flow.
+12. Generator standby, review-only/no instant booking.
+13. Quote snapshot includes questions, answers, effects, photo requirements, review flags, and equipment data.
+14. Existing old questions still work.
+
+Part 12 — Output required
+
+When finished, provide:
+
+1. Exact files changed.
+2. Exact Google Sheet tabs changed.
+3. Rows added or updated by tab.
+4. Any new columns added.
+5. Whether existing rows were preserved.
+6. How to verify in the UI.
+7. Test results.
+8. Any services still needing manual pricing review.
+9. Any TODOs that require owner/master electrician decision.
+
+Hard restrictions:
+- Do not delete existing tabs.
+- Do not rename existing columns.
+- Do not break current JobTypes / Questions / AnswerOptions behavior.
+- Do not hardcode pricing effects if sheet-driven effects already exist.
+- Do not remove current quote snapshot logic.
+- Do not make every service site-visit-only.
+- Do not build a giant unrelated CRM rewrite.
+- Keep the change focused on smarter estimator questions, photo gates, equipment selection, generator support, quote snapshot completeness, and booking/review safety.

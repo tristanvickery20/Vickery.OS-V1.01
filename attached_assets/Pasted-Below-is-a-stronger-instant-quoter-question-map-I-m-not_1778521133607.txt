@@ -1,0 +1,688 @@
+Below is a stronger instant-quoter question map. I’m not limiting it to your current allowed rows. This is the version I’d want the sheet to support.
+
+Rule of thumb:
+
+Every question should do at least one of these:
+
+1. Add labor
+2. Add material
+3. Add travel/access difficulty
+4. Add risk buffer
+5. Require photo
+6. Require manual review
+7. Disqualify instant quote / force site visit
+
+⸻
+
+Universal Questions Every Instant Quote Should Capture
+
+These should appear on almost every service, either visibly or behind the scenes.
+
+Code	Customer Question	Why It Matters
+PROPERTY_TYPE	What type of property is this?	House, mobile home, apartment, condo, commercial all change rules
+HOME_AGE	About how old is the home?	Older homes raise wiring, grounding, box, and panel risk
+CEILING_HT	How high is the work area?	Ladder time, safety, two-man work
+ACCESS_DIFFICULTY	Is the area easy to reach?	Furniture, attic, tight spaces, outside height
+EXISTING_WIRING	Is there already power/wiring at the location?	Replacement vs new install
+WALL_CEILING_TYPE	What surface are we working in?	Drywall, brick, siding, plaster, tile, wood
+PANEL_DISTANCE	About how far is the work area from the main panel?	Circuit labor/material
+PANEL_CONDITION	Does your panel look modern and labeled?	Breaker compatibility and safety
+PHOTO_GATE	Can you upload a photo of the area?	Replaces site visit
+CUSTOMER_UNSURE	Are you unsure about any answer?	Adds buffer/review flag
+
+⸻
+
+LIGHTING CATEGORY
+
+A001 — Recessed Lighting
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	How many recessed lights do you want installed?	1, 2–4, 5–8, 9+	Multiplies fixture/material/labor count
+2	Is this replacing existing recessed lights or adding new lights where none exist?	Replacing existing / Adding new / Mix of both	New locations add wiring/cut-in labor
+3	What room is this in?	Living room, kitchen, bedroom, hallway, bathroom, exterior soffit, other	Kitchen/bath/soffit may add risk
+4	What is above the ceiling?	Attic access / Second floor / Flat roof / Not sure	No attic access adds labor/review
+5	What is the ceiling height?	Under 9 ft / 9–12 ft / 12–16 ft / Over 16 ft	Height modifier; over 16 review/site visit
+6	What ceiling type is it?	Drywall / Wood ceiling / Plaster / Tile / Exposed beam / Not sure	Non-drywall adds labor/review
+7	Do you want a new switch/dimmer added or use an existing switch?	Existing switch / Add dimmer / Add new switch location / Not sure	Adds switch/dimmer/wiring labor
+8	Are there any attic obstacles?	Clear attic / Insulation heavy / Low crawl space / HVAC ducting / Not sure	Adds labor/risk buffer
+9	Do you want standard white trims or specialty trims?	White / Black / Nickel / Adjustable/gimbal / Shower-rated / Not sure	Material selection
+10	Upload photos of the room and ceiling area.	Photo upload	Required review gate for multi-light/new install
+
+Instant quote status: Allowed, but new locations + no attic access + high ceilings should become review flag.
+
+⸻
+
+A003 — Light Fixture Install
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What type of fixture is being installed?	Flush mount / Pendant / Chandelier / Vanity light / Track light / Other	Material/labor complexity
+2	Is there already a light fixture in this location?	Yes / No / Not sure	Existing wiring vs new box/circuit
+3	Is the fixture already purchased?	Yes / No, need recommendation / Not sure	Avoids scheduling with missing material
+4	Approximate fixture weight?	Under 10 lb / 10–35 lb / 35–70 lb / Over 70 lb / Not sure	Heavy fixture requires fan-rated/support box/review
+5	Ceiling height or install height?	Under 9 ft / 9–12 ft / 12–16 ft / Over 16 ft	Ladder/time risk
+6	Is the existing electrical box solid and centered?	Yes / Loose / Not centered / Not sure	Adds box replacement/review
+7	What room/location is it in?	Bedroom / Kitchen / Dining / Bathroom / Exterior / Stairwell / Other	Bathroom/exterior/stairwell risk
+8	Does the fixture require assembly?	Fully assembled / Minor assembly / Large chandelier assembly / Not sure	Adds labor
+9	Do you want a dimmer or switch changed too?	No / Dimmer / Smart switch / New switch location	Adds switch item/labor
+10	Upload photo of old fixture location and new fixture box/label if available.	Photo upload	Review flag
+
+⸻
+
+A007 — LED Retrofit
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What are we retrofitting?	Recessed cans / Fluorescent tubes / Shop lights / Exterior lights / Other	Determines assembly
+2	How many fixtures need retrofitting?	1 / 2–4 / 5–10 / 11+	Multiplies parts/labor
+3	Are the existing fixtures working now?	All working / Some dead / None working / Flickering	Dead/flickering may be diagnostic
+4	What type of old bulbs/fixtures are present?	Incandescent / CFL / Fluorescent tube / Old LED / Not sure	Material compatibility
+5	Ceiling height?	Under 9 ft / 9–12 ft / 12–16 ft / Over 16 ft	Ladder/time modifier
+6	Is access clear under each fixture?	Clear / Furniture below / Over counters / Over equipment / Not sure	Adds labor
+7	Do you want selectable color temperature?	Warm / Neutral / Daylight / Adjustable / Not sure	Product selection
+8	For fluorescent fixtures: do you want ballast bypass if needed?	Yes / No / Not sure	Adds wiring labor/review
+9	Are any fixtures outside or in damp locations?	No / Bathroom / Garage / Porch / Exterior	Damp-rated material
+10	Upload one photo of existing fixture type.	Photo upload	Helps avoid wrong material
+
+⸻
+
+A005 — Outdoor Lighting
+
+Even if this remains site visit, ask these before the visit so the tech knows what they’re walking into.
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What type of outdoor lighting do you want?	Porch light / Flood light / Landscape light / Soffit light / Security light / Other	Defines scope
+2	Is there already a light at this location?	Yes replacing / No new location / Not sure	Replacement vs new wiring
+3	Where is the light located?	Front porch / Back patio / Garage / Yard / Soffit / Pole / Other	Access/material
+4	What surface will it mount to?	Brick / Siding / Stucco / Wood / Soffit / Metal / Not sure	Adds material/risk
+5	Approximate mounting height?	Under 8 ft / 8–12 ft / 12–18 ft / Over 18 ft	Ladder/two-man/site visit
+6	Is there an accessible switch already?	Yes / No / Want new switch / Not sure	Adds wiring/switch
+7	Is this exposed to rain?	Covered / Partially exposed / Fully exposed	Weatherproof material
+8	Is trenching or underground wire needed?	No / Maybe / Yes	Site visit required
+9	Do you want timer, photocell, or smart control?	None / Timer / Dusk-to-dawn / Motion / Smart	Adds material
+10	Upload photos of the mounting area, nearest existing light/switch, and panel if new circuit.	Photo upload	Required
+
+⸻
+
+A006 — Motion / Security Light
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is this replacing an existing security light or adding a new one?	Replace / New location / Not sure	New location adds wiring
+2	What type of security light?	Motion flood / Camera floodlight / Dusk-to-dawn / Standard flood	Product complexity
+3	Is the fixture customer-supplied?	Yes / No / Need recommendation	Material control
+4	Mounting height?	Under 8 ft / 8–12 ft / 12–18 ft / Over 18 ft	Ladder modifier
+5	Mounting surface?	Brick / Siding / Soffit / Fascia / Pole / Not sure	Material/risk
+6	Is there power already at the location?	Yes / No / Nearby light only / Not sure	Wiring risk
+7	Do you want it controlled by a switch?	Existing switch / New switch / Always powered / Not sure	Wiring logic
+8	Is Wi-Fi needed for a camera light?	Yes / No / Not sure	Prevents failed Ring/Floodlight installs
+9	Is the area exposed to rain?	Covered / Exposed / Unsure	Weatherproof box/material
+10	Upload photos of mounting spot and existing wiring/light if present.	Photo upload	Required
+
+⸻
+
+FAN CATEGORY
+
+A004 — Ceiling Fan Install
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is there already a fan or light in this location?	Existing fan / Existing light only / Nothing there / Not sure	Fan replacement vs new fan-rated box/wiring
+2	Is the electrical box fan-rated?	Yes / No / Not sure	Not sure = review/photo gate
+3	Ceiling height?	Under 9 ft / 9–12 ft / 12–16 ft / Over 16 ft	Labor/safety
+4	What is above the ceiling?	Attic / Second floor / Flat roof / Not sure	Box/wiring access
+5	Fan size?	Under 44 in / 44–52 in / 54–72 in / Large or heavy / Not sure	Assembly/time
+6	Is the fan already purchased?	Yes / No / Need help choosing	Avoids material issue
+7	Does the fan include a remote, wall control, or smart module?	Pull chain / Remote / Wall control / Smart fan / Not sure	Wiring/control complexity
+8	Do you want fan and light controlled separately?	No / Yes with existing wiring / Yes but not sure wiring exists	May require extra conductor
+9	Is this indoor, damp, or outdoor rated?	Indoor / Covered patio / Fully outdoor / Bathroom	Product/risk
+10	Upload photo of existing ceiling box/location and fan box label if available.	Photo upload	Required review
+
+⸻
+
+OUTLET CATEGORY
+
+A011 — Outlet Install
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is this replacing an existing outlet or adding a new outlet?	Replace / Add new nearby / Add new far from power / Not sure	Replacement vs new wiring
+2	How many outlets?	1 / 2–3 / 4–6 / 7+	Multiplies materials/labor
+3	Where is the outlet located?	Bedroom / Living room / Kitchen / Bathroom / Garage / Exterior / Attic / Other	GFCI/weather/permit risk
+4	What wall type?	Drywall / Brick / Tile / Wood panel / Plaster / Exterior siding / Not sure	Labor modifier
+5	Is there an outlet nearby on the same wall?	Within 6 ft / Same room / Different room / No idea	Helps infer wiring distance
+6	Do you know if the wall is insulated?	Interior wall / Exterior insulated wall / Not sure	Fishing wire difficulty
+7	What will plug into it?	General use / TV / Appliance / Computer / Microwave / Tool / Other	Load/dedicated circuit risk
+8	Do you need standard, USB, GFCI, weatherproof, or tamper-resistant?	Standard / USB / GFCI / Weatherproof / Not sure	Material selection
+9	Is the home older than 1980?	Yes / No / Not sure	Grounding risk
+10	Upload photo of desired location and nearest existing outlet.	Photo upload	Strongly recommended
+
+⸻
+
+A012 — GFCI Outlet
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is this replacing an existing outlet?	Yes / No new outlet / Not sure	Replacement vs new install
+2	Where is the GFCI located?	Bathroom / Kitchen / Garage / Exterior / Laundry / Crawlspace / Other	Code/material
+3	How many GFCI outlets?	1 / 2–3 / 4+	Multiplies
+4	Is the outlet currently working?	Yes / No / Sometimes / Trips often	Diagnostic risk
+5	Is there a reset/test button already?	Yes / No / Not sure	Existing GFCI vs standard
+6	Is it outdoors or exposed to moisture?	Indoor dry / Damp / Fully exterior	Weatherproof cover/WR device
+7	Does the outlet have a ground?	Yes / No / Not sure	Older home risk
+8	Is the box damaged, loose, or recessed?	Good / Loose / Broken cover / Sunken box / Not sure	Adds repair material
+9	Home age?	Newer than 2000 / 1980–2000 / Before 1980 / Not sure	Grounding/code risk
+10	Upload close-up photo of the outlet and surrounding area.	Photo upload	Helps prevent surprises
+
+⸻
+
+SWITCH CATEGORY
+
+A008 — Dimmer Switch
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is this replacing an existing switch?	Yes / No new switch / Not sure	Replacement vs new wiring
+2	What does the switch control?	Light / Fan / Recessed lights / Chandelier / Unknown	Compatibility
+3	How many switches are in the same box?	1 / 2 / 3 / 4+	Box crowding/time
+4	Is the light controlled from more than one location?	No / Yes 2 locations / Yes 3+ / Not sure	3-way/4-way dimmer
+5	What kind of bulbs are used?	LED / Incandescent / Mixed / Not sure	Dimmer compatibility
+6	Do you already have the dimmer?	Yes / No / Need one supplied	Material
+7	Is there a neutral wire in the box?	Yes / No / Not sure	Smart/advanced dimmer risk
+8	What wall type is around the switch?	Drywall / Tile / Wood / Brick / Not sure	Plate/cut-in issues
+9	Is the current switch buzzing, hot, or sparking?	No / Buzzing / Hot / Sparking / Not sure	Safety review
+10	Upload photo of switch with cover plate off if safe, or normal photo if not.	Photo upload	Review flag
+
+⸻
+
+A014 — Smart Switch
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What brand/type of smart switch?	Kasa / Lutron / Leviton / Amazon / Customer supplied / Not sure	Compatibility
+2	What does it control?	Light / Fan / Exterior light / Multi-light circuit / Unknown	Load type
+3	Is the light controlled from more than one switch?	No / 2 locations / 3+ locations / Not sure	Smart 3-way complexity
+4	Do you know if a neutral wire is present?	Yes / No / Not sure	Major install risk
+5	How many switches in the box?	1 / 2 / 3 / 4+	Box fill/crowding
+6	Is your Wi-Fi strong at this location?	Yes / Weak / Not sure	Prevents failed setup expectations
+7	Do you want us to connect/app setup too?	Install only / Install + app setup / Not sure	Adds time
+8	What wall type?	Drywall / Tile / Wood / Brick / Not sure	Risk
+9	Is the home older than 1980?	Yes / No / Not sure	Neutral/grounding risk
+10	Upload photo of switch box and current switch area.	Photo upload	Strongly recommended
+
+⸻
+
+EV CATEGORY
+
+A028 — EV Charger
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What are you installing?	240V outlet / Hardwired wall charger / Not sure	Material/labor
+2	What vehicle/charger model?	Tesla / Ford / Rivian / Universal J1772 / Other / Not sure	Load/specs
+3	Is the charger already purchased?	Yes / No / Need recommendation	Material
+4	Where will charger be installed?	Garage interior / Exterior wall / Carport / Detached garage / Other	Weather/trenching
+5	Approximate distance from main panel to charger location?	Same wall / Under 25 ft / 25–50 ft / 50–100 ft / 100+ ft	Wire/conduit/labor
+6	Is the panel in the same garage/area?	Yes / Nearby / Opposite side of house / Detached / Not sure	Labor
+7	Upload main panel photo with breakers visible.	Photo upload	Required
+8	Upload panel label/inside door photo.	Photo upload	Required
+9	Do you know your panel amperage?	100A / 150A / 200A / 320A / Not sure	Load capacity risk
+10	Are there open breaker spaces?	Yes / No / Not sure	Tandem/subpanel/load calc risk
+11	Any large electric loads?	Electric range / Dryer / HVAC / Hot tub / Pool / Existing EV / Not sure	Load calc/review
+12	Will conduit be exposed on the wall?	Okay exposed / Want hidden / Not sure	Labor/expectation
+13	Is trenching needed?	No / Maybe / Yes	Site visit
+14	Do you want permit handled?	Yes / No / Not sure	Admin pricing
+
+Instant quote status: Should be instant estimate only + required review before booking unless panel capacity is clearly safe.
+
+⸻
+
+PANEL CATEGORY
+
+A019 — Panel Upgrade
+
+This should not be instant-priced. But you can still use questions to produce a site visit estimate range and prep the visit.
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What is the reason for upgrade?	More capacity / Insurance request / Old panel / Adding EV / Breaker issues / Remodel	Scope
+2	Current panel amperage?	100A / 125A / 150A / 200A / Not sure	Service size
+3	Desired panel size?	200A / 320A / Not sure	Material/utility
+4	Panel location?	Garage / Exterior / Closet / Utility room / Other	Code/access
+5	Is the meter outside near the panel?	Same wall / Far away / Not sure	Service change complexity
+6	Is this overhead or underground service?	Overhead / Underground / Not sure	Utility coordination
+7	Panel brand?	Square D / Siemens / GE / Eaton / Zinsco / Federal Pacific / Not sure	Hazard flag
+8	Any known aluminum wiring?	Yes / No / Not sure	Risk
+9	Are breakers tripping/burning/hot?	No / Tripping / Burning smell / Hot / Sparks	Safety priority
+10	Upload panel interior, panel label, meter, and exterior service photos.	Photo upload	Required
+
+⸻
+
+A020 — Subpanel Install
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Why do you need a subpanel?	Garage / Shop / Addition / EV / Hot tub / Pool / Other	Scope
+2	Where will subpanel go?	Same building / Detached garage / Shed/shop / Exterior / Not sure	Distance/trenching
+3	Distance from main panel?	Under 10 ft / 10–25 ft / 25–50 ft / 50–100 ft / 100+ ft	Feeder cost
+4	Desired capacity?	60A / 100A / 125A / Not sure	Material/load
+5	Is trenching required?	No / Maybe / Yes	Site visit
+6	What loads will it serve?	Lights/outlets / EV / HVAC / Welder / Tools / Multiple	Load calc
+7	Main panel has open breaker space?	Yes / No / Not sure	Feeder breaker issue
+8	Mounting surface?	Drywall / Plywood / Masonry / Exterior siding / Metal building	Labor/material
+9	Permit needed?	Yes / No / Not sure	Admin
+10	Upload main panel, desired subpanel location, and route between them.	Photo upload	Required
+
+⸻
+
+A021 — Fuse Box Conversion
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is the home currently on fuses?	Yes / Not sure / Mixed fuse-breaker	Scope
+2	Why are you converting?	Insurance / Safety / Remodel / Frequent blown fuses / Selling home	Urgency
+3	Approximate home age?	Before 1950 / 1950–1970 / 1970–1990 / Not sure	Wiring risk
+4	Is service overhead or underground?	Overhead / Underground / Not sure	Utility
+5	Current service size?	60A / 100A / Not sure	Upgrade scale
+6	Any knob-and-tube or cloth wiring visible?	Yes / No / Not sure	Risk
+7	Panel/fuse box location?	Closet / Garage / Exterior / Utility room / Other	Code/access
+8	Are there current electrical problems?	No / Flicker / Burning smell / Hot fuses / Frequent blown fuses	Safety
+9	Are walls open or finished?	Finished / During remodel / Some open walls	Labor
+10	Upload fuse box, meter, service entrance, and any old wiring photos.	Photo upload	Required
+
+⸻
+
+A023 — Panel / Breaker Repair
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What problem are you having?	Breaker trips / Breaker won’t reset / Buzzing / Burning smell / Loose breaker / Other	Safety triage
+2	Is anything currently hot, smoking, or sparking?	No / Yes / Not sure	Emergency/safety flag
+3	What circuit is affected?	Kitchen / Bathroom / HVAC / Dryer / Lights / Outlets / Unknown	Load
+4	Panel brand?	Square D / Siemens / Eaton / GE / Federal Pacific / Zinsco / Unknown	Breaker availability/hazard
+5	Breaker size if known?	15A / 20A / 30A / 40A+ / Not sure	Material
+6	Did anything new get plugged in recently?	Yes / No / Not sure	Overload clue
+7	Is the panel indoors or outdoors?	Indoor / Outdoor / Damp/corroded / Not sure	Material/risk
+8	Is the panel cover intact?	Good / Missing screws / Rusted / Damaged / Not sure	Safety
+9	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Wiring risk
+10	Upload photo of panel, breaker, and label.	Photo upload	Required
+
+⸻
+
+A024 — Surge Protector
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is this whole-home surge protection?	Yes / Point-of-use / Not sure	Scope
+2	Panel brand?	Square D / Siemens / Eaton / GE / Other / Not sure	Device/breaker compatibility
+3	Is the panel full?	Open spaces / Full / Not sure	Tandem/subpanel/review
+4	Panel location?	Garage / Exterior / Closet / Utility room / Other	Access/code
+5	Do you want basic or premium surge protection?	Basic / Premium / Not sure	Material tier
+6	Any sensitive equipment?	Computers / HVAC inverter / EV charger / Home theater / Medical / None	Upsell/risk
+7	Is the home prone to storms or outages?	Yes / No / Not sure	Context
+8	Is grounding/bonding known to be good?	Yes / No / Not sure	Review risk
+9	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Grounding risk
+10	Upload panel interior and panel label.	Photo upload	Required
+
+⸻
+
+CIRCUIT CATEGORY
+
+A017 — Dedicated Circuit
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What is the circuit for?	Microwave / Fridge / Freezer / Washer / Tool / Office / Other	Load/material
+2	What voltage is needed?	120V / 240V / Not sure	Circuit type
+3	What amperage is needed?	15A / 20A / 30A / 40A+ / Not sure	Wire/breaker
+4	Distance from panel to new outlet/equipment?	Same room / Under 25 ft / 25–50 ft / 50–100 ft / 100+ ft	Wire/labor
+5	Route type?	Attic / Crawlspace / Garage exposed conduit / Finished walls / Not sure	Labor
+6	Wall type at final location?	Drywall / Brick / Tile / Exterior / Metal / Not sure	Install difficulty
+7	Is panel full?	Open spaces / Full / Not sure	Review
+8	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Wiring risk
+9	Is equipment already installed?	Yes / No / Being delivered / Not sure	Scheduling
+10	Upload panel photo and desired outlet/equipment location.	Photo upload	Recommended/required for 240V
+
+⸻
+
+A025 — Appliance Circuit
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What appliance is this for?	Range / Dryer / Dishwasher / Microwave / Disposal / HVAC / Other	Circuit requirements
+2	Is this replacing an existing circuit or adding new?	Replace / New / Not sure	Scope
+3	Voltage/amperage from appliance label?	120V / 240V / 30A / 40–50A / Not sure	Wire/breaker
+4	Appliance location?	Kitchen / Laundry / Garage / Exterior / Other	Routing/access
+5	Distance from panel?	Under 25 ft / 25–50 ft / 50–100 ft / 100+ ft / Not sure	Labor/material
+6	Is the appliance already on site?	Yes / No / Delivery scheduled	Avoids failed trip
+7	Does it need cord/receptacle/disconnect?	Receptacle / Hardwire / Disconnect / Not sure	Material
+8	Is panel full?	Open spaces / Full / Not sure	Review
+9	Any cabinetry, tile, or finished walls in the path?	No / Some / A lot / Not sure	Labor
+10	Upload panel, appliance label, and install location photos.	Photo upload	Required
+
+⸻
+
+A029 — Hot Tub Circuit
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Is the hot tub already delivered?	Yes / No / Delivery scheduled	Scheduling
+2	Hot tub voltage/amperage requirement?	120V plug-in / 240V 40A / 240V 50A / 60A / Not sure	Circuit size
+3	Distance from panel to hot tub?	Under 25 ft / 25–50 ft / 50–100 ft / 100+ ft	Labor/material
+4	Is trenching needed?	No / Maybe / Yes	Site visit
+5	Where will disconnect go?	Near tub location / Existing disconnect / Not sure	Code/material
+6	Is the path concrete, grass, attic, exterior wall, or crawlspace?	Concrete / Grass / Attic / Exterior wall / Crawlspace / Mixed	Labor
+7	Is the panel full?	Open spaces / Full / Not sure	Review
+8	Is GFCI protection required by manufacturer?	Yes / No / Not sure	Usually yes, breaker/disconnect
+9	Is permit required?	Yes / No / Not sure	Admin
+10	Upload panel, hot tub label/manual, route, and tub location photos.	Photo upload	Required
+
+⸻
+
+DIAGNOSTICS CATEGORY
+
+For diagnostics, don’t instant quote the repair. Quote the diagnostic visit, then collect issue detail.
+
+A022 — Breaker Tripping
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Which breaker trips?	Lights / Outlets / Kitchen / Bathroom / HVAC / Unknown	Triage
+2	When does it trip?	Immediately / After minutes / When appliance runs / Random	Diagnostic clue
+3	Can you reset it?	Yes / No / Trips immediately / Not sure	Severity
+4	Any burning smell, heat, or buzzing?	No / Yes / Not sure	Safety priority
+5	Did anything change recently?	New appliance / Storm / Remodel / Nothing / Not sure	Cause
+6	Is the breaker AFCI/GFCI with test button?	Yes / No / Not sure	Nuisance trip vs fault
+7	What rooms lose power?	One room / Multiple rooms / Outside / Unknown	Circuit mapping
+8	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Risk
+9	Panel brand?	Known / Unknown	Material
+10	Upload panel and affected breaker photo.	Photo upload	Required
+
+⸻
+
+A010 — Troubleshoot Flicker
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What flickers?	One light / One room / Whole house / When appliance starts / Random	Severity
+2	How often?	Constant / Daily / Weekly / Only during storms / Random	Triage
+3	Does it happen when AC, dryer, or fridge turns on?	Yes / No / Not sure	Load issue
+4	Any buzzing, burning smell, or warm switches?	No / Yes / Not sure	Safety
+5	Are bulbs LED?	Yes / No / Mixed / Not sure	Compatibility
+6	Are dimmers involved?	Yes / No / Not sure	Dimmer/bulb mismatch
+7	Any recent electrical work?	Yes / No / Not sure	Cause
+8	Is flicker whole-house?	Yes / No / Not sure	Utility/service issue
+9	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Wiring risk
+10	Upload short video if possible and panel photo.	Photo/video upload	Helps triage
+
+⸻
+
+A030 — Smoke / CO Detector
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Are these battery-only or hardwired detectors?	Battery / Hardwired / Not sure	Material/labor
+2	How many detectors?	1 / 2–4 / 5–8 / 9+	Multiplies
+3	Are they interconnected?	Yes / No / Not sure	Wiring/code
+4	What issue are you having?	Beeping / Expired / Not working / Adding new / Inspection requirement	Scope
+5	Ceiling height?	Under 9 ft / 9–12 ft / 12+ ft	Ladder
+6	Are locations already existing?	Replace existing / Add new locations / Mix	New wiring
+7	Is this for smoke only or smoke/CO combo?	Smoke / CO / Combo / Not sure	Material
+8	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Interconnect risk
+9	Is there attic access?	Yes / No / Not sure	New install labor
+10	Upload photo of existing detector and ceiling area.	Photo upload	Recommended
+
+⸻
+
+A018 — Code Compliance
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What triggered the code concern?	Inspection report / Home sale / Insurance / Remodel / Personal concern	Scope
+2	Do you have a written report?	Yes upload / No / Not sure	Required if possible
+3	What area is affected?	Panel / Kitchen / Bathroom / Exterior / Whole house / Other	Scope
+4	Is this repair, inspection, or quote request?	Repair / Inspection / Estimate / Not sure	Visit type
+5	Any active hazards?	No / Sparks / Burning smell / Shock / Exposed wire	Safety
+6	Home age?	Newer / 1980–2000 / Before 1980 / Not sure	Risk
+7	Is the work permitted or related to permit closeout?	Yes / No / Not sure	Admin
+8	Are walls open or finished?	Open / Finished / Mixed	Labor
+9	Is access available to attic/crawlspace/panel?	Yes / Limited / No / Not sure	Visit planning
+10	Upload inspection report and photos of listed issues.	File/photo upload	Required
+
+⸻
+
+WIRING CATEGORY
+
+A015 — Rewire Whole House
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Approximate square footage?	Under 1,000 / 1,000–1,500 / 1,500–2,500 / 2,500+	Range estimate
+2	Home age?	Before 1950 / 1950–1970 / 1970–1990 / Newer / Not sure	Wiring risk
+3	Is the home occupied?	Yes / No / Partially / During remodel	Labor/disruption
+4	Are walls open?	Finished walls / Some open / Full remodel open walls	Massive labor difference
+5	Wiring type suspected?	Cloth / Knob-and-tube / Aluminum / Modern romex / Not sure	Risk
+6	Panel also being replaced?	Yes / No / Not sure	Scope
+7	Attic/crawlspace access?	Attic / Crawlspace / Both / Neither / Not sure	Labor
+8	How many bedrooms/bathrooms?	Dropdown	Device count
+9	Need new lighting/outlet layout?	Keep same / Add many / Full redesign / Not sure	Design time
+10	Upload photos of panel, attic/crawl access, typical rooms, and any old wiring.	Photos	Required
+
+⸻
+
+A016 — Rewire Partial
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What area needs rewiring?	One room / Kitchen / Bathroom / Garage / Addition / Multiple rooms	Scope
+2	Why is it being rewired?	Remodel / Damaged wire / Old wiring / Insurance / Inspection	Risk
+3	Are walls open?	Finished / Partially open / Fully open	Labor
+4	Approximate number of outlets/switches/lights affected?	1–3 / 4–8 / 9–15 / 16+	Device count
+5	Is new circuit needed from panel?	Yes / No / Not sure	Circuit labor
+6	Distance from panel?	Under 25 ft / 25–50 ft / 50–100 ft / Not sure	Labor
+7	Attic/crawl access?	Yes / No / Limited / Not sure	Labor
+8	Wiring type currently present?	Romex / Cloth / Aluminum / Knob-and-tube / Not sure	Risk
+9	Is this connected to a permit/remodel inspection?	Yes / No / Not sure	Admin
+10	Upload photos of affected room, panel, and exposed wiring if visible.	Photos	Required
+
+⸻
+
+GENERATOR CATEGORY
+
+A026 — Generator Standby
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	Do you already have a generator selected?	Yes / No / Need recommendation	Scope
+2	Desired backup level?	Whole home / Essentials only / Not sure	Generator size
+3	Fuel type available?	Natural gas / Propane / Not sure / No fuel yet	Coordination
+4	Main panel amperage?	100A / 150A / 200A / 320A / Not sure	Transfer gear
+5	Where will generator sit?	Near meter / Side yard / Back yard / Not sure	Routing
+6	Distance from panel/meter to generator pad?	Under 10 ft / 10–25 ft / 25–50 ft / 50+ ft	Conduit/wire
+7	Do you need concrete pad?	Existing / Need pad / Not sure	Scope
+8	Are permits/HOA involved?	Yes / No / Not sure	Admin
+9	Any critical loads?	Medical / Well pump / HVAC / Freezers / None	Load planning
+10	Upload panel, meter, proposed generator location, and gas meter/tank photos.	Photos	Required
+
+⸻
+
+A027 — Generator Transfer Switch
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What type of generator?	Portable / Standby / Not sure	Transfer type
+2	Do you want manual transfer or interlock?	Manual transfer switch / Interlock kit / Not sure	Material/code
+3	Generator size?	Under 5kW / 5–8kW / 9–13kW / 14kW+ / Not sure	Amperage
+4	Plug type on generator?	L14-30 / 14-50 / CS6365 / Not sure	Inlet material
+5	Where do you want generator inlet?	Near panel / Garage exterior / Side yard / Other	Labor
+6	Distance from panel to inlet?	Same wall / Under 25 ft / 25–50 ft / 50+ ft	Wire/conduit
+7	Panel brand?	Square D / Siemens / Eaton / GE / Other / Not sure	Interlock compatibility
+8	Is panel full?	Open spaces / Full / Not sure	Review
+9	Which circuits need backup?	Fridge / Lights / AC / Well / Whole panel / Not sure	Load expectations
+10	Upload generator outlet, panel, panel label, and desired inlet location.	Photos	Required
+
+⸻
+
+A053 — Generator Backup
+
+If this is a general backup power intake, treat it as a router service.
+
+#	Question	Answer Options	Pricing / Risk Logic
+1	What are you trying to accomplish?	Portable generator hookup / Standby generator / Backup for essentials / Whole home backup	Routes service
+2	Do you already own a generator?	Yes / No / Planning to buy	Scope
+3	Generator fuel type?	Gasoline / Propane / Natural gas / Diesel / Not sure	Planning
+4	What do you want powered?	Fridge/lights / Window units / Central AC / Whole house / Medical	Load
+5	Main panel amperage?	100A / 150A / 200A / Not sure	Equipment
+6	Panel location?	Garage / Exterior / Closet / Utility / Other	Access
+7	Distance from generator location to panel?	Under 10 ft / 10–25 ft / 25–50 ft / 50+ ft	Labor
+8	Is this urgent storm prep or planned install?	Urgent / Planned / Before hurricane season	Scheduling
+9	Are permits or HOA restrictions likely?	Yes / No / Not sure	Admin
+10	Upload panel, meter, generator, and proposed generator location photos.	Photos	Required
+
+⸻
+
+Better Question Codes To Add To The Sheet
+
+Your current allowed list is too thin. You need a larger reusable module bank.
+
+Add These Universal Modules
+
+Code	Use For
+SERVICE_QUANTITY	How many items/locations?
+REPLACE_OR_NEW	Replace existing vs add new
+ROOM_LOCATION	Room/area type
+PROPERTY_TYPE	House/mobile home/apartment/commercial
+HOME_AGE	Age/risk
+CEILING_HT	Height
+ATTIC_ACCESS	Above-ceiling access
+CRAWLSPACE_ACCESS	Under-floor access
+WALL_TYPE	Drywall/brick/tile/siding/plaster
+SURFACE_TYPE	Mounting surface
+EXISTING_WIRING	Existing power present?
+EXISTING_BOX	Existing electrical box condition
+FAN_RATED_BOX	Fan-rated confirmation
+FIXTURE_WEIGHT	Heavy fixture risk
+CUSTOMER_SUPPLIED_MATERIAL	Customer has product?
+PRODUCT_TYPE	Fixture/device/charger/appliance type
+CONTROL_TYPE	Switch/dimmer/smart/remote
+THREE_WAY_SWITCHING	Controlled from multiple locations
+NEUTRAL_PRESENT	Smart switch compatibility
+PANEL_DISTANCE	Distance from panel
+PANEL_PHOTO	Required panel photo
+PANEL_BRAND	Breaker compatibility
+PANEL_AMPERAGE	Load capacity
+PANEL_SPACE	Open breaker spaces
+LOAD_TYPE	What will be powered
+VOLTAGE_AMPERAGE	Needed volts/amps
+ROUTE_TYPE	Attic/conduit/wall/trench/crawl
+TRENCHING_NEEDED	Underground work
+EXTERIOR_EXPOSURE	Rain/weather/damp location
+PERMIT_NEEDED	Permit/admin flag
+UNSAFE_SYMPTOMS	Burning/sparking/hot/buzzing
+INSPECTION_REPORT	Upload report
+PHOTO_WORK_AREA	Work area photos
+CUSTOMER_UNSURE	Adds review flag
+
+⸻
+
+Recommended “Instant Quote Logic” By Service
+
+Safe for instant quote with review flag
+
+These can show a price, but should say:
+
+“This is an instant estimate based on your answers. We may confirm photos before final booking.”
+
+Service	Instant?	Required Photos
+Recessed Lighting	Yes, with review	Room/ceiling/attic if possible
+Light Fixture Install	Yes, with review	Fixture location + fixture box
+LED Retrofit	Yes	Existing fixture
+Ceiling Fan Install	Yes, with review	Ceiling box/location
+Outlet Install	Yes, with review	Desired location + nearby outlet
+GFCI Outlet	Yes	Existing outlet
+Dimmer Switch	Yes	Switch area
+Smart Switch	Yes, with review	Switch box if possible
+Dedicated Circuit	Yes, with review	Panel + target location
+EV Charger	Estimate only, review before booking	Panel + route + charger location
+
+Should stay site visit / diagnostic
+
+These should collect information but not promise a hard instant price.
+
+Service	Why
+Outdoor Lighting	Exterior routing/weather/surface risk
+Motion/Security Light	Can be instant replacement, but new locations need review
+Panel Upgrade	Utility, permit, load, code complexity
+Subpanel Install	Load/routing/trenching complexity
+Fuse Box Conversion	High-risk old wiring
+Panel/Breaker Repair	Diagnostic/safety
+Appliance Circuit	Depends heavily on appliance specs/routing
+Hot Tub Circuit	Code, trenching, GFCI, disconnect placement
+Breaker Tripping	Diagnostic
+Troubleshoot Flicker	Diagnostic
+Smoke/CO Detector	Could be instant if simple replacement
+Code Compliance	Depends on report
+Whole House Rewire	Never instant
+Partial Rewire	Estimate range only
+Generator Standby	Site visit
+Transfer Switch	Could be estimate range, but photo review
+Generator Backup	Intake/router
+
+⸻
+
+The Big Fix To Your Sheet Structure
+
+Right now you have:
+
+Category allows only a few question codes.
+
+That will box you in.
+
+Better structure:
+
+Questions table
+
+Each question exists once.
+
+question_key	question_text	answer_type	applies_to
+CEILING_HT	How high is the work area?	single_select	many
+PANEL_DISTANCE	How far from panel?	single_select	many
+EXISTING_BOX	Is there an existing box?	single_select	many
+
+ServiceQuestions table
+
+Controls which service gets which questions.
+
+service_key	question_key	sort_order	required	visible_condition	review_if_unsure
+A004	FAN_RATED_BOX	3	yes	REPLACE_OR_NEW = existing light	yes
+A028	PANEL_PHOTO	7	yes	always	yes
+A001	ATTIC_ACCESS	4	yes	REPLACE_OR_NEW = new	yes
+
+AnswerOptions table
+
+Each answer has a pricing effect.
+
+question_key	answer_value	label	effect_type	effect_value	review_flag
+CEILING_HT	UNDER_9	Under 9 ft	none	0	false
+CEILING_HT	12_16	12–16 ft	add_hours	0.5	true
+CEILING_HT	OVER_16	Over 16 ft	disqualify	0	true
+ATTIC_ACCESS	NO	No attic access	add_hours	1.0	true
+WALL_TYPE	TILE	Tile	add_hours	0.75	true
+
+⸻
+
+Best Customer-Facing Wording
+
+Don’t make it feel like an interrogation. Use this framing:
+
+“We ask a few job-specific questions so we can price this like we already walked the job. If you’re not sure, choose ‘Not sure’ and we’ll review your photos before confirming.”
+
+For risky jobs:
+
+“Based on your answers, this job needs review before final booking. You can still submit photos now so we can confirm pricing without making you schedule a full site visit.”
+
+For price confidence:
+
+“Your price is based on the assumptions shown below. If the photos match your answers, we’ll do our best to honor this price.”
+
+⸻
+
+Important Opinion
+
+Your current system is under-questioned.
+
+For an instant quoter, 2 questions per service is not enough unless the service is extremely simple. It will either:
+
+1. Underprice risky work,
+2. Overprice easy work,
+3. Force too many site visits,
+4. Or create customer anger when the tech arrives and the job is different.
+
+You need 7–12 questions per service, but the customer should not see all of them at once. Use conditional logic.
+
+Example:
+
+For ceiling fan:
+
+1. Existing fan or new location?
+2. If existing fan: ask fan-rated box/photo.
+3. If new location: ask attic access, switch control, ceiling type.
+4. If outdoor: ask damp rating.
+5. If high ceiling: review flag.
+
+That makes the quote feel clean while still protecting you.
