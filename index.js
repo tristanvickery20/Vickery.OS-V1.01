@@ -39,6 +39,14 @@ const {
 } = require("./api/crew-auth");
 const { getCrewSession, ensureStaffSheet } = require("./lib/staff");
 const { handleReferralSubmit } = require("./api/referral");
+const {
+  handleGetReferrals,
+  handleCreateReferral,
+  handleUpdateReferral,
+  handleGetReferralEmployees,
+  handleNotifyReferrer,
+  seedReferralTemplates,
+} = require("./api/referrals");
 const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
 const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings } = require("./api/marketing");
 const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
@@ -245,7 +253,7 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/site-reviews.html"), "text/html");
   }
 
-  if (req.url === "/referral") {
+  if (req.url === "/referral" || req.url.startsWith("/referral?")) {
     return serveFile(res, path.join(__dirname, "pages/site-referral.html"), "text/html");
   }
 
@@ -858,6 +866,10 @@ const server = http.createServer(async (req, res) => {
   if (_epath === "/api/referral/submit" && req.method === "POST") {
     return handleReferralSubmit(req, res);
   }
+  // New referral center — public POST (create entry + lead)
+  if (_epath === "/api/referrals" && req.method === "POST") {
+    return handleCreateReferral(req, res);
+  }
 
   // ── Public reschedule response — no auth ─────────────────────────────────
   // GET /reschedule/:token?r=accept|decline → customer taps link from SMS
@@ -1343,6 +1355,22 @@ const server = http.createServer(async (req, res) => {
     return handleCreatePayment(req, res);
   }
 
+  // Referral Center API (auth-protected)
+  if (_epath === "/api/referrals" && req.method === "GET") {
+    return handleGetReferrals(req, res);
+  }
+  if (_epath === "/api/referrals/employees" && req.method === "GET") {
+    return handleGetReferralEmployees(req, res);
+  }
+  if (_epath.startsWith("/api/referrals/") && req.method === "PATCH") {
+    const referralId = _epath.replace("/api/referrals/", "").split("/")[0];
+    return handleUpdateReferral(req, res, referralId);
+  }
+  if (_epath.startsWith("/api/referrals/") && _epath.endsWith("/notify") && req.method === "POST") {
+    const referralId = _epath.replace("/api/referrals/", "").replace("/notify", "");
+    return handleNotifyReferrer(req, res, referralId);
+  }
+
   // Marketing Hub API
   if (_epath === "/api/marketing/overview" && req.method === "GET") {
     return handleGetOverview(req, res);
@@ -1798,6 +1826,7 @@ server.listen(5000, "0.0.0.0", () => {
       .then(() => backfillSegmentCategory())
       .then(() => logQuoteHealth())
       .then(() => patchSchedulerRuleDefaults())
+      .then(() => seedReferralTemplates())
       .catch((err) => console.error("[Startup]", err.message));
   }, 10_000);
 

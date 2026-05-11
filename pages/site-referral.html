@@ -305,7 +305,13 @@
     </div>
 
     <div class="ref-form" id="refFormWrap">
+      <div id="refAttrBanner" style="display:none;padding:10px 14px;background:hsl(215 80% 18%);border-radius:10px;margin-bottom:16px;font-size:13px;color:hsl(215 80% 80%);">
+        Referral link activated &mdash; your submission will be attributed automatically.
+      </div>
+
       <form id="refForm" onsubmit="submitReferral(event)">
+        <input type="hidden" id="ref_slug" />
+        <input type="hidden" id="ref_employee_id" />
 
         <div class="ref-section-label">Your Information</div>
         <div class="ref-grid-2">
@@ -358,35 +364,55 @@
 
   <script src="/pages/js/site.js"></script>
   <script>
+    // ── Attribution via query params (?employee=ST-001&ref=slug) ──────────────
+    (function () {
+      const p = new URLSearchParams(window.location.search);
+      const emp = p.get("employee") || "";
+      const ref = p.get("ref") || "";
+      if (emp || ref) {
+        document.getElementById("ref_employee_id").value = emp;
+        document.getElementById("ref_slug").value        = ref;
+        document.getElementById("refAttrBanner").style.display = "block";
+      }
+    })();
+
+    // ── Form submission ────────────────────────────────────────────────────────
     async function submitReferral(e) {
       e.preventDefault();
-      const btn     = document.getElementById("refSubmitBtn");
-      const errEl   = document.getElementById("refError");
+      const btn      = document.getElementById("refSubmitBtn");
+      const errEl    = document.getElementById("refError");
       const origHTML = btn.innerHTML;
       errEl.style.display = "none";
       btn.disabled = true;
       btn.textContent = "Submitting\u2026";
 
       const body = {
-        your_name:  document.getElementById("ref_your_name").value.trim(),
-        your_phone: document.getElementById("ref_your_phone").value.trim(),
-        ref_name:   document.getElementById("ref_name").value.trim(),
-        ref_phone:  document.getElementById("ref_phone").value.trim(),
-        ref_city:   document.getElementById("ref_city").value.trim(),
-        ref_job:    document.getElementById("ref_job").value.trim(),
+        referrer_name:  document.getElementById("ref_your_name").value.trim(),
+        referrer_phone: document.getElementById("ref_your_phone").value.trim(),
+        referee_name:   document.getElementById("ref_name").value.trim(),
+        referee_phone:  document.getElementById("ref_phone").value.trim(),
+        referee_city:   document.getElementById("ref_city").value.trim(),
+        referee_job:    document.getElementById("ref_job").value.trim(),
+        referral_slug:  document.getElementById("ref_slug").value.trim(),
+        employee_id:    document.getElementById("ref_employee_id").value.trim(),
+        source: "public_form",
       };
 
       try {
-        const r    = await fetch("/api/referral/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const r    = await fetch("/api/referrals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
         const data = await r.json();
         if (data.ok) {
           document.getElementById("refFormWrap").style.display = "none";
-          document.getElementById("refSuccess").style.display = "block";
+          document.getElementById("refSuccess").style.display  = "block";
         } else {
           throw new Error(data.error || "Submission failed");
         }
       } catch (err) {
-        errEl.textContent = err.message || "Something went wrong. Please try again.";
+        errEl.textContent  = err.message || "Something went wrong. Please try again.";
         errEl.style.display = "inline";
         btn.disabled = false;
         btn.innerHTML = origHTML;

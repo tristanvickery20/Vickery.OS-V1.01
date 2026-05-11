@@ -59,7 +59,7 @@
   }
 
   // ── Tab switching ─────────────────────────────────────────────────────────
-  const panels = { overview: false, reviews: false, followup: false, segments: false, templates: false };
+  const panels = { overview: false, reviews: false, followup: false, segments: false, referrals: false, templates: false };
 
   document.querySelectorAll(".mhub-tab").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -86,6 +86,7 @@
     if (id === "reviews")   return loadReviews();
     if (id === "followup")  return loadFollowup();
     if (id === "segments")  return loadSegments();
+    if (id === "referrals")  return loadReferrals();
     if (id === "templates")   return loadTemplates();
     if (id === "mkt-settings") return loadMktSettings();
   }
@@ -923,6 +924,331 @@
     } catch (e) { /* silently ignore — show whatever is in the inputs */ }
     loading.style.display = "none"; content.style.display = "block";
     bindMktSettingsSaveOnce();
+  }
+
+  // ── REFERRAL CENTER ───────────────────────────────────────────────────────
+
+  // Sub-tab wiring — referral panel shares .rev-subtab/.rev-subpanel pattern
+  // but the elements are inside #panel-referrals, so we handle them separately.
+  document.querySelectorAll("#panel-referrals .rev-subtab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#panel-referrals .rev-subtab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("#panel-referrals .rev-subpanel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      const sp = document.getElementById("subpanel-" + btn.dataset.subpanel);
+      if (sp) sp.classList.add("active");
+      // Lazy-load employee cards only when that tab is first opened
+      if (btn.dataset.subpanel === "ref-cards" && !_refCardsLoaded) {
+        _refCardsLoaded = true;
+        loadRefEmployeeCards();
+      }
+    });
+  });
+
+  let _refCardsLoaded = false;
+
+  async function loadReferrals() {
+    panels.referrals = true;
+    _refCardsLoaded = false;
+    const loading = document.getElementById("refLoading");
+    const content = document.getElementById("refContent");
+    loading.style.display = "block";
+    content.style.display = "none";
+    try {
+      const d = await window.Api.fetchJson("/api/referrals");
+      renderRefStats(d.stats || {});
+      renderRefLedger(d.rows || []);
+      const ready = (d.rows || []).filter(r => (r.reward_status || "").toLowerCase() === "ready");
+      renderRefRewardQueue(ready);
+      setBadge("refRewardBadge", ready.length);
+      loading.style.display = "none";
+      content.style.display = "block";
+    } catch (e) {
+      loading.textContent = "Error loading referrals: " + e.message;
+    }
+  }
+
+  function renderRefStats(s) {
+    const el = document.getElementById("refStatGrid");
+    if (!el) return;
+    const cards = [
+      { label: "Total Referrals",    value: s.total || 0,                      sub: "all time",               cls: "" },
+      { label: "Converted to Job",   value: s.booked || 0,                      sub: "booked or complete",     cls: "accent-green" },
+      { label: "Conversion Rate",    value: (s.conversion_pct || 0) + "%",      sub: "referrals → booked",     cls: "" },
+      { label: "Rewards Ready",      value: s.reward_ready || 0,                sub: "awaiting delivery",      cls: s.reward_ready > 0 ? "accent-amber" : "" },
+      { label: "Rewards Paid",       value: s.reward_paid || 0,                 sub: "all time",               cls: "accent-blue" },
+      { label: "Total Paid Out",     value: fmt$(s.total_paid || 0),             sub: "reward disbursements",   cls: "accent-green" },
+    ];
+    el.innerHTML = cards.map(c => `
+      <div class="stat-card ${esc(c.cls)}">
+        <div class="stat-card-label">${esc(c.label)}</div>
+        <div class="stat-card-value">${esc(String(c.value))}</div>
+        <div class="stat-card-sub">${esc(c.sub)}</div>
+      </div>`).join("");
+  }
+
+  const STATUS_COLORS = {
+    new:       "hsl(215 80% 65%)",
+    contacted: "hsl(38 80% 60%)",
+    booked:    "hsl(145 60% 55%)",
+    complete:  "hsl(145 60% 55%)",
+    rewarded:  "hsl(270 60% 70%)",
+    declined:  "hsl(0 60% 60%)",
+  };
+
+  function renderRefLedger(rows) {
+    const tbody = document.getElementById("refLedgerBody");
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:hsl(220 15% 50%);">No referrals yet. They will appear here when submitted via the /referral page or an employee card link.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const sid = safeId(r.id);
+      const sc  = STATUS_COLORS[(r.status || "new").toLowerCase()] || "hsl(220 15% 55%)";
+      return `<tr id="refrow-${sid}">
+        <td style="white-space:nowrap;">${esc(fmtDate(r.created_at))}</td>
+        <td>
+          <strong>${esc(r.referrer_name)}</strong>
+          ${r.referrer_type === "employee" ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:hsl(215 80% 22%);color:hsl(215 80% 72%);margin-left:4px;">Employee</span>` : ""}
+          <br><span style="font-size:11px;color:hsl(220 15% 55%);">${esc(r.referrer_phone)}</span>
+        </td>
+        <td>${esc(r.referee_name)}<br><span style="font-size:11px;color:hsl(220 15% 55%);">${esc(r.referee_phone)}</span></td>
+        <td style="font-size:12px;max-width:140px;">${esc(r.referee_job_type || "—")}</td>
+        <td><span style="color:${sc};font-weight:700;font-size:12px;">${esc(r.status || "new")}</span></td>
+        <td>
+          <select class="ref-inline-sel ref-status-sel" data-id="${esc(r.id)}">
+            ${["new","contacted","booked","complete","rewarded","declined"].map(s =>
+              `<option value="${s}"${(r.status||"new")===s?" selected":""}>${s}</option>`
+            ).join("")}
+          </select>
+        </td>
+        <td>
+          <select class="ref-inline-sel ref-reward-sel" data-id="${esc(r.id)}">
+            ${["pending","ready","paid"].map(s =>
+              `<option value="${s}"${(r.reward_status||"pending")===s?" selected":""}>${s}</option>`
+            ).join("")}
+          </select>
+        </td>
+        <td>
+          $<input class="ref-amt-inp" data-id="${esc(r.id)}" type="number" min="0" step="10"
+            value="${esc(r.reward_amount || "50")}" />
+        </td>
+        <td>
+          <button class="rev-btn rev-btn-log" style="font-size:11px;padding:5px 10px;" data-id="${esc(r.id)}" data-action="save-ref-row">Save</button>
+        </td>
+      </tr>`;
+    }).join("");
+
+    tbody.querySelectorAll("[data-action='save-ref-row']").forEach(btn => {
+      btn.addEventListener("click", () => saveRefRow(btn.dataset.id, btn));
+    });
+  }
+
+  async function saveRefRow(id, btn) {
+    const row = document.getElementById("refrow-" + safeId(id));
+    if (!row) return;
+    const status        = row.querySelector(".ref-status-sel").value;
+    const reward_status = row.querySelector(".ref-reward-sel").value;
+    const reward_amount = row.querySelector(".ref-amt-inp").value;
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    try {
+      await window.Api.fetchJson(`/api/referrals/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, reward_status, reward_amount }),
+      });
+      toast("Referral updated!", "success");
+      // Refresh the full panel so reward queue + badge re-render
+      panels.referrals = false;
+      loadReferrals();
+    } catch (e) {
+      toast("Error: " + e.message, "error");
+      if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+    }
+  }
+
+  function renderRefRewardQueue(rows) {
+    const el = document.getElementById("refRewardQueueList");
+    if (!el) return;
+    if (!rows.length) {
+      el.innerHTML = `<div class="empty-state">No referrals with Reward Status = <strong>Ready</strong>.<br>Mark a referral's reward status as <em>ready</em> in the Ledger tab to queue it here.</div>`;
+      return;
+    }
+    el.innerHTML = rows.map(r => {
+      const sid = safeId(r.id);
+      return `
+        <div class="rev-card queue-card" style="border-left-color:hsl(38 80% 55%);">
+          <div class="rev-card-body">
+            <div class="rev-card-name">
+              ${esc(r.referrer_name)}
+              <span style="font-size:12px;font-weight:400;color:hsl(220 15% 60%);">&rarr; referred ${esc(r.referee_name)}</span>
+            </div>
+            <div class="rev-card-meta">
+              ${esc(r.referrer_phone)}
+              &bull; Reward: <strong>$${esc(r.reward_amount || "50")}</strong>
+              &bull; Job status: <strong>${esc(r.status || "—")}</strong>
+              ${r.notified_at ? `&bull; SMS sent ${fmtDate(r.notified_at)}` : ""}
+            </div>
+          </div>
+          <button class="rev-btn rev-btn-ask" data-ref-id="${esc(r.id)}" data-action="notify-referrer">
+            ${r.notified_at ? "Re-send SMS" : "Send Reward SMS"}
+          </button>
+        </div>`;
+    }).join("");
+
+    el.querySelectorAll("[data-action='notify-referrer']").forEach(btn => {
+      btn.addEventListener("click", () => notifyReferrer(btn.dataset.refId, btn));
+    });
+  }
+
+  async function notifyReferrer(refId, btn) {
+    if (!refId) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+    try {
+      const d = await window.Api.fetchJson(`/api/referrals/${encodeURIComponent(refId)}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (d.ok) {
+        toast(d.sms_sent ? "Reward SMS sent!" : "Logged (SMS not configured).", "success");
+        panels.referrals = false;
+        loadReferrals();
+      } else {
+        toast("Error: " + (d.error || "unknown"), "error");
+        if (btn) { btn.disabled = false; btn.textContent = "Send Reward SMS"; }
+      }
+    } catch (e) {
+      toast("Error: " + e.message, "error");
+      if (btn) { btn.disabled = false; btn.textContent = "Send Reward SMS"; }
+    }
+  }
+
+  // ── Employee QR Cards ──────────────────────────────────────────────────────
+  async function loadRefEmployeeCards() {
+    const el = document.getElementById("refEmpCards");
+    if (!el) return;
+    el.innerHTML = `<div class="loading-state">Loading employee cards&hellip;</div>`;
+    try {
+      const d = await window.Api.fetchJson("/api/referrals/employees");
+      if (!d.ok || !(d.employees || []).length) {
+        el.innerHTML = `<div class="empty-state">No active employees found. Add staff in the People module first.</div>`;
+        return;
+      }
+      const baseUrl = window.location.origin;
+      el.innerHTML = d.employees.map(emp => {
+        const refUrl = `${baseUrl}/referral?employee=${encodeURIComponent(emp.staff_id)}&ref=${encodeURIComponent(emp.staff_id)}`;
+        const sid    = safeId(emp.staff_id);
+        return `
+          <div class="ref-emp-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+              <div>
+                <div class="ref-emp-name">${esc(emp.name)}</div>
+                <div class="ref-emp-role">${esc(emp.role)}</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="copy-btn" style="padding:6px 12px;" data-copy="${esc(refUrl)}" data-action="copy-ref-link">Copy Link</button>
+                <button class="rev-btn rev-btn-log" data-emp-name="${esc(emp.name)}" data-ref-url="${esc(refUrl)}" data-action="print-ref-card">Print Card</button>
+              </div>
+            </div>
+            <div class="ref-emp-url">${esc(refUrl)}</div>
+            <div id="qr-${sid}" style="width:128px;height:128px;margin-top:4px;background:white;border-radius:6px;padding:4px;box-sizing:border-box;"></div>
+          </div>`;
+      }).join("");
+
+      // Bind copy buttons
+      el.querySelectorAll("[data-action='copy-ref-link']").forEach(btn => {
+        btn.addEventListener("click", () => {
+          navigator.clipboard.writeText(btn.dataset.copy || "")
+            .then(() => toast("Link copied!", "success"))
+            .catch(() => toast("Copy failed", "error"));
+        });
+      });
+
+      // Bind print buttons
+      el.querySelectorAll("[data-action='print-ref-card']").forEach(btn => {
+        btn.addEventListener("click", () => printEmpCard(btn.dataset.empName, btn.dataset.refUrl));
+      });
+
+      // Load QR library then render QR codes
+      loadQRLib(() => {
+        d.employees.forEach(emp => {
+          const sid  = safeId(emp.staff_id);
+          const qrEl = document.getElementById("qr-" + sid);
+          const refUrl = `${baseUrl}/referral?employee=${encodeURIComponent(emp.staff_id)}&ref=${encodeURIComponent(emp.staff_id)}`;
+          if (qrEl && window.QRCode) {
+            try {
+              new window.QRCode(qrEl, {
+                text:       refUrl,
+                width:      120,
+                height:     120,
+                colorDark:  "#0d2a6e",
+                colorLight: "#ffffff",
+              });
+            } catch (err) {
+              qrEl.style.cssText = "font-size:10px;color:hsl(220 15% 50%);word-break:break-all;padding:4px;";
+              qrEl.textContent = refUrl;
+            }
+          } else if (qrEl) {
+            qrEl.style.cssText = "font-size:10px;color:hsl(220 15% 50%);word-break:break-all;padding:4px;";
+            qrEl.textContent = "(QR unavailable — use the link above)";
+          }
+        });
+      });
+
+    } catch (e) {
+      el.innerHTML = `<div class="empty-state">Error loading employees: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function loadQRLib(cb) {
+    if (window.QRCode) { cb(); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    s.onload = cb;
+    s.onerror = () => { console.warn("[referrals] QR library unavailable — showing URLs only."); cb(); };
+    document.head.appendChild(s);
+  }
+
+  function printEmpCard(empName, refUrl) {
+    const safeUrl  = String(refUrl || "").replace(/"/g, "&quot;");
+    const safeName = String(empName || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const win = window.open("", "_blank", "width=500,height=400");
+    if (!win) { toast("Pop-up blocked — allow pop-ups and try again.", "error"); return; }
+    win.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Referral Card &mdash; ${safeName}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#f4f6fb;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Plus Jakarta Sans',sans-serif;}
+  .card{width:3.5in;background:#fff;border:2px solid hsl(220,100%,25%);border-radius:18px;padding:22px 20px;text-align:center;}
+  .logo{font-family:Outfit,sans-serif;font-weight:900;font-size:21px;color:hsl(220,100%,25%);letter-spacing:-0.04em;margin-bottom:2px;}
+  .tagline{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;}
+  .name{font-family:Outfit,sans-serif;font-weight:700;font-size:18px;color:hsl(220,100%,18%);margin-bottom:6px;}
+  .msg{font-size:12px;color:#333;line-height:1.55;margin-bottom:14px;}
+  .qr-wrap{display:flex;justify-content:center;margin-bottom:10px;}
+  .url{font-size:9.5px;color:hsl(220,80%,40%);word-break:break-all;line-height:1.5;}
+  .divider{border:none;border-top:1px solid hsl(220,20%,88%);margin:12px 0;}
+  @media print{body{background:#fff;min-height:0;}@page{margin:.2in;size:3.75in 2.5in;}}
+</style></head><body>
+<div class="card">
+  <div class="logo">Vickery Electric</div>
+  <div class="tagline">Southeast Texas Electrical Specialists</div>
+  <hr class="divider">
+  <div class="name">${safeName}</div>
+  <div class="msg">Know someone who needs electrical work? Scan or visit the link below &mdash; mention my name and we'll take great care of them!</div>
+  <div class="qr-wrap" id="qr"></div>
+  <div class="url">${safeUrl}</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+<script>
+  setTimeout(function(){
+    try{ new QRCode(document.getElementById('qr'),{text:"${safeUrl.replace(/"/g,'\\"')}",width:110,height:110,colorDark:"#0d2a6e",colorLight:"#ffffff"}); }catch(e){}
+    setTimeout(function(){ window.print(); },700);
+  },350);
+<\/script></body></html>`);
+    win.document.close();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

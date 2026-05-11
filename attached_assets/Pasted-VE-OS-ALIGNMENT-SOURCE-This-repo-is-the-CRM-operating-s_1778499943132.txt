@@ -1,0 +1,518 @@
+VE OS ALIGNMENT SOURCE
+
+This repo is the CRM/operating system for Vickery Electric, a launch-stage residential electrical service business.
+
+The purpose of VE OS is not to be a generic CRM. It is the operating command center for the business.
+
+The system must reduce chaos, protect profit, enforce process, preserve records, and make the business easier to scale.
+
+The owner is not a coder. Build practical, visible, working features. Do not make vague backend-only changes that cannot be verified in the UI.
+
+Before changing code, read and preserve:
+- docs/VE_OS_ALIGNMENT_SOURCE.md
+- docs/VE_OS_SCOPE_MAP.md
+- docs/VE_OS_CURRENT_AUDIT.md
+- docs/VE_OS_BUILD_RULES.md
+
+CURRENT TASK
+
+Add a simple ReferPro-style referral system inside the existing Marketing Hub.
+
+This is NOT a paid third-party integration.
+This is NOT AI personalization.
+This is NOT a complex campaign engine.
+This is a simple, clean referral tracking + personal referral link + employee QR/card stack + reward dashboard system that works with the current Google Sheets-backed app.
+
+The owner wants:
+1. Personal referral links for customers.
+2. Referral cards/QR links that feel natural and simple for older customers.
+3. Instant/automated reward workflow as much as possible without paid third-party services.
+4. Employee-specific QR/card stack so each employee can hand out their own referral card.
+5. Referral Dashboard inside the existing Marketing Hub.
+6. Separate review and referral asks so the customer is not overloaded.
+7. No paid third-party services. No new external APIs unless already present/free. No paid dependency.
+
+IMPORTANT WORDING NOTE
+
+Do not call it a “customer code” in the UI. That sounds complicated.
+
+Use:
+- “Referral Link”
+- “Referral Card”
+- “Mentioned By”
+- “Referral Reward”
+- “Referrer”
+- “Employee Card”
+- “Reward Ready”
+
+Use simple language for older customers:
+“Have them mention your name” should remain the plain-language fallback.
+
+FILES TO INSPECT FIRST
+
+Read these before changing code:
+- index.js
+- api/marketing.js
+- api/referral.js
+- api/templates.js
+- api/reviews.js
+- pages/crm-marketing.html
+- pages/js/crm-marketing.js
+- pages/site-referral.html
+- pages/partials/sidebar.html
+- lib/sheets.js
+- lib/config.js
+- lib/staff.js
+- api/leads.js
+- api/clients.js
+
+Also search the repo for:
+- /api/marketing
+- /api/referral
+- /api/templates
+- /crm/marketing
+- lead_source
+- review_status
+- sendSms
+- Clients
+- Leads
+- Staff
+
+HARD RESTRICTIONS
+
+- Do not rewrite the CRM.
+- Do not redesign the whole Marketing Hub.
+- Do not remove existing Marketing Hub tabs.
+- Do not break Review Center, Follow-Up Queue, Smart Lists, Templates, or Settings.
+- Do not combine review asks and referral asks in one customer message.
+- Do not add paid dependencies.
+- Do not require Twilio, Stripe, ACH, PayPal, or any paid service.
+- Do not expose secrets.
+- Do not change existing API response shapes unless adding fields safely.
+- Do not rename existing routes.
+- Do not break Render deployability.
+- Keep the app as plain Node/static HTML/JS unless the current repo already uses otherwise.
+- Keep changes browser-verifiable.
+
+DESIRED UX
+
+Inside /crm/marketing, add a new top-level tab:
+
+Referral Center
+
+Within Referral Center, show subtabs or sections:
+
+A. Referral Dashboard
+B. Referral Links
+C. Employee QR Cards
+D. Reward Queue
+E. Referral Templates / Copy
+
+SECTION A: REFERRAL DASHBOARD
+
+Show stat cards:
+- Referrals Submitted
+- Referrals Booked
+- Referrals Completed
+- Rewards Ready
+- Rewards Paid
+- Estimated Referral Revenue
+- Referral Close Rate
+- Top Referrer
+- Top Employee Source
+
+Show a table:
+Columns:
+- Date
+- Referred Customer
+- Phone
+- Job / Need
+- Referrer
+- Source Type: Customer / Employee / Manual / Unknown
+- Employee Source
+- Status: Submitted / Booked / Completed / Reward Ready / Paid / Disqualified
+- Reward: $50 / $150 / $0
+- Action buttons
+
+Actions:
+- Mark Booked
+- Mark Completed
+- Mark Reward Ready
+- Mark Paid
+- Disqualify
+- Copy Payout Message
+- View Lead/Client if possible
+
+SECTION B: REFERRAL LINKS
+
+This section creates simple personal referral links.
+
+Do not make customers create accounts.
+
+Support links like:
+- /referral?ref=REF-CLIENT-123
+- /referral?employee=EMP-001
+- /referral?source=card
+or whatever is easiest and consistent with the repo.
+
+The referral page should prefill hidden attribution fields when opened from a link.
+
+The page should still work for older customers who do not understand links:
+- Form field: “Who referred you?”
+- Placeholder: “Name of friend, neighbor, family member, or employee”
+- Do not require a referral code.
+
+In CRM, allow the owner to generate/copy a referral link for:
+- Existing client/customer
+- Manual referrer name
+- Employee/staff member
+
+SECTION C: EMPLOYEE QR CARDS
+
+Create an employee card stack inside Referral Center.
+
+For each employee/staff member:
+- Employee name
+- Role/title if available
+- Personal referral link
+- QR code display if possible WITHOUT paid dependency
+- Copy link button
+- Print card button or print-friendly card area
+
+Do not add a paid QR service.
+
+Preferred implementation:
+- Use a lightweight local QR generation approach if already possible with browser JS and no dependency.
+- If adding a dependency is unavoidable, avoid it and instead show the referral link + print card layout.
+- Do not call an external QR image API.
+- Do not require internet APIs for QR generation.
+
+Card copy should be clean:
+
+Front:
+Need electrical work?
+Scan here or mention [Employee Name].
+Vickery Electric
+
+Back:
+Upfront pricing. Clean work. Reliable service.
+$50 thank-you for most booked referrals.
+$150 for larger projects.
+Reward paid after the job is completed and paid.
+
+SECTION D: REWARD QUEUE
+
+Create a queue that shows only referrals needing owner action.
+
+Buckets:
+1. New referral submitted
+2. Referred job booked
+3. Referred job completed
+4. Reward ready
+5. Paid
+6. Disqualified
+
+Reward logic:
+- Default reward amount is $50.
+- Large project reward amount is $150.
+- A job is “Reward Ready” only after the referred job is completed and paid OR manually marked reward-ready by owner.
+- Do not automatically send money through a paid provider.
+- “Instant/Automated reward” means:
+  - The CRM automatically calculates that a reward is owed.
+  - The CRM moves it to Reward Ready.
+  - The CRM provides a one-click copy payout message.
+  - The CRM records payout method and payout date when owner marks paid.
+  - The CRM can send an SMS using existing sendSms only if the repo already has working SMS support.
+  - If SMS is not configured, it should log the action and show copyable text.
+
+Payout methods:
+- Zelle
+- Cash App
+- Check
+- Direct deposit
+- Other
+
+Do not collect bank account data in this task.
+Direct deposit should be just a payout_method label for now, not actual ACH.
+
+SECTION E: REFERRAL TEMPLATES / COPY
+
+Add or seed templates in Templates sheet for:
+- referral_soft_ask
+- referral_new_referrer_notice
+- referral_reward_ready
+- referral_paid_confirmation
+- employee_card_copy
+
+Use Tristan, not Cody, in new referral templates.
+
+Template 1: Soft referral ask, sent separately from review
+Hey {first_name}, hope everything is still working great.
+
+If you know anyone in the area who needs a reliable electrician, we’d be grateful if you sent them our way. Just have them mention your name when they reach out.
+
+As a thank-you, we send $50 for most booked jobs and $150 for larger projects like generator installs or similar work.
+
+— Tristan at Vickery Electric
+
+Template 2: Referral received / referrer notice
+Hey {referrer_first_name}, just wanted to let you know {new_customer_first_name} reached out and mentioned your name. Thank you for sending them our way.
+
+Once the job is completed and paid, we’ll send your referral thank-you.
+
+— Tristan at Vickery Electric
+
+Template 3: Reward ready
+Hey {first_name}, thanks again for referring {new_customer_first_name} to Vickery Electric.
+
+Their job is wrapped up, so your ${payout_amount} referral thank-you is ready. What’s the best way to send it — Zelle, Cash App, direct deposit, check, or another method?
+
+— Tristan at Vickery Electric
+
+Template 4: Paid confirmation
+Hey {first_name}, your ${payout_amount} referral thank-you for sending {new_customer_first_name} our way has been marked paid.
+
+We really appreciate you helping spread the word.
+
+— Tristan at Vickery Electric
+
+PUBLIC REFERRAL PAGE
+
+Improve existing /referral page if it exists.
+
+It should look clean and simple.
+
+Headline:
+“Refer someone to Vickery Electric”
+
+Subtext:
+“Know someone who needs reliable electrical work? Send them our way. If they book with us and the job is completed, we’ll send a thank-you.”
+
+Form fields:
+- Your name
+- Your phone
+- Person you’re referring
+- Their phone
+- Their city
+- What do they need help with?
+- Optional notes
+
+Also support the opposite flow:
+If a new customer opens a referral link, the form should say:
+“Who referred you?”
+Then collect:
+- Customer name
+- Customer phone
+- City
+- What do you need help with?
+
+Submit behavior:
+- Create/append a referral record.
+- Create/append a lead/client record if the current referral endpoint already does that safely.
+- Preserve attribution fields.
+
+DATA / GOOGLE SHEETS
+
+Add a new Google Sheets tab if it does not exist:
+
+ReferralLedger
+
+Headers:
+- referral_id
+- created_at
+- updated_at
+- referred_customer_name
+- referred_customer_phone
+- referred_customer_email
+- referred_customer_city
+- referred_job_description
+- referral_source_type
+- referrer_name
+- referrer_phone
+- referrer_client_id
+- employee_id
+- employee_name
+- referral_link_slug
+- attribution_method
+- source_url
+- related_lead_id
+- related_client_id
+- related_job_id
+- related_invoice_id
+- referred_job_status
+- reward_status
+- reward_amount
+- payout_method
+- payout_destination_note
+- payout_marked_paid_at
+- payout_marked_paid_by
+- disqualified_reason
+- notes
+
+Allowed reward_status values:
+- submitted
+- booked
+- completed
+- reward_ready
+- paid
+- disqualified
+
+Allowed referral_source_type values:
+- customer
+- employee
+- manual
+- unknown
+
+Attribution method examples:
+- referral_link
+- mentioned_name
+- employee_card
+- manual_entry
+
+Also add, only if safe and backward-compatible, to Clients or Leads:
+- referred_by_name
+- referred_by_phone
+- referral_id
+- referral_source_type
+- employee_referral_source
+
+Do not break existing Clients/Leads behavior if these headers are missing. Follow the pattern in reviews.js where missing client fields can be appended safely.
+
+API REQUIREMENTS
+
+Create or extend referral API handlers.
+
+Needed endpoints:
+GET /api/referrals
+- returns dashboard stats and ledger rows
+
+POST /api/referrals
+- creates a referral record
+- may create a lead/client if safe based on current model
+- supports public submission from /referral
+
+PATCH /api/referrals/:id
+- updates reward_status, reward_amount, payout_method, notes, disqualified_reason, related IDs
+
+POST /api/referrals/:id/mark-booked
+POST /api/referrals/:id/mark-completed
+POST /api/referrals/:id/mark-reward-ready
+POST /api/referrals/:id/mark-paid
+POST /api/referrals/:id/disqualify
+- these can be separate routes or handled by PATCH if cleaner, but UI buttons must work
+
+GET /api/referrals/links
+- returns referral links for clients/employees if easy
+- or return generated links inside GET /api/referrals
+
+POST /api/referrals/send-reward-ready
+- optional, only use existing sendSms if available
+- if SMS is unavailable, return ok:true with sms_sent:false and copyable message
+
+AUTH RULES
+
+- Public /referral page and public referral submit endpoint can be public.
+- Referral Center dashboard inside /crm/marketing must require CRM auth like the rest of CRM.
+- Do not expose all ReferralLedger rows publicly.
+- Public referral links should not reveal private customer data.
+- Do not expose staff private info beyond employee name/role/referral link/card.
+
+INDEX.JS ROUTE REGISTRATION
+
+Register new routes in index.js carefully.
+
+Do not break existing /api/referral if present.
+It is okay to create api/referrals.js and keep api/referral.js as legacy/simple endpoint, or make api/referral.js call the new code.
+
+Use current project style: require handler at top, route block in index.js.
+
+MARKETING HUB UI REQUIREMENTS
+
+Modify:
+- pages/crm-marketing.html
+- pages/js/crm-marketing.js
+
+Add the Referral Center tab next to Review Center.
+
+Do not remove existing tabs:
+- Overview
+- Review Center
+- Follow-Up Queue
+- Smart Lists
+- Templates
+- Settings
+
+Add CSS matching the current Marketing Hub style.
+
+Add JS functions:
+- loadReferrals()
+- renderReferralStats()
+- renderReferralLedger()
+- renderEmployeeCards()
+- renderRewardQueue()
+- markReferralStatus()
+- copyReferralMessage()
+- copyReferralLink()
+- printEmployeeCard() if practical
+
+The UI should be mobile-friendly.
+
+NO OVERLOADING CUSTOMER
+
+Do not automatically trigger referral ask right after review ask.
+
+No combined review/referral message.
+
+Referral Center should include note:
+“Referral asks should be sent separately from review asks. Use the card/in-person handoff first; use SMS later only for happy customers.”
+
+ACCEPTANCE CRITERIA
+
+1. /crm/marketing has a visible new “Referral Center” tab.
+2. Referral Center loads without breaking existing Marketing Hub tabs.
+3. Referral Dashboard displays referral stats even if there are no referrals yet.
+4. ReferralLedger tab is created/used safely if missing.
+5. Public /referral page can submit a referral.
+6. Submitted referral appears in Referral Center.
+7. Referral records include referrer name, referred customer name, phone, job description, status, source type, and reward status.
+8. Owner can mark referral as Booked, Completed, Reward Ready, Paid, or Disqualified.
+9. Reward Ready records show a copyable payout message.
+10. Employee QR/card stack exists using Staff/employee data if available.
+11. Employee cards have referral link and print/copy behavior.
+12. No paid third-party service is added.
+13. No external QR image API is used.
+14. Existing Review Center still works.
+15. Existing Templates tab still works.
+16. Existing Follow-Up Queue still works.
+17. Existing Marketing Settings still works.
+18. No secrets are exposed.
+19. No unrelated systems are rewritten.
+20. Manual browser testing steps are provided.
+
+OUTPUT REQUIREMENTS AFTER COMPLETION
+
+Report exactly:
+
+1. Plain-English summary of what changed.
+2. Exact files created.
+3. Exact files modified.
+4. Exact Google Sheets tabs/headers added or expected.
+5. Whether the change is backward-compatible with existing sheet data.
+6. Any environment variables needed. Say “none” if none.
+7. Any dependencies added. Say “none” if none.
+8. Routes added.
+9. Manual testing steps:
+   - Start app
+   - Log into CRM
+   - Open /crm/marketing
+   - Click Referral Center
+   - Submit /referral test
+   - Confirm ledger row appears
+   - Mark reward ready
+   - Copy payout message
+   - Check existing Review Center still loads
+10. Build/check command used and result.
+11. Known limitations.
+12. Recommended next step.
+
+DO NOT CLAIM SUCCESS IF YOU DID NOT TEST OR COULD NOT VERIFY.
