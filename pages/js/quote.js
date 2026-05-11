@@ -66,8 +66,9 @@ const NOT_SURE_MODULES = {
 // These are technical questions only an electrician can answer. They are silently
 // excluded from the customer flow — the engine will use its safe defaults.
 const HIDDEN_MODULES = new Set([
-  "CONDUIT_REQUIRED",  // Electrician's call — customer cannot assess conduit route
-  "EXISTING_BOX",      // Box fixture-rating — default assumption: box exists
+  // No modules hidden — all canonical question map IDs are intentionally asked.
+  // CONDUIT_REQUIRED and EXISTING_BOX were removed: both are now explicit questions
+  // in the EV Charger and light fixture/GFCI service maps respectively.
 ]);
 
 // ── Photo gate — human-readable module labels ─────────────────────────────────
@@ -75,7 +76,7 @@ const HIDDEN_MODULES = new Set([
 // Gate requirements themselves come from the API config (jt.photo_gate_modules).
 const PHOTO_MODULE_LABELS = {
   PANEL_PHOTO:      "a panel photo",
-  WORK_AREA_PHOTOS: "a photo of the installation area",
+  WORK_AREA_PHOTO:  "a photo of the installation area",
   AREA_PHOTO:       "a photo of the work area",
   CEILING_PHOTO:    "a photo of the ceiling location",
   OUTLET_PHOTO:     "a photo of the outlet area",
@@ -101,7 +102,7 @@ const PHOTO_MODULE_GUIDES = {
     exampleImg: "/pages/img/example-panel.svg",
     exampleAlt: "Example of a correctly photographed electrical panel with door open and all breakers visible",
   },
-  WORK_AREA_PHOTOS: {
+  WORK_AREA_PHOTO: {
     title:   "The Charger Location",
     steps: [
       "Stand in your garage facing the wall where you want the charger mounted.",
@@ -643,7 +644,7 @@ function _nameSim(a, b) {
 const _LIGHTING_FAN_ONLY_MODULES = new Set([
   "CEILING_HT", "CEILING_HEIGHT",
   "ATTIC_ACCESS",
-  "EXISTING_BOX",
+  // EXISTING_BOX removed — now an intentional question in GFCI and light fixture maps.
   "FAN_EXISTING_WIRING",
 ]);
 

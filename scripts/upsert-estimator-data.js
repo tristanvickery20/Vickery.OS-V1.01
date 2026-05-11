@@ -31,7 +31,7 @@ const MODULES_LIBRARY = [
   { module_id:"PANEL_LOCATION", question:"Where is the electrical panel relative to the work area?", input_type:"single_select",
     options:[{value:"same_room",label:"Same room",multiplier:1.0},{value:"nearby",label:"Nearby",multiplier:1.1},{value:"far",label:"Far / across the house",multiplier:1.25},{value:"detached",label:"Detached building",disqualify:true},{value:"not_sure",label:"Not sure",multiplier:1.15,uncertain:true}] },
   { module_id:"PANEL_PHOTO", question:"Please upload a photo of your electrical panel (open the inner door).", input_type:"photo", options:[] },
-  { module_id:"WORK_AREA_PHOTOS", question:"Upload 1–3 photos of the work area (helps us confirm the estimate).", input_type:"photo", options:[] },
+  { module_id:"WORK_AREA_PHOTO", question:"Upload 1–3 photos of the work area (helps us confirm the estimate).", input_type:"photo", options:[] },
   { module_id:"EXISTING_POWER_PRESENT", question:"Is there existing power or wiring at the work location?", input_type:"single_select",
     options:[{value:"yes",label:"Yes"},{value:"no",label:"No",multiplier:1.25},{value:"not_sure",label:"Not sure",multiplier:1.15,uncertain:true}] },
   { module_id:"DRYWALL_REPAIR_NEEDED", question:"Are small drywall cuts and patching acceptable?", input_type:"single_select",
@@ -276,14 +276,14 @@ function assignModules(service_name, current_tier, segment) {
   // 1. Troubleshooting / diagnostic
   if (/troubleshoot|flickering|breaker trip|issues/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,UNSAFE_SYMPTOMS,PANEL_PHOTO,TROUBLESHOOTING_SYMPTOM,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"PROPERTY_TYPE,HOME_AGE,UNSAFE_SYMPTOMS,PANEL_PHOTO,TROUBLESHOOTING_SYMPTOM,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 2. Rewiring / heavy commercial
   if (/rewir|transformer|bus duct|heavy machine|fire alarm|\bups\b/.test(n)) {
     const m = isCommercial
-      ? "PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,WORK_AREA_PHOTOS,COMMERCIAL_WORKING_HOURS,COMMERCIAL_CEILING_TYPE,UNCERTAINTY_BUFFER"
-      : "PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER";
+      ? "PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,WORK_AREA_PHOTO,COMMERCIAL_WORKING_HOURS,COMMERCIAL_CEILING_TYPE,UNCERTAINTY_BUFFER"
+      : "PROPERTY_TYPE,HOME_AGE,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER";
     return { tier:"site_visit_required", modules_csv:m };
   }
 
@@ -338,13 +338,13 @@ function assignModules(service_name, current_tier, segment) {
   // 10. EV chargers (before dedicated circuits)
   if (/\bev\b|electric vehicle/.test(n)) {
     return { tier:null,
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,EV_CHARGER_TYPE,EV_HARDWIRE_OR_PLUG,DEDICATED_CIRCUIT_DISTANCE,ROUTE_TYPE,EV_PANEL_CAPACITY,PANEL_AMPERAGE,PANEL_SPACE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"PROPERTY_TYPE,HOME_AGE,EV_CHARGER_TYPE,EV_HARDWIRE_OR_PLUG,DEDICATED_CIRCUIT_DISTANCE,ROUTE_TYPE,EV_PANEL_CAPACITY,PANEL_AMPERAGE,PANEL_SPACE,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 11. Hot tub / pool / spa
   if (/hot tub|pool|spa circuit/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"PROPERTY_TYPE,HOME_AGE,HOT_TUB_POOL_EQUIPMENT,DEDICATED_CIRCUIT_DISTANCE,ROUTE_TYPE,TRENCHING_NEEDED,PANEL_PHOTO,PANEL_SPACE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"PROPERTY_TYPE,HOME_AGE,HOT_TUB_POOL_EQUIPMENT,DEDICATED_CIRCUIT_DISTANCE,ROUTE_TYPE,TRENCHING_NEEDED,PANEL_PHOTO,PANEL_SPACE,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 12. GFCI specifically (before generic outlet rule)
@@ -389,37 +389,37 @@ function assignModules(service_name, current_tier, segment) {
   // 17a. Generator transfer switch / interlock (before generic generator rule)
   if (/transfer switch|interlock/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"PRODUCT_TYPE,PANEL_BRAND,PANEL_SPACE,PANEL_AMPERAGE,DISTANCE_FROM_PANEL,ROOM_LOCATION,VOLTAGE_AMPERAGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"PRODUCT_TYPE,PANEL_BRAND,PANEL_SPACE,PANEL_AMPERAGE,DISTANCE_FROM_PANEL,ROOM_LOCATION,VOLTAGE_AMPERAGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 17b. Generators (standby / backup / hookup)
   if (/generator/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"CUSTOMER_SUPPLIED_MATERIAL,LOAD_TYPE,PANEL_AMPERAGE,PANEL_SPACE,DISTANCE_FROM_PANEL,TRENCHING_NEEDED,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"CUSTOMER_SUPPLIED_MATERIAL,LOAD_TYPE,PANEL_AMPERAGE,PANEL_SPACE,DISTANCE_FROM_PANEL,TRENCHING_NEEDED,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 18a. Code compliance / inspection
   if (/code compliance|code inspect|electrical inspect/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,HOME_AGE,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PANEL_BRAND,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,HOME_AGE,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PANEL_BRAND,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 18b. Fuse box conversion
   if (/fuse box|fuse panel/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"HOME_AGE,UNSAFE_SYMPTOMS,PANEL_AMPERAGE,PANEL_BRAND,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"HOME_AGE,UNSAFE_SYMPTOMS,PANEL_AMPERAGE,PANEL_BRAND,ATTIC_ACCESS,CRAWLSPACE_ACCESS,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 18c. Panel repair / breaker repair
   if (/breaker|panel repair/.test(n) && !/tripping/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,PANEL_BRAND,HOME_AGE,PANEL_SPACE,EXTERIOR_EXPOSURE,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"UNSAFE_SYMPTOMS,ROOM_LOCATION,PANEL_BRAND,HOME_AGE,PANEL_SPACE,EXTERIOR_EXPOSURE,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 18d. Panel upgrade / subpanel / service upgrade
   if (/panel upgrade|subpanel|service upgrade/.test(n)) {
     return { tier:"site_visit_required",
-      modules_csv:"UNSAFE_SYMPTOMS,PANEL_BRAND,PANEL_AMPERAGE,VOLTAGE_AMPERAGE,PROPERTY_TYPE,HOME_AGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"UNSAFE_SYMPTOMS,PANEL_BRAND,PANEL_AMPERAGE,VOLTAGE_AMPERAGE,PROPERTY_TYPE,HOME_AGE,PERMIT_NEEDED,PANEL_PHOTO,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // 18e. Generic panel / breaker fallback
@@ -431,12 +431,12 @@ function assignModules(service_name, current_tier, segment) {
   // 19. Smoke / CO detectors
   if (/smoke|detector|\bco\b/.test(n)) {
     return { tier:null,
-      modules_csv:"SMOKE_TYPE,SERVICE_QUANTITY,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,PRODUCT_TYPE,HOME_AGE,ROOM_LOCATION,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+      modules_csv:"SMOKE_TYPE,SERVICE_QUANTITY,REPLACE_OR_NEW,CEILING_HEIGHT,ATTIC_ACCESS,PRODUCT_TYPE,HOME_AGE,ROOM_LOCATION,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
   }
 
   // Default
   return { tier:null,
-    modules_csv:"PROPERTY_TYPE,HOME_AGE,WORK_AREA_PHOTOS,UNCERTAINTY_BUFFER" };
+    modules_csv:"PROPERTY_TYPE,HOME_AGE,WORK_AREA_PHOTO,UNCERTAINTY_BUFFER" };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
