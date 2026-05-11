@@ -1813,14 +1813,20 @@ if (!process.env.ESTIMATOR_V2_SHEET_ID) {
   );
   process.exit(1);
 }
-// HR_SHEET_ID is required — all HR_* tabs live on the dedicated HR sheet.
+// HR_SHEET_ID startup policy: WARN (not fatal).
+// Rationale: the CRM's core ops (leads, scheduling, invoicing) must remain
+// available even when HR is not yet configured.  HR API routes individually
+// throw when hrSpreadsheetId() is called without a valid ID — those failures
+// are scoped to /api/hr/* and /people/* and do not affect the rest of the app.
+// Once HR_SHEET_ID is set and the server is restarted, the HR module is fully
+// operational.  To promote this back to a fatal check, change console.warn to
+// process.exit(1) and remove this comment block.
 if (!process.env.HR_SHEET_ID) {
-  console.error(
-    "[FATAL] HR_SHEET_ID is not set. The HR module requires a dedicated Google Sheet.\n" +
-    "        Create a new Google Sheet for HR data, share it with the service account,\n" +
-    "        and set HR_SHEET_ID in Replit Secrets, then restart."
+  console.warn(
+    "[WARN] HR_SHEET_ID is not set — HR/People module disabled.\n" +
+    "       Run: node scripts/migrate-hr-sheet.js <SHEET_ID>\n" +
+    "       Then set HR_SHEET_ID in Replit Secrets and restart."
   );
-  process.exit(1);
 }
 
 server.on("error", (err) => {
