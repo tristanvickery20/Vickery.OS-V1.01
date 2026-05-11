@@ -115,16 +115,17 @@ function normalizeLeadSource(v) {
 // Non-fatal: any Sheets error is logged but does not break the quote response.
 async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent }) {
   try {
-    const sheetId  = SPREADSHEET_ID();
-    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Leads!A1:Z2000" });
+    const sheetId    = SPREADSHEET_ID();
+    const cleanPhone = String(phone || "").replace(/\D/g, "");
+
+    // ── 1. Search the Leads tab ──────────────────────────────────────────────
+    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Leads!A1:AZ5000" });
     const rows     = leadsRes.data.values || [];
     const headers  = rows[0] || [];
     const idxOf    = h => headers.indexOf(h);
     const phoneIdx = idxOf("phone");
 
-    // Try to find existing lead by phone (digits-only match)
     let foundRowIdx = -1;
-    const cleanPhone = String(phone || "").replace(/\D/g, "");
     if (cleanPhone) {
       for (let i = 1; i < rows.length; i++) {
         const rPhone = String(rows[i][phoneIdx] || "").replace(/\D/g, "");
@@ -133,7 +134,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
     }
 
     if (foundRowIdx !== -1) {
-      // Update existing lead — set last_quote_id and refresh pricing
+      // Update existing Leads row — set last_quote_id and refresh pricing
       const row = [...(rows[foundRowIdx] || [])];
       while (row.length < headers.length) row.push("");
       const set = (h, v) => { const i = idxOf(h); if (i >= 0) row[i] = v; };
@@ -144,8 +145,8 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       if (!row[idxOf("name")]    && customer_name) set("name",    customer_name);
       if (!row[idxOf("address")] && address)       set("address", address);
       if (lead_source && !row[idxOf("lead_source")]) set("lead_source", normalizeLeadSource(lead_source));
-      if (sms_opt_in)             set("sms_opt_in",             sms_opt_in);
-      if (sms_marketing_consent)  set("sms_marketing_consent",  sms_marketing_consent);
+      if (sms_opt_in)            set("sms_opt_in",            sms_opt_in);
+      if (sms_marketing_consent) set("sms_marketing_consent", sms_marketing_consent);
       const sIdx = idxOf("status");
       if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
       await sheets.spreadsheets.values.update({
@@ -154,34 +155,74 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
         valueInputOption: "RAW",
         requestBody:   { majorDimension: "ROWS", values: [row] },
       });
-      console.log(`[quote/lock] Updated Lead row ${foundRowIdx + 1} last_quote_id=${quote_id}`);
-    } else {
-      // Create new lead
-      const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();
-      const now    = nowIso();
-      const newRow = new Array(Math.max(headers.length, 27)).fill("");
-      const set = (h, v) => { const i = idxOf(h); if (i >= 0) newRow[i] = v; };
-      set("id",              leadId);
-      set("created_at",      now);
-      set("name",            customer_name || "");
-      set("phone",           phone         || "");
-      set("address",         address       || "");
-      set("job_type",        job_type_id   || "");
-      set("estimated_value", String(pricing.final_price || ""));
-      set("status",          "Estimate Sent");
-      set("quoted_price",    String(pricing.final_price || ""));
-      set("pricing_version", pricing.pricing_version || "v2");
-      set("last_quote_id",   quote_id);
-      if (lead_source)            set("lead_source",            normalizeLeadSource(lead_source));
-      if (sms_opt_in)             set("sms_opt_in",             sms_opt_in);
-      if (sms_marketing_consent)  set("sms_marketing_consent",  sms_marketing_consent);
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: sheetId, range: "Leads!A:A",
-        valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
-        requestBody: { majorDimension: "ROWS", values: [newRow] },
-      });
-      console.log(`[quote/lock] Created Lead ${leadId} last_quote_id=${quote_id}`);
+      console.log(`[quote/lock] Updated Leads row ${foundRowIdx + 1} last_quote_id=${quote_id}`);
+      return;
     }
+
+    // ── 2. Not in Leads — check the Clients tab before creating a new row ────
+    // The CRM admin "New Job" form writes to Clients, not Leads. Without this
+    // check, a customer added by staff AND who later submits the public quote
+    // form ends up with two separate records.
+    if (cleanPhone) {
+      const clientsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Clients!A1:AZ5000" });
+      const cRows    = clientsRes.data.values || [];
+      const cHeaders = cRows[0] || [];
+      const cIdx     = h => cHeaders.indexOf(h);
+      const cPhoneI  = cIdx("phone");
+      let cFoundRow  = -1;
+      for (let i = 1; i < cRows.length; i++) {
+        const rPhone = String(cRows[i][cPhoneI] || "").replace(/\D/g, "");
+        if (rPhone === cleanPhone) { cFoundRow = i; break; }
+      }
+      if (cFoundRow !== -1) {
+        // Update the Clients tab row with the new quote info
+        const crow = [...(cRows[cFoundRow] || [])];
+        while (crow.length < cHeaders.length) crow.push("");
+        const cset = (h, v) => { const i = cIdx(h); if (i >= 0) crow[i] = v; };
+        cset("last_quote_id",   quote_id);
+        cset("estimated_value", String(pricing.final_price || ""));
+        cset("quoted_price",    String(pricing.final_price || ""));
+        if (address && !crow[cIdx("address")] && !crow[cIdx("primary_address")]) cset("address", address);
+        if (lead_source && !crow[cIdx("lead_source")]) cset("lead_source", normalizeLeadSource(lead_source));
+        // Clients tab uses status_code; don't overwrite a more advanced status
+        const scIdx = cIdx("status_code");
+        if (scIdx >= 0 && (!crow[scIdx] || crow[scIdx] === "awaiting_response")) crow[scIdx] = "estimate_sent";
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range:         `Clients!A${cFoundRow + 1}`,
+          valueInputOption: "RAW",
+          requestBody:   { majorDimension: "ROWS", values: [crow] },
+        });
+        console.log(`[quote/lock] Updated Clients row ${cFoundRow + 1} (phone match) last_quote_id=${quote_id}`);
+        return;
+      }
+    }
+
+    // ── 3. Genuinely new customer — append to Leads ──────────────────────────
+    const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+    const now    = nowIso();
+    const newRow = new Array(Math.max(headers.length, 27)).fill("");
+    const set = (h, v) => { const i = idxOf(h); if (i >= 0) newRow[i] = v; };
+    set("id",              leadId);
+    set("created_at",      now);
+    set("name",            customer_name || "");
+    set("phone",           phone         || "");
+    set("address",         address       || "");
+    set("job_type",        job_type_id   || "");
+    set("estimated_value", String(pricing.final_price || ""));
+    set("status",          "Estimate Sent");
+    set("quoted_price",    String(pricing.final_price || ""));
+    set("pricing_version", pricing.pricing_version || "v2");
+    set("last_quote_id",   quote_id);
+    if (lead_source)            set("lead_source",            normalizeLeadSource(lead_source));
+    if (sms_opt_in)             set("sms_opt_in",             sms_opt_in);
+    if (sms_marketing_consent)  set("sms_marketing_consent",  sms_marketing_consent);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId, range: "Leads!A:A",
+      valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+      requestBody: { majorDimension: "ROWS", values: [newRow] },
+    });
+    console.log(`[quote/lock] Created Lead ${leadId} last_quote_id=${quote_id}`);
   } catch (err) {
     console.error("[quote/lock/upsertLead]", err.message);
   }
