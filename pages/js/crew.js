@@ -1574,7 +1574,7 @@ function openJobDetail(j) {
               const qty  = m.quantity || 1;
               let name   = String(m.name || m.material_name || "").trim();
               if (qty > 1 && name && !/s$/i.test(name)) name += "s";
-              return `<div class="jd-pull-row">${qty} ${name}</div>`;
+              return `<div class="jd-pull-row">${esc(String(qty))} ${esc(name)}</div>`;
             }).join("");
           }
         })
