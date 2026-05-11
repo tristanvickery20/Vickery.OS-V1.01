@@ -127,25 +127,28 @@
       .ld-msg.err { background: hsl(0 70% 94%); color: hsl(0 70% 35%); }
       html.dark .ld-msg.ok { background: hsl(142 40% 12%); color: hsl(142 50% 70%); }
 
-      /* ── Related-jobs accordion ─────────────────────────────────────── */
-      .rj-acc { border: 1px solid hsl(var(--border)); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
-      .rj-hdr { display: flex; align-items: center; gap: 10px; padding: 13px 16px; cursor: pointer;
-                background: transparent; border: none; width: 100%; text-align: left;
-                font-family: var(--font-body); font-size: 14px; font-weight: 600;
-                color: hsl(var(--foreground)); transition: background .15s; }
-      .rj-hdr:hover { background: hsl(var(--muted) / 0.5); }
-      .rj-hdr-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .rj-chevron { color: hsl(var(--muted-foreground)); font-size: 11px; flex-shrink: 0;
-                    transition: transform .22s ease; display: inline-block; }
-      .rj-hdr.open .rj-chevron { transform: rotate(180deg); }
-      .rj-body { max-height: 0; overflow: hidden; opacity: 0;
-                 transition: max-height .25s ease, opacity .2s ease, padding .2s ease; padding: 0 16px; }
-      .rj-body.open { max-height: 400px; opacity: 1; padding: 12px 16px 14px;
-                      border-top: 1px solid hsl(var(--border)); }
-      .rj-row { display: flex; justify-content: space-between; gap: 8px;
-                padding: 5px 0; font-size: 13px; }
-      .rj-row-label { color: hsl(var(--muted-foreground)); flex-shrink: 0; }
-      .rj-row-val { font-weight: 600; text-align: right; }
+      /* ── Job accordion (current + related jobs) ─────────────────────── */
+      .ld-job-acc { margin-bottom: 12px; }
+      .ld-job-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                    padding: 14px 20px; cursor: pointer; background: hsl(var(--card));
+                    border: 1px solid hsl(var(--border)); border-radius: 12px;
+                    font-family: var(--font-display); font-size: 15px; font-weight: 800;
+                    color: hsl(var(--foreground)); transition: background .15s;
+                    width: 100%; text-align: left; }
+      .ld-job-hdr.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+      .ld-job-hdr:hover { background: hsl(var(--muted) / 0.4); }
+      .ld-job-hdr-left { flex: 1; min-width: 0; }
+      .ld-job-hdr-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ld-job-hdr-meta { font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground));
+                         margin-top: 2px; font-family: var(--font-body); }
+      .ld-job-chevron { font-size: 11px; color: hsl(var(--muted-foreground)); flex-shrink: 0;
+                        transition: transform .22s ease; display: inline-block; }
+      .ld-job-hdr.is-open .ld-job-chevron { transform: rotate(180deg); }
+      .ld-job-body { display: none; border: 1px solid hsl(var(--border)); border-top: none;
+                     border-radius: 0 0 12px 12px; padding: 16px; }
+      .ld-job-body.is-open { display: block; }
+      .ld-job-body .ld-card { margin-bottom: 12px; border-radius: 10px; }
+      .ld-job-body .ld-card:last-child { margin-bottom: 0; }
       html.dark .ld-msg.err { background: hsl(0 60% 14%); color: hsl(0 70% 70%); }
 
       .ld-loading { padding: 48px; text-align: center; color: hsl(var(--muted-foreground)); font-size: 14px; }

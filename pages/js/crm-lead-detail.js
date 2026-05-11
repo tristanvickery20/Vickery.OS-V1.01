@@ -94,10 +94,13 @@
     const profit = Number(lead.gross_profit || 0);
     const margin = lead.gross_margin_pct != null ? lead.gross_margin_pct + '%' : '—';
     const profitColor = profit < 0 ? 'hsl(0,70%,50%)' : profit > 0 ? 'hsl(142,50%,40%)' : '';
-
     const balance = Math.max(0, Number(lead.quoted_price || 0) - Number(lead.paid_amount || 0));
-
     const hasQuoteId = !!lead.last_quote_id;
+    const jobTitle = lead.job_description || lead.job_type || '(No description)';
+    const jobMeta = [
+      lead.job_number ? 'Job #' + lead.job_number : '',
+      fmtDate(lead.created_at) !== '—' ? 'Added ' + fmtDate(lead.created_at) : '',
+    ].filter(Boolean).join(' · ');
 
     root.innerHTML = `
       <div class="ld-hero">
@@ -106,11 +109,9 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </div>
           <div>
-            <div class="ld-hero-name">${esc(lead.name || 'Unnamed Lead')} ${badge(status)}</div>
+            <div class="ld-hero-name">${esc(lead.name || 'Unnamed Lead')}</div>
             <div class="ld-hero-sub">
-              ${lead.job_number ? `Job ${esc(lead.job_number)} &bull; ` : ''}
-              ${lead.lead_id ? `ID ${esc(lead.lead_id)} &bull; ` : `ID ${esc(lead.id)} &bull; `}
-              Added ${fmtDate(lead.created_at)}
+              ${lead.lead_id ? `ID ${esc(lead.lead_id)}` : `ID ${esc(lead.id)}`}
             </div>
           </div>
         </div>
@@ -121,137 +122,154 @@
         </div>
       </div>
 
-      <div class="ld-grid">
+      <!-- Contact Card — always visible -->
+      <div class="ld-card" style="margin-bottom:12px;">
+        <div class="ld-card-title">Contact Info</div>
+        ${fieldRow('Name', lead.name)}
+        ${fieldRow('Phone', cleanPhone(lead.phone))}
+        ${fieldRow('Email', stripHtml(lead.email))}
+        ${fieldRow('Address', lead.address)}
+        ${fieldRow('SMS Opt-in', lead.sms_opt_in === 'true' ? 'Yes' : lead.sms_opt_in === 'false' ? 'No' : '—')}
+      </div>
 
-        <!-- LEFT COLUMN -->
-        <div class="ld-left">
-
-          <!-- Contact Info -->
-          <div class="ld-card">
-            <div class="ld-card-title">Contact Info</div>
-            ${fieldRow('Name', lead.name)}
-            ${fieldRow('Phone', cleanPhone(lead.phone))}
-            ${fieldRow('Email', stripHtml(lead.email))}
-            ${fieldRow('Address', lead.address)}
-            ${fieldRow('SMS Opt-in', lead.sms_opt_in === 'true' ? 'Yes' : lead.sms_opt_in === 'false' ? 'No' : '—')}
+      <!-- Current Job Accordion — open by default -->
+      <div class="ld-job-acc">
+        <button class="ld-job-hdr is-open" id="ldCurrentJobHdr" type="button">
+          <div class="ld-job-hdr-left">
+            <div class="ld-job-hdr-title">${esc(jobTitle)}</div>
+            ${jobMeta ? `<div class="ld-job-hdr-meta">${esc(jobMeta)} &bull; ${badge(status)}</div>` : ''}
           </div>
+          <span class="ld-job-chevron">&#9660;</span>
+        </button>
+        <div class="ld-job-body is-open" id="ldCurrentJobBody">
 
-          <!-- Job Details -->
-          <div class="ld-card">
-            <div class="ld-card-title">Job Details</div>
-            ${fieldRow('Job Number', lead.job_number)}
-            ${fieldRow('Quoted Price', lead.quoted_price > 0 ? fmt$(lead.quoted_price) : '—')}
-            ${fieldRow('Quote Version', lead.pricing_version)}
-            ${fieldRow('Last Quote ID', lead.last_quote_id)}
-            ${fieldRow('Job Description', lead.job_description || lead.notes)}
-          </div>
+          <div class="ld-grid">
 
-          <!-- Scheduling -->
-          <div class="ld-card">
-            <div class="ld-card-title">Scheduling
-              <div class="ld-card-title-actions">
-                <button class="ld-btn" id="ldEditScheduleBtn" style="padding:4px 10px;font-size:12px;">Edit</button>
+            <!-- LEFT COLUMN -->
+            <div class="ld-left">
+
+              <!-- Job Details -->
+              <div class="ld-card">
+                <div class="ld-card-title">Job Details</div>
+                ${fieldRow('Job Number', lead.job_number)}
+                ${fieldRow('Quoted Price', lead.quoted_price > 0 ? fmt$(lead.quoted_price) : '—')}
+                ${fieldRow('Quote Version', lead.pricing_version)}
+                ${fieldRow('Last Quote ID', lead.last_quote_id)}
+                ${fieldRow('Job Description', lead.job_description || lead.notes)}
               </div>
-            </div>
-            ${fieldRow('Scheduled Date', fmtDate(lead.scheduled_date))}
-            ${fieldRow('Time Window', lead.schedule_window)}
-            ${fieldRow('Preference', lead.schedule_preference)}
-            ${fieldRow('Duration', lead.duration_minutes > 0 ? lead.duration_minutes + ' min' : '—')}
-            ${fieldRow('Assigned To', lead.assigned_to)}
-          </div>
 
-          <!-- Notes -->
-          <div class="ld-card">
-            <div class="ld-card-title">
-              Notes
-              <div class="ld-card-title-actions">
-                <button class="ld-btn" id="ldEditNotesBtn" style="padding:4px 10px;font-size:12px;">Edit</button>
+              <!-- Scheduling -->
+              <div class="ld-card">
+                <div class="ld-card-title">Scheduling
+                  <div class="ld-card-title-actions">
+                    <button class="ld-btn" id="ldEditScheduleBtn" style="padding:4px 10px;font-size:12px;">Edit</button>
+                  </div>
+                </div>
+                ${fieldRow('Scheduled Date', fmtDate(lead.scheduled_date))}
+                ${fieldRow('Time Window', lead.schedule_window)}
+                ${fieldRow('Preference', lead.schedule_preference)}
+                ${fieldRow('Duration', lead.duration_minutes > 0 ? lead.duration_minutes + ' min' : '—')}
+                ${fieldRow('Assigned To', lead.assigned_to)}
               </div>
+
+              <!-- Notes -->
+              <div class="ld-card">
+                <div class="ld-card-title">Notes
+                  <div class="ld-card-title-actions">
+                    <button class="ld-btn" id="ldEditNotesBtn" style="padding:4px 10px;font-size:12px;">Edit</button>
+                  </div>
+                </div>
+                <div id="ldNotesDisplay">
+                  ${lead.notes
+                    ? `<div class="ld-notes-text">${esc(lead.notes)}</div>`
+                    : `<div class="ld-notes-empty">No notes yet.</div>`}
+                </div>
+                <textarea class="ld-notes-editor" id="ldNotesEditor" rows="4" placeholder="Add notes…">${esc(lead.notes || '')}</textarea>
+                <div class="ld-msg" id="ldNoteMsg"></div>
+              </div>
+
+              ${hasQuoteId ? `
+              <div class="ld-card" id="ldMaterialsCard">
+                <div class="ld-card-title">Estimated Materials</div>
+                <div class="ld-materials-helper">Preliminary pull list based on quote answers. Verify before dispatch.</div>
+                <div id="ldMaterialsContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading materials…</div>
+              </div>
+
+              <div class="ld-card" id="ldSnapshotCard">
+                <div class="ld-card-title">Quote Breakdown</div>
+                <div id="ldSnapshotContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading answers…</div>
+              </div>` : ''}
+
             </div>
-            <div id="ldNotesDisplay">
-              ${lead.notes
-                ? `<div class="ld-notes-text">${esc(lead.notes)}</div>`
-                : `<div class="ld-notes-empty">No notes yet.</div>`}
+
+            <!-- RIGHT COLUMN -->
+            <div class="ld-right">
+
+              <!-- Status -->
+              <div class="ld-card">
+                <div class="ld-card-title">Status</div>
+                <select class="ld-status-select" id="ldStatusSelect">${statusOptions(status)}</select>
+                <div class="ld-msg" id="ldStatusMsg"></div>
+              </div>
+
+              <!-- Financials -->
+              <div class="ld-card">
+                <div class="ld-card-title">Financials</div>
+                <div class="ld-fin-grid">
+                  ${finItem('Quoted', fmt$(lead.quoted_price))}
+                  ${finItem('Invoiced', fmt$(lead.invoiced_amount))}
+                  ${finItem('Paid', fmt$(lead.paid_amount))}
+                  ${finItem('Balance Due', fmt$(balance), { color: balance > 0 ? 'hsl(38,80%,40%)' : '' })}
+                  ${finItem('Labor Cost', fmt$(lead.labor_cost))}
+                  ${finItem('Expense Cost', fmt$(lead.expense_cost))}
+                  ${finItem('Total Cost', fmt$(lead.total_cost))}
+                  ${finItem('Gross Profit', fmt$(lead.gross_profit), { color: profitColor })}
+                </div>
+                ${lead.gross_margin_pct != null ? `
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border));display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:13px;color:hsl(var(--muted-foreground));">Gross Margin</span>
+                  <span style="font-size:18px;font-weight:800;font-family:var(--font-display);color:${profitColor};">${margin}</span>
+                </div>` : ''}
+              </div>
+
+              <!-- Billing -->
+              <div class="ld-card">
+                <div class="ld-card-title">Billing</div>
+                ${fieldRow('Deposit Received', lead.deposit_received > 0 ? fmt$(lead.deposit_received) : '—')}
+                ${fieldRow('Invoice Date', fmtDate(lead.invoice_date))}
+                ${fieldRow('Paid Date', fmtDate(lead.paid_date))}
+                ${fieldRow('Deposit Override', lead.deposit_override ? 'Yes' : '—')}
+              </div>
+
+              <!-- Invoicing -->
+              <div class="ld-card" id="ldInvoiceCard">
+                <div class="ld-card-title">Invoicing</div>
+                <div id="ldInvoiceContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+              </div>
+
+              <!-- Bonus Eligibility -->
+              <div class="ld-card" id="ldBonusCard">
+                <div class="ld-card-title">Bonus Eligibility</div>
+                <div id="ldBonusContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+              </div>
+
             </div>
-            <textarea class="ld-notes-editor" id="ldNotesEditor" rows="4" placeholder="Add notes…">${esc(lead.notes || '')}</textarea>
-            <div class="ld-msg" id="ldNoteMsg"></div>
-          </div>
-
-          <!-- Other jobs for this customer (populated by loadRelatedJobs) -->
-          <div class="ld-card" id="ldRelatedJobsCard" style="display:none;">
-            <div class="ld-card-title">Other jobs for this customer</div>
-            <div id="ldRelatedJobsContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
-          </div>
-
-          ${hasQuoteId ? `
-          <div class="ld-card" id="ldMaterialsCard">
-            <div class="ld-card-title">Estimated Materials</div>
-            <div class="ld-materials-helper">Preliminary pull list based on quote answers. Verify before dispatch.</div>
-            <div id="ldMaterialsContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading materials…</div>
-          </div>
-
-          <!-- Quote Breakdown -->
-          <div class="ld-card" id="ldSnapshotCard">
-            <div class="ld-card-title">Quote Breakdown</div>
-            <div id="ldSnapshotContent" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading answers…</div>
-          </div>` : ''}
-
-        </div>
-
-        <!-- RIGHT COLUMN -->
-        <div class="ld-right">
-
-          <!-- Status -->
-          <div class="ld-card">
-            <div class="ld-card-title">Status</div>
-            <select class="ld-status-select" id="ldStatusSelect">${statusOptions(status)}</select>
-            <div class="ld-msg" id="ldStatusMsg"></div>
-          </div>
-
-          <!-- Financial Summary -->
-          <div class="ld-card">
-            <div class="ld-card-title">Financials</div>
-            <div class="ld-fin-grid">
-              ${finItem('Quoted', fmt$(lead.quoted_price))}
-              ${finItem('Invoiced', fmt$(lead.invoiced_amount))}
-              ${finItem('Paid', fmt$(lead.paid_amount))}
-              ${finItem('Balance Due', fmt$(balance), { color: balance > 0 ? 'hsl(38,80%,40%)' : '' })}
-              ${finItem('Labor Cost', fmt$(lead.labor_cost))}
-              ${finItem('Expense Cost', fmt$(lead.expense_cost))}
-              ${finItem('Total Cost', fmt$(lead.total_cost))}
-              ${finItem('Gross Profit', fmt$(lead.gross_profit), { color: profitColor })}
-            </div>
-            ${lead.gross_margin_pct != null ? `
-            <div style="margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border));display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:13px;color:hsl(var(--muted-foreground));">Gross Margin</span>
-              <span style="font-size:18px;font-weight:800;font-family:var(--font-display);color:${profitColor};">${margin}</span>
-            </div>` : ''}
-          </div>
-
-          <!-- Billing -->
-          <div class="ld-card">
-            <div class="ld-card-title">Billing</div>
-            ${fieldRow('Deposit Received', lead.deposit_received > 0 ? fmt$(lead.deposit_received) : '—')}
-            ${fieldRow('Invoice Date', fmtDate(lead.invoice_date))}
-            ${fieldRow('Paid Date', fmtDate(lead.paid_date))}
-            ${fieldRow('Deposit Override', lead.deposit_override ? 'Yes' : '—')}
-          </div>
-
-          <!-- Invoicing (populated by loadLeadInvoice) -->
-          <div class="ld-card" id="ldInvoiceCard">
-            <div class="ld-card-title">Invoicing</div>
-            <div id="ldInvoiceContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
-          </div>
-
-          <!-- Bonus Eligibility (populated by loadBonusPanel) -->
-          <div class="ld-card" id="ldBonusCard">
-            <div class="ld-card-title">Bonus Eligibility</div>
-            <div id="ldBonusContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
           </div>
 
         </div>
       </div>
+
+      <!-- Related jobs inserted here by loadRelatedJobs() -->
+      <div id="ldRelatedJobsWrap"></div>
     `;
+
+    // Wire current job accordion toggle
+    document.getElementById('ldCurrentJobHdr').addEventListener('click', () => {
+      const hdr  = document.getElementById('ldCurrentJobHdr');
+      const body = document.getElementById('ldCurrentJobBody');
+      hdr.classList.toggle('is-open');
+      body.classList.toggle('is-open');
+    });
 
     attachEvents(lead);
     if (hasQuoteId) {
@@ -263,8 +281,8 @@
     loadRelatedJobs(lead);
   }
 
-  async function loadSnapshot(quoteId) {
-    const el = document.getElementById('ldSnapshotContent');
+  async function loadSnapshot(quoteId, targetEl) {
+    const el = targetEl || document.getElementById('ldSnapshotContent');
     if (!el) return;
     try {
       const data = await window.Api.fetchJson('/api/lead-snapshot?quote_id=' + encodeURIComponent(quoteId));
@@ -341,8 +359,8 @@
     }
   }
 
-  async function loadMaterials(leadId) {
-    const el = document.getElementById('ldMaterialsContent');
+  async function loadMaterials(leadId, targetEl) {
+    const el = targetEl || document.getElementById('ldMaterialsContent');
     if (!el || !leadId) return;
     try {
       const data = await window.Api.fetchJson('/api/leads/' + encodeURIComponent(leadId) + '/materials');
@@ -516,8 +534,8 @@
     return `<button class="ld-btn${style ? ' ld-btn-' + style : ''}" data-inv-action="${id}" style="font-size:12px;padding:6px 12px;">${esc(label)}</button>`;
   }
 
-  async function loadLeadInvoice(lid, lead) {
-    const el = document.getElementById('ldInvoiceContent');
+  async function loadLeadInvoice(lid, lead, targetEl) {
+    const el = targetEl || document.getElementById('ldInvoiceContent');
     if (!el || !lid) return;
     try {
       const data = await window.Api.fetchJson('/api/invoices?lead_id=' + encodeURIComponent(lid));
@@ -740,8 +758,8 @@
     };
   }
 
-  async function loadBonusPanel(lid) {
-    const el = document.getElementById('ldBonusContent');
+  async function loadBonusPanel(lid, targetEl) {
+    const el = targetEl || document.getElementById('ldBonusContent');
     if (!el || !lid) return;
     try {
       const d = await window.Api.fetchJson('/api/bonus-eligibility?lead_id=' + encodeURIComponent(lid));
@@ -843,91 +861,167 @@
   }
 
   async function loadRelatedJobs(lead) {
-    const card = document.getElementById('ldRelatedJobsCard');
-    const el   = document.getElementById('ldRelatedJobsContent');
-    if (!card || !el) return;
+    const wrap = document.getElementById('ldRelatedJobsWrap');
+    if (!wrap) return;
 
     const rawPhone = (lead.phone || '').replace(/\D/g, '');
     if (!rawPhone) return;
 
-    const currentId  = String(lead.id || lead.lead_id || '');
-    const clientName = esc(lead.name || lead.customer_name || '');
+    const currentId = String(lead.id || lead.lead_id || '');
 
     try {
       const data = await window.Api.fetchJson('/api/leads?phone=' + encodeURIComponent(rawPhone));
       const others = (data.leads || []).filter(l =>
         String(l.id || l.lead_id || '') !== currentId
       );
-
       if (!others.length) return;
-      card.style.display = '';
 
-      const accItems = others.map((j, i) => {
-        const jId    = j.id || j.lead_id || '';
-        const desc   = j.job_description || j.notes || j.job_type || '—';
-        const status = j.status_code || j.status || '';
-        const sc     = STATUS_COLORS[status] || { bg: 'hsl(220 15% 20%)', color: 'hsl(220 15% 70%)' };
-        const slabel = STATUS_LABELS[status] || status || 'Unknown';
-        const val    = Number(j.quoted_price || j.estimated_value || 0);
-        const valStr = val > 0 ? fmt$(val) : '';
+      others.forEach((j, idx) => {
+        const jId      = j.id || j.lead_id || '';
+        const jStatus  = j.status_code || j.status || '';
+        const jDesc    = j.job_description || j.job_type || '(No description)';
+        const jDate    = fmtDate(j.created_at);
+        const jMeta    = [
+          j.job_number ? 'Job #' + j.job_number : '',
+          jDate !== '—' ? 'Added ' + jDate : '',
+        ].filter(Boolean).join(' · ');
+        const jVal     = Number(j.quoted_price || j.estimated_value || 0);
+        const jBalance = Math.max(0, jVal - Number(j.paid_amount || 0));
+        const jProfit  = Number(j.gross_profit || 0);
+        const jProfitColor = jProfit < 0 ? 'hsl(0,70%,50%)' : jProfit > 0 ? 'hsl(142,50%,40%)' : '';
+        const jMargin  = j.gross_margin_pct != null ? j.gross_margin_pct + '%' : '—';
+        const hasQ     = !!j.last_quote_id;
 
-        // Short date: "May 5" format
-        const shortDate = (() => {
-          if (!j.created_at) return '';
-          const d = new Date(j.created_at);
-          if (isNaN(d)) return '';
-          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        })();
+        const bodyHtml = `
+          <div class="ld-grid">
+            <div class="ld-left">
 
-        const shortDesc = desc.length > 40 ? desc.slice(0, 38) + '…' : desc;
-        const bulletParts = [clientName, shortDate, shortDesc].filter(Boolean);
-        const summaryText = bulletParts.join(' • ');
+              <div class="ld-card">
+                <div class="ld-card-title">Job Details</div>
+                ${fieldRow('Job Number', j.job_number)}
+                ${fieldRow('Quoted Price', jVal > 0 ? fmt$(jVal) : '—')}
+                ${fieldRow('Quote Version', j.pricing_version)}
+                ${fieldRow('Last Quote ID', j.last_quote_id)}
+                ${fieldRow('Job Description', j.job_description || j.notes)}
+              </div>
 
-        const bodyHtml =
-          `<div class="rj-row">
-             <span class="rj-row-label">Status</span>
-             <span class="rj-row-val">
-               <span style="display:inline-block;padding:2px 9px;border-radius:20px;
-                            font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
-                            background:${sc.bg};color:${sc.color};">${esc(slabel)}</span>
-             </span>
-           </div>` +
-          (valStr ? `<div class="rj-row"><span class="rj-row-label">Value</span><span class="rj-row-val">${esc(valStr)}</span></div>` : '') +
-          (j.notes && j.notes !== desc ? `<div class="rj-row"><span class="rj-row-label">Notes</span><span class="rj-row-val" style="max-width:180px;white-space:normal;word-break:break-word;text-align:right;">${esc(j.notes)}</span></div>` : '') +
-          (jId ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid hsl(var(--border));">
-                    <a href="/crm/lead?id=${encodeURIComponent(jId)}"
-                       style="display:inline-block;padding:7px 16px;border-radius:9px;
-                              background:hsl(var(--primary));color:#fff;font-size:13px;
-                              font-weight:600;text-decoration:none;">Open job →</a>
-                  </div>` : '');
+              <div class="ld-card">
+                <div class="ld-card-title">Scheduling</div>
+                ${fieldRow('Scheduled Date', fmtDate(j.scheduled_date))}
+                ${fieldRow('Time Window', j.schedule_window)}
+                ${fieldRow('Preference', j.schedule_preference)}
+                ${fieldRow('Duration', j.duration_minutes > 0 ? j.duration_minutes + ' min' : '—')}
+                ${fieldRow('Assigned To', j.assigned_to)}
+              </div>
 
-        return `
-          <div class="rj-acc">
-            <button class="rj-hdr" data-rj-idx="${i}" type="button">
-              <span class="rj-hdr-text">${summaryText}</span>
-              <span class="rj-chevron">&#9660;</span>
-            </button>
-            <div class="rj-body">${bodyHtml}</div>
+              <div class="ld-card">
+                <div class="ld-card-title">Notes</div>
+                ${j.notes
+                  ? `<div class="ld-notes-text">${esc(j.notes)}</div>`
+                  : `<div class="ld-notes-empty">No notes.</div>`}
+              </div>
+
+              ${hasQ ? `
+              <div class="ld-card">
+                <div class="ld-card-title">Estimated Materials</div>
+                <div class="ld-materials-helper">Preliminary pull list. Verify before dispatch.</div>
+                <div id="rjMat-${idx}" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading…</div>
+              </div>
+              <div class="ld-card">
+                <div class="ld-card-title">Quote Breakdown</div>
+                <div id="rjSnap-${idx}" style="padding:8px 0;color:hsl(var(--muted-foreground));font-size:13px;">Loading…</div>
+              </div>` : ''}
+
+            </div>
+            <div class="ld-right">
+
+              <div class="ld-card">
+                <div class="ld-card-title">Status</div>
+                ${badge(jStatus)}
+              </div>
+
+              <div class="ld-card">
+                <div class="ld-card-title">Financials</div>
+                <div class="ld-fin-grid">
+                  ${finItem('Quoted', fmt$(jVal))}
+                  ${finItem('Invoiced', fmt$(j.invoiced_amount))}
+                  ${finItem('Paid', fmt$(j.paid_amount))}
+                  ${finItem('Balance Due', fmt$(jBalance), { color: jBalance > 0 ? 'hsl(38,80%,40%)' : '' })}
+                  ${finItem('Labor Cost', fmt$(j.labor_cost))}
+                  ${finItem('Expense Cost', fmt$(j.expense_cost))}
+                  ${finItem('Total Cost', fmt$(j.total_cost))}
+                  ${finItem('Gross Profit', fmt$(j.gross_profit), { color: jProfitColor })}
+                </div>
+                ${j.gross_margin_pct != null ? `
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border));display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:13px;color:hsl(var(--muted-foreground));">Gross Margin</span>
+                  <span style="font-size:18px;font-weight:800;font-family:var(--font-display);color:${jProfitColor};">${jMargin}</span>
+                </div>` : ''}
+              </div>
+
+              <div class="ld-card">
+                <div class="ld-card-title">Billing</div>
+                ${fieldRow('Deposit Received', j.deposit_received > 0 ? fmt$(j.deposit_received) : '—')}
+                ${fieldRow('Invoice Date', fmtDate(j.invoice_date))}
+                ${fieldRow('Paid Date', fmtDate(j.paid_date))}
+              </div>
+
+              <div class="ld-card">
+                <div class="ld-card-title">Invoicing</div>
+                <div id="rjInv-${idx}" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading…</div>
+              </div>
+
+              <div class="ld-card">
+                <div class="ld-card-title">Bonus Eligibility</div>
+                <div id="rjBonus-${idx}" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading…</div>
+              </div>
+
+            </div>
+          </div>
+
+          <div style="margin-top:12px;text-align:right;">
+            <a href="/crm/lead?id=${encodeURIComponent(jId)}"
+               style="display:inline-block;padding:8px 18px;border-radius:9px;
+                      background:hsl(var(--primary));color:#fff;font-size:13px;
+                      font-weight:600;text-decoration:none;">Open full detail →</a>
           </div>`;
-      });
 
-      el.innerHTML = accItems.join('') +
-        `<div style="font-size:11px;color:hsl(var(--muted-foreground));margin-top:4px;">
-           ${others.length} other job${others.length !== 1 ? 's' : ''} on file for this phone number
-         </div>`;
+        const accEl = document.createElement('div');
+        accEl.className = 'ld-job-acc';
+        accEl.innerHTML = `
+          <button class="ld-job-hdr" type="button">
+            <div class="ld-job-hdr-left">
+              <div class="ld-job-hdr-title">${esc(jDesc)}</div>
+              ${jMeta ? `<div class="ld-job-hdr-meta">${esc(jMeta)} &bull; ${badge(jStatus)}</div>` : ''}
+            </div>
+            <span class="ld-job-chevron">&#9660;</span>
+          </button>
+          <div class="ld-job-body">${bodyHtml}</div>`;
 
-      // Wire accordion toggles
-      el.querySelectorAll('.rj-hdr').forEach(hdr => {
+        wrap.appendChild(accEl);
+
+        // wire toggle
+        const hdr  = accEl.querySelector('.ld-job-hdr');
+        const body = accEl.querySelector('.ld-job-body');
+        let loaded = false;
         hdr.addEventListener('click', () => {
-          const body = hdr.nextElementSibling;
-          if (!body) return;
-          const isOpen = body.classList.toggle('open');
-          hdr.classList.toggle('open', isOpen);
+          const opening = !body.classList.contains('is-open');
+          hdr.classList.toggle('is-open');
+          body.classList.toggle('is-open');
+          if (opening && !loaded) {
+            loaded = true;
+            if (hasQ) {
+              loadMaterials(jId, document.getElementById('rjMat-' + idx));
+              loadSnapshot(j.last_quote_id, document.getElementById('rjSnap-' + idx));
+            }
+            loadLeadInvoice(jId, j, document.getElementById('rjInv-' + idx));
+            loadBonusPanel(jId, document.getElementById('rjBonus-' + idx));
+          }
         });
       });
 
     } catch (err) {
-      el.innerHTML = `<span style="color:hsl(0,70%,50%);">Could not load: ${esc(err.message)}</span>`;
+      wrap.innerHTML = `<p style="color:hsl(0,70%,50%);font-size:13px;">Could not load other jobs: ${esc(err.message)}</p>`;
     }
   }
 
