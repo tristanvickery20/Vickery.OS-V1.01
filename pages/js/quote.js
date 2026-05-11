@@ -567,6 +567,56 @@ function _nameSim(a, b) {
   return score / Math.max(wa.size, wb.size);
 }
 
+// ── Module blocklist for enrichConfigWithModules ──────────────────────────────
+// Module IDs that should ONLY appear for lighting and ceiling-fan services.
+// Any fuzzy match that assigns these to an unrelated service (e.g. a breaker job
+// scoring ≥ 0.52 against a lighting service) will have them stripped out.
+const _LIGHTING_FAN_ONLY_MODULES = new Set([
+  "CEILING_HT", "CEILING_HEIGHT",
+  "ATTIC_ACCESS",
+  "EXISTING_BOX",
+  "FAN_EXISTING_WIRING",
+]);
+
+// Module IDs that must not appear for panel or diagnostic services.
+const _NO_PANEL_DIAG_MODULES = new Set([
+  "DEDICATED_CIRCUIT_DISTANCE", "DISTANCE_FROM_PANEL",
+]);
+
+// Assembly-ID → broad category (mirrors server-side SERVICE_TO_CATEGORY).
+// Used only for the blocklist filter; unknown IDs are left as-is (safe default).
+const _JT_CATEGORY = {
+  // Lighting / fan — LIGHTING_FAN_ONLY_MODULES are ALLOWED here
+  A001: "LIGHTING", A003: "LIGHTING", A005: "LIGHTING",
+  A006: "LIGHTING", A007: "LIGHTING",
+  A004: "FAN",
+  // Outlets / switches
+  A008: "SWITCH", A011: "OUTLET", A012: "OUTLET", A014: "SWITCH",
+  // Circuits & wiring
+  A015: "WIRING", A016: "WIRING", A017: "CIRCUIT",
+  A025: "CIRCUIT", A029: "CIRCUIT",
+  // Panel / breaker
+  A019: "PANEL", A020: "PANEL", A021: "PANEL",
+  A022: "PANEL", A023: "PANEL", A024: "PANEL",
+  // EV charger
+  A028: "EV",
+  // Diagnostics
+  A010: "DIAGNOSTICS", A018: "DIAGNOSTICS", A030: "DIAGNOSTICS",
+  // Generators
+  A026: "GENERATOR", A027: "GENERATOR", A053: "GENERATOR",
+  // Commercial
+  A034: "COMMERCIAL", A036: "COMMERCIAL", A037: "COMMERCIAL",
+  A040: "COMMERCIAL", A046: "COMMERCIAL",
+  // Other
+  A031: "OTHER",
+};
+
+// Lighting / fan categories that may keep LIGHTING_FAN_ONLY_MODULES.
+const _LIGHTING_FAN_CATS = new Set(["LIGHTING", "FAN"]);
+// Panel / diagnostic categories that must not have circuit-distance modules.
+const _PANEL_DIAG_CATS   = new Set(["PANEL", "DIAGNOSTICS", "GENERATOR",
+                                     "WIRING", "COMMERCIAL", "OTHER"]);
+
 function enrichConfigWithModules(config, est) {
   if (!est?.services || !est?.modules) return;
   const modMap = est.modules;
@@ -582,11 +632,33 @@ function enrichConfigWithModules(config, est) {
     }
     if (!best || bestSim < 0.52 || !best.modules?.length) continue;
 
+    // Determine the service category for blocklist enforcement.
+    // jt.category comes from the Assemblies sheet (e.g. "Lighting & Fans").
+    // Fall back to the hardcoded assembly map for V2 IDs.
+    const jtCatRaw  = (jt.category || "").toLowerCase();
+    let   jtCat     = _JT_CATEGORY[jt.job_type_id] || null;
+    if (!jtCat) {
+      if (jtCatRaw.includes("light") || jtCatRaw.includes("fan"))  jtCat = "LIGHTING";
+      else if (jtCatRaw.includes("outlet") || jtCatRaw.includes("switch")) jtCat = "OUTLET";
+      else if (jtCatRaw.includes("panel") || jtCatRaw.includes("breaker")) jtCat = "PANEL";
+      else if (jtCatRaw.includes("ev") || jtCatRaw.includes("charger"))    jtCat = "EV";
+      else if (jtCatRaw.includes("diagnos") || jtCatRaw.includes("troubleshoot")) jtCat = "DIAGNOSTICS";
+    }
+    const isLightingFan  = _LIGHTING_FAN_CATS.has(jtCat);
+    const isPanelOrDiag  = _PANEL_DIAG_CATS.has(jtCat);
+
     const questions = [];
     for (const mid of best.modules) {
       if (mid === "UNCERTAINTY_BUFFER") continue;
       const m = modMap[mid];
       if (!m) continue;
+
+      // ── Blocklist enforcement ───────────────────────────────────────────────
+      // Strip ceiling/attic/fan-wiring modules from non-lighting/fan services.
+      if (!isLightingFan && _LIGHTING_FAN_ONLY_MODULES.has(m.module_id)) continue;
+      // Strip circuit-distance modules from panel/diagnostic/generator services.
+      if (isPanelOrDiag  && _NO_PANEL_DIAG_MODULES.has(m.module_id))     continue;
+
       questions.push({
         question_id: m.module_id,
         prompt:      m.question,
