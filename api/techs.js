@@ -1,4 +1,5 @@
 const { getSheetsClient } = require("../lib/sheets");
+const { hrSpreadsheetId } = require("../lib/hrSheetClient");
 
 function mapRowToTech(row) {
   const [id, name, active] = row;
@@ -12,7 +13,7 @@ function mapRowToTech(row) {
 async function handleGetTechs(req, res) {
   try {
     const sheets = await getSheetsClient();
-    const spreadsheetId = process.env.CRM_SHEET_ID;
+    const spreadsheetId = hrSpreadsheetId();
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,

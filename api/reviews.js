@@ -3,7 +3,7 @@ const { getSheetsClient } = require("../lib/sheets");
 const { sendSms } = require("../lib/staff");
 const { getConfig } = require("../lib/config");
 
-const CLIENTS_TAB = "Clients";
+const LEADS_TAB   = "Leads";
 const REVIEWS_TAB  = "Reviews";
 
 const COMPLETE_STATUSES = ["complete", "completed", "paid", "closed", "invoiced"];
@@ -80,7 +80,7 @@ async function getActiveTemplate(sheets, spreadsheetId, category) {
 
 async function updateClientField(sheets, spreadsheetId, leadId, updates) {
   const resp = await sheets.spreadsheets.values.get({
-    spreadsheetId, range: `${CLIENTS_TAB}!A:ZZ`,
+    spreadsheetId, range: `${LEADS_TAB}!A:ZZ`,
   });
   const rows = resp.data.values || [];
   if (rows.length < 2) return false;
@@ -113,14 +113,14 @@ async function updateClientField(sheets, spreadsheetId, leadId, updates) {
       // append header
       const newHeaders = [...headers, field];
       await sheets.spreadsheets.values.update({
-        spreadsheetId, range: `${CLIENTS_TAB}!A1`,
+        spreadsheetId, range: `${LEADS_TAB}!A1`,
         valueInputOption: "RAW",
         requestBody: { values: [newHeaders] },
       });
       headers.push(field);
       ci = headers.length - 1;
     }
-    batchData.push({ range: `${CLIENTS_TAB}!${colLetter(ci)}${sheetRowNum}`, values: [[String(value)]] });
+    batchData.push({ range: `${LEADS_TAB}!${colLetter(ci)}${sheetRowNum}`, values: [[String(value)]] });
   }
 
   if (batchData.length) {
@@ -140,7 +140,7 @@ async function handleGetReviews(req, res) {
     if (!spreadsheetId) return json(res, 500, { ok: false, error: "No CRM_SHEET_ID" });
 
     const [clientsData, reviewsData] = await Promise.all([
-      readTab(sheets, spreadsheetId, CLIENTS_TAB, "A:ZZ"),
+      readTab(sheets, spreadsheetId, LEADS_TAB, "A:ZZ"),
       readTab(sheets, spreadsheetId, REVIEWS_TAB, "A:T").catch(() => ({ headers: [], rows: [] })),
     ]);
 
@@ -275,13 +275,13 @@ async function handleSendAsk(req, res) {
 
     // Prevent duplicate ask — check current review_status on this client
     const clientsResp = await sheets.spreadsheets.values.get({
-      spreadsheetId, range: `${CLIENTS_TAB}!A:ZZ`,
+      spreadsheetId, range: `${LEADS_TAB}!A:ZZ`,
     });
     const cRows = clientsResp.data.values || [];
     if (cRows.length > 1) {
       const cHeaders = cRows[0].map(h => String(h || "").trim());
       const cIdIdx = cHeaders.indexOf("id");
-      const cLidIdx = cHeaders.indexOf("lead_id");
+      const cLidIdx = cHeaders.indexOf("id"); // Leads use id directly
       const cRevStatIdx = cHeaders.indexOf("review_status");
       for (let i = 1; i < cRows.length; i++) {
         const rowId  = String(cRows[i][cIdIdx] || "").trim();
@@ -362,13 +362,13 @@ async function handleSendReminder(req, res) {
 
     // Enforce eligibility: must be status=asked, 48h+ elapsed, not already reminded
     const clientsResp = await sheets.spreadsheets.values.get({
-      spreadsheetId, range: `${CLIENTS_TAB}!A:ZZ`,
+      spreadsheetId, range: `${LEADS_TAB}!A:ZZ`,
     });
     const cRows = clientsResp.data.values || [];
     if (cRows.length > 1) {
       const cH = cRows[0].map(h => String(h || "").trim());
       const cIdIdx      = cH.indexOf("id");
-      const cLidIdx     = cH.indexOf("lead_id");
+      const cLidIdx     = cH.indexOf("id"); // Leads use id directly
       const cRevStatIdx = cH.indexOf("review_status");
       const cAskIdx     = cH.indexOf("review_ask_sent_at");
       const cRemIdx     = cH.indexOf("review_reminder_sent_at");
@@ -433,7 +433,7 @@ async function handleSendReminder(req, res) {
       }
     }
 
-    // Update Clients
+    // Update Leads review fields
     await updateClientField(sheets, spreadsheetId, lead_id, {
       review_status: "reminded",
       review_reminder_sent_at: now,
@@ -492,7 +492,7 @@ async function handleUpdateReview(req, res, reviewId) {
       });
     }
 
-    // If marking received, also update Clients review_status
+    // If marking received, also update Leads review_status
     if (body.review_received_at || body.star_rating || body.review_text) {
       const lidIdx2 = headers.indexOf("lead_id");
       const leadId = String(rows[rowIndex][lidIdx2] || "").trim();

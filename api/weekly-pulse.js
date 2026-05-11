@@ -70,23 +70,21 @@ async function handleWeeklyPulse(req, res) {
     const sheets = await getSheetsClient();
     const sheetId = process.env.CRM_SHEET_ID;
 
-    const [invData, leadsData, clientsData, bookingsData] = await Promise.all([
+    const [invData, leadsData, bookingsData] = await Promise.all([
       fetchTabRows(sheets, sheetId, "Invoices!A1:AZ5000"),
-      fetchTabRows(sheets, sheetId, "Leads!A1:Z5000"),
-      fetchTabRows(sheets, sheetId, "Clients!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, sheetId, "Leads!A1:BZ5000"),
       fetchTabRows(sheets, sheetId, "Bookings!A1:Z5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const invoices = parseRows(invData.headers, invData.rows);
     const leads    = parseRows(leadsData.headers, leadsData.rows);
-    const clients  = parseRows(clientsData.headers, clientsData.rows);
     const bookings = parseRows(bookingsData.headers, bookingsData.rows);
 
-    // Client name lookup
+    // Client/lead name lookup (Leads is now self-contained)
     const clientMap = {};
-    for (const c of clients) {
-      const id = String(c.id || c.client_id || "").trim();
-      if (id) clientMap[id] = String(c.name || "").trim();
+    for (const l of leads) {
+      const id = String(l.id || "").trim();
+      if (id) clientMap[id] = String(l.name || "").trim();
     }
 
     // Lead name lookup

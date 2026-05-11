@@ -89,21 +89,16 @@ async function handleGetInvoices(req, res) {
     const clientId  = normalize(parsed.query.client_id);
     const leadId    = normalize(parsed.query.lead_id);
 
-    const [invoices, clients, properties] = await Promise.all([
+    const [invoices, leads] = await Promise.all([
       readTab("Invoices"),
-      readTab("Clients"),
-      readTab("Properties"),
+      readTab("Leads"),
     ]);
 
-    const clientMap = {};
-    for (const c of clients) clientMap[c.id] = c;
-
-    const propMap = {};
-    for (const p of properties) propMap[p.id] = p;
+    const leadMap = {};
+    for (const l of leads) leadMap[l.id] = l;
 
     let rows = invoices.map((inv) => {
-      const client = clientMap[inv.client_id] || {};
-      const prop = propMap[inv.property_id] || {};
+      const lead = leadMap[inv.lead_id] || {};
 
       const balance = num(inv.balance_due, 0);
       const due = inv.due_at ? new Date(inv.due_at) : null;
@@ -119,8 +114,8 @@ async function handleGetInvoices(req, res) {
         status_code: inv.status_code,
         client_id: inv.client_id || "",
         lead_id: inv.lead_id || "",
-        client_name: client.name || inv.customer_name || "",
-        property_address: prop.address_line1 || "",
+        client_name: lead.name || inv.customer_name || "",
+        property_address: lead.address || "",
         total: inv.total || "0",
         paid_amount: inv.paid_amount || "0",
         balance_due: inv.balance_due || "0",
@@ -175,6 +170,11 @@ async function handleGetInvoices(req, res) {
    Order: validate → write CRM row → call provider → backfill provider_ref
 ========================= */
 async function handleCreateInvoice(req, res) {
+  // Requests tab is removed — use handleCreateInvoiceFromLead instead.
+  return json(res, 410, { ok: false, error: "Requests tab removed. Use POST /api/invoices/from-lead with lead_id." });
+}
+
+async function handleCreateInvoice_ARCHIVED(req, res) {
   try {
     const body = await readBody(req);
     const request_id = String(body.request_id || "").trim();
@@ -186,7 +186,7 @@ async function handleCreateInvoice(req, res) {
     const now = new Date().toISOString();
 
     const [requests, invoices, config] = await Promise.all([
-      readTab("Requests"),
+      readTab("Leads"),
       readTab("Invoices"),
       getConfig(),
     ]);
@@ -196,7 +196,7 @@ async function handleCreateInvoice(req, res) {
       return json(res, 404, { ok: false, error: "Request not found." });
     }
 
-    if (normalize(reqRow.status_code) !== "complete") {
+    if (normalize(reqRow.status_code || reqRow.status) !== "complete") {
       return json(res, 409, {
         ok: false,
         code: "REQUIRES_COMPLETE",
@@ -805,17 +805,15 @@ async function handlePublicInvoice(req, res) {
       return json(res, 404, { ok: false, error: "Invalid token." });
     }
 
-    const [invoices, clients, properties] = await Promise.all([
+    const [invoices, leads] = await Promise.all([
       readTab("Invoices"),
-      readTab("Clients").catch(() => []),
-      readTab("Properties").catch(() => []),
+      readTab("Leads").catch(() => []),
     ]);
 
     const inv = invoices.find(i => i.public_token === token);
     if (!inv) return json(res, 404, { ok: false, error: "Invoice not found." });
 
-    const client = clients.find(c => c.id === inv.client_id) || {};
-    const prop   = properties.find(p => p.id === inv.property_id) || {};
+    const lead = leads.find(l => l.id === inv.lead_id) || {};
 
     const config = await getConfig().catch(() => ({}));
 
@@ -828,10 +826,10 @@ async function handlePublicInvoice(req, res) {
       due_at:            inv.due_at,
       service_date:      inv.service_date || "",
       tech_name:         inv.tech_name || "",
-      customer_name:     inv.customer_name || client.name || "",
+      customer_name:     inv.customer_name || lead.name || "",
       // Omit phone/email from public response for privacy
-      service_address:   prop.address_line1 ? [prop.address_line1, prop.city, prop.state].filter(Boolean).join(", ") : "",
-      property_address:  prop.address_line1 || "",
+      service_address:   lead.address || "",
+      property_address:  lead.address || "",
       subtotal:          inv.subtotal || "0",
       tax_rate:          inv.tax_rate  || "0",
       tax_amount:        inv.tax_amount|| "0",

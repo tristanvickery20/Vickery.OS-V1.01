@@ -28,7 +28,7 @@ async function handleGetTime(req, res, opts = {}) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Time!A1:L2000",
+      range: "TimeEntries!A1:L2000",
     });
 
     const values = resp.data.values || [];
@@ -157,7 +157,7 @@ async function handleUpdateTime(req, res, timeId, crewSess) {
 
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Time!A1:L2000",
+        range: "TimeEntries!A1:L2000",
       });
 
       const values = resp.data.values || [];

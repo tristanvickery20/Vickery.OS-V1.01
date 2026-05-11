@@ -1,5 +1,6 @@
 const { readTab, parseISODateSafe, normalizeStr } = require("../lib/readTab");
 const { getSheetsClient, colToLetter, invalidateCache } = require("../lib/sheets");
+const { hrSpreadsheetId } = require("../lib/hrSheetClient");
 const { logAudit, genRequestId } = require("../lib/audit");
 const url = require("url");
 
@@ -45,16 +46,19 @@ async function handleGetClients(req, res) {
     const limitRaw = Number(parsed.query.limit) || 200;
     const limit = Math.min(Math.max(1, limitRaw), 500);
 
-    const [clientsTab, leadsTab, snapshots, bookings, staffRows] = await Promise.all([
-      readTab("Clients").catch(() => []),
+    const sheets = await getSheetsClient();
+    const [leadsTab, staffRawResp] = await Promise.all([
       readTab("Leads").catch(() => []),
-      readTab("QuoteSnapshots").catch(() => []),
-      readTab("Bookings").catch(() => []),
-      readTab("Staff").catch(() => []),
+      sheets.spreadsheets.values.get({ spreadsheetId: hrSpreadsheetId(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } })),
     ]);
+    const _staffValues = staffRawResp.data.values || [];
+    const staffRows = _staffValues.length > 1
+      ? _staffValues.slice(1).map(r => Object.fromEntries((_staffValues[0] || []).map((h, i) => [h, String(r[i] || "")])))
+      : [];
+
     const staffById = {};
     const staffByName = {};
-    for (const s of staffRows) {
+    for (const s of (staffRows || [])) {
       const sid = stripHtml(s.staff_id || "").trim();
       const full = `${stripHtml(s.first_name || "").trim()} ${stripHtml(s.last_name || "").trim()}`.trim();
       if (sid && full) staffById[sid] = full;
@@ -66,82 +70,17 @@ async function handleGetClients(req, res) {
       return parts.map((p) => staffById[p] || staffByName[p.toLowerCase()] || p).join(", ");
     }
 
-    // Build name lookup from QuoteSnapshots (prefer "locked" event)
-    const snapByQuoteId = {}, snapByPhone = {};
-    for (const s of snapshots) {
-      const qid   = stripHtml(s.quote_id      || "").trim();
-      const sName = stripHtml(s.customer_name || "").trim();
-      const sPhone= stripHtml(s.phone         || "").replace(/\D/g, "");
-      const isPref= (s.event_type || "") === "locked";
-      const entry = { name: sName, phone: sPhone, email: stripHtml(s.email || "").trim(), address: stripHtml(s.address || "").trim() };
-      if (qid   && (!snapByQuoteId[qid]   || isPref)) snapByQuoteId[qid]   = entry;
-      if (sPhone && sName && (!snapByPhone[sPhone] || isPref)) snapByPhone[sPhone] = entry;
-    }
-
-    // Build name lookup from Bookings — guaranteed to have customer_name
-    const bookingByQuoteId = {}, bookingByPhone = {}, bookingCrewByQuoteId = {}, bookingCrewByPhone = {};
-    // Name-keyed fallback: lets us find a phone for records that have a name but no quote_id or phone
-    const bookingPhoneByNormName = {};
-    for (const b of bookings) {
-      const qid   = stripHtml(b.quote_id       || "").trim();
-      const bName = stripHtml(b.customer_name  || "").trim();
-      const bPhone= stripHtml(b.phone          || "").replace(/\D/g, "");
-      const entry = { name: bName, phone: bPhone, email: stripHtml(b.email || "").trim(), address: stripHtml(b.address || "").trim() };
-      const fallbackIds = [b.assigned_tech_id, b.assigned_tech_ids].filter(Boolean).join(",");
-      const crew = resolveCrewDisplay(b.assigned_crew_names || b.assigned_to || fallbackIds);
-      if (qid   && bName && !bookingByQuoteId[qid])    bookingByQuoteId[qid]   = entry;
-      if (qid   && crew && !bookingCrewByQuoteId[qid]) bookingCrewByQuoteId[qid] = crew;
-      if (bPhone && bName && !bookingByPhone[bPhone])  bookingByPhone[bPhone]  = entry;
-      if (bPhone && crew && !bookingCrewByPhone[bPhone]) bookingCrewByPhone[bPhone] = crew;
-      // Name → phone fallback (normalized: lowercase, collapsed spaces)
-      if (bName && bPhone) {
-        const normKey = bName.toLowerCase().replace(/\s+/g, " ");
-        if (!bookingPhoneByNormName[normKey]) bookingPhoneByNormName[normKey] = bPhone;
-      }
-    }
-
-    function enrichAndShape(l, idField, statusField, addressField) {
+    function enrichAndShape(l) {
       let name    = stripHtml(l.name    || "").trim();
       let phone   = stripHtml(l.phone   || "").trim();
       let email   = stripHtml(l.email   || "").trim();
-      let address = stripHtml(l[addressField || "address"] || l.address || l.primary_address || "").trim();
-      const status = stripHtml(l[statusField] || l.status || l.status_code || "").trim();
+      let address = stripHtml(l.address || "").trim();
+      const status = stripHtml(l.status || l.status_code || "").trim();
       let assignedTo = stripHtml(l.assigned_to || "").trim();
-
-      // Enrich missing fields via 4-layer lookup
-      if (!name || !phone || !email) {
-        const cleanPh = phone.replace(/\D/g, "");
-        const qid     = stripHtml(l.last_quote_id || "").trim();
-        const src =
-          (qid     && snapByQuoteId[qid])    ||
-          (cleanPh && snapByPhone[cleanPh])   ||
-          (qid     && bookingByQuoteId[qid])  ||
-          (cleanPh && bookingByPhone[cleanPh]);
-        if (src) {
-          if (!name    && src.name)    name    = src.name;
-          if (!phone   && src.phone)   phone   = src.phone;
-          if (!email   && src.email)   email   = src.email;
-          if (!address && src.address) address = src.address;
-        }
-      }
-      // 5th-layer fallback: if phone is still empty but we have a name,
-      // try matching against bookings by normalized name to recover the phone.
-      // This lets Clients-tab records (which may lack a phone column) still
-      // group with the matching Leads-tab record that was created by the quote flow.
-      if (!phone && name) {
-        const normKey = name.toLowerCase().replace(/\s+/g, " ");
-        const recovered = bookingPhoneByNormName[normKey];
-        if (recovered) phone = recovered;
-      }
-
-      if (!assignedTo) {
-        const cleanPh = phone.replace(/\D/g, "");
-        const qid     = stripHtml(l.last_quote_id || "").trim();
-        assignedTo = (qid && bookingCrewByQuoteId[qid]) || (cleanPh && bookingCrewByPhone[cleanPh]) || assignedTo;
-      }
+      if (assignedTo) assignedTo = resolveCrewDisplay(assignedTo);
 
       return {
-        id:              stripHtml(l[idField] || l.id || ""),
+        id:              stripHtml(l.id || ""),
         client_id:       stripHtml(l.client_id || l.id || ""),
         job_number:      pickJobNumber(l),
         name,
@@ -152,29 +91,14 @@ async function handleGetClients(req, res) {
         estimated_value: l.estimated_value || "",
         scheduled_date:  l.scheduled_date  || "",
         assigned_to:     assignedTo || "",
-        notes:           l.notes || l.job_description || "",
+        notes:           l.notes || "",
         created_at:      l.created_at || "",
       };
     }
 
-    // CRM-created leads live in the Clients tab — these take priority
-    const seenIds = new Set();
-    const clientsRows = clientsTab.map(l => {
-      const shaped = enrichAndShape(l, "id", "status_code", "address");
-      seenIds.add(shaped.id);
-      if (l.lead_id) seenIds.add(stripHtml(l.lead_id));
-      return shaped;
-    });
-
-    // Legacy quote-flow leads from the Leads tab — skip any already in Clients
-    const leadsRows = leadsTab
-      .filter(l => {
-        const rawId = stripHtml(l.id || "").trim();
-        return rawId && !seenIds.has(rawId);
-      })
-      .map(l => enrichAndShape(l, "id", "status", "address"));
-
-    let results = [...clientsRows, ...leadsRows];
+    let results = leadsTab
+      .filter(l => stripHtml(l.id || "").trim())
+      .map(l => enrichAndShape(l));
 
     if (status && status !== "all") {
       results = results.filter((r) => normalizeStr(r.status) === status);
@@ -259,46 +183,35 @@ async function handleGetClients(req, res) {
 async function handleGetClientById(req, res) {
   try {
     const clientId = decodeURIComponent(req.url.split("/api/clients/")[1]);
-    const [clients, properties] = await Promise.all([readTab("Clients"), readTab("Properties")]);
+    const leads = await readTab("Leads");
 
-    const client = clients.find((c) => c.id === clientId);
-    if (!client) return json(res, 404, { ok: false, error: "Client not found" });
-
-    const props = properties.filter((p) => p.client_id === clientId);
-    const prop = props.find(
-      (p) => p.is_primary === "true" || p.is_primary === "1" || p.is_primary === "yes"
-    ) || props.sort((a, b) => {
-      const da = parseISODateSafe(a.updated_at) || parseISODateSafe(a.created_at) || new Date(0);
-      const db = parseISODateSafe(b.updated_at) || parseISODateSafe(b.created_at) || new Date(0);
-      return db - da;
-    })[0] || null;
+    const lead = leads.find((l) => l.id === clientId);
+    if (!lead) return json(res, 404, { ok: false, error: "Client not found" });
 
     json(res, 200, {
       ok: true,
       client: {
-        id: client.id,
-        name: client.name || "",
-        phone: client.phone || "",
-        email: client.email || "",
-        sms_opt_in: client.sms_opt_in || "",
-        job_description: client.job_description || "",
-        status_code: client.status_code || "",
-        created_at: client.created_at || "",
-        updated_at: client.updated_at || "",
-        last_activity_at: client.last_activity_at || "",
-        primary_property: prop
-          ? {
-              id: prop.id,
-              address_line1: prop.address_line1 || "",
-              address_line2: prop.address_line2 || "",
-              city: prop.city || "",
-              state: prop.state || "",
-              zip: prop.zip || "",
-              lat: prop.lat || "",
-              lng: prop.lng || "",
-              notes: prop.notes || "",
-            }
-          : null,
+        id: lead.id,
+        name: lead.name || "",
+        phone: lead.phone || "",
+        email: lead.email || "",
+        sms_opt_in: lead.sms_opt_in || "",
+        job_description: lead.notes || "",
+        status_code: lead.status || "",
+        created_at: lead.created_at || "",
+        updated_at: lead.updated_at || lead.created_at || "",
+        last_activity_at: lead.updated_at || lead.created_at || "",
+        primary_property: lead.address ? {
+          id: lead.id,
+          address_line1: lead.address || "",
+          address_line2: "",
+          city: "",
+          state: "",
+          zip: "",
+          lat: "",
+          lng: "",
+          notes: "",
+        } : null,
       },
     });
   } catch (err) {
@@ -307,45 +220,27 @@ async function handleGetClientById(req, res) {
 }
 
 async function handleGetClientRequests(req, res) {
-  try {
-    const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/requests")[0]);
-    const rows = await readTab("Requests");
-    const filtered = sortDescByCreated(rows.filter((r) => r.client_id === clientId));
-    json(res, 200, {
-      ok: true,
-      requests: filtered.map((r) => ({
-        id: r.id,
-        created_at: r.created_at || "",
-        updated_at: r.updated_at || "",
-        summary: r.summary || "",
-        status_code: r.status_code || "",
-        deposit_required: r.deposit_required || "",
-        deposit_received: r.deposit_received || "",
-        estimated_value: r.estimated_value || "",
-      })),
-    });
-  } catch (err) {
-    json(res, 500, { ok: false, error: err.message });
-  }
+  // Requests tab is removed — leads are self-contained. Return empty list.
+  json(res, 200, { ok: true, requests: [] });
 }
 
 async function handleGetClientQuotes(req, res) {
   try {
     const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/quotes")[0]);
-    const rows = await readTab("Quotes");
+    const rows = await readTab("QuoteSnapshots").catch(() => []);
     const filtered = sortDescByCreated(
-      rows.filter((r) => (r.client_id || r.lead_id || "") === clientId)
+      rows.filter((r) => (r.lead_id || r.client_id || r.quote_id || "") === clientId)
     );
     json(res, 200, {
       ok: true,
       quotes: filtered.map((r) => ({
-        id: r.quote_id || r.id || "",
+        id: r.quote_id || r.event_id || "",
         created_at: r.created_at || "",
-        status_code: r.status_code || "",
-        quoted_price: r.quoted_price || "",
-        service_key: r.service_key || "",
+        status_code: r.status || "",
+        quoted_price: r.final_price || "",
+        service_key: r.job_type_id || "",
         pricing_version: r.pricing_version || "",
-        request_id: r.request_id || "",
+        request_id: "",
       })),
     });
   } catch (err) {
@@ -356,17 +251,20 @@ async function handleGetClientQuotes(req, res) {
 async function handleGetClientJobs(req, res) {
   try {
     const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/jobs")[0]);
-    const rows = await readTab("Jobs");
-    const filtered = sortDescByCreated(rows.filter((r) => r.client_id === clientId));
+    const leads = await readTab("Leads");
+    // Each Lead IS a job — return all leads belonging to this client/phone group
+    const lead = leads.find(l => l.id === clientId);
+    const phone = lead ? lead.phone : "";
+    const related = leads.filter(l => l.id === clientId || (phone && l.phone === phone));
     json(res, 200, {
       ok: true,
-      jobs: filtered.map((r) => ({
+      jobs: sortDescByCreated(related).map((r) => ({
         id: r.id,
         created_at: r.created_at || "",
-        status_code: r.status_code || "",
-        description: r.description || "",
-        completed_at: r.completed_at || "",
-        request_id: r.request_id || "",
+        status_code: r.status || "",
+        description: r.notes || r.job_type || "",
+        completed_at: r.paid_date || r.invoice_date || "",
+        request_id: "",
       })),
     });
   } catch (err) {
@@ -425,35 +323,37 @@ async function handleGetClientTimeline(req, res) {
   try {
     const clientId = decodeURIComponent(req.url.split("/api/clients/")[1].split("/timeline")[0]);
 
-    const [requests, quotes, jobs, bookings, invoices, payments] = await Promise.all([
-      readTab("Requests").catch(() => []),
-      readTab("Quotes").catch(() => []),
-      readTab("Jobs").catch(() => []),
-      readTab("Bookings").catch(() => []),
+    const [leads, invoices, payments] = await Promise.all([
+      readTab("Leads").catch(() => []),
       readTab("Invoices").catch(() => []),
       readTab("Payments").catch(() => []),
     ]);
 
+    const lead = leads.find(l => l.id === clientId) || {};
+    const phone = lead.phone || "";
+    const relatedLeads = leads.filter(l => l.id === clientId || (phone && l.phone === phone));
+
     const events = [];
 
-    // Requests (Lead stage)
-    for (const r of requests.filter(x => x.client_id === clientId)) {
+    // Each related lead is a job event
+    for (const r of relatedLeads) {
       events.push({
         type: "request",
         event_id: r.id,
         date: r.created_at || "",
-        label: r.summary || "Service Request",
-        status: r.status_code || "",
+        label: r.notes || r.job_type || "Service Request",
+        status: r.status || "",
         amount: r.estimated_value || "",
         link: null,
       });
     }
 
-    // Quotes
-    for (const q of quotes.filter(x => (x.client_id || x.lead_id || "") === clientId)) {
+    // Quotes from QuoteSnapshots
+    const snapshots = await readTab("QuoteSnapshots").catch(() => []);
+    for (const q of snapshots.filter(x => (x.lead_id || x.client_id || "") === clientId)) {
       events.push({
         type: "quote",
-        event_id: q.quote_id || q.id || "",
+        event_id: q.quote_id || q.event_id || "",
         date: q.created_at || "",
         label: "Quote" + (q.service_key ? " \u00b7 " + q.service_key : ""),
         status: q.status_code || "",
@@ -462,37 +362,23 @@ async function handleGetClientTimeline(req, res) {
       });
     }
 
-    // Bookings (scheduled appointments)
-    for (const b of bookings.filter(x => x.client_id === clientId || x.phone === (clientId))) {
-      const bookingId = b.booking_id || b.id || "";
+    // Bookings: now stored as columns on Leads — include scheduled leads as booking events
+    for (const r of relatedLeads.filter(x => x.booking_id || x.scheduled_date)) {
+      if (!r.booking_id) continue;
       events.push({
         type: "booking",
-        event_id: bookingId,
-        date: b.scheduled_datetime || b.created_at || "",
-        label: "Booking" + (b.address ? " \u00b7 " + b.address : ""),
-        status: b.status || "scheduled",
-        amount: b.final_price || "",
-        link: bookingId ? "/crm/schedule?booking=" + encodeURIComponent(bookingId) : null,
-        assigned_to: b.assigned_tech_id || "",
-      });
-    }
-
-    // Jobs
-    for (const j of jobs.filter(x => x.client_id === clientId)) {
-      events.push({
-        type: "job",
-        event_id: j.id,
-        date: j.created_at || "",
-        label: j.description || "Job",
-        status: j.status_code || "",
-        amount: "",
-        link: null,
-        completed_at: j.completed_at || "",
+        event_id: r.booking_id,
+        date: r.scheduled_date || r.created_at || "",
+        label: "Booking" + (r.address ? " \u00b7 " + r.address : ""),
+        status: r.booking_status || r.status || "scheduled",
+        amount: r.quoted_price || r.estimated_value || "",
+        link: r.booking_id ? "/crm/schedule?booking=" + encodeURIComponent(r.booking_id) : null,
+        assigned_to: r.assigned_to || "",
       });
     }
 
     // Invoices
-    const clientInvoices = invoices.filter(x => x.client_id === clientId);
+    const clientInvoices = invoices.filter(x => x.lead_id === clientId || x.client_id === clientId);
     const invoiceIds = new Set(clientInvoices.map(x => x.id));
 
     for (const inv of clientInvoices) {
@@ -540,7 +426,7 @@ async function handleGetClientTimeline(req, res) {
     });
 
     // Balance summary
-    const totalInvoiced = clientInvoices.reduce((s, i) => s + Number(i.total || 0), 0);
+    const totalInvoiced = (clientInvoices || []).reduce((s, i) => s + Number(i.total || 0), 0);
     const totalPaid     = clientInvoices.reduce((s, i) => s + Number(i.paid_amount || 0), 0);
     const openBalance   = Math.max(0, Math.round((totalInvoiced - totalPaid) * 100) / 100);
 
@@ -594,37 +480,21 @@ async function handleMergeClients(req, res) {
 
     const sheets = await getSheetsClient();
 
-    const [leadsRaw, clientsRaw] = await Promise.all([
-      readTabRaw(sheets, spreadsheetId, "Leads"),
-      readTabRaw(sheets, spreadsheetId, "Clients"),
-    ]);
+    // Leads are self-contained — merge only operates on the Leads tab
+    const leadsRaw = await readTabRaw(sheets, spreadsheetId, "Leads");
 
     const lh = leadsRaw.headers;
     const l_id    = lh.indexOf("id");
     const l_name  = lh.indexOf("name");
     const l_phone = lh.indexOf("phone");
 
-    const ch = clientsRaw.headers;
-    const c_id    = ch.indexOf("id");
-    const c_name  = ch.indexOf("name");
-    const c_phone = ch.indexOf("phone");
-
-    // ── Step 1: Resolve primary's canonical phone + name ──────────────────
     let primaryName = "";
     let primaryPhone = "";
-
     for (const row of leadsRaw.rows) {
       const rid = l_id >= 0 ? String(row[l_id] || "").trim() : "";
       if (rid === primaryId) {
         if (l_name  >= 0 && !primaryName)  primaryName  = String(row[l_name]  || "").trim();
         if (l_phone >= 0 && !primaryPhone) primaryPhone = String(row[l_phone] || "").trim();
-      }
-    }
-    for (const row of clientsRaw.rows) {
-      const rid = c_id >= 0 ? String(row[c_id] || "").trim() : "";
-      if (rid === primaryId) {
-        if (c_name  >= 0 && !primaryName)  primaryName  = String(row[c_name]  || "").trim();
-        if (c_phone >= 0 && !primaryPhone) primaryPhone = String(row[c_phone] || "").trim();
       }
     }
 
@@ -633,11 +503,7 @@ async function handleMergeClients(req, res) {
     }
     const normPrimary = primaryPhone.replace(/\D/g, "");
 
-    // ── Step 2: Resolve secondary's canonical phone (grouping key) ─────────
-    // Secondary may represent a whole phone group; find its phone from any row
-    // that matches by id, then treat ALL rows with that phone as the group.
     let secondaryPhone = "";
-
     for (const row of leadsRaw.rows) {
       const rid = l_id >= 0 ? String(row[l_id] || "").trim() : "";
       if (rid === secondaryId) {
@@ -645,37 +511,13 @@ async function handleMergeClients(req, res) {
         break;
       }
     }
-    if (!secondaryPhone) {
-      for (const row of clientsRaw.rows) {
-        const rid = c_id >= 0 ? String(row[c_id] || "").trim() : "";
-        if (rid === secondaryId) {
-          if (c_phone >= 0) secondaryPhone = String(row[c_phone] || "").trim();
-          break;
-        }
-      }
-    }
-
-    // secondaryPhone may be empty if the duplicate record has no phone at all.
-    // That is explicitly a valid use case (task description). We still need to
-    // match rows by id and by phone group (when a phone exists).
     const normSecondary = secondaryPhone ? secondaryPhone.replace(/\D/g, "") : "";
 
-    // Safeguard: if both sides have a phone and they already match, nothing to do.
     if (normPrimary && normSecondary && normPrimary === normSecondary) {
       return json(res, 400, { ok: false, error: "These records already share the same phone number and are already grouped together" });
     }
 
-    // ── Step 3: Update ALL rows in the secondary's group ─────────────────
-    // A row belongs to the secondary group if:
-    //   (a) its id exactly equals secondaryId, OR
-    //   (b) normSecondary is non-empty AND the row's normalized phone matches it
-    //       (covers multi-job customers grouped by phone)
-    // When a secondary has no phone, only path (a) matches — still correct.
-    //
-    // Name policy: write primary's canonical name to every affected row so
-    // grouping is fully consistent going forward (not just blank rows).
     let leadsUpdated = 0;
-    let clientsUpdated = 0;
     const batchRequests = [];
 
     for (let i = 0; i < leadsRaw.rows.length; i++) {
@@ -684,35 +526,13 @@ async function handleMergeClients(req, res) {
       const rph = l_phone >= 0 ? String(row[l_phone] || "").replace(/\D/g, "") : "";
       const inGroup = rid === secondaryId || (normSecondary && rph === normSecondary);
       if (!inGroup) continue;
-
       const sheetRow = i + 2;
-      if (l_phone >= 0) {
-        batchRequests.push({ range: `Leads!${colToLetter(l_phone)}${sheetRow}`, values: [[primaryPhone]] });
-      }
-      if (l_name >= 0 && primaryName) {
-        batchRequests.push({ range: `Leads!${colToLetter(l_name)}${sheetRow}`, values: [[primaryName]] });
-      }
+      if (l_phone >= 0) batchRequests.push({ range: `Leads!${colToLetter(l_phone)}${sheetRow}`, values: [[primaryPhone]] });
+      if (l_name >= 0 && primaryName) batchRequests.push({ range: `Leads!${colToLetter(l_name)}${sheetRow}`, values: [[primaryName]] });
       leadsUpdated++;
     }
 
-    for (let i = 0; i < clientsRaw.rows.length; i++) {
-      const row = clientsRaw.rows[i];
-      const rid = c_id    >= 0 ? String(row[c_id]    || "").trim() : "";
-      const rph = c_phone >= 0 ? String(row[c_phone] || "").replace(/\D/g, "") : "";
-      const inGroup = rid === secondaryId || (normSecondary && rph === normSecondary);
-      if (!inGroup) continue;
-
-      const sheetRow = i + 2;
-      if (c_phone >= 0) {
-        batchRequests.push({ range: `Clients!${colToLetter(c_phone)}${sheetRow}`, values: [[primaryPhone]] });
-      }
-      if (c_name >= 0 && primaryName) {
-        batchRequests.push({ range: `Clients!${colToLetter(c_name)}${sheetRow}`, values: [[primaryName]] });
-      }
-      clientsUpdated++;
-    }
-
-    if (leadsUpdated === 0 && clientsUpdated === 0) {
+    if (leadsUpdated === 0) {
       return json(res, 404, { ok: false, error: "No rows found for the secondary record — merge aborted" });
     }
 
@@ -724,7 +544,6 @@ async function handleMergeClients(req, res) {
     }
 
     invalidateCache(spreadsheetId, "Leads");
-    invalidateCache(spreadsheetId, "Clients");
 
     await logAudit({
       actor: "staff",
@@ -734,7 +553,7 @@ async function handleMergeClients(req, res) {
       field: "merge",
       old_value: secondaryId,
       new_value: primaryId,
-      note: `Merged secondary record ${secondaryId} (phone: ${secondaryPhone || "none"}) into primary ${primaryId} (phone: ${primaryPhone}). Updated ${leadsUpdated} lead row(s) and ${clientsUpdated} client row(s).`,
+      note: `Merged secondary record ${secondaryId} (phone: ${secondaryPhone || "none"}) into primary ${primaryId} (phone: ${primaryPhone}). Updated ${leadsUpdated} lead row(s).`,
       source: "crm",
       request_id: genRequestId(),
     });
@@ -744,8 +563,8 @@ async function handleMergeClients(req, res) {
       primary_id: primaryId,
       secondary_id: secondaryId,
       leads_updated: leadsUpdated,
-      clients_updated: clientsUpdated,
-      message: `Merged ${secondaryId} into ${primaryId}. Updated ${leadsUpdated + clientsUpdated} row(s).`,
+      clients_updated: 0,
+      message: `Merged ${secondaryId} into ${primaryId}. Updated ${leadsUpdated} row(s).`,
     });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });

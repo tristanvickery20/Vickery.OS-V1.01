@@ -82,10 +82,9 @@ async function handleGetOverview(req, res) {
     const config = await getConfig();
     const hvThreshold = Number(config.high_value_threshold || "1000");
 
-    const [clientsData, reviewsData, bookingsData] = await Promise.all([
-      readTabRows(sheets, spreadsheetId, "Clients"),
+    const [clientsData, reviewsData] = await Promise.all([
+      readTabRows(sheets, spreadsheetId, "Leads"),
       readTabRows(sheets, spreadsheetId, "Reviews").catch(() => ({ headers: [], rows: [] })),
-      readTabRows(sheets, spreadsheetId, "Bookings").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const { headers, rows } = clientsData;
@@ -247,7 +246,7 @@ async function handleGetSegments(req, res) {
     const hvThreshold = Number(config.high_value_threshold || "1000");
 
     const [clientsData, reviewsData] = await Promise.all([
-      readTabRows(sheets, spreadsheetId, "Clients"),
+      readTabRows(sheets, spreadsheetId, "Leads"),
       readTabRows(sheets, spreadsheetId, "Reviews").catch(() => ({ headers: [], rows: [] })),
     ]);
 
@@ -372,10 +371,10 @@ async function handleGetFollowupQueue(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const { headers, rows } = await readTabRows(sheets, spreadsheetId, "Clients");
+    const { headers, rows } = await readTabRows(sheets, spreadsheetId, "Leads");
 
-    const statusIdx  = headers.indexOf("status_code");
-    const actIdx     = headers.indexOf("last_activity_at");
+    const statusIdx  = headers.indexOf("status");
+    const actIdx     = headers.indexOf("updated_at");
     const createdIdx = headers.indexOf("created_at");
     const nameIdx    = headers.indexOf("name");
     const phoneIdx   = headers.indexOf("phone");
@@ -449,8 +448,8 @@ async function handleSendFollowup(req, res) {
 
     // Log the follow-up touch on the client: update last_activity_at and last_followup_at
     const now = new Date().toISOString();
-    const { headers, rows } = await readTabRows(sheets, spreadsheetId, "Clients");
-    const lidIdx2     = headers.indexOf("lead_id");
+    const { headers, rows } = await readTabRows(sheets, spreadsheetId, "Leads");
+    const lidIdx2     = headers.indexOf("id");
     const idIdx2      = headers.indexOf("id");
     const actIdx2     = headers.indexOf("last_activity_at");
     const followupIdx = headers.indexOf("last_followup_at");
@@ -461,10 +460,10 @@ async function handleSendFollowup(req, res) {
         const colLetter = c => String.fromCharCode(65 + c);
         const updateOps = [];
         if (actIdx2 >= 0) {
-          updateOps.push({ range: `Clients!${colLetter(actIdx2)}${i + 2}`, values: [[now]] });
+          updateOps.push({ range: `Leads!${colLetter(actIdx2)}${i + 2}`, values: [[now]] });
         }
         if (followupIdx >= 0) {
-          updateOps.push({ range: `Clients!${colLetter(followupIdx)}${i + 2}`, values: [[now]] });
+          updateOps.push({ range: `Leads!${colLetter(followupIdx)}${i + 2}`, values: [[now]] });
         }
         for (const op of updateOps) {
           await sheets.spreadsheets.values.update({

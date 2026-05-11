@@ -158,44 +158,9 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       return;
     }
 
-    // ── 2. Not in Leads — check the Clients tab before creating a new row ────
-    // The CRM admin "New Job" form writes to Clients, not Leads. Without this
-    // check, a customer added by staff AND who later submits the public quote
-    // form ends up with two separate records.
-    if (cleanPhone) {
-      const clientsRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Clients!A1:AZ5000" });
-      const cRows    = clientsRes.data.values || [];
-      const cHeaders = cRows[0] || [];
-      const cIdx     = h => cHeaders.indexOf(h);
-      const cPhoneI  = cIdx("phone");
-      let cFoundRow  = -1;
-      for (let i = 1; i < cRows.length; i++) {
-        const rPhone = String(cRows[i][cPhoneI] || "").replace(/\D/g, "");
-        if (rPhone === cleanPhone) { cFoundRow = i; break; }
-      }
-      if (cFoundRow !== -1) {
-        // Update the Clients tab row with the new quote info
-        const crow = [...(cRows[cFoundRow] || [])];
-        while (crow.length < cHeaders.length) crow.push("");
-        const cset = (h, v) => { const i = cIdx(h); if (i >= 0) crow[i] = v; };
-        cset("last_quote_id",   quote_id);
-        cset("estimated_value", String(pricing.final_price || ""));
-        cset("quoted_price",    String(pricing.final_price || ""));
-        if (address && !crow[cIdx("address")] && !crow[cIdx("primary_address")]) cset("address", address);
-        if (lead_source && !crow[cIdx("lead_source")]) cset("lead_source", normalizeLeadSource(lead_source));
-        // Clients tab uses status_code; don't overwrite a more advanced status
-        const scIdx = cIdx("status_code");
-        if (scIdx >= 0 && (!crow[scIdx] || crow[scIdx] === "awaiting_response")) crow[scIdx] = "estimate_sent";
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range:         `Clients!A${cFoundRow + 1}`,
-          valueInputOption: "RAW",
-          requestBody:   { majorDimension: "ROWS", values: [crow] },
-        });
-        console.log(`[quote/lock] Updated Clients row ${cFoundRow + 1} (phone match) last_quote_id=${quote_id}`);
-        return;
-      }
-    }
+    // ── 2. Clients tab removed — Leads is the single source of truth.
+    // Phone-match check already happened above in the Leads scan.
+    // No separate Clients tab write needed.
 
     // ── 3. Genuinely new customer — append to Leads ──────────────────────────
     const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();

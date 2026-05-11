@@ -163,84 +163,29 @@ async function handleGetLeads(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    // Read Clients tab (CRM-created), legacy Leads tab (quoter-created), Time, Expenses, Config, Snapshots, Bookings
-    const [clientsData, leadsTabData, timeData, expData, config, snapshotsData, bookingsData] = await Promise.all([
-      fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000"),
-      fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z5000"),
-      fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
+    // Leads are now self-contained — single source of truth; no separate Clients tab
+    const [leadsTabData, timeData, expData, config, snapshotsData, bookingsData] = await Promise.all([
+      fetchTabRows(sheets, spreadsheetId, "Leads!A1:BZ5000"),
+      fetchTabRows(sheets, spreadsheetId, "TimeEntries!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       getConfig(),
       fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A:U").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, spreadsheetId, "Bookings!A:P").catch(() => ({ headers: [], rows: [] })),
     ]);
 
-    const idx = toIndexMap(clientsData.headers);
-
     const laborRateTech = Number(config.labor_rate_tech || 50);
     const { laborMinutesByLead, expenseCostByLead } = buildFinancialLookups(timeData, expData);
 
-    // Build leads from Clients tab
-    const clientLeads = (clientsData.rows || [])
-      .filter((r) => r && r.length && String(getCellByHeader(r, idx, "id") || "").trim() !== "")
-      .map((r) => {
-        const leadId = String(getCellByHeader(r, idx, "lead_id") || "").trim() || String(getCellByHeader(r, idx, "id") || "").trim();
-        const createdAt = String(getCellByHeader(r, idx, "created_at") || "");
-        const statusCode = String(getCellByHeader(r, idx, "status_code") || "");
+    // No separate Clients tab — clientLeads is always empty now
+    const clientLeads = [];
 
-        const lead = {
-          id: leadId,
-          _raw_id: String(getCellByHeader(r, idx, "id") || ""),
-          _source: "clients",
-          created_at: createdAt,
-          name: String(getCellByHeader(r, idx, "name") || ""),
-          phone: String(getCellByHeader(r, idx, "phone") || ""),
-          address: String(getCellByHeader(r, idx, "primary_address") || getCellByHeader(r, idx, "address") || ""),
-          job_type: "",
-          deposit_required: false,
-          estimated_value: parseNum(getCellByHeader(r, idx, "estimated_value") || 0),
-          status: statusCode || String(getCellByHeader(r, idx, "status") || ""),
-          status_code: statusCode,
-          quoted_price: parseNum(getCellByHeader(r, idx, "quoted_price") || 0),
-          deposit_received: parseNum(getCellByHeader(r, idx, "deposit_received") || 0),
-          invoiced_amount: parseNum(getCellByHeader(r, idx, "invoiced_amount") || 0),
-          paid_amount: parseNum(getCellByHeader(r, idx, "paid_amount") || 0),
-          scheduled_date: String(getCellByHeader(r, idx, "scheduled_date") || ""),
-          assigned_to: String(getCellByHeader(r, idx, "assigned_to") || ""),
-          notes: String(getCellByHeader(r, idx, "notes") || ""),
-          schedule_window: String(getCellByHeader(r, idx, "schedule_window") || ""),
-          schedule_preference: String(getCellByHeader(r, idx, "schedule_preference") || ""),
-          duration_minutes: parseNum(getCellByHeader(r, idx, "duration_minutes") || 0),
-          deposit_override: String(getCellByHeader(r, idx, "deposit_override") || "").toLowerCase() === "true",
-          invoice_date: String(getCellByHeader(r, idx, "invoice_date") || ""),
-          paid_date: String(getCellByHeader(r, idx, "paid_date") || ""),
-          pricing_version: String(getCellByHeader(r, idx, "pricing_version") || ""),
-          last_quote_id: String(getCellByHeader(r, idx, "last_quote_id") || ""),
-          quote_snapshot_json: String(getCellByHeader(r, idx, "quote_snapshot_json") || ""),
-          email: String(getCellByHeader(r, idx, "email") || ""),
-          job_description: String(getCellByHeader(r, idx, "job_description") || ""),
-          sms_opt_in: String(getCellByHeader(r, idx, "sms_opt_in") || ""),
-          lead_id: String(getCellByHeader(r, idx, "lead_id") || ""),
-          job_number: String(getCellByHeader(r, idx, "job_number") || ""),
-        };
-        attachFinancials(lead, laborMinutesByLead, expenseCostByLead, laborRateTech);
-        return lead;
-      });
-
-    // Track all IDs already covered by Clients tab to avoid duplicates
-    const coveredIds = new Set();
-    for (const l of clientLeads) {
-      coveredIds.add(l.id);
-      if (l.lead_id) coveredIds.add(l.lead_id);
-      if (l._raw_id) coveredIds.add(l._raw_id);
-    }
-
-    // Build leads from the legacy Leads tab (quoter-created records not already in Clients)
+    // All leads come from the Leads tab
     const lidx = toIndexMap(leadsTabData.headers);
     const legacyLeads = (leadsTabData.rows || [])
       .filter((r) => {
         if (!r || !r.length) return false;
         const rawId = String(getCellByHeader(r, lidx, "id") || "").trim();
-        return rawId !== "" && !coveredIds.has(rawId);
+        return rawId !== "";
       })
       .map((r) => {
         const rawId = String(getCellByHeader(r, lidx, "id") || "").trim();
@@ -409,54 +354,42 @@ async function handleCreateLead(req, res) {
       const sheets = await getSheetsClient();
       const spreadsheetId = process.env.CRM_SHEET_ID;
 
-      // Read Clients so we can safely generate next C-#### and J-####.
-      const clientsData = await fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000");
-      const headers = clientsData.headers || [];
+      // Read Leads to generate next ID and job number
+      const leadsRaw = await fetchTabRows(sheets, spreadsheetId, "Leads!A1:BZ5000");
+      const headers = leadsRaw.headers || [];
       const idx = toIndexMap(headers);
 
-      const existingClientIds = (clientsData.rows || []).map((r) => getCellByHeader(r, idx, "id"));
-      const existingJobNums = (clientsData.rows || []).map((r) => getCellByHeader(r, idx, "job_number"));
+      const existingIds     = (leadsRaw.rows || []).map((r) => getCellByHeader(r, idx, "id"));
+      const existingJobNums = (leadsRaw.rows || []).map((r) => getCellByHeader(r, idx, "job_number"));
 
-      const clientId = nextCId(existingClientIds);
+      const clientId  = nextCId(existingIds);
       const jobNumber = nextJobNumber(existingJobNums);
-      const leadId = newLeadId();
+      const leadId    = clientId;   // single ID — Leads are self-contained
       const createdAt = nowIso();
 
-      // Build a row that matches existing header length (so we don't misalign).
+      // Build a row aligned to the live Leads header
       const row = new Array(headers.length).fill("");
 
-      // Required core fields (from your Ticket 10 schema)
-      setCellByHeader(row, idx, "id", clientId);
-      setCellByHeader(row, idx, "created_at", createdAt);
-      setCellByHeader(row, idx, "updated_at", createdAt);
-      setCellByHeader(row, idx, "name", normalizeStr(data.name));
-      setCellByHeader(row, idx, "phone", normalizeStr(data.phone));
-      setCellByHeader(row, idx, "email", normalizeStr(data.email));
-      setCellByHeader(row, idx, "sms_opt_in", data.sms_opt_in ? String(data.sms_opt_in) : "");
-      setCellByHeader(row, idx, "job_description", data.job_description || data.notes || "");
-      setCellByHeader(row, idx, "status_code", data.status_code || "awaiting_response");
-      setCellByHeader(row, idx, "last_activity_at", createdAt);
-
-      // Unified/pipeline extras (if headers exist)
-      setCellByHeader(row, idx, "lead_id", leadId);
-      setCellByHeader(row, idx, "job_number", jobNumber);
-      setCellByHeader(row, idx, "assigned_to", data.assigned_to || "");
-      setCellByHeader(row, idx, "scheduled_date", data.scheduled_date || "");
+      setCellByHeader(row, idx, "id",              clientId);
+      setCellByHeader(row, idx, "created_at",      createdAt);
+      setCellByHeader(row, idx, "name",            normalizeStr(data.name));
+      setCellByHeader(row, idx, "phone",           normalizeStr(data.phone));
+      setCellByHeader(row, idx, "email",           normalizeStr(data.email || ""));
+      setCellByHeader(row, idx, "address",         data.address || "");
+      setCellByHeader(row, idx, "job_type",        data.job_type || "");
+      setCellByHeader(row, idx, "status",          data.status_code || data.status || "New");
       setCellByHeader(row, idx, "estimated_value", String(Number(data.estimated_value || 0)));
-      setCellByHeader(row, idx, "notes", data.notes || "");
-
-      // Marketing attribution fields (normalize source to canonical set)
-      setCellByHeader(row, idx, "lead_source", normalizeLeadSource(data.lead_source));
+      setCellByHeader(row, idx, "notes",           data.job_description || data.notes || "");
+      setCellByHeader(row, idx, "sms_opt_in",      data.sms_opt_in ? String(data.sms_opt_in) : "");
+      setCellByHeader(row, idx, "assigned_to",     data.assigned_to || "");
+      setCellByHeader(row, idx, "scheduled_date",  data.scheduled_date || "");
+      setCellByHeader(row, idx, "job_number",      jobNumber);
+      setCellByHeader(row, idx, "lead_source",     normalizeLeadSource(data.lead_source));
       setCellByHeader(row, idx, "referring_customer", data.referring_customer || "");
-
-      // Optional shortcut if you add later
-      if (idx["primary_address"] !== undefined) {
-        setCellByHeader(row, idx, "primary_address", data.address || "");
-      }
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Clients!A:A",
+        range: "Leads!A:A",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         requestBody: { majorDimension: "ROWS", values: [row] },

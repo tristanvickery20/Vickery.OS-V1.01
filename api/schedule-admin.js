@@ -4,8 +4,10 @@
 
 const { getSheetsClient } = require("../lib/sheets");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
+const { hrSpreadsheetId }  = require("../lib/hrSheetClient");
 
-const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
+const SPREADSHEET_ID    = () => process.env.CRM_SHEET_ID;
+const HR_SPREADSHEET_ID = () => hrSpreadsheetId();
 
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -24,7 +26,7 @@ async function handleGetBookings(req, res) {
     const sheets = await getSheetsClient();
     const [r, staffResp] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID(), range: "Bookings!A:Z" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } })),
+      sheets.spreadsheets.values.get({ spreadsheetId: HR_SPREADSHEET_ID(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } })),
     ]);
     const bookings = rowsToObjects(r.data.values || []);
     const staffRows = staffResp.data.values || [];

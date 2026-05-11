@@ -92,14 +92,13 @@ async function handleDashboard(req, res) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
-    const [leadsData, timeData, expData, snapshotsData, config, attachData, clientsData, invoicesData] = await Promise.all([
-      fetchTabRows(sheets, spreadsheetId, "Leads!A1:Z"),
-      fetchTabRows(sheets, spreadsheetId, "Time!A1:H2000"),
+    const [leadsData, timeData, expData, snapshotsData, config, attachData, invoicesData] = await Promise.all([
+      fetchTabRows(sheets, spreadsheetId, "Leads!A1:BZ"),
+      fetchTabRows(sheets, spreadsheetId, "TimeEntries!A1:H2000"),
       fetchTabRows(sheets, spreadsheetId, "Expenses!A1:J2000"),
       fetchTabRows(sheets, spreadsheetId, "QuoteSnapshots!A1:Z"),
       getConfig(),
       fetchTabRows(sheets, spreadsheetId, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
-      fetchTabRows(sheets, spreadsheetId, "Clients!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, spreadsheetId, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
@@ -111,24 +110,8 @@ async function handleDashboard(req, res) {
       .filter((r) => r.some((cell) => String(cell || "").trim() !== ""))
       .map((r) => parseLeadRow(leadsData.headers, r));
 
-    // Build a combined lead set for bonus/profit-share computations (Leads tab + Clients tab)
-    const clientLeadsForBonus = (clientsData.rows || [])
-      .filter((r) => r && r.some((cell) => String(cell || "").trim() !== ""))
-      .map((r) => {
-        const obj = {};
-        (clientsData.headers || []).forEach((h, i) => { obj[h] = r[i] ?? ""; });
-        obj.id              = String(obj.lead_id || obj.id || "").trim();
-        obj.paid_amount     = num(obj.paid_amount);
-        obj.invoiced_amount = num(obj.invoiced_amount);
-        obj.quoted_price    = num(obj.quoted_price);
-        // Normalize status: prefer status_code, fall back to status column
-        obj.status = String(obj.status_code || obj.status || "").toLowerCase().trim();
-        return obj;
-      })
-      .filter((r) => r.id);
-
-    const leadsTabIds    = new Set(leads.map((l) => l.id));
-    const allLeadsForBonus = [...leads, ...clientLeadsForBonus.filter((c) => !leadsTabIds.has(c.id))];
+    // Leads are self-contained — no separate Clients tab
+    const allLeadsForBonus = leads;
 
     // Build paid-revenue + invoiced-revenue rollups from Invoices tab
     // paidByLeadId    → used for per-job bonus margin (collected = cash-in-hand)

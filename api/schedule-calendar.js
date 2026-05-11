@@ -130,7 +130,7 @@ async function handleGetCalendar(req, res) {
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" })
         .catch(() => ({ data: { values: [] } })),
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Z" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Staff!A:Z" })
+      sheets.spreadsheets.values.get({ spreadsheetId: require("../lib/hrSheetClient").hrSpreadsheetId(), range: "Staff!A:Z" })
         .catch(() => ({ data: { values: [] } })),
     ]);
 

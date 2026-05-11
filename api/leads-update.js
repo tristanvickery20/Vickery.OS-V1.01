@@ -74,7 +74,7 @@ async function hasTimeEntries(sheets, spreadsheetId, leadId) {
   try {
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Time!A1:Z5000",
+      range: "TimeEntries!A1:Z5000",
     });
     const values = resp.data.values || [];
     if (values.length < 2) return false;
@@ -120,18 +120,20 @@ async function readTabRaw(sheets, spreadsheetId, tabName) {
   }
 }
 
-async function upsertClientAndPropertyFromLead({
-  sheets,
-  spreadsheetId,
-  lead,
+async function upsertClientAndPropertyFromLead({ sheets, spreadsheetId, lead }) {
+  // Leads are self-contained — no separate Clients/Properties tabs.
+  return { client_id: String(lead.id || "").trim() };
+}
+
+// eslint-disable-next-line no-unused-vars
+async function _upsertClientAndPropertyFromLead_ARCHIVED({
+  sheets, spreadsheetId, lead,
 }) {
-  // lead fields from Leads sheet
   const leadName = normStr(lead.name);
   const leadPhone = normStr(lead.phone);
-  const leadEmail = normStr(lead.email); // might not exist in Leads; we handle safely
+  const leadEmail = normStr(lead.email);
   const leadAddress = normStr(lead.address);
   const leadNotes = normStr(lead.notes);
-
   const now = nowISO();
 
   // ----- CLIENTS -----

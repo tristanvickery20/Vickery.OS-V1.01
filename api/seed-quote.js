@@ -81,7 +81,7 @@ async function handleSeedQuote(req, res) {
 
   // Ensure valid V2/CRM tabs have correct headers (creates tabs if missing).
   // V1 tabs (JobTypes, Questions, AnswerOptions, AddOns, Rates) are no longer managed here.
-  const ENSURE_TABS = ["ServiceAreas", "SchedulerRules", "QuoteSnapshots", "Bookings"];
+  const ENSURE_TABS = ["SchedulerRules", "QuoteSnapshots"];
   for (const tab of ENSURE_TABS) {
     try {
       await ensureTabHeaders(tab);
@@ -92,9 +92,6 @@ async function handleSeedQuote(req, res) {
 
   try { upsertCounts.SchedulerRules = await writeRow2(sheets, "SchedulerRules", SCHED_H, SCHED); }
   catch (e) { warnings.push("SchedulerRules: " + e.message); }
-
-  try { upsertCounts.ServiceAreas = await upsertRows(sheets, "ServiceAreas", SA_H, SERVICE_AREAS, "zip"); }
-  catch (e) { warnings.push("ServiceAreas: " + e.message); }
 
   json(res, 200, { ok: true, upsertCounts, warnings });
 }

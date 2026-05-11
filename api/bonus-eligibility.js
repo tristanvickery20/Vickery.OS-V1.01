@@ -68,18 +68,19 @@ async function handleBonusEligibility(req, res) {
     const sheets = await getSheetsClient();
     const sid    = process.env.CRM_SHEET_ID;
 
-    const [config, timeData, expData, clientsData, leadsData, attachData, invoicesData, bookingsData] = await Promise.all([
+    const [config, timeData, expData, leadsData, attachData, invoicesData, bookingsData] = await Promise.all([
       getConfig(),
-      fetchTabRows(sheets, sid, "Time!A1:L2000"),
+      fetchTabRows(sheets, sid, "TimeEntries!A1:L2000"),
       fetchTabRows(sheets, sid, "Expenses!A1:J2000"),
-      fetchTabRows(sheets, sid, "Clients!A1:ZZ5000"),
-      fetchTabRows(sheets, sid, "Leads!A1:Z5000").catch(() => ({ headers: [], rows: [] })),
+      fetchTabRows(sheets, sid, "Leads!A1:BZ5000"),
       fetchTabRows(sheets, sid, "Attachments!A1:K5000").catch(() => ({ headers: [], rows: [] })),
       fetchTabRows(sheets, sid, "Invoices!A1:ZZ5000").catch(() => ({ headers: [], rows: [] })),
       bookingId
         ? fetchTabRows(sheets, sid, "Bookings!A1:ZZ2000").catch(() => ({ headers: [], rows: [] }))
         : Promise.resolve({ headers: [], rows: [] }),
     ]);
+    // Leads are self-contained — clientsData alias points to leadsData
+    const clientsData = leadsData;
 
     // ── Booking path: verify ownership + resolve quoteId ──
     if (bookingId) {

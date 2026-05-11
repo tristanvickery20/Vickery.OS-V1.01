@@ -2,7 +2,8 @@
 "use strict";
 
 const crypto = require("crypto");
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient }  = require("../lib/sheets");
+const { hrSpreadsheetId }  = require("../lib/hrSheetClient");
 const { sendSms } = require("../lib/staff");
 const { getConfig } = require("../lib/config");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
@@ -244,10 +245,9 @@ async function handleUpdateReferral(req, res, referralId) {
 async function handleGetReferralEmployees(req, res) {
   try {
     const sheets = await getSheetsClient();
-    const sid    = process.env.CRM_SHEET_ID;
 
     const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId: sid,
+      spreadsheetId: hrSpreadsheetId(),
       range: "Staff!A:Z",
     });
     const rows = resp.data.values || [];

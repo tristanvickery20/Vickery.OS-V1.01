@@ -2,7 +2,7 @@ const { getSheetsClient } = require("../lib/sheets");
 const { getConfig, setConfigKeys } = require("../lib/config");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
-const ROLLUP_TAB = "Actuals_Rollup_30D";
+const ROLLUP_TAB = "Config"; // Actuals rollup stored as Config keys (Actuals_Rollup_30D tab removed)
 const COMPLETE_STATUSES = new Set(["complete", "paid", "closed"]);
 
 function toNum(v) {
@@ -82,11 +82,8 @@ async function writeRollup(sheets, rollup) {
 }
 
 async function readTimeSources(sheets) {
-  // Prefer TimeEntries tab (has hours column); fall back to Time tab (has minutes)
   const timeEntries = await readTab(sheets, "TimeEntries");
-  const timeFallback = await readTab(sheets, "Time");
 
-  // Normalize both into { lead_id, minutes } objects
   const normalize = (row) => {
     const lid = row.lead_id;
     if (!lid) return null;
@@ -96,16 +93,13 @@ async function readTimeSources(sheets) {
     } else if (row.minutes !== undefined && row.minutes !== "") {
       minutes = toNum(row.minutes);
     } else if (row.start_time && row.end_time) {
-      // Fallback: compute from timestamps
       const s = new Date(row.start_time), e = new Date(row.end_time);
       if (!isNaN(s) && !isNaN(e) && e > s) minutes = (e - s) / 60000;
     }
     return { lead_id: lid, minutes, category: row.category || "" };
   };
 
-  // Merge: use TimeEntries if it has any data, otherwise use Time
-  const source = timeEntries.length > 0 ? timeEntries : timeFallback;
-  return source.map(normalize).filter(Boolean);
+  return timeEntries.map(normalize).filter(Boolean);
 }
 
 async function computeRollup(windowDays) {

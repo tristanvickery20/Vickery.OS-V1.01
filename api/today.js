@@ -428,13 +428,13 @@ async function handleToday(req, res) {
       fetchRows(sheets, spreadsheetId, "Leads!A1:Z"),
       fetchRows(sheets, spreadsheetId, "Tasks!A1:L5000"),
       fetchRows(sheets, spreadsheetId, "Bookings!A1:Z").catch(() => ({ headers: [], rows: [] })),
-      fetchRows(sheets, spreadsheetId, "Time!A1:L5000").catch(() => ({ headers: [], rows: [] })),
+      fetchRows(sheets, spreadsheetId, "TimeEntries!A1:L5000").catch(() => ({ headers: [], rows: [] })),
       fetchRows(sheets, spreadsheetId, "Expenses!A1:J5000").catch(() => ({ headers: [], rows: [] })),
       fetchRows(sheets, spreadsheetId, "Invoices!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
       fetchRows(sheets, spreadsheetId, "QuoteSnapshots!A1:Z5000").catch(() => ({ headers: [], rows: [] })),
-      fetchRows(sheets, spreadsheetId, "Staff!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
-      fetchRows(sheets, spreadsheetId, "HR_PayrollRuns!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
-      fetchRows(sheets, spreadsheetId, "HR_ExpenseClaims!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
+      fetchRows(sheets, require("../lib/hrSheetClient").hrSpreadsheetId(), "Staff!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
+      fetchRows(sheets, require("../lib/hrSheetClient").hrSpreadsheetId(), "HR_PayrollRuns!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
+      fetchRows(sheets, require("../lib/hrSheetClient").hrSpreadsheetId(), "HR_ExpenseClaims!A1:AZ5000").catch(() => ({ headers: [], rows: [] })),
     ]);
 
     const today = todayLocal();

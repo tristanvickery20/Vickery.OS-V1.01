@@ -13,6 +13,7 @@
 
 const { getSheetsClient, colToLetter } = require("../lib/sheets");
 const { ensureTabHeaders }           = require("../lib/sheetsSchema");
+const { hrSpreadsheetId }            = require("../lib/hrSheetClient");
 const { sendSms, buildMessage, INVOICE_TEMPLATES } = require("../lib/sms");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
@@ -149,7 +150,7 @@ async function handlePatchBooking(req, res) {
 
 async function resolveCrewNamesByIds(sheets, spreadsheetId, ids) {
   if (!ids.length) return [];
-  const staffResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } }));
+  const staffResp = await sheets.spreadsheets.values.get({ spreadsheetId: hrSpreadsheetId(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } }));
   const rows = staffResp.data.values || [];
   if (rows.length < 2) return ids;
   const [headers, ...data] = rows;
@@ -252,11 +253,11 @@ async function smsTechOnComplete(booking, sheets, spreadsheetId) {
     return;
   }
 
-  // Read Staff tab to find the tech's phone and first name
+  // Read Staff tab to find the tech's phone and first name (Staff lives on HR sheet)
   let staffRows = [];
   try {
     const staffResp = await sheets.spreadsheets.values.get({
-      spreadsheetId,
+      spreadsheetId: hrSpreadsheetId(),
       range: "Staff!A:Z",
     });
     staffRows = staffResp.data.values || [];
@@ -306,7 +307,7 @@ module.exports = { handlePatchBooking };
 
 async function resolveTechIdsFromMixedValues(sheets, spreadsheetId, values) {
   if (!values.length) return [];
-  const staffResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } }));
+  const staffResp = await sheets.spreadsheets.values.get({ spreadsheetId: hrSpreadsheetId(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } }));
   const rows = staffResp.data.values || [];
   if (rows.length < 2) return values;
   const [headers, ...data] = rows;

@@ -1,4 +1,5 @@
 const { getSheetsClient } = require("../lib/sheets");
+const { hrSpreadsheetId }  = require("../lib/hrSheetClient");
 const { suggestWithPersonalCalendar } = require("../lib/schedule");
 
 function parseBody(req) {
@@ -23,7 +24,7 @@ async function handleScheduleSuggest(req, res) {
     const spreadsheetId = process.env.CRM_SHEET_ID;
 
     const [techsResp, leadsResp] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Techs!A1:C1000" }),
+      sheets.spreadsheets.values.get({ spreadsheetId: hrSpreadsheetId(), range: "Techs!A1:C1000" }),
       sheets.spreadsheets.values.get({ spreadsheetId, range: "Leads!A1:Z2000" }),
     ]);
 
