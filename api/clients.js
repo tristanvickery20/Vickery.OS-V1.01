@@ -169,6 +169,66 @@ async function handleGetClients(req, res) {
       });
     }
 
+    // Sort before grouping so within each phone group the first entry = most recent lead
+    results.sort((a, b) => bestSortDate(b) - bestSortDate(a));
+
+    // ── Group by normalized phone: one card per customer ──────────────────────
+    const phoneGroups = new Map(); // normPhone → [records, sorted most-recent-first]
+    const noPhoneCards = [];       // no phone → one card each (can't group without key)
+
+    for (const r of results) {
+      const normPhone = r.phone.replace(/\D/g, "");
+      if (!normPhone) {
+        noPhoneCards.push({ ...r, job_count: 1 });
+      } else {
+        if (!phoneGroups.has(normPhone)) phoneGroups.set(normPhone, []);
+        phoneGroups.get(normPhone).push(r);
+      }
+    }
+
+    const grouped = [];
+    for (const [, group] of phoneGroups) {
+      if (group.length === 1) {
+        grouped.push({ ...group[0], job_count: 1 });
+        continue;
+      }
+      // Representative = most recent lead (first after sort above)
+      const rep = group[0];
+      // Most-complete name = longest non-empty string across the group
+      const bestName = group.reduce((best, r) => {
+        const n = stripHtml(r.name || "").trim();
+        return n.length > best.length ? n : best;
+      }, "");
+      // Most-complete address = longest non-empty string
+      const bestAddress = group.reduce((best, r) => {
+        const a = stripHtml(r.address || "").trim();
+        return a.length > best.length ? a : best;
+      }, "");
+      // Sum estimated values
+      const totalValue = group.reduce((sum, r) => {
+        const v = Number(r.estimated_value);
+        return sum + (isFinite(v) && v > 0 ? v : 0);
+      }, 0);
+      // Most recent scheduled date across all group members
+      const bestScheduled = group.reduce((best, r) => {
+        if (!r.scheduled_date) return best;
+        if (!best) return r.scheduled_date;
+        return new Date(r.scheduled_date) > new Date(best) ? r.scheduled_date : best;
+      }, "");
+
+      grouped.push({
+        ...rep,
+        name:                  bestName    || rep.name,
+        address:               bestAddress || rep.address,
+        estimated_value:       totalValue  || "",
+        total_estimated_value: totalValue  || "",
+        scheduled_date:        bestScheduled || rep.scheduled_date,
+        job_count:             group.length,
+      });
+    }
+
+    // Interleave grouped + no-phone cards, re-sort, then limit
+    results = [...grouped, ...noPhoneCards];
     results.sort((a, b) => bestSortDate(b) - bestSortDate(a));
     results = results.slice(0, limit);
 

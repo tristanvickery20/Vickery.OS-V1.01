@@ -89,6 +89,23 @@
         flex:0 0 auto;
       }
 
+      .jobs-badge {
+        display:inline-flex;
+        align-items:center;
+        gap:5px;
+        padding:2px 8px;
+        border-radius:999px;
+        font-size:11px;
+        font-weight:800;
+        letter-spacing:0.02em;
+        background: rgba(96,165,250,0.18);
+        border: 1px solid rgba(96,165,250,0.40);
+        color: #93c5fd;
+        white-space:nowrap;
+        vertical-align:middle;
+        margin-left:6px;
+      }
+
       .status-pill {
         display:inline-flex;
         align-items:center;
@@ -177,7 +194,7 @@
 
   function renderList(clients) {
     const n = (clients && clients.length) ? clients.length : 0;
-    if (countEl) countEl.textContent = n ? (n + " lead" + (n !== 1 ? "s" : "")) : "";
+    if (countEl) countEl.textContent = n ? (n + " client" + (n !== 1 ? "s" : "")) : "";
 
     if (!clients || clients.length === 0) {
       if (listEl) listEl.innerHTML = "";
@@ -189,25 +206,40 @@
     listEl.classList.add("client-list");
 
     listEl.innerHTML = clients.map((c) => {
+      const jobCount = Number(c.job_count) || 1;
+      const isMulti = jobCount > 1;
       const scheduled = fmtShortDate(c.scheduled_date);
-      const scheduledStr = scheduled ? ("Scheduled: " + scheduled) : "Scheduled: \u2014";
-      const est = fmtMoney(c.estimated_value);
+      const scheduledStr = scheduled ? ("Last scheduled: " + scheduled) : "";
+      const totalVal = isMulti ? Number(c.total_estimated_value) || 0 : 0;
+      const est = isMulti
+        ? (totalVal ? fmtMoney(totalVal) : "")
+        : fmtMoney(c.estimated_value);
       const crew = normalize(c.assigned_to);
-      const estStr = "Est: " + (est || "\u2014");
       const jobNum = normalize(c.job_number);
-      const jobStr = jobNum ? ("Job #" + jobNum) : "";
+      const jobStr = !isMulti && jobNum ? ("Job #" + jobNum) : "";
 
       const subLine = normalize(c.address) || normalize(c.phone) || "";
 
+      // Build the detail line (scheduled · value · crew)
+      const detailParts = [];
+      if (scheduledStr) detailParts.push(scheduledStr);
+      if (est) detailParts.push(isMulti ? jobCount + " jobs · " + est + " total" : "Est: " + est);
+      else if (isMulti) detailParts.push(jobCount + " jobs");
+      if (!isMulti && crew) detailParts.push("Crew: " + crew);
+      const detailStr = detailParts.join("  ·  ");
+
       const href = "/crm/lead?id=" + encodeURIComponent(c.id || "");
+      const jobsBadge = isMulti
+        ? '<span class="jobs-badge">' + jobCount + " jobs</span>"
+        : "";
 
       return (
         '<a href="' + escH(href) + '" class="client-row" data-id="' + escH(c.id) + '">' +
           '<div class="client-avatar">' + escH(initial(c.name)) + "</div>" +
           '<div class="client-mid">' +
-            '<div class="client-name">' + escH(c.name || "(No name)") + "</div>" +
+            '<div class="client-name">' + escH(c.name || "(No name)") + jobsBadge + "</div>" +
             (subLine ? '<div class="client-sub">' + escH(subLine) + "</div>" : "") +
-            '<div class="client-sub2">' + escH(scheduledStr + "  \u00b7  " + estStr + (crew ? "  \u00b7  Crew: " + crew : "")) + "</div>" +
+            (detailStr ? '<div class="client-sub2">' + escH(detailStr) + "</div>" : "") +
           "</div>" +
           '<div class="client-right">' +
             statusPill(c.status) +
