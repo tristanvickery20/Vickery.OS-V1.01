@@ -476,9 +476,10 @@ async function handleQuoteLock(req, res) {
       customer_name, phone, email, address, zip, lead_source,
       sms_opt_in, sms_marketing_consent,
       equipment_line_items,
-      referrer_name, referrer_phone,
+      referrer_name, referrer_phone, referrer_contact,
       attendance, access_instructions,
     } = body;
+    const referrerContact = referrer_contact || referrer_phone || "";
 
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
     if (!job_type_id) return json(res, 400, { ok: false, error: "job_type_id required" });
@@ -558,12 +559,12 @@ async function handleQuoteLock(req, res) {
     }
 
     const sheets = await getSheetsClient();
-    const referrerNote = (referrer_name || referrer_phone)
-      ? `Referred by: ${referrer_name || ""}${referrer_phone ? " " + referrer_phone : ""}`.trim()
+    const referrerNote = (referrer_name || referrerContact)
+      ? `Referred by: ${referrer_name || ""}${referrerContact ? " " + referrerContact : ""}`.trim()
       : "";
 
     // Upsert Lead first so we have lead_id to stamp on the snapshot
-    const leadId = await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrer_phone || "", attendance: attendance || "", access_instructions: access_instructions || "" });
+    const leadId = await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrerContact, attendance: attendance || "", access_instructions: access_instructions || "" });
 
     await appendSnapshot(sheets, {
       event_id:              newEventId(),

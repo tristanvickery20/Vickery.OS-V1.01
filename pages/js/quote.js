@@ -3160,7 +3160,7 @@ async function submitLock() {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refContact || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_contact: refContact || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
