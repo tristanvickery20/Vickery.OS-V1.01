@@ -198,4 +198,7 @@
 
   refreshBtn.addEventListener("click", render);
   render();
+
+  // Auto-refresh every 30 seconds so scheduling changes from other pages appear
+  setInterval(render, 30000);
 })();

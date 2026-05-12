@@ -1,4 +1,4 @@
-const { getSheetsClient, colToLetter } = require("../lib/sheets");
+const { getSheetsClient, colToLetter, invalidateCache } = require("../lib/sheets");
 const { logAuditBatch, genRequestId } = require("../lib/audit");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
 
@@ -108,6 +108,9 @@ async function handleScheduleLead(req, res) {
       assigned_to: row[14], duration_minutes: Number(row[18]),
       deposit_override: depositOverride,
     };
+
+    invalidateCache(spreadsheetId, "Leads");
+    invalidateCache(spreadsheetId, "Bookings");
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, lead }));

@@ -1,5 +1,5 @@
 // api/leads-update.js
-const { getSheetsClient, colToLetter } = require("../lib/sheets");
+const { getSheetsClient, colToLetter, invalidateCache } = require("../lib/sheets");
 const { logAuditBatch, genRequestId } = require("../lib/audit");
 
 // Promotion: when a Lead enters any of these stages, it becomes a "Client" record.
@@ -480,6 +480,8 @@ async function handleUpdateLead(req, res) {
         valueInputOption: "RAW",
         requestBody: { majorDimension: "ROWS", values: [row.slice(0, headers.length)] },
       });
+
+      invalidateCache(spreadsheetId, "Leads");
 
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));

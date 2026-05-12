@@ -1,4 +1,4 @@
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient, invalidateCache } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 
 function nowIso() {
@@ -240,6 +240,7 @@ async function handleUpdateLeadStatus(req, res) {
       // Update status
       const sheetRowNumber = rowIndex + 1;
       await updateCellByIndex(sheets, spreadsheetId, "Leads", sheetRowNumber, statusIdx, newStatus);
+      invalidateCache(spreadsheetId, "Leads");
 
       // Promotion rule: configurable statuses in Config
       // Config key: promote_to_client_statuses (comma list)

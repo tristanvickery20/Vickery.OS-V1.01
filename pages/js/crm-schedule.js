@@ -288,5 +288,8 @@
       const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
       dateInput.value = today;
     }
+
+    // Auto-refresh every 30 seconds so changes from other pages appear automatically
+    setInterval(refresh, 30000);
   });
 })();
