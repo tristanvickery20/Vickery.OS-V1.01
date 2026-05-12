@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Campaign Detail &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header" style="align-items:flex-start;flex-wrap:wrap;gap:8px;">
+          <div>
+            <a href="/crm/marketing/campaigns" style="font-size:12px;color:hsl(var(--text-2,220 15% 60%));text-decoration:none;">&larr; Campaigns</a>
+            <div class="page-title" id="detailPageTitle" style="margin-top:4px;">Campaign</div>
+          </div>
+          <button id="saveFieldsBtn" class="btn-save" style="padding:8px 18px;margin-left:auto;" type="button">Save Changes</button>
+        </div>
+
+        <div id="detailLoading" class="loading-state">Loading campaign…</div>
+        <div id="detailContent" style="display:none;">
+
+          <!-- Two-column layout -->
+          <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;" class="detail-grid">
+
+            <!-- LEFT: Editable fields -->
+            <div>
+              <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:16px;">
+                <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:14px;">Campaign Details</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+                  <div>
+                    <label class="form-label">Campaign Name</label>
+                    <input id="d_name" class="form-input" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Channel</label>
+                    <select id="d_channel" class="form-input" style="width:100%;">
+                      <option value="">— Select —</option>
+                      <option>Google Ads</option>
+                      <option>LSA</option>
+                      <option>Facebook</option>
+                      <option>Instagram</option>
+                      <option>Yard Sign</option>
+                      <option>Truck Wrap</option>
+                      <option>Direct Mail</option>
+                      <option>Email</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="form-label">Source</label>
+                    <input id="d_source" class="form-input" placeholder="e.g. google" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Service Promoted</label>
+                    <input id="d_service_promoted" class="form-input" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">City / Zone Targeted</label>
+                    <input id="d_city_zone_targeted" class="form-input" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">UTM Campaign Key</label>
+                    <input id="d_utm_campaign" class="form-input" placeholder="slug-key" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Start Date</label>
+                    <input id="d_start_date" class="form-input" type="date" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">End Date</label>
+                    <input id="d_end_date" class="form-input" type="date" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Budget ($)</label>
+                    <input id="d_budget" class="form-input" type="number" min="0" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Spend to Date ($)</label>
+                    <input id="d_spend" class="form-input" type="number" min="0" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Tracking Phone</label>
+                    <input id="d_tracking_phone" class="form-input" type="tel" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Contractor / Vendor</label>
+                    <input id="d_contractor_vendor" class="form-input" style="width:100%;" />
+                  </div>
+                  <div>
+                    <label class="form-label">Status</label>
+                    <select id="d_status" class="form-input" style="width:100%;">
+                      <option value="Active">Active</option>
+                      <option value="Paused">Paused</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="margin-top:12px;">
+                  <label class="form-label">Landing Page URL</label>
+                  <input id="d_landing_page" class="form-input" type="url" placeholder="https://…" style="width:100%;max-width:520px;" />
+                </div>
+                <div style="margin-top:12px;">
+                  <label class="form-label">Offer Message</label>
+                  <input id="d_offer_message" class="form-input" style="width:100%;max-width:520px;" />
+                </div>
+                <div style="margin-top:12px;">
+                  <label class="form-label">Notes</label>
+                  <textarea id="d_notes" class="form-input" rows="3" style="width:100%;resize:vertical;"></textarea>
+                </div>
+              </div>
+
+              <!-- Owner Decision -->
+              <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:16px;">
+                <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:12px;">Owner Decision</h3>
+                <div id="ownerDecisionButtons" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                <input type="hidden" id="d_owner_decision" />
+              </div>
+
+              <!-- Filtered Leads Table -->
+              <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;">
+                <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:12px;">Leads From This Campaign</h3>
+                <div style="overflow-x:auto;">
+                  <table class="src-table" id="campaignLeadsTable">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Revenue</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody id="campaignLeadsTbody"></tbody>
+                  </table>
+                </div>
+                <div id="leadsEmpty" style="display:none;text-align:center;padding:24px;color:hsl(var(--text-2,220 15% 55%));">No leads tagged with this campaign's UTM key yet.</div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Live Metrics -->
+            <div>
+              <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:16px;">
+                <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:14px;">Live Metrics</h3>
+                <div id="metricsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+              </div>
+              <p id="saveResult" style="font-size:12px;padding:0 4px;"></p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-campaigns.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    Campaigns.initDetail();
+  </script>
+</body>
+</html>

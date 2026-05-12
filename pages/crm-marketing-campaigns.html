@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Campaigns &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Campaigns</div>
+          <button id="newCampaignBtn" class="btn-save" style="padding:8px 18px;" type="button">+ New Campaign</button>
+        </div>
+
+        <!-- New Campaign Inline Form -->
+        <div id="newCampaignForm" style="display:none;background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:20px;">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:hsl(var(--text-1,220 20% 95%));">New Campaign</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:14px;">
+            <div>
+              <label class="form-label">Campaign Name *</label>
+              <input id="nc_name" class="form-input" placeholder="e.g. Summer Panel Upgrade" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Channel</label>
+              <select id="nc_channel" class="form-input" style="width:100%;">
+                <option value="">— Select —</option>
+                <option>Google Ads</option>
+                <option>LSA</option>
+                <option>Facebook</option>
+                <option>Instagram</option>
+                <option>Yard Sign</option>
+                <option>Truck Wrap</option>
+                <option>Direct Mail</option>
+                <option>Email</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Source</label>
+              <input id="nc_source" class="form-input" placeholder="e.g. google, facebook" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Service Promoted</label>
+              <input id="nc_service_promoted" class="form-input" placeholder="e.g. Panel Upgrade" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">City / Zone Targeted</label>
+              <input id="nc_city_zone_targeted" class="form-input" placeholder="e.g. Orange, TX" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">UTM Campaign Key</label>
+              <input id="nc_utm_campaign" class="form-input" placeholder="e.g. summer-panel-2026" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Start Date</label>
+              <input id="nc_start_date" class="form-input" type="date" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">End Date</label>
+              <input id="nc_end_date" class="form-input" type="date" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Budget ($)</label>
+              <input id="nc_budget" class="form-input" type="number" min="0" step="50" placeholder="0" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Spend to Date ($)</label>
+              <input id="nc_spend" class="form-input" type="number" min="0" step="10" placeholder="0" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Landing Page URL</label>
+              <input id="nc_landing_page" class="form-input" type="url" placeholder="https://…" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Tracking Phone</label>
+              <input id="nc_tracking_phone" class="form-input" type="tel" placeholder="(409) 555-1234" style="width:100%;" />
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label class="form-label">Offer Message</label>
+            <input id="nc_offer_message" class="form-input" placeholder="e.g. $99 panel inspection special" style="width:100%;max-width:600px;" />
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="nc_saveBtn" class="btn-save" type="button">Save Campaign</button>
+            <button id="nc_cancelBtn" type="button" style="padding:8px 16px;border-radius:8px;border:1px solid hsl(var(--border,220 20% 22%));background:transparent;color:hsl(var(--text-2,220 15% 60%));cursor:pointer;font-size:13px;">Cancel</button>
+          </div>
+          <p id="nc_error" style="color:hsl(0 70% 60%);font-size:12px;margin-top:8px;display:none;"></p>
+        </div>
+
+        <!-- Campaign Table -->
+        <div id="campaignsLoading" class="loading-state">Loading campaigns…</div>
+        <div id="campaignsContent" style="display:none;">
+          <div style="overflow-x:auto;">
+            <table class="src-table" id="campaignsTable">
+              <thead>
+                <tr>
+                  <th data-sort="name" style="cursor:pointer;user-select:none;">Name <span class="sort-arrow"></span></th>
+                  <th data-sort="channel" style="cursor:pointer;user-select:none;">Channel <span class="sort-arrow"></span></th>
+                  <th data-sort="status" style="cursor:pointer;user-select:none;">Status <span class="sort-arrow"></span></th>
+                  <th data-sort="budget" style="text-align:right;cursor:pointer;user-select:none;">Budget <span class="sort-arrow"></span></th>
+                  <th data-sort="spend" style="text-align:right;cursor:pointer;user-select:none;">Spend <span class="sort-arrow"></span></th>
+                  <th data-sort="leads" style="text-align:right;cursor:pointer;user-select:none;">Leads <span class="sort-arrow"></span></th>
+                  <th data-sort="booked" style="text-align:right;cursor:pointer;user-select:none;">Booked <span class="sort-arrow"></span></th>
+                  <th data-sort="revenue" style="text-align:right;cursor:pointer;user-select:none;">Revenue <span class="sort-arrow"></span></th>
+                  <th data-sort="gross_profit" style="text-align:right;cursor:pointer;user-select:none;">Gross Profit <span class="sort-arrow"></span></th>
+                  <th data-sort="gross_margin_pct" style="text-align:right;cursor:pointer;user-select:none;">Margin% <span class="sort-arrow"></span></th>
+                  <th data-sort="roas" style="text-align:right;cursor:pointer;user-select:none;">ROAS <span class="sort-arrow"></span></th>
+                  <th data-sort="cpl" style="text-align:right;cursor:pointer;user-select:none;">CPL <span class="sort-arrow"></span></th>
+                  <th data-sort="cpbj" style="text-align:right;cursor:pointer;user-select:none;">CPBJ <span class="sort-arrow"></span></th>
+                  <th data-sort="owner_decision" style="cursor:pointer;user-select:none;">Decision <span class="sort-arrow"></span></th>
+                </tr>
+              </thead>
+              <tbody id="campaignsTbody"></tbody>
+            </table>
+          </div>
+          <div id="campaignsEmpty" style="display:none;text-align:center;padding:40px;color:hsl(var(--text-2,220 15% 55%));">
+            No campaigns yet. Click <strong>+ New Campaign</strong> to get started.
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-campaigns.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    Campaigns.initList();
+  </script>
+</body>
+</html>

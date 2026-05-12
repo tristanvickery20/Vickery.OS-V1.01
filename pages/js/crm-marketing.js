@@ -869,8 +869,10 @@ window.Mkt = (function () {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            google_review_url:    document.getElementById("mktGoogleReviewUrl").value.trim(),
-            high_value_threshold: Number(document.getElementById("mktHvThreshold").value) || 1000,
+            google_review_url:     (document.getElementById("mktGoogleReviewUrl")    || {}).value?.trim() || "",
+            high_value_threshold:  Number((document.getElementById("mktHvThreshold") || {}).value) || 1000,
+            google_ads_account_id: (document.getElementById("mktGoogleAdsAccountId") || {}).value?.trim() || "",
+            lsa_account_id:        (document.getElementById("mktLsaAccountId")       || {}).value?.trim() || "",
           }),
         });
         if (resultEl) {
@@ -892,10 +894,12 @@ window.Mkt = (function () {
     try {
       const d = await window.Api.fetchJson("/api/marketing/settings");
       if (d.ok && d.settings) {
-        const urlEl = document.getElementById("mktGoogleReviewUrl");
-        const hvEl  = document.getElementById("mktHvThreshold");
-        if (urlEl) urlEl.value = d.settings.google_review_url   || "";
-        if (hvEl)  hvEl.value  = d.settings.high_value_threshold || "1000";
+        const s = d.settings;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
+        set("mktGoogleReviewUrl",    s.google_review_url);
+        set("mktHvThreshold",        s.high_value_threshold || "1000");
+        set("mktGoogleAdsAccountId", s.google_ads_account_id);
+        set("mktLsaAccountId",       s.lsa_account_id);
       }
     } catch (e) { /* silently ignore — show whatever is in the inputs */ }
     if (loadingEl) loadingEl.style.display = "none";

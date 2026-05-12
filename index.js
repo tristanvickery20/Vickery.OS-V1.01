@@ -50,6 +50,10 @@ const {
 const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
 const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings, handleGetLeadSourceDetail, handleScoreLead } = require("./api/marketing");
 const { handleGetAssets, handleCreateAsset, handleUpdateAsset, handleGetContractorTasks, handleCreateContractorTask, handleUpdateContractorTask } = require("./api/marketing-assets");
+const {
+  handleListCampaigns, handleCreateCampaign, handleGetCampaign, handleUpdateCampaign,
+  handleGetCampaignMetrics, handleListLandingPages, handleCreateLandingPage, handleUpdateLandingPage,
+} = require("./api/campaigns");
 const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
 const {
   handleGetClients,
@@ -1080,6 +1084,15 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/crm/marketing/contractor-tasks") {
     return serveFile(res, path.join(__dirname, "pages/crm-marketing-contractor-tasks.html"), "text/html");
   }
+  if (req.url === "/crm/marketing/campaigns" || req.url === "/crm/marketing/campaigns/") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-campaigns.html"), "text/html");
+  }
+  if (req.url.startsWith("/crm/marketing/campaigns/")) {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-campaign-detail.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/landing-pages" || req.url === "/crm/marketing/landing-pages/") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-landing-pages.html"), "text/html");
+  }
   if (req.url === "/crm/marketing/settings") {
     return serveFile(res, path.join(__dirname, "pages/crm-marketing-settings.html"), "text/html");
   }
@@ -1446,6 +1459,28 @@ const server = http.createServer(async (req, res) => {
   if (_epath.startsWith("/api/marketing/contractor-tasks/") && req.method === "PATCH") {
     const taskId = _epath.replace("/api/marketing/contractor-tasks/", "");
     return handleUpdateContractorTask(req, res, taskId);
+  }
+
+  // Campaign Management API (Task #72)
+  if (_epath === "/api/marketing/campaigns" && req.method === "GET")  return handleListCampaigns(req, res);
+  if (_epath === "/api/marketing/campaigns" && req.method === "POST") return handleCreateCampaign(req, res);
+  if (_epath.match(/^\/api\/marketing\/campaigns\/[^/]+\/metrics$/) && req.method === "GET") {
+    const campId = _epath.replace("/api/marketing/campaigns/", "").replace("/metrics", "");
+    return handleGetCampaignMetrics(req, res, campId);
+  }
+  if (_epath.match(/^\/api\/marketing\/campaigns\/[^/]+$/) && req.method === "GET") {
+    const campId = _epath.replace("/api/marketing/campaigns/", "");
+    return handleGetCampaign(req, res, campId);
+  }
+  if (_epath.match(/^\/api\/marketing\/campaigns\/[^/]+$/) && req.method === "PATCH") {
+    const campId = _epath.replace("/api/marketing/campaigns/", "");
+    return handleUpdateCampaign(req, res, campId);
+  }
+  if (_epath === "/api/marketing/landing-pages" && req.method === "GET")  return handleListLandingPages(req, res);
+  if (_epath === "/api/marketing/landing-pages" && req.method === "POST") return handleCreateLandingPage(req, res);
+  if (_epath.match(/^\/api\/marketing\/landing-pages\/[^/]+$/) && req.method === "PATCH") {
+    const lpId = _epath.replace("/api/marketing/landing-pages/", "");
+    return handleUpdateLandingPage(req, res, lpId);
   }
 
   // POST /api/leads/score — re-score a lead on demand (auth required)

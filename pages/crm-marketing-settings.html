@@ -24,16 +24,36 @@
 
         <div id="mktSettingsLoading" class="loading-state">Loading settings…</div>
         <div id="mktSettingsContent" style="display:none;">
-          <div class="form-group" style="max-width:520px;margin-bottom:14px;">
-            <label class="form-label">Google Review Link</label>
-            <input id="mktGoogleReviewUrl" type="url" placeholder="https://g.page/r/…/review" style="width:100%;" />
-            <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Paste your Google review shortlink — included in review-ask SMS messages.</p>
+
+          <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:16px;max-width:600px;">
+            <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:14px;">Review Engine</h3>
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Google Review Link</label>
+              <input id="mktGoogleReviewUrl" type="url" placeholder="https://g.page/r/…/review" style="width:100%;" />
+              <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Paste your Google review shortlink — included in review-ask SMS messages.</p>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">High-Value Lead Threshold ($)</label>
+              <input id="mktHvThreshold" type="number" min="0" step="50" placeholder="1000" style="width:180px;" />
+              <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Jobs at or above this amount appear in the High Value smart list.</p>
+            </div>
           </div>
-          <div class="form-group" style="max-width:220px;margin-bottom:20px;">
-            <label class="form-label">High-Value Lead Threshold ($)</label>
-            <input id="mktHvThreshold" type="number" min="0" step="50" placeholder="1000" style="width:100%;" />
-            <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Jobs at or above this amount appear in the High Value smart list.</p>
+
+          <div style="background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:16px;max-width:600px;">
+            <h3 style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:hsl(var(--text-2,220 15% 60%));margin-bottom:6px;">Ad Platform Accounts</h3>
+            <p style="font-size:12px;color:hsl(var(--text-2,220 15% 55%));margin-bottom:14px;">These account IDs are stored for reference when managing campaigns. No automatic sync is performed.</p>
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Google Ads Account ID</label>
+              <input id="mktGoogleAdsAccountId" type="text" placeholder="123-456-7890" style="width:260px;" />
+              <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Your Google Ads customer ID (found in the top right of your Ads dashboard).</p>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">LSA Account ID</label>
+              <input id="mktLsaAccountId" type="text" placeholder="e.g. 12345678" style="width:260px;" />
+              <p style="font-size:11px;color:hsl(var(--text-2,220 15% 55%));margin-top:4px;">Your Google Local Services Ads account ID.</p>
+            </div>
           </div>
+
           <button id="mktSettingsSaveBtn" type="button" class="btn-save">Save Settings</button>
           <p id="mktSettingsResult" style="font-size:12px;margin-top:10px;"></p>
         </div>

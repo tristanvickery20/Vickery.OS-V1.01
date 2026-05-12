@@ -600,8 +600,10 @@ async function handleGetMarketingSettings(req, res) {
     json(res, 200, {
       ok: true,
       settings: {
-        google_review_url:   config.google_review_url   || "",
-        high_value_threshold: config.high_value_threshold || "1000",
+        google_review_url:      config.google_review_url      || "",
+        high_value_threshold:   config.high_value_threshold   || "1000",
+        google_ads_account_id:  config.google_ads_account_id  || "",
+        lsa_account_id:         config.lsa_account_id         || "",
       },
     });
   } catch (err) {
@@ -614,8 +616,10 @@ async function handleSaveMarketingSettings(req, res) {
   try {
     const body = await readBody(req);
     const map  = {};
-    if (body.google_review_url   !== undefined) map.google_review_url   = String(body.google_review_url || "").trim();
-    if (body.high_value_threshold !== undefined) map.high_value_threshold = String(Number(body.high_value_threshold) || 1000);
+    if (body.google_review_url     !== undefined) map.google_review_url     = String(body.google_review_url || "").trim();
+    if (body.high_value_threshold  !== undefined) map.high_value_threshold  = String(Number(body.high_value_threshold) || 1000);
+    if (body.google_ads_account_id !== undefined) map.google_ads_account_id = String(body.google_ads_account_id || "").trim();
+    if (body.lsa_account_id        !== undefined) map.lsa_account_id        = String(body.lsa_account_id || "").trim();
     if (Object.keys(map).length === 0) return json(res, 400, { ok: false, error: "No settings provided" });
     await setConfigKeys(map);
     json(res, 200, { ok: true });

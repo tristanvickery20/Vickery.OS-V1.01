@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Landing Pages &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Landing Pages</div>
+          <button id="newLpBtn" class="btn-save" style="padding:8px 18px;" type="button">+ New Landing Page</button>
+        </div>
+
+        <!-- New / Edit inline form -->
+        <div id="lpForm" style="display:none;background:hsl(var(--surface-2,220 20% 18%));border-radius:12px;padding:20px;margin-bottom:20px;">
+          <h3 id="lpFormTitle" style="font-size:14px;font-weight:700;margin-bottom:16px;color:hsl(var(--text-1,220 20% 95%));">New Landing Page</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:14px;">
+            <div style="grid-column:1/-1;">
+              <label class="form-label">URL *</label>
+              <input id="lp_url" class="form-input" type="url" placeholder="https://vickeryelectric.com/…" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Title / Label</label>
+              <input id="lp_title" class="form-input" placeholder="e.g. Panel Upgrade Orange" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Service Type</label>
+              <input id="lp_service_type" class="form-input" placeholder="e.g. Panel Upgrade" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">City</label>
+              <input id="lp_city" class="form-input" placeholder="e.g. Orange" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Linked UTM Campaign</label>
+              <input id="lp_utm_campaign" class="form-input" placeholder="utm_campaign slug" style="width:100%;" />
+            </div>
+            <div>
+              <label class="form-label">Status</label>
+              <select id="lp_status" class="form-input" style="width:100%;">
+                <option value="Active">Active</option>
+                <option value="Draft">Draft</option>
+                <option value="Paused">Paused</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label class="form-label">Notes</label>
+            <textarea id="lp_notes" class="form-input" rows="2" style="width:100%;resize:vertical;"></textarea>
+          </div>
+          <input type="hidden" id="lp_editing_id" value="" />
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="lp_saveBtn" class="btn-save" type="button">Save</button>
+            <button id="lp_cancelBtn" type="button" style="padding:8px 16px;border-radius:8px;border:1px solid hsl(var(--border,220 20% 22%));background:transparent;color:hsl(var(--text-2,220 15% 60%));cursor:pointer;font-size:13px;">Cancel</button>
+          </div>
+          <p id="lp_error" style="color:hsl(0 70% 60%);font-size:12px;margin-top:8px;display:none;"></p>
+        </div>
+
+        <!-- Landing Pages Table -->
+        <div id="lpLoading" class="loading-state">Loading landing pages…</div>
+        <div id="lpContent" style="display:none;">
+          <div style="overflow-x:auto;">
+            <table class="src-table" id="lpTable">
+              <thead>
+                <tr>
+                  <th>URL / Title</th>
+                  <th>Service</th>
+                  <th>City</th>
+                  <th>Campaign</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="lpTbody"></tbody>
+            </table>
+          </div>
+          <div id="lpEmpty" style="display:none;text-align:center;padding:40px;color:hsl(var(--text-2,220 15% 55%));">
+            No landing pages yet. Click <strong>+ New Landing Page</strong> to add one.
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-campaigns.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    Campaigns.initLandingPages();
+  </script>
+</body>
+</html>
