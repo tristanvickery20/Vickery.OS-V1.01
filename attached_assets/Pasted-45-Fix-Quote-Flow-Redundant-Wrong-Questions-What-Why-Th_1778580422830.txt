@@ -1,0 +1,49 @@
+45 - Fix Quote Flow — Redundant & Wrong Questions
+
+What & Why
+
+The quote flow asks customers questions whose answers are already known from earlier steps. The most glaring example: SERVICE_QUANTITY ("How many items need this work?") is asked in Step 4 (Questions) even though the customer already set a quantity with the +/− control in Step 3 (Services). PROPERTY_TYPE ("Residential or Commercial?") is asked mid-flow even though the customer chose Residential or Commercial on the very first screen.
+
+Additionally, PERMIT_NEEDED appears across many service maps but has zero pricing effect (all options → multiplier 1.0) and is not a question customers can meaningfully answer — it's a scheduling/admin concern. And a handful of services have question ordering that buries the most impactful question below noise.
+
+Done looks like
+
+Completing the quote flow for any service never asks for information already given in a prior step
+SERVICE_QUANTITY question no longer appears for any service — the qty from Step 3 silently drives the same volume-discount multiplier as before
+PROPERTY_TYPE question no longer appears for any service — segment from Step 1 silently drives the same 1.15× commercial multiplier as before
+PERMIT_NEEDED is removed from all consumer-facing service question maps (it appears on no service with a pricing impact)
+Per-service question lists are reordered so the highest-impact question (usually REPLACE_OR_NEW or the main scope fork) comes first
+Pricing results are identical before and after — the only change is the customer is no longer asked questions already answered
+Pricing change disclosure
+
+No net pricing change. Both suppressed modules have their answers auto-injected by the client before the calc call:
+
+Suppressed module	Auto-injected value	How it's derived
+SERVICE_QUANTITY	"1" / "2_4" / "5_8" / "9plus"	Mapped from svc.qty: 1→"1", 2–4→"2_4", 5–8→"5_8", ≥9→"9plus"
+PROPERTY_TYPE	"residential" / "commercial"	Mapped from S.segment.toLowerCase()
+Multipliers remain exactly as defined in the seed: SERVICE_QUANTITY gives 0.9/0.85/0.8 for volume. PROPERTY_TYPE gives 1.15 for commercial. Neither changes.
+
+PERMIT_NEEDED has multiplier 1.0 for all options in every service map — removing it from the question list has zero effect on any price output.
+
+Out of scope
+
+Changing any multiplier values in the engine or seed data
+Adding new questions to services not already in scope
+Rewiring how qty flows through the V2 engine (it already receives qty from selectedServices[i].qty)
+Steps
+
+Auto-inject already-known answers before calc/lock — In quote.js, just before building the answers payload for /api/quote/calc and /api/quote/lock, inject SERVICE_QUANTITY mapped from the service's qty, and PROPERTY_TYPE mapped from S.segment. These are only injected if not already in S.answers (so manual overrides are preserved). Add a helper autoInjectKnownAnswers() called from both calcPrice() and submitLock().
+Suppress known-answer modules from the visible question list — In enrichConfigWithModules() (or directly in renderQuestions()), filter out SERVICE_QUANTITY and PROPERTY_TYPE from the questions array for every service type, since they are always auto-injected. Also filter out PERMIT_NEEDED from all service maps since it has no pricing impact.
+Update seed data modules_csv — In lib/estimatorSeedData.js, remove SERVICE_QUANTITY, PROPERTY_TYPE, and PERMIT_NEEDED from every service's modules_csv where they currently appear. This keeps the sheet in sync after next re-seed. Services affected: RECESSED_LIGHTING, LED_RETROFIT, CEILING_FAN_INSTALL, OUTLET_INSTALL, GFCI_OUTLET, DIMMER_SWITCH, SMART_SWITCH, SMOKE_CO_DETECTOR, REWIRE_WHOLE_HOUSE, REWIRE_COMMERCIAL, PANEL_UPGRADE, BREAKER_PANEL_REPAIR, SURGE_PROTECTOR, EV_CHARGER, DEDICATED_CIRCUIT, APPLIANCE_CIRCUIT, HOT_TUB_CIRCUIT, GENERATOR_STANDBY, GENERATOR_TRANSFER_SWITCH, GENERATOR_BACKUP, CODE_COMPLIANCE, FIRE_ALARM, TRANSFORMER_INSTALL, COMM_LIGHTING_RETROFIT, BALLAST_REPLACE, EXIT_EMERGENCY_LIGHTS, TROUBLESHOOT_FLICKER, BREAKER_TRIPPING.
+Fix question ordering per service — Reorder modules_csv for each instant/instant-with-safeguards service so the primary price-fork question comes first (REPLACE_OR_NEW, CIRCUIT_SCOPE, SMOKE_TYPE, EXISTING_WIRING, FAN_RATED_BOX, etc.), followed by access/location modifiers (CEILING_HEIGHT, ATTIC_ACCESS, WALL_TYPE), then soft signals (HOME_AGE, ROOM_LOCATION), and photo + UNCERTAINTY_BUFFER last. Services requiring reorder: RECESSED_LIGHTING, LIGHT_FIXTURE_INSTALL, CEILING_FAN_INSTALL, OUTLET_INSTALL, GFCI_OUTLET, DIMMER_SWITCH, SMART_SWITCH, OUTDOOR_LIGHTING, MOTION_SECURITY_LIGHT.
+Force sheet re-seed — After updating estimatorSeedData.js, bump the stale-seed detection token in lib/estimatorModulesConfig.js so the corrected question maps are written to the Estimator sheet on next server start without any manual intervention.
+Verify no regressions — After all changes, manually step through the quote flow for: Ceiling Fan, Recessed Lighting, Outlet Install, GFCI, Dimmer Switch, Smart Switch, EV Charger, Smoke Detector, Panel Upgrade, Outdoor Lighting. Confirm SERVICE_QUANTITY and PROPERTY_TYPE no longer appear, prices are unchanged from a fresh flow with the same inputs, and question count per service is ≤ 8 visible questions.
+Relevant files
+
+pages/js/quote.js:748-826 — enrichConfigWithModules() where module filtering happens
+pages/js/quote.js:1091-1132 — renderQuestions() where questions are displayed
+lib/estimatorSeedData.js:486-497 — SERVICE_QUANTITY module definition
+lib/estimatorSeedData.js:18-28 — PROPERTY_TYPE module definition
+lib/estimatorSeedData.js:637-648 — PERMIT_NEEDED module definition
+lib/estimatorSeedData.js:765-1192 — Full SERVICES array (all modules_csv to update)
+lib/estimatorModulesConfig.js
