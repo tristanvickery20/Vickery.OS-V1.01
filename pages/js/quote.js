@@ -63,12 +63,15 @@ const NOT_SURE_MODULES = {
 };
 
 // ── Hidden modules (never shown to customer) ───────────────────────────────────
-// These are technical questions only an electrician can answer. They are silently
-// excluded from the customer flow — the engine will use its safe defaults.
+// These are technical questions only an electrician can answer OR whose answers
+// are already known from earlier steps and are auto-injected before calc/lock.
 const HIDDEN_MODULES = new Set([
-  // No modules hidden — all canonical question map IDs are intentionally asked.
-  // CONDUIT_REQUIRED and EXISTING_BOX were removed: both are now explicit questions
-  // in the EV Charger and light fixture/GFCI service maps respectively.
+  // Already answered in Step 1 (segment picker) — auto-injected as PROPERTY_TYPE.
+  "PROPERTY_TYPE",
+  // Already answered in Step 3 (qty +/− control) — auto-injected as SERVICE_QUANTITY.
+  "SERVICE_QUANTITY",
+  // Admin/scheduling concern only; multiplier is 1.0 for every option — no pricing effect.
+  "PERMIT_NEEDED",
 ]);
 
 // ── Always-suppressed modules ──────────────────────────────────────────────────
@@ -575,6 +578,23 @@ function buildEquipmentLineItems() {
 // ── Helpers for primary service ────────────────────────────────────────────────
 function primaryTypeId() { return S.selectedServices[0]?.job_type_id || null; }
 function primaryQty()    { return S.selectedServices[0]?.qty || 1; }
+
+// ── Auto-inject already-known answers before calc/lock ─────────────────────────
+// SERVICE_QUANTITY and PROPERTY_TYPE are hidden from Step 4 because the customer
+// already supplied these values in earlier steps. We inject them here so the
+// pricing engine still receives them and applies the correct multipliers.
+// PERMIT_NEEDED is not injected — it has zero pricing effect (all options = 1.0).
+function autoInjectKnownAnswers(baseAnswers, qty) {
+  const merged = Object.assign({}, baseAnswers);
+  if (!("SERVICE_QUANTITY" in merged)) {
+    const q = Number(qty) || 1;
+    merged.SERVICE_QUANTITY = q >= 9 ? "9plus" : q >= 5 ? "5_8" : q >= 2 ? "2_4" : "1";
+  }
+  if (!("PROPERTY_TYPE" in merged)) {
+    merged.PROPERTY_TYPE = (S.segment || "Residential").toLowerCase();
+  }
+  return merged;
+}
 
 let repricTimer = null;
 
@@ -2661,7 +2681,7 @@ async function calcPrice() {
         body: JSON.stringify({
           quote_id: S.quoteId,
           job_type_id: svc.job_type_id,
-          answers: S.answers,
+          answers: autoInjectKnownAnswers(S.answers, svc.qty),
           addons: S.addons,
           qty: svc.qty,
           photo_modules_uploaded: Object.keys(S.confirmedPhotoModules).filter(k => S.confirmedPhotoModules[k]),
@@ -2916,7 +2936,7 @@ async function reprice(zip) {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, zip, equipment_line_items: buildEquipmentLineItems() }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, zip, equipment_line_items: buildEquipmentLineItems() }),
     });
     const data = await r.json();
     if (data.final_price != null) {
@@ -2979,7 +2999,7 @@ async function submitLock() {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
