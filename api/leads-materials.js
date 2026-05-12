@@ -32,7 +32,7 @@ async function handleGetLeadMaterials(req, res) {
     if (!leadRow) return json(res, 404, { ok: false, error: 'Lead not found' });
 
     const quoteId = String(leadRow[lqid] || '').trim();
-    if (!quoteId) return json(res, 200, { ok: true, lead_id: leadId, quote_id: '', materials: [], warnings: ['No quote is linked to this lead.'] });
+    if (!quoteId) return json(res, 200, { ok: true, lead_id: leadId, quote_id: '', materials: [], no_list_reason: 'no_quote_linked', warnings: ['No quote is linked to this lead.'] });
 
     const snapRows = await readTab(sheets, crmId, 'QuoteSnapshots!A1:AZ5000');
     const sh = snapRows[0] || [];
@@ -44,7 +44,7 @@ async function handleGetLeadMaterials(req, res) {
 
     const snaps = snapRows.slice(1).filter(r => String(r[sqid] || '').trim() === quoteId);
     const snap = snaps.find(r => String(r[sev] || '').trim() === 'locked') || snaps[snaps.length - 1];
-    if (!snap) return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials: [], warnings: ['No quote snapshot was found.'] });
+    if (!snap) return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials: [], no_list_reason: 'no_snapshot', warnings: ['No quote snapshot was found.'] });
 
     const selectedOptions = parseJsonSafe(String(snap[sOpts] || '{}'), {});
     const answers = selectedOptions && typeof selectedOptions === 'object' ? (selectedOptions.answers || {}) : {};
@@ -151,11 +151,12 @@ async function handleGetLeadMaterials(req, res) {
     const equipItems = equipmentLineItems
       .filter(e => e && (e.label || e.name || e.description))
       .map(e => ({
-        name:        String(e.label || e.name || e.description || '').trim(),
-        quantity:    Number(e.qty || e.quantity || 1),
-        unit:        String(e.unit || 'each').trim(),
-        source:      'Customer selection',
-        notes:       String(e.notes || '').trim(),
+        name:         String(e.label || e.name || e.description || '').trim(),
+        quantity:     Number(e.qty || e.quantity || 1),
+        unit:         String(e.unit || 'each').trim(),
+        source:       'Customer selection',
+        notes:        String(e.notes || '').trim(),
+        category:     'equipment',
         is_equipment: true,
         is_allowance: false,
       }));
