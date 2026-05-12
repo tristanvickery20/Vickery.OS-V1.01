@@ -1,0 +1,61 @@
+Build the estimator question logic around variables, not around random question lists.
+
+For every service, the system must identify which quote variables are unknown and only ask questions that help determine labor, material, equipment, access difficulty, risk, scheduling, permit handling, photo requirements, manual review, or customer expectations.
+
+A proposed question is valid only if all of these are true:
+1. It fits the selected service.
+2. A normal customer can answer it without electrical knowledge, tools, or unsafe inspection.
+3. It has not already been answered by service selection, quantity, equipment choice, address, or a previous answer.
+4. It changes price, materials, labor, risk, scheduling, quote assumptions, photo requirements, or manual review.
+5. It is conditionally shown only when relevant.
+6. Its answer options are simple, customer-facing, and mutually exclusive.
+7. It includes “Not sure” when reasonable.
+
+Use this scoring logic:
+Question Score =
+(Service Fit × 25)
++ (Price Impact × 20)
++ (Risk Reduction × 20)
++ (Customer Answerability × 15)
++ (Material Accuracy × 10)
++ (Scheduling/Access Value × 10)
+- (Friction × 15)
+- (Duplicate Penalty × 25)
+- (Technical Penalty × 25)
+
+Decision:
+- 80+ = ask
+- 60–79 = ask only if triggered by prior answer
+- 40–59 = prefer photo upload or internal review
+- under 40 = do not ask
+- if technical penalty is high, rewrite into customer-observable wording
+- if duplicate penalty is high, merge or delete
+- if risk is high but customer answerability is low, use photo/manual review instead
+
+Never ask the customer to determine electrician means/methods. Do not ask whether a circuit can be tapped, whether the panel has load capacity, whether a permit is required, whether a box is fan-rated, whether a neutral is present, or how the wire will actually be routed. Translate those into customer-observable questions, photo requests, or internal review.
+
+Use progressive disclosure:
+- Simple replacements should only get 4–6 questions.
+- Fixture/fan installs should get 6–8.
+- New locations should get 7–9.
+- Dedicated circuits should get 8–10 plus photos.
+- EV/generator/hot tub/subpanel should get 10–12 plus required photos.
+- Code correction/troubleshooting should get 5–8 plus required photos/report.
+- Rewiring, service upgrades, and broad code correction should go to custom review instead of full instant quote interrogation.
+
+For each question suggestion, output:
+- question_id
+- service_keys it applies to
+- condition for when it appears
+- variable it is trying to determine
+- why the variable matters
+- price effect type: add_labor, multiply_labor, add_material, add_fee, risk_buffer, manual_review, disqualify, photo_required, assumption_note
+- customer-facing question text
+- answer options
+- internal meaning of each answer
+- whether “not sure” is allowed
+- whether photo is better than asking
+- whether this question duplicates another question
+- whether this question should be live, suggested for admin review, or rejected
+
+The system should suggest questions, but it should not automatically make brand-new AI-generated questions live in the customer estimator unless they map to controlled variables and approved answer effects.

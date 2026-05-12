@@ -260,6 +260,10 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/site-financing.html"), "text/html");
   }
 
+  if (req.url === "/terms") {
+    return serveFile(res, path.join(__dirname, "pages/site-terms.html"), "text/html");
+  }
+
   // ── Public careers pages ──────────────────────────────────────────────────────
   if (req.url === "/careers" && req.method === "GET") {
     return serveFile(res, path.join(__dirname, "pages/careers.html"), "text/html");

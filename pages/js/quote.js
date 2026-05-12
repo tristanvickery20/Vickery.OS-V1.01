@@ -1608,15 +1608,22 @@ function renderConfirm() {
         </label>
       </div>
       <div class="q-consent-section">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));margin-bottom:12px;">Before You Book</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));">Before You Book</div>
+          <a href="/terms" target="_blank" rel="noopener"
+            style="font-size:11px;color:hsl(var(--primary));text-decoration:none;font-weight:600;display:flex;align-items:center;gap:4px;opacity:.85;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            View full terms
+          </a>
+        </div>
         <label class="q-consent-item">
           <input type="checkbox" id="consent_scope" class="q-consent-check" ${S.consents.scope ? "checked" : ""}>
-          <span>I understand the price is based on the information I provided. If actual site conditions differ &mdash; location, access, wiring, panel condition, wall type, or scope &mdash; Vickery Electric will pause and request my approval before continuing. I agree to provide safe access, secure pets, and be reachable during the appointment.</span>
+          <span>I understand the price is based on the information I provided. If actual site conditions differ, Vickery Electric will pause and request my approval before continuing any additional work. I agree to provide safe access, secure pets, and be reachable during the appointment. By booking I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:hsl(var(--primary));text-decoration:none;font-weight:600;">Terms of Service</a>.</span>
         </label>
         ${S.locationAnswers.attendance === "no_phone" ? `
         <label class="q-consent-item">
           <input type="checkbox" id="consent_unattended" class="q-consent-check" ${S.consents.unattended ? "checked" : ""}>
-          <span>I authorize Vickery Electric to access the property using the instructions I will provide. Pets are secured, alarm issues are handled, and the work location is clearly marked. If the technician cannot safely access or confirm the work area, the job may be paused, rescheduled, or subject to a trip fee.</span>
+          <span>I authorize Vickery Electric to access the property using the instructions I provided. Pets are secured, alarm issues are handled, and the work location is clearly marked. If the technician cannot safely access or confirm the work area, the job may be paused, rescheduled, or subject to a trip fee.</span>
         </label>` : ""}
         ${isLocationJob() ? `
         <label class="q-consent-item">
