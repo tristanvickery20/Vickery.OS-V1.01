@@ -1615,6 +1615,10 @@ function renderConfirm() {
   const blockDisplay = S.selectedBlock?.display      || "";
   const blockWindow  = S.selectedBlock?.window_label || "";
 
+  // Pre-fill from S.confirmData when navigating back from the consent step
+  const cd = S.confirmData || {};
+  const isRef = cd.source === "Referral";
+
   return `
     ${stepHeader(6, "Your Information")}
     <div class="q-confirm-summary">
@@ -1639,21 +1643,21 @@ function renderConfirm() {
     <div class="q-form">
       <div class="q-field">
         <label class="q-label">Your Name <span class="q-req">*</span></label>
-        <input type="text" id="ld_name" class="q-input" placeholder="Jane Smith" autocomplete="name">
+        <input type="text" id="ld_name" class="q-input" placeholder="Jane Smith" autocomplete="name" value="${escHtml(cd.name || '')}">
       </div>
       <div class="q-field">
         <label class="q-label">Phone <span class="q-req">*</span></label>
-        <input type="tel" id="ld_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+        <input type="tel" id="ld_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel" value="${escHtml(cd.phone || '')}">
       </div>
       <div class="q-field">
         <label class="q-label">Email</label>
-        <input type="email" id="ld_email" class="q-input" placeholder="you@example.com" autocomplete="email">
+        <input type="email" id="ld_email" class="q-input" placeholder="you@example.com" autocomplete="email" value="${escHtml(cd.email || '')}">
       </div>
       <div class="q-field">
         <label class="q-label">Service Address <span class="q-req">*</span></label>
         <div class="q-addr-wrap">
           <input type="text" id="ld_address" class="q-input"
-            placeholder="123 Main St, Beaumont TX 77701" autocomplete="off">
+            placeholder="123 Main St, Beaumont TX 77701" autocomplete="off" value="${escHtml(cd.address || '')}">
           <div id="addrDropdown" class="q-addr-dropdown" style="display:none;"></div>
         </div>
         <div id="addrConfirmBanner" style="display:none;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:rgba(45,106,224,0.1);border:1px solid rgba(45,106,224,0.35);border-radius:8px;font-size:13px;"></div>
@@ -1661,7 +1665,7 @@ function renderConfirm() {
       <div class="q-field">
         <label class="q-label">ZIP Code <span class="q-req">*</span></label>
         <input type="text" id="ld_zip" class="q-input" placeholder="77701"
-          maxlength="5" inputmode="numeric" pattern="[0-9]{5}">
+          maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${escHtml(cd.zip || '')}">
         <div class="q-zip-note" id="zipNote" style="display:none;"></div>
         <div class="q-price-update" id="priceUpdate" style="display:none;"></div>
       </div>
@@ -1669,29 +1673,21 @@ function renderConfirm() {
         <label class="q-label">How did you find us? <span class="q-req">*</span></label>
         <select id="ld_source" class="q-input" style="color:inherit;border:1px solid var(--q-border,#2d3348);">
           <option value="">-- Select one --</option>
-          <option value="GBP">Google Search / Google Maps</option>
-          <option value="LSA">Google Local Services Ad</option>
-          <option value="Google Ads">Google Ad</option>
-          <option value="Organic SEO">Website / Organic Search</option>
-          <option value="Facebook">Facebook</option>
-          <option value="Referral">Friend or Family Referral</option>
-          <option value="Yard Sign">Yard Sign</option>
-          <option value="Truck Wrap">Truck / Van</option>
-          <option value="Repeat Customer">Previous Customer</option>
-          <option value="Direct">Called / Walked In Directly</option>
-          <option value="Manual Outreach">Outreach / Door Hanger</option>
-          <option value="Other">Other</option>
+          ${["GBP|Google Search / Google Maps","LSA|Google Local Services Ad","Google Ads|Google Ad","Organic SEO|Website / Organic Search","Facebook|Facebook","Referral|Friend or Family Referral","Yard Sign|Yard Sign","Truck Wrap|Truck / Van","Repeat Customer|Previous Customer","Direct|Called / Walked In Directly","Manual Outreach|Outreach / Door Hanger","Other|Other"].map(s => {
+            const [v, t] = s.split("|");
+            return `<option value="${v}"${cd.source === v ? " selected" : ""}>${t}</option>`;
+          }).join("")}
         </select>
       </div>
-      <div id="referralFields" style="display:none;margin-top:10px;padding:14px 16px;border:1px solid var(--q-border,#2d3348);border-radius:10px;background:rgba(45,106,224,0.05);">
+      <div id="referralFields" style="${isRef ? "" : "display:none;"}margin-top:10px;padding:14px 16px;border:1px solid var(--q-border,#2d3348);border-radius:10px;background:rgba(45,106,224,0.05);">
         <div style="font-size:12px;font-weight:700;color:var(--q-accent,#2d6ae0);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Who referred you?</div>
         <div class="q-field" style="margin-bottom:10px;">
           <label class="q-label">Referrer Name <span class="q-req">*</span></label>
-          <input type="text" id="ref_name" class="q-input" placeholder="Their first and last name" autocomplete="off">
+          <input type="text" id="ref_name" class="q-input" placeholder="Their first and last name" autocomplete="off" value="${escHtml(cd.refName || '')}">
         </div>
         <div class="q-field">
           <label class="q-label">How do we reach them?</label>
-          <input type="text" id="ref_phone" class="q-input" placeholder="Phone, email, or however you prefer" autocomplete="off">
+          <input type="text" id="ref_phone" class="q-input" placeholder="Phone, email, or however you prefer" autocomplete="off" value="${escHtml(cd.refContact || '')}">
         </div>
       </div>
       <div class="q-field" style="margin-top:20px;border:1px solid var(--q-border,#2d3348);border-radius:10px;padding:14px 16px;background:rgba(45,106,224,0.06);">
@@ -1699,7 +1695,7 @@ function renderConfirm() {
           &#128241; Text Message Preferences
         </div>
         <label class="q-sms-opt" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:10px;">
-          <input type="checkbox" id="sms_ops_consent" checked
+          <input type="checkbox" id="sms_ops_consent" ${cd.smsOps === "false" ? "" : "checked"}
             style="margin-top:3px;width:18px;height:18px;accent-color:var(--q-accent,#2d6ae0);flex-shrink:0;">
           <span style="font-size:13px;line-height:1.5;color:inherit;">
             <strong>Yes — keep me in the loop on my job.</strong>
@@ -1710,7 +1706,7 @@ function renderConfirm() {
           </span>
         </label>
         <label class="q-sms-opt" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-          <input type="checkbox" id="sms_mkt_consent"
+          <input type="checkbox" id="sms_mkt_consent" ${cd.smsMkt === "true" ? "checked" : ""}
             style="margin-top:3px;width:18px;height:18px;accent-color:var(--q-accent,#2d6ae0);flex-shrink:0;">
           <span style="font-size:13px;line-height:1.5;color:inherit;">
             <strong>Also text me exclusive deals &amp; seasonal discounts.</strong>
