@@ -78,21 +78,35 @@ async function handleGetLeadMaterials(req, res) {
     }
 
     const out = new Map();
-    const add = (name, quantity, unit, source, notes) => {
+    // normalizeQty converts a raw float line quantity into a pull-list-friendly integer.
+    // Items with qty_per_unit < 1 are consumable allowances (e.g. 0.1 rolls of cable,
+    // 0.05 wire connectors per fixture).  When the total stays below 1, round up to 1
+    // and flag as an allowance so the display can suffix "(as needed)".
+    // When the total reaches or exceeds 1 (many fixtures), ceil to whole number.
+    function normalizeQty(qtyPerUnit, lineRaw) {
+      if (qtyPerUnit >= 1) return { qty: Math.max(1, Math.ceil(lineRaw)), is_allowance: false };
+      if (lineRaw < 1)    return { qty: 1,                               is_allowance: true  };
+      return               { qty: Math.ceil(lineRaw),                    is_allowance: false };
+    }
+    const add = (name, qtyNorm, unit, source, notes, is_allowance) => {
       if (!name) return;
-      const key = [name, unit || '', source || '', notes || ''].join('|').toLowerCase();
-      if (!out.has(key)) out.set(key, { name, quantity: 0, unit: unit || 'each', source: source || 'Base service', notes: notes || '' });
+      const key = [name, unit || '', source || ''].join('|').toLowerCase();
+      if (!out.has(key)) out.set(key, { name, quantity: 0, unit: unit || 'each', source: source || 'Base service', notes: notes || '', is_allowance: !!is_allowance });
       const row = out.get(key);
-      row.quantity += Number(quantity) || 0;
+      row.quantity += Number(qtyNorm) || 0;
+      // If any batch is non-allowance (qty was ≥ 1 floor), the combined item is not an allowance
+      if (!is_allowance) row.is_allowance = false;
     };
 
     for (const r of itemsRows.slice(1)) {
       if (String(r[itemH.indexOf('assembly_id')] || '').trim() !== jobTypeId) continue;
       if (String(r[itemH.indexOf('item_type')] || '').trim().toLowerCase() !== 'material') continue;
       const refId = String(r[itemH.indexOf('item_ref_id')] || '').trim();
-      // Multiply qty_per_unit by qty so 3 receptacle replacements → 3× materials
-      const lineQty = Number(r[itemH.indexOf('qty_per_unit')] || 0) * qty;
-      add(matNameById[refId] || refId, lineQty, String(r[itemH.indexOf('unit')] || 'each'), 'Base service', String(r[itemH.indexOf('notes')] || ''));
+      const qtyPerUnit = Number(r[itemH.indexOf('qty_per_unit')] || 0);
+      const lineRaw    = qtyPerUnit * qty;
+      const { qty: lineQty, is_allowance } = normalizeQty(qtyPerUnit, lineRaw);
+      const itemNotes = String(r[itemH.indexOf('notes')] || '').trim();
+      add(matNameById[refId] || refId, lineQty, 'each', 'Base service', itemNotes, is_allowance);
     }
 
     const addonSet = new Set(Array.isArray(addonIds) ? addonIds.map(String) : []);

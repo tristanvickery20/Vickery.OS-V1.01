@@ -1584,6 +1584,7 @@ function openJobDetail(j) {
               const qty  = m.quantity || 1;
               const unit = String(m.unit || "each").trim().toLowerCase();
               let   name = String(m.name || m.material_name || "").trim();
+              const isAllowance = !!m.is_allowance;
               let   line;
               if (!unit || unit === "each") {
                 // Countable item — pluralise name when qty > 1
@@ -1593,7 +1594,8 @@ function openJobDetail(j) {
                 // Measured item (ft, lbs, rolls, etc.) — include unit, no plural
                 line = `${esc(String(qty))} ${esc(unit)} ${esc(name)}`;
               }
-              return `<div class="jd-pull-row">${line}</div>`;
+              const suffix = isAllowance ? ` <span class="jd-pull-allowance">(as needed)</span>` : "";
+              return `<div class="jd-pull-row">${line}${suffix}</div>`;
             }).join("");
           }
         })

@@ -370,12 +370,18 @@
         el.innerHTML = '<div class="ld-notes-empty">No material list was captured for this quote yet.</div>';
         return;
       }
-      el.innerHTML = '<div class="ld-mat-list">' + mats.map((m) => `
+      el.innerHTML = '<div class="ld-mat-list">' + mats.map((m) => {
+        const qtyLabel = m.is_allowance
+          ? `<span class="ld-mat-allowance">(as needed)</span>`
+          : `${esc(String(m.quantity ?? 1))} ${esc(m.unit || 'each')}`;
+        const sourceLabel = m.source ? ` — ${esc(m.source)}` : '';
+        return `
         <div class="ld-mat-row">
           <div class="ld-mat-main">${esc(m.name || 'Material')}</div>
-          <div class="ld-mat-meta">${esc(String(m.quantity ?? 1))} ${esc(m.unit || 'each')} ${m.source ? '— ' + esc(m.source) : ''}</div>
+          <div class="ld-mat-meta">${qtyLabel}${sourceLabel}</div>
           ${m.notes ? `<div class="ld-mat-note">${esc(m.notes)}</div>` : ''}
-        </div>`).join('') + '</div>';
+        </div>`;
+      }).join('') + '</div>';
     } catch (err) {
       el.innerHTML = '<span style="color:hsl(0,70%,50%);font-size:13px;">Could not load materials: ' + esc(err.message) + '</span>';
     }

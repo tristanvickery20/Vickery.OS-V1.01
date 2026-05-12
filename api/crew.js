@@ -162,29 +162,32 @@ async function handleGetTodayJobs(req, res) {
     : todayLocalStr();
 
   // ── 1. Fetch raw sheet data (cached by date, never by user) ──────────────
-  let bookingRows, quoteRows, estCfg;
+  let bookingRows, quoteRows, leadsRows, estCfg;
   const cached = _todayJobsCache[today];
   if (cached && Date.now() - cached.ts < 60_000) {
-    ({ bookingRows, quoteRows, estCfg } = cached);
+    ({ bookingRows, quoteRows, leadsRows, estCfg } = cached);
   } else {
     try {
       const sheets = await getSheetsClient();
-      const [bookingsResp, quotesResp, estCfgResult] = await Promise.all([
+      const [bookingsResp, quotesResp, leadsResp, estCfgResult] = await Promise.all([
         sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
         sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:Z" }).catch(() => ({ data: { values: [] } })),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Leads!A:Z" }).catch(() => ({ data: { values: [] } })),
         getEstimatorConfig().catch(() => null),
       ]);
       bookingRows = bookingsResp.data.values || [];
       quoteRows   = quotesResp.data.values   || [];
+      leadsRows   = leadsResp.data.values    || [];
       estCfg      = estCfgResult;
       // Store raw unfiltered rows — filtering always runs per-request so no
       // user identity is ever embedded in the cache.
-      _todayJobsCache[today] = { ts: Date.now(), bookingRows, quoteRows, estCfg };
+      _todayJobsCache[today] = { ts: Date.now(), bookingRows, quoteRows, leadsRows, estCfg };
     } catch (err) {
       // Sheets quota / network error — fall back to stale cache if any exists,
       // regardless of TTL, so crew never sees a blank list after a quota spike.
       if (cached) {
-        ({ bookingRows, quoteRows, estCfg } = cached);
+        ({ bookingRows, quoteRows, leadsRows, estCfg } = cached);
+        leadsRows = leadsRows || [];
       } else {
         return json(res, 500, { ok: false, error: err.message, jobs: [] });
       }
@@ -205,6 +208,22 @@ async function handleGetTodayJobs(req, res) {
 
     if (bookingRows.length < 2) return json(res, 200, { ok: true, jobs: [], today });
 
+    // Build quote_id → lead_id map from Leads tab (fallback for snapshots that
+    // predate the lead_id-in-snapshot feature, or where the column is blank).
+    const quoteToLeadId = {};
+    if (Array.isArray(leadsRows) && leadsRows.length > 1) {
+      const lh  = leadsRows[0] || [];
+      const lId  = lh.indexOf("id");
+      const lQid = lh.indexOf("last_quote_id");
+      if (lId >= 0 && lQid >= 0) {
+        for (const lr of leadsRows.slice(1)) {
+          const qid = String(lr[lQid] || "").trim();
+          const lid = String(lr[lId]  || "").trim();
+          if (qid && lid) quoteToLeadId[qid] = lid;
+        }
+      }
+    }
+
     const [headers, ...data] = bookingRows;
     const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 
@@ -222,6 +241,7 @@ async function handleGetTodayJobs(req, res) {
           selected_addons_json:  String(r[qi["selected_addons_json"]  ?? -1] ?? "").trim(),
           job_type_id:           String(r[qi["job_type_id"]           ?? -1] ?? "").trim(),
           notes:                 String(r[qi["notes"]                 ?? -1] ?? "").trim(),
+          lead_id:               String(r[qi["lead_id"]               ?? -1] ?? "").trim(),
         };
         if (!snapshotMap[qid] || evtType === "locked") snapshotMap[qid] = entry;
       });
@@ -354,7 +374,7 @@ async function handleGetTodayJobs(req, res) {
           assigned_user_id:     get("assigned_user_id"),
           assigned_name:        get("assigned_name"),
           assigned_email:       get("assigned_email"),
-          lead_id:              get("lead_id"),
+          lead_id:              snap.lead_id || quoteToLeadId[qid] || get("lead_id"),
         };
       })
       .filter(j => {

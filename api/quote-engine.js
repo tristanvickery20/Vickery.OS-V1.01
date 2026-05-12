@@ -41,12 +41,13 @@ function json(res, status, payload) {
 }
 
 // Appends one row to QuoteSnapshots.
-// Column order must match schema (21 cols):
+// Column order must match schema (first 21 standard cols, then extended cols):
 // event_id, quote_id, created_at, event_type, job_type_id,
 // selected_options_json, selected_addons_json, total_hours,
 // labor_cost, overhead_cost, material_allowance, travel_fee,
 // final_price, address_provided, pricing_version, status,
-// customer_name, phone, email, address, notes
+// customer_name, phone, email, address, notes,
+// lead_id (extended — col 22, aligns with QuoteSnapshots schema auto-add)
 async function appendSnapshot(sheets, fields) {
   const row = [
     fields.event_id               ?? "",
@@ -70,6 +71,7 @@ async function appendSnapshot(sheets, fields) {
     fields.email                  ?? "",
     fields.address                ?? "",
     fields.notes                  ?? "",
+    fields.lead_id                ?? "",
   ];
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID(),
@@ -110,6 +112,7 @@ function normalizeLeadSource(v) {
 // ── Lead upsert on lock ───────────────────────────────────────────────────────
 // Creates or updates the Lead row so schedule-book can find it by last_quote_id.
 // Non-fatal: any Sheets error is logged but does not break the quote response.
+// Returns the lead_id that was found or created (or "" on failure).
 async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent, referrer_name, referrer_phone, attendance, access_instructions }) {
   try {
     const sheetId    = SPREADSHEET_ID();
@@ -122,11 +125,25 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
     const idxOf    = h => headers.indexOf(h);
     const phoneIdx = idxOf("phone");
 
+    const quoteIdIdx = idxOf("last_quote_id");
+
     let foundRowIdx = -1;
+    // Pass 1 — match by phone (preferred; handles repeat customers)
     if (cleanPhone) {
       for (let i = 1; i < rows.length; i++) {
         const rPhone = String(rows[i][phoneIdx] || "").replace(/\D/g, "");
         if (rPhone === cleanPhone) { foundRowIdx = i; break; }
+      }
+    }
+    // Pass 2 — match by quote_id so a re-lock on the same quote (e.g. the
+    // quote flow calls lock before the customer enters their phone, then again
+    // after) updates the existing lead instead of creating a duplicate.
+    if (foundRowIdx === -1 && quote_id && quoteIdIdx >= 0) {
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][quoteIdIdx] || "").trim() === quote_id) {
+          foundRowIdx = i;
+          break;
+        }
       }
     }
 
@@ -157,7 +174,7 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
         requestBody:   { majorDimension: "ROWS", values: [row] },
       });
       console.log(`[quote/lock] Updated Leads row ${foundRowIdx + 1} last_quote_id=${quote_id}`);
-      return;
+      return String(rows[foundRowIdx][idxOf("id")] || "");
     }
 
     // ── 2. Clients tab removed — Leads is the single source of truth.
@@ -193,8 +210,10 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       requestBody: { majorDimension: "ROWS", values: [newRow] },
     });
     console.log(`[quote/lock] Created Lead ${leadId} last_quote_id=${quote_id}`);
+    return leadId;
   } catch (err) {
     console.error("[quote/lock/upsertLead]", err.message);
+    return "";
   }
 }
 
@@ -543,6 +562,9 @@ async function handleQuoteLock(req, res) {
       ? `Referred by: ${referrer_name || ""}${referrer_phone ? " " + referrer_phone : ""}`.trim()
       : "";
 
+    // Upsert Lead first so we have lead_id to stamp on the snapshot
+    const leadId = await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrer_phone || "", attendance: attendance || "", access_instructions: access_instructions || "" });
+
     await appendSnapshot(sheets, {
       event_id:              newEventId(),
       quote_id,
@@ -564,10 +586,8 @@ async function handleQuoteLock(req, res) {
       email:                 email         || "",
       address:               address       || "",
       notes:                 referrerNote,
+      lead_id:               leadId || "",
     });
-
-    // Upsert the Lead row so the booking can find it by last_quote_id
-    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrer_phone || "", attendance: attendance || "", access_instructions: access_instructions || "" });
 
     json(res, 200, lockResponse);
   } catch (err) {

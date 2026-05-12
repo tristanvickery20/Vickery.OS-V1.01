@@ -1,0 +1,166 @@
+VE OS ISSUE REPORT — CREW JOB DETAIL MATERIALS, LEAD DETAIL MATERIAL TOTALS, AND DUPLICATE CLIENT CARDS
+
+Do not make random rewrites. Investigate the data flow first, compare the Google Sheets rows to what the UI is rendering, then fix only the broken behavior.
+
+Context:
+I created one quote/customer/job for “Jom” through the quoter one time.
+Service: Recessed Lighting Installation
+Price shown: $315
+Address shown: 79 Heritage Drive, Vidor, Texas, 77662
+Quote/job IDs visible in crew modal:
+BK-783AC340
+QT-36BED310A4EB
+
+There are three related problems.
+
+ISSUE 1 — Crew job detail page/modal is not showing the estimated material list
+
+In the crew view, when I open the Job Details modal, I can see:
+- Customer name
+- Price
+- Booking/quote IDs
+- Scheduled time
+- Address
+- Job type
+- Scope of work
+- Quote questions and answers
+
+But the crew job detail view still does not show the Estimated Materials / pull list.
+
+Expected:
+The crew job detail modal/page must show the same Estimated Materials pull list that the office/lead detail page shows.
+
+This is important because the crew needs to know what to load before dispatch.
+
+The material list should be visible on the crew job detail view after quote/job creation, not only on the admin lead detail page.
+
+Acceptance test:
+Open the crew view.
+Open the Jom job.
+The Job Details modal should include an “Estimated Materials” section with the full material pull list for that quote/job.
+
+ISSUE 2 — Lead detail estimated materials are showing per-assembly quantities, not total job quantities
+
+On Lead Detail, the Estimated Materials section does appear, but the quantities are wrong/confusing.
+
+Current example shown:
+- 6" LED recessed downlight
+  1 each — Base service
+- Device box (old work)
+  1 each — Base service
+- NM-B 12/2 cable
+  0.1 each — Base service
+- Wire connectors
+  0.05 each — Base service
+- Electrical tape
+  0.02 each — Base service
+
+Problem:
+This looks like it is showing raw per-assembly or fractional base quantities instead of a usable total pull list.
+
+Expected:
+Estimated Materials should show total required materials for the whole quote/job, not “per assembly” math.
+
+Examples:
+- If the customer quotes 3 recessed lights, the material list should show 3 recessed lights, 3 boxes, total cable allowance, total connectors, etc.
+- If the quote includes a receptacle swap and a light install, the material list should include the receptacle materials plus the light materials together.
+- Duplicate materials across assemblies should be combined into one total line.
+- The label should not say “1 each” if that number is only the base quantity per assembly.
+- Fractional material quantities should be converted into a usable pull-list format where appropriate.
+
+Desired behavior:
+The material list should act like a real preliminary pull list:
+- aggregate all assemblies in the quote/job
+- multiply by quantity
+- combine duplicate material items
+- show final total quantity
+- show the correct unit
+- avoid weird “0.05 each” / “0.1 each” display when the crew needs a practical material count or allowance
+- keep notes/descriptions if useful, but the main quantity must be the total needed for the job
+
+Acceptance test:
+Create one Recessed Lighting Installation quote with qty 1.
+Lead Detail and Crew Job Detail should show the same total material list.
+Then create another quote with qty 3.
+The material quantities should increase correctly.
+Then create a mixed quote, such as receptacle replacement plus light install.
+The material list should include all materials from both services and aggregate duplicates.
+
+ISSUE 3 — One quote/job created two client cards
+
+After I created the Jom quote one time, the Clients page shows 2 client cards:
+1. “(No name)” with Last scheduled: May 13 · Est: $315
+2. “Jom” with 79 Heritage Drive, Vidor, Texas, 77662 · Est: $315
+
+This appears to be the same job/quote/customer being represented twice.
+
+Expected:
+Creating one quote/job should create or update one client card, not two.
+
+Likely problem:
+The system may be creating:
+- one blank/no-name client from an early quote/lead stage
+- then a second named client after customer info/address is added
+
+Or the client list may be rendering both a lead/booking record and a client record as separate “clients.”
+
+Desired behavior:
+The Clients page should be a true client list, not a duplicate job/lead list.
+A customer should only appear once.
+If a quote starts without full info and later gets name/address, update the existing client/lead/client card instead of creating a second visible client.
+Do not show “(No name)” as a separate client card if it belongs to the same quote/job/customer.
+The client card should use the best available customer info from the completed quote/lead/booking.
+
+Acceptance test:
+Run through the quoter once for Jom.
+After completion, Clients should show only one Jom card.
+Refresh the page.
+Still only one Jom card.
+Open the card.
+It should show the correct quote/job/scheduled info.
+There should be no extra “(No name)” card for the same $315 job.
+
+INVESTIGATION REQUIREMENTS
+
+Please inspect:
+- the Google Sheets rows created by this quote/job
+- Leads
+- Clients
+- Quotes
+- Bookings/Schedule/Jobs if present
+- any quote snapshot JSON
+- material/assembly/item mapping tabs
+- the client list data source
+- the crew job detail data source
+- the lead detail material calculation/rendering source
+
+Compare the raw Sheet data to the UI.
+
+Specifically determine:
+1. Is the material list being calculated but not passed to the crew job detail view?
+2. Is the crew job detail endpoint missing the material list field?
+3. Is the lead detail material calculation using raw AssemblyItems rows without multiplying by quote quantity?
+4. Is the display showing per-unit/per-assembly quantities instead of total job quantities?
+5. Are duplicate clients being created in Sheets, or is the UI incorrectly rendering duplicate records from separate tables?
+6. Is the no-name card tied to the same quote/job ID as Jom?
+
+DO NOT:
+- rebuild the whole CRM
+- change the pricing model
+- remove quote snapshots
+- change the quoter flow unless necessary
+- hardcode this specific Jom example
+- create a separate material system that ignores the existing Sheets source of truth
+- make vague backend-only changes that cannot be verified in the UI
+
+FINAL EXPECTED RESULT
+
+After the fix:
+1. Lead Detail shows a usable total Estimated Materials pull list.
+2. Crew Job Detail shows the same Estimated Materials pull list.
+3. Material quantities are total job quantities, not raw per-assembly quantities.
+4. Mixed-service quotes aggregate all materials.
+5. The Clients page shows one card per actual client/customer.
+6. Creating one quote/job does not create a duplicate “(No name)” client.
+7. Refreshing the app does not create or reveal duplicates.
+8. The fix should be verifiable from the UI on mobile.
