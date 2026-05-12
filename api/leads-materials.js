@@ -53,6 +53,10 @@ async function handleGetLeadMaterials(req, res) {
     const addonIds = parseJsonSafe(String(snap[sAdds] || '[]'), []);
     const jobTypeId = String(snap[sJob] || '').trim();
 
+    // Extract customer-specified equipment picks (e.g. "Tesla Wall Connector 48A")
+    const equipmentLineItems = Array.isArray(selectedOptions && selectedOptions.equipment_line_items)
+      ? selectedOptions.equipment_line_items : [];
+
     if (!estId) return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials: [], warnings: ['Estimator V2 sheet is not configured for material extraction.'] });
 
     // All four tabs are read from the V2 estimator sheet (ESTIMATOR_V2_SHEET_ID),
@@ -134,11 +138,34 @@ async function handleGetLeadMaterials(req, res) {
       }
     }
 
-    const materials = Array.from(out.values()).map(m => ({ ...m, quantity: m.quantity || 1 }));
-    const warnings = [];
-    if (!materials.length) warnings.push('No material list was captured for this quote yet.');
+    const assemblyMaterials = Array.from(out.values()).map(m => ({ ...m, quantity: m.quantity || 1 }));
 
-    return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials, warnings });
+    // Determine if there were simply no AssemblyItems for this job type (vs. a real error)
+    const hasAnyAssemblyItems = itemsRows.slice(1).some(
+      r => String(r[itemH.indexOf('assembly_id')] || '').trim() === jobTypeId
+    );
+    const no_list_reason = assemblyMaterials.length === 0 && !hasAnyAssemblyItems && equipmentLineItems.length === 0
+      ? 'no_assembly_items' : null;
+
+    // Prepend customer-specified equipment at the top of the pull list
+    const equipItems = equipmentLineItems
+      .filter(e => e && (e.label || e.name || e.description))
+      .map(e => ({
+        name:        String(e.label || e.name || e.description || '').trim(),
+        quantity:    Number(e.qty || e.quantity || 1),
+        unit:        String(e.unit || 'each').trim(),
+        source:      'Customer selection',
+        notes:       String(e.notes || '').trim(),
+        is_equipment: true,
+        is_allowance: false,
+      }));
+
+    const materials = [...equipItems, ...assemblyMaterials];
+    const warnings = [];
+    if (no_list_reason === 'no_assembly_items') warnings.push('No pre-built materials list for this service type — check with office for what to pull.');
+    else if (!materials.length) warnings.push('No material list was captured for this quote yet.');
+
+    return json(res, 200, { ok: true, lead_id: leadId, quote_id: quoteId, materials, warnings, no_list_reason });
   } catch (err) {
     return json(res, 500, { ok: false, error: err.message });
   }

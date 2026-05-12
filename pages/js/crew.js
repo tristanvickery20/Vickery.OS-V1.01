@@ -1576,32 +1576,70 @@ function openJobDetail(j) {
           // Guard: discard response if the user has already opened a different job
           if (_detailJob && _detailJob.booking_id !== bookingId) return;
           const mats = (data && Array.isArray(data.materials)) ? data.materials : [];
+          const noListReason = data && data.no_list_reason;
           matSection.style.display = "block";
+
           if (mats.length === 0) {
-            matList.innerHTML = `<div class="jd-pull-empty">No pull list on file — check with office</div>`;
+            // Distinguish "no materials defined for this job type" from truly empty
+            if (noListReason === "no_assembly_items") {
+              matList.innerHTML = `<div class="jd-pull-empty">No pre-built materials list for this service type — check with office for what to pull</div>`;
+            } else if (data && data.warnings && data.warnings.length) {
+              matList.innerHTML = `<div class="jd-pull-empty">${esc(data.warnings[0])}</div>`;
+            } else {
+              matList.innerHTML = `<div class="jd-pull-empty">No pull list on file — check with office</div>`;
+            }
           } else {
-            matList.innerHTML = mats.map(m => {
+            // Split equipment items from standard items
+            const equipMats    = mats.filter(m => m.is_equipment);
+            const standardMats = mats.filter(m => !m.is_equipment);
+
+            function renderMaterialRow(m) {
               const qty  = m.quantity || 1;
               const unit = String(m.unit || "each").trim().toLowerCase();
               let   name = String(m.name || m.material_name || "").trim();
               const isAllowance = !!m.is_allowance;
               let   line;
               if (!unit || unit === "each") {
-                // Countable item — pluralise name when qty > 1
                 if (qty > 1 && name && !/s$/i.test(name)) name += "s";
                 line = `${esc(String(qty))} ${esc(name)}`;
               } else {
-                // Measured item (ft, lbs, rolls, etc.) — include unit, no plural
                 line = `${esc(String(qty))} ${esc(unit)} ${esc(name)}`;
               }
               const suffix = isAllowance ? ` <span class="jd-pull-allowance">(as needed)</span>` : "";
               return `<div class="jd-pull-row">${line}${suffix}</div>`;
-            }).join("");
+            }
+
+            let html = "";
+            if (equipMats.length > 0) {
+              html += `<div class="jd-pull-subhead jd-pull-subhead--equip">&#9889; Customer-specified equipment</div>`;
+              html += equipMats.map(renderMaterialRow).join("");
+              if (standardMats.length > 0) {
+                html += `<div class="jd-pull-subhead">Standard materials</div>`;
+              }
+            }
+            html += standardMats.map(renderMaterialRow).join("");
+            matList.innerHTML = html;
           }
         })
         .catch(() => {
           matSection.style.display = "none";
         });
+    }
+  }
+
+  // Photos section — shows scope_photos as tappable thumbnails
+  const photosSection = document.getElementById("jdPhotosSection");
+  const photosList    = document.getElementById("jdPhotosList");
+  const photos = Array.isArray(j.scope_photos) ? j.scope_photos.filter(Boolean) : [];
+  if (photosSection && photosList) {
+    if (photos.length > 0) {
+      photosList.innerHTML = photos.map(url =>
+        `<a href="${esc(url)}" target="_blank" rel="noopener" class="jd-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`
+      ).join("");
+      photosSection.style.display = "block";
+    } else {
+      photosSection.style.display = "none";
+      photosList.innerHTML = "";
     }
   }
 
