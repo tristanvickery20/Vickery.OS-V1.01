@@ -35,6 +35,7 @@ const S = {
   locationPhotos: [],          // File[] — area photos captured in questions step
   locationPhotoUploaded: false,// true once area photo successfully uploaded to server
   consents: {},                // { scope: bool, unattended: bool, location: bool }
+  confirmData: null,           // form values captured at confirm step, used by consent step
 };
 
 // ── Equipment / Material catalog ───────────────────────────────────────────────
@@ -248,6 +249,24 @@ const MODULE_OVERRIDES = {
   },
   "DEDICATED_CIRCUIT_DISTANCE": {
     prompt: "How far is your electrical panel from the work area? (from the work area)",
+  },
+  "EXISTING_WIRING": {
+    prompt: "Is there an outlet, light switch, or light fixture near where you need work done?",
+    options: [
+      { option_id: "yes_full",   label: "Yes — right at that spot (outlet, switch, or light is already there)" },
+      { option_id: "yes_nearby", label: "Yes — one is nearby, same room or within a few feet" },
+      { option_id: "no",         label: "No — nothing nearby, would need new wiring from the panel" },
+      { option_id: "not_sure",   label: "Not sure — I'm not sure what's in the walls", uncertain: true },
+    ],
+  },
+  "REPLACE_OR_NEW": {
+    prompt: "Are you replacing something at the same spot, or adding something to a brand new location?",
+    options: [
+      { option_id: "replace",  label: "Replacing an existing one — same spot, same location" },
+      { option_id: "new_near", label: "New location — there's an outlet, switch, or light nearby" },
+      { option_id: "new_far",  label: "New location — nothing nearby, needs wire run from the panel" },
+      { option_id: "not_sure", label: "Not sure — I'd like your team to advise", uncertain: true },
+    ],
   },
 };
 
@@ -957,7 +976,8 @@ function back() {
     questions:       "services",
     sitevisit:       "questions",
     confirm:         "review",
-    photo:           "confirm",
+    consent:         "confirm",
+    photo:           "consent",
     consult:         "questions",
   };
   if (prev[S.step]) go(prev[S.step]);
@@ -988,6 +1008,7 @@ function renderStep() {
       loadBlocksForReview();
       break;
     case "confirm":     clone.innerHTML = renderConfirm();    break;
+    case "consent":     clone.innerHTML = renderConsent();    break;
     case "photo":       clone.innerHTML = renderPhoto();      break;
     case "photo_gate":  clone.innerHTML = renderPhotoGate();  break;
     case "commercial_soon":  clone.innerHTML = renderCommercialSoon(); break;
@@ -1007,7 +1028,7 @@ function progressHTML() {
     services: 1, questions: 1, sitevisit: 1, photo_gate: 1,
     equipment: 2,
     review: 3, consult: 3,
-    confirm: 4, photo: 4, booked: 4,
+    confirm: 4, consent: 4, photo: 4, booked: 4,
   };
   const cur = idx[S.step] ?? 0;
 
@@ -1668,8 +1689,8 @@ function renderConfirm() {
           <input type="text" id="ref_name" class="q-input" placeholder="Their first and last name" autocomplete="off">
         </div>
         <div class="q-field">
-          <label class="q-label">Referrer Phone <span class="q-req">*</span></label>
-          <input type="tel" id="ref_phone" class="q-input" placeholder="(409) 555-0100" autocomplete="tel">
+          <label class="q-label">How do we reach them?</label>
+          <input type="text" id="ref_phone" class="q-input" placeholder="Phone, email, or however you prefer" autocomplete="off">
         </div>
       </div>
       <div class="q-field" style="margin-top:20px;border:1px solid var(--q-border,#2d3348);border-radius:10px;padding:14px 16px;background:rgba(45,106,224,0.06);">
@@ -1699,38 +1720,84 @@ function renderConfirm() {
           </span>
         </label>
       </div>
-      <div class="q-consent-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));">Before You Book</div>
-          <a href="/terms" target="_blank" rel="noopener"
-            style="font-size:11px;color:hsl(var(--primary));text-decoration:none;font-weight:600;display:flex;align-items:center;gap:4px;opacity:.85;">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            View full terms
-          </a>
-        </div>
-        <label class="q-consent-item">
-          <input type="checkbox" id="consent_scope" class="q-consent-check" ${S.consents.scope ? "checked" : ""}>
-          <span>I understand the price is based on the information I provided. If actual site conditions differ, Vickery Electric will pause and request my approval before continuing any additional work. I agree to provide safe access, secure pets, and be reachable during the appointment. By booking I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:hsl(var(--primary));text-decoration:none;font-weight:600;">Terms of Service</a>.</span>
-        </label>
-        ${S.locationAnswers.attendance === "no_phone" ? `
-        <label class="q-consent-item">
-          <input type="checkbox" id="consent_unattended" class="q-consent-check" ${S.consents.unattended ? "checked" : ""}>
-          <span>I authorize Vickery Electric to access the property using the instructions I provided. Pets are secured, alarm issues are handled, and the work location is clearly marked. If the technician cannot safely access or confirm the work area, the job may be paused, rescheduled, or subject to a trip fee.</span>
-        </label>` : ""}
-        ${isLocationJob() ? `
-        <label class="q-consent-item">
-          <input type="checkbox" id="consent_location" class="q-consent-check" ${S.consents.location ? "checked" : ""}>
-          <span>I confirm the location shown in my area photo is accurate. If the exact location changes on the day of service, the final price may be adjusted before work begins.</span>
-        </label>` : ""}
-      </div>
       <div class="q-err" id="leadErr" style="display:none;"></div>
       <div class="q-nav-row" style="margin-top:16px;">
         <button class="q-btn-back" onclick="back()">&#8592; Back</button>
-        <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book" ${consentsComplete() ? "" : "disabled"}>
-          <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
-          <span>Confirm &amp; Book</span>
+        <button class="q-btn-next" id="advanceToConsentBtn">
+          <span>Review &amp; Agree &#8594;</span>
         </button>
       </div>
+    </div>`;
+}
+
+// ── Step 6b: Consent — "Before You Book" ─────────────────────────────────────
+function renderConsent() {
+  const price        = S.lock?.final_price ?? S.pricing?.final_price ?? null;
+  const priceDisp    = S.isSiteVisit ? siteVisitPriceLabel() : exactPriceLabel(price);
+  const blockDisplay = S.selectedBlock?.display      || "";
+  const blockWindow  = S.selectedBlock?.window_label || "";
+
+  return `
+    ${stepHeader(7, "Before You Book")}
+    <div class="q-confirm-summary" style="margin-bottom:18px;">
+      <div class="q-confirm-row">
+        <span class="q-confirm-icon">${_SVG_CLOCK}</span>
+        <div>
+          <div class="q-confirm-key">Appointment Window</div>
+          <div class="q-confirm-val">${escHtml(blockDisplay)}${blockWindow ? ` &bull; Arrival ${escHtml(blockWindow)}` : ""}</div>
+        </div>
+      </div>
+      <div class="q-confirm-row">
+        <span class="q-confirm-icon">${_SVG_BOLT}</span>
+        <div>
+          <div class="q-confirm-key">${S.isSiteVisit ? "Ballpark Range" : "Your Quote"}</div>
+          <div class="q-confirm-val">
+            ${priceDisp}
+            <span class="q-confirm-note">&mdash; ${S.isSiteVisit ? "free visit · firm price quoted on-site" : "no payment due now"}</span>
+          </div>
+        </div>
+      </div>
+      ${S.confirmData?.name ? `<div class="q-confirm-row">
+        <span class="q-confirm-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <div>
+          <div class="q-confirm-key">Booking For</div>
+          <div class="q-confirm-val">${escHtml(S.confirmData.name)} &bull; ${escHtml(S.confirmData.phone)}</div>
+        </div>
+      </div>` : ""}
+    </div>
+    <div class="q-consent-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:12px;color:hsl(var(--muted-fg,220 10% 60%));line-height:1.5;">
+          Please read and check each item below to complete your booking.
+        </div>
+        <a href="/terms" target="_blank" rel="noopener"
+          style="font-size:11px;color:hsl(var(--primary));text-decoration:none;font-weight:600;display:flex;align-items:center;gap:4px;opacity:.85;flex-shrink:0;margin-left:12px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          View full terms
+        </a>
+      </div>
+      <label class="q-consent-item">
+        <input type="checkbox" id="consent_scope" class="q-consent-check" ${S.consents.scope ? "checked" : ""}>
+        <span>I understand the price is based on the information I provided. If actual site conditions differ, Vickery Electric will pause and request my approval before continuing any additional work. I agree to provide safe access, secure pets, and be reachable during the appointment. By booking I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:hsl(var(--primary));text-decoration:none;font-weight:600;">Terms of Service</a>.</span>
+      </label>
+      ${S.locationAnswers.attendance === "no_phone" ? `
+      <label class="q-consent-item">
+        <input type="checkbox" id="consent_unattended" class="q-consent-check" ${S.consents.unattended ? "checked" : ""}>
+        <span>I authorize Vickery Electric to access the property using the instructions I provided. Pets are secured, alarm issues are handled, and the work location is clearly marked. If the technician cannot safely access or confirm the work area, the job may be paused, rescheduled, or subject to a trip fee.</span>
+      </label>` : ""}
+      ${isLocationJob() ? `
+      <label class="q-consent-item">
+        <input type="checkbox" id="consent_location" class="q-consent-check" ${S.consents.location ? "checked" : ""}>
+        <span>I confirm the location shown in my area photo is accurate. If the exact location changes on the day of service, the final price may be adjusted before work begins.</span>
+      </label>` : ""}
+    </div>
+    <div class="q-err" id="leadErr" style="display:none;"></div>
+    <div class="q-nav-row" style="margin-top:16px;">
+      <button class="q-btn-back" onclick="back()">&#8592; Back</button>
+      <button class="q-btn-next" id="submitLockBtn" aria-label="Confirm and Book" ${consentsComplete() ? "" : "disabled"}>
+        <img src="/pages/img/sword-light.png" class="sword-icon" alt="">
+        <span>Confirm &amp; Book</span>
+      </button>
     </div>
     <div style="margin-top:20px;padding:14px 16px;border:1px solid rgba(45,106,224,0.3);border-radius:10px;background:rgba(45,106,224,0.06);display:flex;gap:12px;align-items:flex-start;">
       <span style="font-size:20px;flex-shrink:0;margin-top:1px;">&#9432;</span>
@@ -2578,6 +2645,9 @@ function bindEvents() {
     go("confirm");
   });
 
+  // Confirm: advance to consent step
+  document.getElementById("advanceToConsentBtn")?.addEventListener("click", advanceToConsent);
+
   // Confirm: referral sub-fields toggle
   document.getElementById("ld_source")?.addEventListener("change", e => {
     const box = document.getElementById("referralFields");
@@ -3023,19 +3093,18 @@ async function reprice(zip) {
   }
 }
 
-// ── Submit Lock ────────────────────────────────────────────────────────────────
-async function submitLock() {
+// ── Advance from confirm step to consent step ──────────────────────────────────
+function advanceToConsent() {
   const name    = val("ld_name");
   const phone   = val("ld_phone");
   const email   = val("ld_email");
   const address = val("ld_address");
   const zip     = val("ld_zip");
   const source  = val("ld_source");
-  S.lead_source = source || "";
   const smsOps  = document.getElementById("sms_ops_consent")?.checked ? "true" : "false";
   const smsMkt  = document.getElementById("sms_mkt_consent")?.checked  ? "true" : "false";
   const refName  = val("ref_name");
-  const refPhone = val("ref_phone");
+  const refContact = val("ref_phone");
 
   const errEl = document.getElementById("leadErr");
   const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
@@ -3048,7 +3117,31 @@ async function submitLock() {
   if (!/^\d{5}$/.test(zip)) return show("Please enter a valid 5-digit ZIP code.");
   if (!source)              return show("Please let us know how you found us.");
   if (source === "Referral" && !refName) return show("Please enter the name of the person who referred you.");
-  if (source === "Referral" && !refPhone) return show("Please enter the referrer's phone number.");
+
+  S.lead_source  = source;
+  S.confirmData  = { name, phone, email, address, zip, source, smsOps, smsMkt, refName, refContact };
+  go("consent");
+}
+
+// ── Submit Lock ────────────────────────────────────────────────────────────────
+async function submitLock() {
+  const cd      = S.confirmData || {};
+  const name    = cd.name    || val("ld_name");
+  const phone   = cd.phone   || val("ld_phone");
+  const email   = cd.email   || val("ld_email");
+  const address = cd.address || val("ld_address");
+  const zip     = cd.zip     || val("ld_zip");
+  const source  = cd.source  || val("ld_source");
+  S.lead_source = source || "";
+  const smsOps     = cd.smsOps    ?? (document.getElementById("sms_ops_consent")?.checked ? "true" : "false");
+  const smsMkt     = cd.smsMkt    ?? (document.getElementById("sms_mkt_consent")?.checked  ? "true" : "false");
+  const refName    = cd.refName   ?? val("ref_name");
+  const refContact = cd.refContact ?? val("ref_phone");
+
+  const errEl = document.getElementById("leadErr");
+  const show  = msg => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
+  if (errEl) errEl.style.display = "none";
+
   if (!consentsComplete())  return show("Please review and check all required agreements before booking.");
 
   const btn = document.getElementById("submitLockBtn");
@@ -3058,7 +3151,7 @@ async function submitLock() {
     // ── Site-visit path: skip quote lock, book directly ──────────────────────
     if (S.isSiteVisit) {
       S.lock = { customer_name: name, phone, email, address, zip, final_price: S.pricing?.final_price };
-      await submitSiteVisitBooking(name, phone, email, address, source, refName, refPhone);
+      await submitSiteVisitBooking(name, phone, email, address, source, refName, refContact);
       return;
     }
 
@@ -3067,7 +3160,7 @@ async function submitLock() {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refContact || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
