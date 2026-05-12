@@ -40,16 +40,17 @@ function r5(n) { return Math.round(n / 5) * 5; }
 function normalizeConfig(raw) {
   const modules  = raw.modulesById || {};
   const services = (raw.services || []).map(s => ({
-    service_id:      s.service_id,
-    service_name:    s.service_name,
-    segment:         s.segment,
-    tier:            s.tier,
-    enabled:         String(s.enabled ?? "TRUE").toUpperCase() !== "FALSE",
-    qty_min:         s.qty_min || null,
-    qty_max:         s.qty_max || null,
-    base_price_mode: s.base_price_mode,
-    modules_csv:     s.modules_csv,
-    modules:         (s.modules_csv || "").split(",").map(m => m.trim()).filter(Boolean),
+    service_id:         s.service_id,
+    service_name:       s.service_name,
+    segment:            s.segment,
+    tier:               s.tier,
+    enabled:            String(s.enabled ?? "TRUE").toUpperCase() !== "FALSE",
+    qty_min:            s.qty_min || null,
+    qty_max:            s.qty_max || null,
+    base_price_mode:    s.base_price_mode,
+    modules_csv:        s.modules_csv,
+    modules:            (s.modules_csv || "").split(",").map(m => m.trim()).filter(Boolean),
+    conditional_rules:  s.conditional_rules || null,
   }));
   return { updatedAt: raw.updatedAt, modules, services };
 }

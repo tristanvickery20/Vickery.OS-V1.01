@@ -74,6 +74,14 @@ const HIDDEN_MODULES = new Set([
   "PERMIT_NEEDED",
 ]);
 
+// Conditional question rules are defined in lib/estimatorSeedData.js on SERVICES
+// entries as `conditional_rules_json`, and flow through the config pipeline:
+//   estimatorSeedData.js → estimatorModulesConfig.js → api/estimator-config.js
+//   → enrichConfigWithModules() → question.show_if on each question object.
+//
+// applyConditionalVisibility() reads show_if from the loaded config so no
+// rules are hardcoded here in the frontend.
+
 // ── Always-suppressed modules ──────────────────────────────────────────────────
 // Answers to these are already known from prior steps and auto-injected into
 // S.answers before calc/lock — they must never appear as visible questions.
@@ -837,12 +845,19 @@ function enrichConfigWithModules(config, est) {
       // (Only relevant for fuzzy-matched services; direct mappings are curated.)
       if (!usedDirect && !isFan && _FAN_ONLY_MODULES.has(m.module_id)) continue;
 
-      questions.push({
+      const q = {
         question_id: m.module_id,
         prompt:      m.question,
         input_type:  m.input_type,
         required:    m.input_type !== "photo",
-      });
+      };
+      // Attach show_if rule from the service's conditional_rules so the
+      // frontend can hide/show this question based on a prior answer in the
+      // same step.  Rules are defined in estimatorSeedData.js SERVICES entries
+      // and flow through the config pipeline → question object here.
+      const conditionalRule = best.conditional_rules?.[m.module_id];
+      if (conditionalRule) q.show_if = conditionalRule;
+      questions.push(q);
       if (m.options?.length) {
         config.optionsByQuestion[m.module_id] = m.options.map(o => ({
           option_id:    o.value,
@@ -861,6 +876,48 @@ function enrichConfigWithModules(config, est) {
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
+// ── Conditional question visibility ───────────────────────────────────────────
+// Shows/hides question containers based on answers already stored in S.answers.
+// Rules come from each question's `show_if` property, which is populated by
+// enrichConfigWithModules() from the service's conditional_rules (defined in
+// lib/estimatorSeedData.js and delivered via the /api/estimator/config response).
+// Safe to call repeatedly — pure DOM show/hide, no re-render needed.
+function applyConditionalVisibility() {
+  if (S.step !== "questions") return;
+  const pid = primaryTypeId();
+  const questions = S.config?.questionsByType?.[pid] || [];
+
+  for (const q of questions) {
+    const rule = q.show_if;
+    if (!rule) continue;
+
+    const el = document.querySelector(`.q-question[data-qid="${q.question_id}"]`);
+    if (!el) continue;
+
+    const triggerVal = S.answers[rule.trigger];
+    let visible;
+
+    if (rule.show_when) {
+      // Whitelist: visible only when trigger exactly matches one of the listed values.
+      // Hides when trigger is unanswered — wait for the earlier question first.
+      visible = triggerVal != null && rule.show_when.includes(triggerVal);
+    } else if (rule.hide_when) {
+      // Blacklist: visible by default; hidden only when trigger matches a blocked value.
+      // Stays visible when trigger is unanswered (safe default).
+      visible = triggerVal == null || !rule.hide_when.includes(triggerVal);
+    } else {
+      visible = true;
+    }
+
+    el.style.display = visible ? "" : "none";
+    // Clear any stored answer for a now-hidden question so the pricing engine
+    // doesn't receive a stale value for a question the customer never saw.
+    if (!visible && S.answers[q.question_id] !== undefined) {
+      delete S.answers[q.question_id];
+    }
+  }
+}
+
 function go(step) {
   S.step = step;
   renderStep();
@@ -2337,6 +2394,8 @@ function bindEvents() {
       }
       radio.closest(".q-options")?.querySelectorAll(".q-option")
         .forEach(l => l.classList.toggle("selected", l.querySelector("input") === radio));
+      // Re-evaluate which questions should be visible based on the new answer.
+      applyConditionalVisibility();
     });
   });
 
@@ -2351,6 +2410,7 @@ function bindEvents() {
       if (el) el.textContent = nv;
       btn.disabled = nv <= 1;
       btn.nextElementSibling?.nextElementSibling?.removeAttribute("disabled");
+      applyConditionalVisibility();
     });
   });
   document.querySelectorAll(".q-num-inc").forEach(btn => {
@@ -2363,6 +2423,7 @@ function bindEvents() {
       if (el) el.textContent = nv;
       btn.disabled = nv >= 20;
       btn.previousElementSibling?.previousElementSibling?.removeAttribute("disabled");
+      applyConditionalVisibility();
     });
   });
 
@@ -2389,7 +2450,10 @@ function bindEvents() {
     });
   });
   document.querySelectorAll(".q-text-input").forEach(inp => {
-    inp.addEventListener("change", () => { S.answers[inp.name.replace("q_", "")] = inp.value; });
+    inp.addEventListener("change", () => {
+      S.answers[inp.name.replace("q_", "")] = inp.value;
+      applyConditionalVisibility();
+    });
   });
 
   document.getElementById("seePriceBtn")?.addEventListener("click", () => {
@@ -2637,6 +2701,10 @@ function bindEvents() {
       }, 200);
     });
   })();
+
+  // Apply conditional visibility immediately after the questions step renders,
+  // so any previously stored answers correctly show/hide dependent questions.
+  applyConditionalVisibility();
 }
 
 // ── Auto-inject known answers before calc / lock ───────────────────────────────
