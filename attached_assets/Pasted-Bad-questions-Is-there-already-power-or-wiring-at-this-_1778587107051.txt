@@ -1,0 +1,65 @@
+Bad questions
+
+Is there already power or wiring at this location? *
+Yes — full circuit and box already thereNearby circuit within 20 ftNo — needs new circuit run from panelNot sure
+
+Make it easier for the homeowner to answer always assume they know nothing about electrical work. Maybe an alternative could be something like is there an outlet or light or light switch near 
+
+Same thing with this one find a smarter way to get the circuit from easy to answer questions if you have to
+
+installing where nothing exists? *
+Replacing existing — same locationNew location — tapping into nearby circuitNew location — new circuit from panelNot sure
+
+This was asked on an outlet question
+
+What type of fixture or device is being installed? *
+Flush mount / drum lightPendant / hanging lightChandelier / multi-armVanity / bar lightTrack lightingCeiling fanSmart switch / smart dimmerOutdoor / security lightOther / not sure
+
+I love this but word it like tape draw or point
+
+Outlet / Work Area
+We need this before we can calculate your price — it only takes a minute.
+1
+Stand facing the wall where the outlet will go — position yourself about 3–4 feet back.
+2
+If you know the exact spot, mark it with a piece of tape in an X — this is the single most helpful thing you can do.
+3
+Frame the shot to show 2–3 feet of wall on each side of the target spot.
+4
+Make sure any nearby existing outlets or switches are in the frame for distance reference.
+QUICK TIPS
+
+A tape X on the target spot removes all guesswork about location
+
+Show the nearest existing outlet — it helps us plan the circuit run
+
+Include the baseboard so we can see the floor-to-target height
+
+
+REFERRED YOU?
+Referrer Name *
+Referrer Phone *
+don’t think phone number is the best way to do it.
+
+BEFORE YOU BOOK
+
+View full terms
+
+I understand the price is based on the information I provided. If actual site conditions differ, Vickery Electric will pause and request my approval before continuing any additional work. I agree to provide safe access, secure pets, and be reachable during the appointment. By booking I agree to the Terms of Service.
+
+Before you book should be a seperate page and still be the exact same consent just think it’ll be a bit cleaner that way
+
+Permissions seem to be turned off for me and they won’t save 
+
+For some reason on the crew view job detail page it shows pull list but not scope of work. We want both and any pictures to be viewable by the crew. (Also the customer Jane selected a specific piece of equipment in the estimator. I didn’t see it on the pull list. Investigate  I just found that for some reason Jom has both scope and pull list. Joe smith and Tristan don’t have pull list but do have scope.
+
+
+Every time I go through the estimator and submit, there are two leads for the same job at least based on the ui(see Jane). It’s annoying as fuck. 
+
+I looked at the sheets and there’s still a bunch of tabs that I thought we migrated to different sheets, but are still there that need to be deleted
+
+Also, marketing is currently one page in the CRM and it needs to be set up as one category of pages that has several different pages. I.e. there should be one page for reviews one page for GBP one page for referrals one page for whatever else we have inside the current marketing set up
+
+Is there any way I can set up the square payments and whatever else payment right now for free?
+
+The scheduler won’t let me assign techs I’m not sure if that’s because of the sheet migration we did or just simply a permissions problem because I don’t have permissions right now.
