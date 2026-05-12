@@ -698,7 +698,6 @@ window.Mkt = (function () {
             document.getElementById("ntName").value = "";
             document.getElementById("ntBody").value = "";
             resultEl.textContent = "";
-            loadTemplates._formBound = false;
             loadTemplates();
           } else {
             resultEl.textContent = d.error || "Error saving.";
@@ -1022,7 +1021,6 @@ window.Mkt = (function () {
         body: JSON.stringify({ status, reward_status, reward_amount }),
       });
       toast("Referral updated!", "success");
-      loadReferrals._tabsBound = false;
       loadReferrals();
     } catch (e) {
       toast("Error: " + e.message, "error");
@@ -1074,7 +1072,6 @@ window.Mkt = (function () {
       });
       if (d.ok) {
         toast(d.sms_sent ? "Reward SMS sent!" : "Logged (SMS not configured).", "success");
-        loadReferrals._tabsBound = false;
         loadReferrals();
       } else {
         toast("Error: " + (d.error || "unknown"), "error");
