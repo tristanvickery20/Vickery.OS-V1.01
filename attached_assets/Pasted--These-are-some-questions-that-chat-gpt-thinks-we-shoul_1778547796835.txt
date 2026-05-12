@@ -1,0 +1,48 @@
+ These are some questions that chat gpt thinks we should add for a lot of the services. It applies to several
+
+How far is the desired location from the nearest outlet or panel?
+    * Within 3 feet
+    * 3–10 feet
+    * 10–25 feet
+    * 25–50 feet
+    * Over 50 feet
+    * Not sure
+    
+Upload a photo of the wall/ceiling/area.
+    * Customer must mark the exact location with tape, a sticker, or finger point.
+
+Will someone be there to confirm the location?
+    * Yes, I’ll be there 
+    * Someone else will meet you
+    * No, but I can provide access and approve by phone/text
+
+
+Use this before they click Approve Quote or Book Appointment:
+
+I understand that my price is based on the information I provided. If the actual job, location, access, wiring, panel condition, wall type, materials, or scope is different, Vickery Electric may pause the work and request approval for a price change before continuing. I also agree to provide safe access, secure pets, be reachable during the appointment, and pay according to the approved quote or invoice.
+
+⸻
+
+For unattended jobs checkbox
+
+Use this only when they choose “I won’t be home”:
+
+I authorize Vickery Electric to access the property using the instructions I provided. I confirm that pets are secured, alarms/access issues are handled, and the exact work location is clearly identified. I understand that if the technician cannot safely access or verify the work, the job may be paused, rescheduled, or subject to a trip fee.
+
+⸻
+
+For location-specific jobs checkbox
+
+For receptacles, switches, lights, fans, exterior devices:
+
+I understand that the quote is based on the exact location I selected or marked in photos. If I change the location or the actual conditions are different, the price may change before work continues.
+
+On the photo uploads make sure that we require it for a lot of the location based services and give a short clear description and an example cartoon like you did for panel photo.
+
+Also all vacant property should require access instructions.
+
+I line the idea that location photos are only required if no one will be present.they can mark in tape, point or draw.
+
+I also like unique meaningful questions that all even dumvass home owners will know the answer to 
+
+Find good questions that affect price or needed info for each and every service

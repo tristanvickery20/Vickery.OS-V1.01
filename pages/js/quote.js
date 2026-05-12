@@ -637,28 +637,79 @@ function _nameSim(a, b) {
   return score / Math.max(wa.size, wb.size);
 }
 
+// ── Direct assembly→estimator-service mapping ─────────────────────────────────
+// Eliminates fuzzy matching for all known assemblies. Entries here take priority
+// over the fuzzy matcher. Add new entries whenever new assemblies are created.
+const _ASSEMBLY_TO_SERVICE = {
+  // Lighting
+  A001: "RECESSED_LIGHTING",
+  A003: "LIGHT_FIXTURE_INSTALL",
+  A005: "OUTDOOR_LIGHTING",
+  A006: "MOTION_SECURITY_LIGHT",
+  A007: "LED_RETROFIT",
+  // Fans
+  A004: "CEILING_FAN_INSTALL",
+  // Switches / dimmers / smart
+  A008: "DIMMER_SWITCH",
+  A014: "SMART_SWITCH",
+  // Outlets
+  A011: "OUTLET_INSTALL",
+  A012: "GFCI_OUTLET",
+  // Circuits
+  A017: "DEDICATED_CIRCUIT",
+  A025: "APPLIANCE_CIRCUIT",
+  A028: "EV_CHARGER",
+  A029: "HOT_TUB_CIRCUIT",
+  // Panel / breaker
+  A019: "PANEL_UPGRADE",
+  A020: "SUBPANEL_INSTALL",
+  A021: "FUSE_BOX_CONVERSION",
+  A023: "BREAKER_PANEL_REPAIR",
+  A024: "SURGE_PROTECTOR",
+  // Generators
+  A026: "GENERATOR_STANDBY",
+  A027: "GENERATOR_TRANSFER_SWITCH",
+  A053: "GENERATOR_BACKUP",
+  // Diagnostics / compliance
+  A010: "TROUBLESHOOT_FLICKER",
+  A018: "CODE_COMPLIANCE",
+  A022: "BREAKER_TRIPPING",
+  // Wiring
+  A015: "REWIRE_WHOLE_HOUSE",
+  A016: "REWIRE_PARTIAL",
+  A040: "REWIRE_COMMERCIAL",
+  // Safety
+  A030: "SMOKE_CO_DETECTOR",
+  // Commercial
+  A034: "EXIT_EMERGENCY_LIGHTS",
+  A036: "BALLAST_REPLACE",
+  A037: "COMM_LIGHTING_RETROFIT",
+  A055: "FIRE_ALARM",
+};
+
+// Module ID aliases: keys are legacy/typo IDs that may appear in sheet data,
+// values are the canonical IDs in the modules map. Handles the WORK_AREA_PHOTOS
+// plural-vs-singular inconsistency in older seeded sheets.
+const _MODULE_ALIASES = {
+  "WORK_AREA_PHOTOS": "WORK_AREA_PHOTO",
+  "CEILING_HT":       "CEILING_HEIGHT",
+  "FAN_EXISTING_WIRING": "FAN_RATED_BOX",
+};
+
 // ── Module blocklist for enrichConfigWithModules ──────────────────────────────
-// Module IDs that should ONLY appear for lighting and ceiling-fan services.
-// Any fuzzy match that assigns these to an unrelated service (e.g. a breaker job
-// scoring ≥ 0.52 against a lighting service) will have them stripped out.
-const _LIGHTING_FAN_ONLY_MODULES = new Set([
-  "CEILING_HT", "CEILING_HEIGHT",
-  "ATTIC_ACCESS",
-  // EXISTING_BOX removed — now an intentional question in GFCI and light fixture maps.
-  "FAN_EXISTING_WIRING",
-]);
+// Only strip modules that are genuinely nonsensical for a category when we
+// fall back to fuzzy matching (direct-mapped services ignore this since their
+// modules_csv is already curated by the seed data).
+// FAN_RATED_BOX / FAN_EXISTING_WIRING: ceiling-fan mechanics only.
+const _FAN_ONLY_MODULES = new Set(["FAN_RATED_BOX", "FAN_EXISTING_WIRING", "FAN_CONTROL_TYPE"]);
 
-// Module IDs that must not appear for panel or diagnostic services.
-const _NO_PANEL_DIAG_MODULES = new Set([
-  "DEDICATED_CIRCUIT_DISTANCE", "DISTANCE_FROM_PANEL",
-]);
-
-// Assembly-ID → broad category (mirrors server-side SERVICE_TO_CATEGORY).
-// Used only for the blocklist filter; unknown IDs are left as-is (safe default).
+// Assembly-ID → broad category. Used for the fan-only module guard on fuzzy
+// fallback paths and to determine _tier hinting.
 const _JT_CATEGORY = {
-  // Lighting / fan — LIGHTING_FAN_ONLY_MODULES are ALLOWED here
+  // Lighting / outdoor
   A001: "LIGHTING", A003: "LIGHTING", A005: "LIGHTING",
   A006: "LIGHTING", A007: "LIGHTING",
+  // Fan
   A004: "FAN",
   // Outlets / switches
   A008: "SWITCH", A011: "OUTLET", A012: "OUTLET", A014: "SWITCH",
@@ -670,26 +721,22 @@ const _JT_CATEGORY = {
   A023: "PANEL", A024: "PANEL",
   // EV charger
   A028: "EV",
-  // Diagnostics — A022 (BREAKER_TRIPPING) is a diagnostic, not panel work
-  A010: "DIAGNOSTICS", A018: "DIAGNOSTICS", A022: "DIAGNOSTICS", A030: "DIAGNOSTICS",
+  // Diagnostics
+  A010: "DIAGNOSTICS", A018: "DIAGNOSTICS", A022: "DIAGNOSTICS",
+  // Smoke / CO detectors
+  A030: "DETECTOR",
   // Generators
   A026: "GENERATOR", A027: "GENERATOR", A053: "GENERATOR",
   // Commercial
   A034: "COMMERCIAL", A036: "COMMERCIAL", A037: "COMMERCIAL",
   A040: "COMMERCIAL", A046: "COMMERCIAL",
-  // Other
-  A031: "OTHER",
+  // Other (home automation, low-voltage, data — always site visit)
+  A031: "OTHER", A041: "OTHER", A042: "OTHER",
 };
 
-// Lighting / fan categories that may keep LIGHTING_FAN_ONLY_MODULES.
-const _LIGHTING_FAN_CATS = new Set(["LIGHTING", "FAN"]);
-// Panel / diagnostic categories that must not have circuit-distance modules.
-const _PANEL_DIAG_CATS   = new Set(["PANEL", "DIAGNOSTICS", "GENERATOR",
-                                     "WIRING", "COMMERCIAL", "OTHER"]);
-// Categories that must receive ZERO online module questions regardless of fuzzy
-// match result — these services always route to a site-visit screen.
-const _ZERO_QUESTION_CATS = new Set(["DIAGNOSTICS", "GENERATOR", "COMMERCIAL",
-                                      "WIRING", "OTHER"]);
+// Categories that receive zero module questions: unmapped/unrecognized services
+// that have no curated question set in the estimator sheet.
+const _ZERO_QUESTION_CATS = new Set(["OTHER"]);
 
 function enrichConfigWithModules(config, est) {
   if (!est?.services || !est?.modules) return;
@@ -697,52 +744,56 @@ function enrichConfigWithModules(config, est) {
   config.questionsByType   = config.questionsByType   || {};
   config.optionsByQuestion = config.optionsByQuestion || {};
 
-  for (const jt of (config.jobTypes || [])) {
-    // Determine the service category for blocklist/allowlist enforcement.
-    // jt.category comes from the Assemblies sheet (e.g. "Lighting & Fans").
-    // Fall back to the hardcoded assembly map for V2 IDs, then name heuristics.
-    const jtCatRaw  = (jt.category || "").toLowerCase();
-    let   jtCat     = _JT_CATEGORY[jt.job_type_id] || null;
-    if (!jtCat) {
-      if (jtCatRaw.includes("light") || jtCatRaw.includes("fan"))              jtCat = "LIGHTING";
-      else if (jtCatRaw.includes("outlet") || jtCatRaw.includes("switch"))     jtCat = "OUTLET";
-      else if (jtCatRaw.includes("panel") || jtCatRaw.includes("breaker"))     jtCat = "PANEL";
-      else if (jtCatRaw.includes("ev") || jtCatRaw.includes("charger"))        jtCat = "EV";
-      else if (jtCatRaw.includes("diagnos") || jtCatRaw.includes("troubleshoot")) jtCat = "DIAGNOSTICS";
-      else if (jtCatRaw.includes("generat"))                                   jtCat = "GENERATOR";
-      else if (jtCatRaw.includes("commercial") || jtCatRaw.includes("ballast")) jtCat = "COMMERCIAL";
-      else if (jtCatRaw.includes("rewire") || jtCatRaw.includes("wiring"))     jtCat = "WIRING";
-    }
+  // Build a fast service_id → service lookup to support direct mapping.
+  const svcIndex = {};
+  for (const svc of est.services) svcIndex[svc.service_id] = svc;
 
-    // Hard enforcement: zero-question categories must never receive module questions,
-    // regardless of what the fuzzy matcher finds. Set empty and move on.
+  for (const jt of (config.jobTypes || [])) {
+    const jtCat = _JT_CATEGORY[jt.job_type_id] || null;
+
+    // Zero-question guard for truly unmapped/misc service types.
     if (_ZERO_QUESTION_CATS.has(jtCat)) {
       config.questionsByType[jt.job_type_id] = [];
       continue;
     }
 
-    // Find the best-matching estimator service
-    let best = null, bestSim = 0;
-    for (const svc of est.services) {
-      const sim = _nameSim(jt.name_public, svc.service_name);
-      if (sim > bestSim) { bestSim = sim; best = svc; }
+    // ── 1. Direct mapping (preferred) ────────────────────────────────────────
+    let best    = null;
+    let usedDirect = false;
+    const directId = _ASSEMBLY_TO_SERVICE[jt.job_type_id];
+    if (directId && svcIndex[directId]) {
+      best       = svcIndex[directId];
+      usedDirect = true;
     }
-    if (!best || bestSim < 0.52 || !best.modules?.length) continue;
 
-    const isLightingFan  = _LIGHTING_FAN_CATS.has(jtCat);
-    const isPanelOrDiag  = _PANEL_DIAG_CATS.has(jtCat);
+    // ── 2. Fuzzy fallback (for assemblies without a direct mapping) ───────────
+    if (!best) {
+      let bestSim = 0;
+      for (const svc of est.services) {
+        const sim = _nameSim(jt.name_public, svc.service_name);
+        if (sim > bestSim) { bestSim = sim; best = svc; }
+      }
+      if (!best || bestSim < 0.52) best = null;
+    }
+
+    if (!best?.modules?.length) continue;
+
+    const isFan = (jtCat === "FAN");
 
     const questions = [];
-    for (const mid of best.modules) {
-      if (mid === "UNCERTAINTY_BUFFER") continue;
+    for (const rawMid of best.modules) {
+      // Resolve alias (handles WORK_AREA_PHOTOS → WORK_AREA_PHOTO, etc.)
+      const mid = _MODULE_ALIASES[rawMid] || rawMid;
+
+      // Skip the uncertainty buffer — it's collected separately at the end.
+      if (mid === "UNCERTAINTY_BUFFER" || mid === "CUSTOMER_UNSURE") continue;
+
       const m = modMap[mid];
       if (!m) continue;
 
-      // ── Blocklist enforcement ───────────────────────────────────────────────
-      // Strip ceiling/attic/fan-wiring modules from non-lighting/fan services.
-      if (!isLightingFan && _LIGHTING_FAN_ONLY_MODULES.has(m.module_id)) continue;
-      // Strip circuit-distance modules from panel/diagnostic/generator services.
-      if (isPanelOrDiag  && _NO_PANEL_DIAG_MODULES.has(m.module_id))     continue;
+      // Strip fan-specific modules when this is not a fan service.
+      // (Only relevant for fuzzy-matched services; direct mappings are curated.)
+      if (!usedDirect && !isFan && _FAN_ONLY_MODULES.has(m.module_id)) continue;
 
       questions.push({
         question_id: m.module_id,
