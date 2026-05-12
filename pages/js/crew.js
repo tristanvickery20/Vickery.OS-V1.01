@@ -1509,6 +1509,14 @@ function openJobDetail(j) {
     typeSection.style.display = "none";
   }
 
+  const accessSection = document.getElementById("jdAccessSection");
+  const accessEl      = document.getElementById("jdAccess");
+  if (accessSection && accessEl) {
+    const accessText = j.access_instructions || "";
+    accessEl.textContent = accessText;
+    accessSection.style.display = accessText ? "block" : "none";
+  }
+
   const notifySection = document.getElementById("jdNotifySection");
   if (notifySection) notifySection.style.display = j.phone ? "block" : "none";
   document.querySelectorAll(".btn-notify").forEach(b => {

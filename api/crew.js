@@ -208,19 +208,35 @@ async function handleGetTodayJobs(req, res) {
 
     if (bookingRows.length < 2) return json(res, 200, { ok: true, jobs: [], today });
 
-    // Build quote_id → lead_id map from Leads tab (fallback for snapshots that
-    // predate the lead_id-in-snapshot feature, or where the column is blank).
+    // Build lead lookup maps from Leads tab:
+    //   quoteToLeadId : quote_id  → lead_id
+    //   leadById      : lead_id   → { job_type, notes, last_quote_id, name, phone, address }
+    //   leadByQuoteId : last_quote_id → lead (same record, alternate key)
     const quoteToLeadId = {};
+    const leadById      = {};
+    const leadByQuoteId = {};
     if (Array.isArray(leadsRows) && leadsRows.length > 1) {
-      const lh  = leadsRows[0] || [];
-      const lId  = lh.indexOf("id");
-      const lQid = lh.indexOf("last_quote_id");
-      if (lId >= 0 && lQid >= 0) {
-        for (const lr of leadsRows.slice(1)) {
-          const qid = String(lr[lQid] || "").trim();
-          const lid = String(lr[lId]  || "").trim();
-          if (qid && lid) quoteToLeadId[qid] = lid;
-        }
+      const lh = leadsRows[0] || [];
+      const lIdx = Object.fromEntries(lh.map((h, i) => [String(h).trim(), i]));
+      const lg = (row, col) => String(row[lIdx[col] ?? -1] ?? "").trim();
+      for (const lr of leadsRows.slice(1)) {
+        const lid  = lg(lr, "id");
+        const lqid = lg(lr, "last_quote_id");
+        if (!lid) continue;
+        if (lqid) quoteToLeadId[lqid] = lid;
+        const rec = {
+          id:            lid,
+          job_type:      lg(lr, "job_type"),
+          notes:         lg(lr, "notes"),
+          last_quote_id: lqid,
+          name:          lg(lr, "name"),
+          phone:         lg(lr, "phone"),
+          address:       lg(lr, "address"),
+          quoted_price:  lg(lr, "quoted_price"),
+          access_instructions: lg(lr, "access_instructions"),
+        };
+        leadById[lid] = rec;
+        if (lqid) leadByQuoteId[lqid] = rec;
       }
     }
 
@@ -306,15 +322,36 @@ async function handleGetTodayJobs(req, res) {
     };
 
     // ── 4. Map + filter rows (filter uses fresh per-request identity) ───────
+    const isLeadId = v => /^LEAD-/i.test(String(v || "").trim());
+
     const jobs = data
       .map(r => {
         const get = col => String(r[idx[col] ?? -1] ?? "").trim();
         const dt        = get("scheduled_datetime");
         const dateStr   = dt ? dt.slice(0, 10) : "";
-        const qid       = get("quote_id");
+        let   qid       = get("quote_id");
         const jobTypeId = get("job_type_id");
 
-        const snap = snapshotMap[qid] || {};
+        // If quote_id is actually a lead ID (LEAD-xxx), resolve the real quote_id
+        // from the lead record so the snapshot lookup works.
+        let resolvedLeadId = get("lead_id");
+        let leadRec = null;
+        if (isLeadId(qid)) {
+          // The "quote_id" column stores a lead ID — look up the real snapshot
+          leadRec = leadById[qid] || null;
+          if (!resolvedLeadId) resolvedLeadId = qid;
+          const realQid = leadRec ? leadRec.last_quote_id : "";
+          if (realQid) qid = realQid; // upgrade to real quote_id for snapshot lookup
+        }
+        if (!resolvedLeadId) resolvedLeadId = quoteToLeadId[qid] || "";
+        if (!leadRec && resolvedLeadId) leadRec = leadById[resolvedLeadId] || null;
+
+        // Primary snapshot lookup; fall back to lead's real quote_id
+        let snap = snapshotMap[qid] || {};
+        if (!snap.selected_options_json && leadRec && leadRec.last_quote_id && leadRec.last_quote_id !== qid) {
+          snap = snapshotMap[leadRec.last_quote_id] || snap;
+        }
+
         const scopeResult = buildScopeItems(
           snap.selected_options_json,
           snap.selected_addons_json,
@@ -323,28 +360,43 @@ async function handleGetTodayJobs(req, res) {
 
         const scopeRaw     = get("scope_of_work");
         const bookingNotes = get("notes");
+        const leadNotes    = leadRec ? leadRec.notes : "";
         const isInternalId = v => /^[A-Z]{1,3}-[A-Z0-9]{4,}$/i.test(v.trim());
-        const plainScope   = scopeResult.items.length === 0
-          ? ([scopeRaw, bookingNotes, snap.notes].find(v => v && !isInternalId(v)) || "")
+
+        // Plain-text scope fallback: booking notes → lead notes → snap notes
+        // (skip values that look like internal IDs)
+        const plainScope = scopeResult.items.length === 0
+          ? ([scopeRaw, bookingNotes, leadNotes, snap.notes].find(v => v && !isInternalId(v)) || "")
           : "";
 
-        const jobTypeName = resolveJobTypeName(snap.job_type_id || jobTypeId);
+        // Job type: prefer snapshot → booking column → lead field
+        const effectiveJobTypeId = snap.job_type_id || jobTypeId || (leadRec ? leadRec.job_type : "");
+        const jobTypeName = resolveJobTypeName(effectiveJobTypeId);
+
+        // Customer info: prefer booking columns, fall back to lead record
+        const customerName = get("customer_name") || (leadRec ? leadRec.name    : "");
+        const phone        = get("phone")          || (leadRec ? leadRec.phone   : "");
+        const address      = get("address")        || (leadRec ? leadRec.address : "");
+        const finalPrice   = get("final_price")    || (leadRec ? leadRec.quoted_price : "");
+        const accessNotes  = leadRec ? leadRec.access_instructions : "";
+
         const latRaw = get("lat");
         const lngRaw = get("lng");
         return {
           booking_id:           get("booking_id"),
           quote_id:             qid,
-          customer_name:        get("customer_name"),
-          address:              get("address"),
-          phone:                get("phone"),
+          lead_id:              resolvedLeadId,
+          customer_name:        customerName,
+          address,
+          phone,
           email:                get("email"),
           scheduled_datetime:   dt,
           date:                 dateStr,
           schedule_block:       get("schedule_block"),
           duration_minutes:     Number(r[idx["duration_minutes"] ?? -1] || 0),
           status:               get("status"),
-          final_price:          get("final_price"),
-          job_type_id:          jobTypeId,
+          final_price:          finalPrice,
+          job_type_id:          effectiveJobTypeId,
           job_type_name:        jobTypeName,
           lat:                  latRaw ? parseFloat(latRaw) : null,
           lng:                  lngRaw ? parseFloat(lngRaw) : null,
@@ -354,6 +406,7 @@ async function handleGetTodayJobs(req, res) {
           scope_addons:         scopeResult.addons,
           scope_photos:         scopeResult.photos,
           scope_of_work:        plainScope,
+          access_instructions:  accessNotes,
           arrived_at:           get("arrived_at"),
           departed_at:          get("departed_at"),
           job_duration_minutes: get("job_duration_minutes") ? Number(get("job_duration_minutes")) : null,
@@ -374,7 +427,6 @@ async function handleGetTodayJobs(req, res) {
           assigned_user_id:     get("assigned_user_id"),
           assigned_name:        get("assigned_name"),
           assigned_email:       get("assigned_email"),
-          lead_id:              snap.lead_id || quoteToLeadId[qid] || get("lead_id"),
         };
       })
       .filter(j => {
