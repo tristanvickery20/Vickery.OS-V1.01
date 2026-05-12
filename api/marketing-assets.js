@@ -73,11 +73,14 @@ async function handleCreateAsset(req, res) {
     const sheets = await getSheetsClient();
     await ensureTabHeaders("MarketingAssets", mktId);
 
-    // Auto-fill service_type and city from lead if job_id/lead_id provided
+    // Auto-fill service_type, city, lead_id, client_id from lead when job_id or lead_id provided
     let service_type = body.service_type || "";
     let city = body.city || "";
     let client_id = body.client_id || "";
-    if (!service_type && body.lead_id) {
+    let resolved_lead_id = body.lead_id || "";
+
+    const needsLookup = (!service_type || !city) && (body.job_id || body.lead_id);
+    if (needsLookup) {
       try {
         const crmSheets = await getSheetsClient();
         const leadsResp = await crmSheets.spreadsheets.values.get({
@@ -87,12 +90,26 @@ async function handleCreateAsset(req, res) {
         const lRows = leadsResp.data.values || [];
         if (lRows.length > 1) {
           const lHeaders = lRows[0].map((h) => String(h || "").trim());
-          const lIdIdx = lHeaders.indexOf("id");
-          const lTypeIdx = lHeaders.indexOf("job_type");
-          const lCityIdx = lHeaders.indexOf("address");
-          const lClientIdx = lHeaders.indexOf("client_id");
-          const match = lRows.slice(1).find((r) => String(r[lIdIdx] || "").trim() === body.lead_id);
+          const lIdIdx       = lHeaders.indexOf("id");
+          const lJobNumIdx   = lHeaders.indexOf("job_number");
+          const lTypeIdx     = lHeaders.indexOf("job_type");
+          const lCityIdx     = lHeaders.indexOf("address");
+          const lClientIdx   = lHeaders.indexOf("client_id");
+
+          let match = null;
+          if (body.job_id) {
+            // Match by job_number first, then fall back to id match
+            match = lRows.slice(1).find((r) =>
+              String(r[lJobNumIdx] || "").trim() === body.job_id.trim() ||
+              String(r[lIdIdx] || "").trim() === body.job_id.trim()
+            );
+          }
+          if (!match && body.lead_id) {
+            match = lRows.slice(1).find((r) => String(r[lIdIdx] || "").trim() === body.lead_id);
+          }
+
           if (match) {
+            if (!resolved_lead_id) resolved_lead_id = String(match[lIdIdx] || "").trim();
             service_type = service_type || String(match[lTypeIdx] || "").trim();
             if (!city && lCityIdx >= 0) {
               const addr = String(match[lCityIdx] || "").trim();
@@ -102,14 +119,14 @@ async function handleCreateAsset(req, res) {
             client_id = client_id || String(match[lClientIdx] || "").trim();
           }
         }
-      } catch { /* non-fatal */ }
+      } catch { /* non-fatal — proceed with user-provided values */ }
     }
 
     const asset_id = "ASSET-" + Date.now() + "-" + crypto.randomBytes(3).toString("hex").toUpperCase();
     const now = new Date().toISOString();
     const row = [
       asset_id, now,
-      body.job_id || "", body.lead_id || "", client_id,
+      body.job_id || "", resolved_lead_id, client_id,
       service_type, city,
       body.asset_type || "",
       body.file_url || "", body.file_type || "image",

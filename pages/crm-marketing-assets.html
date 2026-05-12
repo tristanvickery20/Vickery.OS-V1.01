@@ -280,7 +280,7 @@
       <div class="page-header">
         <div>
           <div class="page-title">Proof Asset Library</div>
-          <div class="page-subtitle">Photos, testimonials, and job documentation flagged for marketing use</div>
+          <div class="page-subtitle">Approved marketing assets — photos, testimonials, and job documentation cleared for use</div>
         </div>
         <button class="btn-primary" id="btnAddAsset">+ Add Asset</button>
       </div>
@@ -304,9 +304,9 @@
           <option value="job_story">Job Story</option>
         </select>
         <select class="filter-select" id="filterPerm">
+          <option value="granted">Permission Granted</option>
           <option value="">All Permissions</option>
-          <option value="granted">Granted</option>
-          <option value="asked">Asked</option>
+          <option value="asked">Asked — Awaiting</option>
           <option value="not_asked">Not Asked</option>
           <option value="denied">Denied</option>
         </select>
@@ -330,9 +330,15 @@
     <div class="modal-title" id="assetModalTitle">Add Marketing Asset</div>
     <input type="hidden" id="assetId" />
 
-    <div class="form-row">
-      <label class="form-label">Lead ID (optional)</label>
-      <input class="form-input" id="assetLeadId" type="text" placeholder="Auto-fills service type + city" />
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-row">
+        <label class="form-label">Job ID / Job # <span style="font-weight:400;opacity:.7;">(auto-fills details)</span></label>
+        <input class="form-input" id="assetJobId" type="text" placeholder="e.g. JOB-001 or job number" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Lead ID (optional)</label>
+        <input class="form-input" id="assetLeadId" type="text" placeholder="Direct lead ID" />
+      </div>
     </div>
     <div class="form-row">
       <label class="form-label">Asset Type</label>
@@ -538,6 +544,7 @@
     editingId = asset ? asset.asset_id : null;
     document.getElementById('assetModalTitle').textContent = asset ? 'Edit Asset' : 'Add Marketing Asset';
     document.getElementById('assetId').value = asset ? asset.asset_id : '';
+    document.getElementById('assetJobId').value = asset ? (asset.job_id || '') : '';
     document.getElementById('assetLeadId').value = asset ? asset.lead_id : '';
     document.getElementById('assetType').value = asset ? asset.asset_type : '';
     document.getElementById('assetFileUrl').value = asset ? asset.file_url : '';
@@ -566,6 +573,7 @@
     const msgEl = document.getElementById('assetModalMsg');
     btn.disabled = true; btn.textContent = 'Saving…';
     const body = {
+      job_id:                document.getElementById('assetJobId').value.trim(),
       lead_id:               document.getElementById('assetLeadId').value.trim(),
       asset_type:            document.getElementById('assetType').value,
       file_url:              document.getElementById('assetFileUrl').value.trim(),

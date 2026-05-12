@@ -1025,7 +1025,7 @@
     div.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;';
     div.innerHTML = `
       <div id="ldFlagMktBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);"></div>
-      <div style="position:relative;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:24px 28px;width:400px;max-width:calc(100vw - 32px);box-shadow:0 8px 40px rgba(0,0,0,.25);">
+      <div style="position:relative;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:24px 28px;width:420px;max-width:calc(100vw - 32px);max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);">
         <div style="font-family:var(--font-display);font-size:16px;font-weight:800;margin-bottom:16px;">📣 Flag for Marketing</div>
         <input type="hidden" id="ldFlagUrl" />
         <div style="margin-bottom:10px;font-size:12px;color:hsl(var(--muted-foreground));">Photo URL</div>
@@ -1037,9 +1037,30 @@
             <option value="after_photo">After Photo</option>
             <option value="panel_photo">Panel Photo</option>
             <option value="fixture_photo">Fixture Photo</option>
+            <option value="generator_photo">Generator Photo</option>
             <option value="job_story">Job Story</option>
             <option value="team_photo">Team Photo</option>
+            <option value="truck_photo">Truck Photo</option>
           </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Permission Status</label>
+            <select id="ldFlagPermStatus" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:13px;background:hsl(var(--background));color:hsl(var(--foreground));">
+              <option value="not_asked">Not Asked Yet</option>
+              <option value="asked">Asked — Awaiting Reply</option>
+              <option value="granted">Granted ✓</option>
+              <option value="denied">Denied</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Marketing Use</label>
+            <select id="ldFlagMktAllowed" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:13px;background:hsl(var(--background));color:hsl(var(--foreground));">
+              <option value="pending">Pending</option>
+              <option value="yes">Approved</option>
+              <option value="no">Not Approved</option>
+            </select>
+          </div>
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:6px;">Best For</label>
@@ -1070,6 +1091,8 @@
     document.getElementById('ldFlagUrlDisplay').textContent = fileUrl ? fileUrl.slice(0, 60) + (fileUrl.length > 60 ? '…' : '') : '';
     const typeMap = { before: 'before_photo', after: 'after_photo', panel: 'panel_photo', fixture: 'fixture_photo' };
     document.getElementById('ldFlagType').value = typeMap[category] || 'after_photo';
+    document.getElementById('ldFlagPermStatus').value = 'not_asked';
+    document.getElementById('ldFlagMktAllowed').value = 'pending';
     document.getElementById('ldFlagGbp').checked = false;
     document.getElementById('ldFlagWebsite').checked = false;
     document.getElementById('ldFlagSocial').checked = false;
@@ -1095,8 +1118,8 @@
             asset_type:            document.getElementById('ldFlagType').value,
             file_url:              fileUrl,
             file_type:             'image',
-            permission_status:     'not_asked',
-            marketing_use_allowed: 'pending',
+            permission_status:     document.getElementById('ldFlagPermStatus').value,
+            marketing_use_allowed: document.getElementById('ldFlagMktAllowed').value,
             best_for_gbp:          document.getElementById('ldFlagGbp').checked,
             best_for_website:      document.getElementById('ldFlagWebsite').checked,
             best_for_social:       document.getElementById('ldFlagSocial').checked,
