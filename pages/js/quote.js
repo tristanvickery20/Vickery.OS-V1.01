@@ -2774,24 +2774,6 @@ function bindEvents() {
   applyConditionalVisibility();
 }
 
-// ── Auto-inject known answers before calc / lock ───────────────────────────────
-// SERVICE_QUANTITY and PROPERTY_TYPE are suppressed from the visible question list
-// because their answers are already known from earlier steps. This function writes
-// them into S.answers so the pricing engine still receives the correct multipliers.
-// Only fills in values not already present — manual overrides are preserved.
-function autoInjectKnownAnswers() {
-  // PROPERTY_TYPE comes from Step 1 (Residential / Commercial selector)
-  if (!S.answers["PROPERTY_TYPE"] && S.segment) {
-    S.answers["PROPERTY_TYPE"] = S.segment.toLowerCase();
-  }
-  // SERVICE_QUANTITY comes from the +/- qty spinner in Step 3 (Services)
-  // Map the raw number to the bracket option the engine expects.
-  if (!S.answers["SERVICE_QUANTITY"]) {
-    const qty = primaryQty() || 1;
-    S.answers["SERVICE_QUANTITY"] = qty >= 9 ? "9plus" : qty >= 5 ? "5_8" : qty >= 2 ? "2_4" : "1";
-  }
-}
-
 async function calcPrice() {
   go("review");
   document.getElementById("stepContent").innerHTML = loadingHTML("Calculating your price\u2026");
@@ -2805,9 +2787,6 @@ async function calcPrice() {
       if (!sd.quote_id) throw new Error("Could not start session.");
       S.quoteId = sd.quote_id;
     }
-
-    // Inject answers that are already known from earlier steps
-    autoInjectKnownAnswers();
 
     // Calc price for each selected service, then sum
     const results = await Promise.all(S.selectedServices.map(svc =>
@@ -3151,9 +3130,6 @@ async function submitLock() {
       await submitSiteVisitBooking(name, phone, email, address, source, refName, refContact);
       return;
     }
-
-    // Inject answers that are already known from earlier steps
-    autoInjectKnownAnswers();
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
