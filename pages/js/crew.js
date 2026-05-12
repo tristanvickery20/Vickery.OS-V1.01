@@ -1631,12 +1631,12 @@ function openJobDetail(j) {
   }
 
   // Photos section — shows scope_photos as tappable thumbnails
-  const photosSection = document.getElementById("jdPhotosSection");
-  const photosList    = document.getElementById("jdPhotosList");
-  const photos = Array.isArray(j.scope_photos) ? j.scope_photos.filter(Boolean) : [];
+  const photosSection  = document.getElementById("jdPhotosSection");
+  const photosList     = document.getElementById("jdPhotosList");
+  const sectionPhotos  = Array.isArray(j.scope_photos) ? j.scope_photos.filter(Boolean) : [];
   if (photosSection && photosList) {
-    if (photos.length > 0) {
-      photosList.innerHTML = photos.map(url =>
+    if (sectionPhotos.length > 0) {
+      photosList.innerHTML = sectionPhotos.map(url =>
         `<a href="${esc(url)}" target="_blank" rel="noopener" class="jd-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`
       ).join("");
       photosSection.style.display = "block";
