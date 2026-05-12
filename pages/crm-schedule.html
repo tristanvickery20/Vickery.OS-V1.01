@@ -1516,7 +1516,7 @@
               await patchBooking(S.dragging, { scheduled_datetime: newDt });
               await loadData();
             } catch (err) {
-              alert("Failed to reschedule: " + err.message);
+              showToast("Failed to reschedule: " + err.message, true);
             }
           });
         });
@@ -1829,7 +1829,7 @@
               await patchBooking(S.dragging, updates);
               await loadData();
             } catch (err) {
-              alert("Failed to reschedule: " + err.message);
+              showToast("Failed to reschedule: " + err.message, true);
             }
           });
         });
@@ -2011,7 +2011,7 @@
               await patchBooking(S.dragging, updates);
               await loadData();
             } catch (err) {
-              alert("Failed to assign: " + err.message);
+              showToast("Failed to assign: " + err.message, true);
             }
           });
         });
@@ -2060,7 +2060,7 @@
                 await patchBooking(bookingId, { duration_minutes: newMins });
                 await loadData();
               } catch (err) {
-                alert("Failed to resize: " + err.message);
+                showToast("Failed to resize: " + err.message, true);
               }
             }
 
@@ -2101,7 +2101,7 @@
                 await patchBooking(bookingId, { duration_minutes: newMins });
                 await loadData();
               } catch (err) {
-                alert("Failed to resize: " + err.message);
+                showToast("Failed to resize: " + err.message, true);
               }
             }
 
@@ -2771,7 +2771,7 @@
             </div>`
           ).join("");
         } catch (err) {
-          alert("Optimization error: " + err.message);
+          showToast("Optimization error: " + err.message, true);
         } finally {
           if (btn) btn.disabled = false;
         }
@@ -2806,7 +2806,7 @@
           }
         } catch (err) {
           if (auto && st) { st.textContent = `Geocoding error: ${err.message}`; st.style.color = "#f87171"; }
-          else alert("Geocoding error: " + err.message);
+          else showToast("Geocoding error: " + err.message, true);
           if (btn) { btn.disabled = false; btn.textContent = `Retry geocode (${needCoords.length})`; }
         }
       }
@@ -2830,7 +2830,7 @@
           _optOrder = null;
           await loadData();
         } catch (err) {
-          alert("Save failed: " + err.message);
+          showToast("Save failed: " + err.message, true);
           if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save Order"; }
         }
       }
@@ -2988,7 +2988,7 @@
       document.getElementById("rescheduleConfirm").addEventListener("click", async () => {
         const newDate = document.getElementById("rescheduleDate").value;
         const newTime = document.getElementById("rescheduleTime").value; // "HH:MM" or ""
-        if (!newDate) { alert("Please choose a date."); return; }
+        if (!newDate) { showToast("Please choose a date.", true); return; }
         rescheduleModal.classList.remove("show");
         const ids = [...S.selected];
         const failed = [];
@@ -3007,7 +3007,7 @@
         }
         S.selected.clear();
         await loadData();
-        if (failed.length) alert(`${failed.length} job(s) failed to reschedule.`);
+        if (failed.length) showToast(`${failed.length} job(s) failed to reschedule.`, true);
       });
 
       // Bulk Reassign
