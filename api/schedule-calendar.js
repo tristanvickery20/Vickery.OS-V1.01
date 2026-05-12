@@ -130,8 +130,8 @@ async function handleGetCalendar(req, res) {
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" })
         .catch(() => ({ data: { values: [] } })),
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Z" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Staff!A:Z" })
-        .catch(() => ({ data: { values: [] } })),
+      sheets.spreadsheets.values.get({ spreadsheetId: require("../lib/hrSheetClient").hrSpreadsheetId(), range: "Staff!A:Z" })
+        .catch(err => { console.error("[schedule-calendar] Staff read failed:", err.message); return { data: { values: [] } }; }),
     ]);
 
     const rulesRows = rulesRes.data.values || [];

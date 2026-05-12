@@ -283,7 +283,11 @@ async function handleUpdateStaff(req, res, staffId) {
       updates.approved_at = new Date().toISOString();
     }
 
-    const ok = await updateStaffRow(staffId, updates);
+    const found = await updateStaffRow(staffId, updates);
+    if (!found) {
+      console.error("[crew-auth/update] Staff not found in HR sheet:", staffId);
+      return json(res, 404, { ok: false, error: `Staff member '${staffId}' not found in Staff tab. If data was recently migrated, ensure the Staff tab exists in the HR sheet.` });
+    }
 
     // Text the crew member if approving
     if (body.status === "active" && body.phone) {
@@ -297,7 +301,7 @@ async function handleUpdateStaff(req, res, staffId) {
       );
     }
 
-    json(res, 200, { ok });
+    json(res, 200, { ok: true });
   } catch (err) {
     console.error("[crew-auth/update]", err.message);
     json(res, 500, { ok: false, error: err.message });

@@ -145,7 +145,7 @@ async function updateStatus(staffId, phone, status) {
       body: JSON.stringify({ status, phone }),
     });
     const data = await res.json();
-    if (!data.ok) throw new Error("Update failed");
+    if (!data.ok) throw new Error(data.error || "Update failed");
     const action = status === "active" ? "Approved" : status === "inactive" ? "Deactivated" : "Updated";
     showToast(`${action} successfully`);
     // Update local state and re-render
@@ -166,7 +166,7 @@ async function savePermissions(staffId, permissions) {
       body: JSON.stringify({ permissions }),
     });
     const data = await res.json();
-    if (!data.ok) throw new Error("Save failed");
+    if (!data.ok) throw new Error(data.error || "Save failed");
     showToast("Permissions saved");
     const idx = allStaff.findIndex(s => s.staff_id === staffId);
     if (idx >= 0) allStaff[idx].permissions = permissions;
