@@ -923,7 +923,8 @@
     try {
       const base = "/api/clients/" + encodeURIComponent(clientId);
       const phone = (clientData.phone || "").replace(/\D/g, "");
-      const [rRes, qRes, leadsRes, nRes, aRes, invRes, tlRes] = await Promise.all([
+      const [cRes, rRes, qRes, leadsRes, nRes, aRes, invRes, tlRes] = await Promise.all([
+        fetchJSON(base),
         fetchJSON(base + "/requests"),
         fetchJSON(base + "/quotes"),
         phone
@@ -934,12 +935,18 @@
         fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
         fetchJSON(base + "/timeline").catch(() => ({ ok: false })),
       ]);
-      requestsData  = rRes.ok   ? rRes.requests       : requestsData;
-      quotesData    = qRes.ok   ? qRes.quotes          : quotesData;
-      jobsData      = leadsRes.ok ? (leadsRes.leads || []) : jobsData;
-      notesData     = nRes.ok   ? nRes.notes           : notesData;
-      attachmentsData = aRes.ok ? aRes.attachments     : attachmentsData;
-      invoicesData  = invRes.ok ? invRes.invoices      : invoicesData;
+      if (cRes.ok && cRes.client) {
+        clientData = cRes.client;
+        renderHeader();
+        renderActions();
+        renderCards();
+      }
+      requestsData    = rRes.ok   ? rRes.requests         : requestsData;
+      quotesData      = qRes.ok   ? qRes.quotes            : quotesData;
+      jobsData        = leadsRes.ok ? (leadsRes.leads || []) : jobsData;
+      notesData       = nRes.ok   ? nRes.notes             : notesData;
+      attachmentsData = aRes.ok   ? aRes.attachments       : attachmentsData;
+      invoicesData    = invRes.ok ? invRes.invoices         : invoicesData;
       if (tlRes.ok) {
         timelineData = { events: tlRes.timeline, summary: tlRes.summary };
       }
