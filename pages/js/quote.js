@@ -232,7 +232,8 @@ const MODULE_OVERRIDES = {
     prompt: "Is there already a switch or outlet at this exact location?",
     options: [
       { option_id: "device_swap",     label: "Yes — I'm replacing the existing one at the same spot" },
-      { option_id: "extend_existing", label: "No — it's a brand new spot with nothing there now" },
+      { option_id: "extend_existing", label: "No — new spot, but there's an outlet or switch nearby" },
+      { option_id: "new_circuit",     label: "No — nothing nearby, needs new wiring run from the panel" },
       { option_id: "_unsure",         label: "Not sure — I'd like your advice on-site", _injected: true },
     ],
   },
