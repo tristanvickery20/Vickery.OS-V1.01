@@ -116,10 +116,13 @@ async function handlePatchBooking(req, res) {
 
     let quoteSnapshotEventId = "";
     const assignmentChanged = ("assigned_tech_id" in updates) || ("assigned_tech_ids" in updates);
+    const datetimeChanged   = "scheduled_datetime" in updates;
     if (assignmentChanged) {
       quoteSnapshotEventId = await appendTechAssignedSnapshot({
         sheets, spreadsheetId: id, updatedBooking: updated,
       });
+    }
+    if (assignmentChanged || datetimeChanged) {
       await mirrorAssignmentToLead({
         sheets, spreadsheetId: id, updatedBooking: updated,
       });
@@ -224,26 +227,55 @@ async function appendTechAssignedSnapshot({ sheets, spreadsheetId, updatedBookin
 
 async function mirrorAssignmentToLead({ sheets, spreadsheetId, updatedBooking }) {
   const quoteId = String(updatedBooking.quote_id || "").trim();
-  if (!quoteId) return;
+  const leadId  = String(updatedBooking.lead_id  || "").trim();
+  if (!quoteId && !leadId) return;
+
   const leadsResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Leads!A:AZ" }).catch(() => ({ data: { values: [] } }));
   const rows = leadsResp.data.values || [];
   if (rows.length < 2) return;
   const headers = rows[0];
   const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
-  const qIdx = idx.last_quote_id;
-  if (qIdx == null) return;
+
   let rowIdx = -1;
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][qIdx] || "").trim() === quoteId) { rowIdx = i; break; }
+  if (quoteId && idx.last_quote_id != null) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][idx.last_quote_id] || "").trim() === quoteId) { rowIdx = i; break; }
+    }
+  }
+  if (rowIdx < 0 && leadId && idx.id != null) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][idx.id] || "").trim() === leadId) { rowIdx = i; break; }
+    }
   }
   if (rowIdx < 0) return;
+
   const row = [...rows[rowIdx]];
   while (row.length < headers.length) row.push("");
-  if (idx.assigned_to != null) row[idx.assigned_to] = updatedBooking.assigned_crew_names || "";
-  if (idx.status != null && String(row[idx.status] || "").trim().toLowerCase() !== "scheduled") row[idx.status] = "Scheduled";
+
+  if (updatedBooking.assigned_crew_names && idx.assigned_to != null) {
+    row[idx.assigned_to] = updatedBooking.assigned_crew_names;
+  }
+  if (updatedBooking.scheduled_datetime) {
+    if (idx.scheduled_date != null) {
+      row[idx.scheduled_date] = updatedBooking.scheduled_datetime.slice(0, 10);
+    }
+    if (idx.scheduled_datetime != null) {
+      row[idx.scheduled_datetime] = updatedBooking.scheduled_datetime;
+    }
+  }
+  if (idx.status != null && String(row[idx.status] || "").trim().toLowerCase() === "new") {
+    row[idx.status] = "Scheduled";
+  }
+
   const sheetRow = rowIdx + 1;
   const endCol = colToLetter(headers.length - 1);
-  await sheets.spreadsheets.values.update({ spreadsheetId, range: `Leads!A${sheetRow}:${endCol}${sheetRow}`, valueInputOption: "RAW", requestBody: { values: [row] } });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `Leads!A${sheetRow}:${endCol}${sheetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [row] },
+  });
+  console.log(`[schedule-booking-patch] Mirrored booking → Lead row ${sheetRow} (quote=${quoteId || "—"} lead=${leadId || "—"})`);
 }
 
 // ── SMS assigned tech when job is marked complete ─────────────────────────────

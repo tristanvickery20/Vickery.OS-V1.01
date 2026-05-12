@@ -261,8 +261,11 @@ async function handleGetLeads(req, res) {
     const bookingByPhone   = {};
     // schedByQuoteId stores the LATEST non-cancelled booking per quote_id for scheduling enrichment
     const schedByQuoteId   = {};
+    // schedByLeadId: fallback for bookings created directly from the scheduler (no quote_id match)
+    const schedByLeadId    = {};
     for (const r of (bookingsData.rows || [])) {
       const bqid  = String(getCellByHeader(r, bkIdx, "quote_id")          || "").trim();
+      const blid  = String(getCellByHeader(r, bkIdx, "lead_id")           || "").trim();
       const bName = String(getCellByHeader(r, bkIdx, "customer_name")     || "").trim();
       const bPh   = String(getCellByHeader(r, bkIdx, "phone")             || "").replace(/\D/g, "");
       const bAddr = String(getCellByHeader(r, bkIdx, "address")           || "").trim();
@@ -271,12 +274,15 @@ async function handleGetLeads(req, res) {
       const bDt   = String(getCellByHeader(r, bkIdx, "scheduled_datetime")|| "").trim();
       const bBlk  = String(getCellByHeader(r, bkIdx, "schedule_block")    || "").trim();
       const bDur  = String(getCellByHeader(r, bkIdx, "duration_minutes")  || "").trim();
+      const bAssigned = String(getCellByHeader(r, bkIdx, "assigned_crew_names") || getCellByHeader(r, bkIdx, "assigned_to") || "").trim();
       const bEntry = { name: bName, phone: bPh, email: bEmail, address: bAddr };
       if (bqid && bName && !bookingByQuoteId[bqid]) bookingByQuoteId[bqid] = bEntry;
       if (bPh  && bName && !bookingByPhone[bPh])    bookingByPhone[bPh]    = bEntry;
       // Only index scheduling for active (non-cancelled) bookings
-      if (bqid && bDt && bStat !== "cancelled" && !schedByQuoteId[bqid]) {
-        schedByQuoteId[bqid] = { scheduled_datetime: bDt, schedule_block: bBlk, duration_minutes: bDur };
+      if (bDt && bStat !== "cancelled") {
+        const schedEntry = { scheduled_datetime: bDt, schedule_block: bBlk, duration_minutes: bDur, assigned_crew_names: bAssigned };
+        if (bqid && !schedByQuoteId[bqid]) schedByQuoteId[bqid] = schedEntry;
+        if (blid && !schedByLeadId[blid])  schedByLeadId[blid]  = schedEntry;
       }
     }
 
@@ -305,10 +311,11 @@ async function handleGetLeads(req, res) {
       }
 
       // Enrich scheduling from Bookings (fills in what updateLeadSchedule may have missed)
-      if (lead.last_quote_id && schedByQuoteId[lead.last_quote_id]) {
-        const sched = schedByQuoteId[lead.last_quote_id];
+      // Check by quote_id first, then fall back to lead_id (scheduler bookings without quote flow)
+      const sched = (lead.last_quote_id && schedByQuoteId[lead.last_quote_id])
+                 || (lead.id            && schedByLeadId[lead.id]);
+      if (sched) {
         if (!lead.scheduled_date || lead.scheduled_date === "") {
-          // Extract date portion from ISO datetime e.g. "2026-04-10T13:00:00"
           lead.scheduled_date = sched.scheduled_datetime.slice(0, 10);
         }
         if (!lead.schedule_window || lead.schedule_window === "") {
@@ -316,6 +323,9 @@ async function handleGetLeads(req, res) {
         }
         if (!lead.duration_minutes || lead.duration_minutes === 0) {
           lead.duration_minutes = Number(sched.duration_minutes) || 0;
+        }
+        if (!lead.assigned_to && sched.assigned_crew_names) {
+          lead.assigned_to = sched.assigned_crew_names;
         }
         // If lead status is still "New" but there's a booking, upgrade to Scheduled
         if (lead.status && lead.status.toLowerCase() === "new") {

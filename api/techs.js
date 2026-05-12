@@ -1,15 +1,6 @@
 const { getSheetsClient } = require("../lib/sheets");
 const { hrSpreadsheetId } = require("../lib/hrSheetClient");
 
-function mapRowToTech(row) {
-  const [id, name, active] = row;
-  return {
-    id: id || "",
-    name: name || "",
-    active: String(active).toLowerCase() === "true",
-  };
-}
-
 async function handleGetTechs(req, res) {
   try {
     const sheets = await getSheetsClient();
@@ -17,7 +8,7 @@ async function handleGetTechs(req, res) {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Techs!A1:C1000",
+      range: "Staff!A:Z",
     });
 
     const values = response.data.values || [];
@@ -26,17 +17,41 @@ async function handleGetTechs(req, res) {
       return res.end(JSON.stringify({ ok: true, techs: [] }));
     }
 
-    const rows = values.slice(1);
+    const [headers, ...rows] = values;
+    const idx = Object.fromEntries(headers.map((h, i) => [String(h).trim(), i]));
+
+    const get = (row, col) => String(row[idx[col] ?? -1] ?? "").trim();
+
     const techs = rows
-      .filter((r) => r && r.length && String(r[0] || "").trim() !== "")
-      .map(mapRowToTech)
-      .filter((t) => t.active);
+      .filter(r => r && r.length && get(r, "staff_id") !== "")
+      .map(r => {
+        const firstName = get(r, "first_name");
+        const lastName  = get(r, "last_name");
+        const name      = [firstName, lastName].filter(Boolean).join(" ") || get(r, "name") || get(r, "username");
+        const activeRaw = get(r, "active");
+        const status    = get(r, "employment_status").toLowerCase();
+        const active    = activeRaw === "" ? (status !== "terminated" && status !== "inactive") : activeRaw.toLowerCase() === "true";
+        return {
+          id:         get(r, "staff_id"),
+          staff_id:   get(r, "staff_id"),
+          first_name: firstName,
+          last_name:  lastName,
+          name,
+          username:   get(r, "username"),
+          email:      get(r, "email"),
+          phone:      get(r, "phone"),
+          role:       get(r, "role"),
+          active,
+        };
+      })
+      .filter(t => t.active && t.id);
 
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, techs }));
+    res.end(JSON.stringify({ ok: true, techs, staff: techs }));
   } catch (error) {
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end("Techs Get Error: " + error.message);
+    console.error("[api/techs] Error:", error.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: error.message, techs: [] }));
   }
 }
 

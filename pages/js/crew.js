@@ -141,7 +141,10 @@ function setupHeader() {
   const el    = document.getElementById("greeting");
   if (el) el.textContent = `${greet}, ${currentSession.firstName}`;
 
-  if (currentSession.role === "owner") {
+  const role = String(currentSession.role || "").toLowerCase();
+  const hasCrmAccess = role === "owner" || role === "admin"
+    || currentSession.crm_access === true || currentSession.crm_access === "true";
+  if (hasCrmAccess) {
     const crmBtn = document.getElementById("btnCRM");
     if (crmBtn) crmBtn.style.display = "block";
   }

@@ -1,5 +1,6 @@
 const { getSheetsClient, colToLetter } = require("../lib/sheets");
 const { logAuditBatch, genRequestId } = require("../lib/audit");
+const { ensureTabHeaders } = require("../lib/sheetsSchema");
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -101,14 +102,108 @@ async function handleScheduleLead(req, res) {
       requestBody: { majorDimension: "ROWS", values: [row.slice(0, headers.length)] },
     });
 
+    const leadId = String(row[0] || "").trim();
     const lead = {
-      id: row[0], status: row[8], scheduled_date: row[13],
+      id: leadId, status: row[8], scheduled_date: row[13],
       assigned_to: row[14], duration_minutes: Number(row[18]),
       deposit_override: depositOverride,
     };
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, lead }));
+
+    // ── Fire-and-forget: upsert a Booking row so crew portal can see the job ──
+    setImmediate(async () => {
+      try {
+        await ensureTabHeaders("Bookings");
+        const scheduledDt = row[13] || "";
+        if (!scheduledDt || !leadId) return;
+        const bkResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" });
+        const bkRows = bkResp.data.values || [];
+        const bkHdrs = bkRows[0] || [];
+        const bkIdx  = Object.fromEntries(bkHdrs.map((h, i) => [String(h).trim(), i]));
+        const bkGet  = (r, col) => String(r[bkIdx[col] ?? -1] ?? "").trim();
+
+        // Find existing booking for this lead (by lead_id or by booking_id stored in lead row)
+        const hdrsArr = values[0] || [];
+        const hIdx    = Object.fromEntries(hdrsArr.map((h, i) => [String(h).trim(), i]));
+        const existingBkId = String(row[hIdx["booking_id"] ?? -1] || "").trim();
+        let existingRowIdx = -1;
+        for (let i = 1; i < bkRows.length; i++) {
+          const bkLid = bkGet(bkRows[i], "lead_id");
+          const bkBid = bkGet(bkRows[i], "booking_id");
+          if ((bkLid && bkLid === leadId) || (existingBkId && bkBid === existingBkId)) {
+            existingRowIdx = i;
+            break;
+          }
+        }
+
+        const leadName   = String(row[hIdx["name"]    ?? 2]  || "").trim();
+        const leadPhone  = String(row[hIdx["phone"]   ?? 3]  || "").trim();
+        const leadAddr   = String(row[hIdx["address"] ?? 4]  || "").trim();
+        const leadEmail  = String(row[hIdx["email"]   ?? -1] ?? "").trim();
+        const schedBlock = String(row[hIdx["schedule_window"] ?? 16] || "").trim();
+        const durMins    = String(Number(row[hIdx["duration_minutes"] ?? 18]) || 90);
+        const assignedTo = String(row[hIdx["assigned_to"] ?? 14] || "").trim();
+        const quoteId    = String(row[hIdx["last_quote_id"] ?? -1] ?? "").trim();
+
+        if (existingRowIdx > 0) {
+          // Update existing booking row
+          const bkRow = [...bkRows[existingRowIdx]];
+          while (bkRow.length < bkHdrs.length) bkRow.push("");
+          if (bkIdx["scheduled_datetime"] != null) bkRow[bkIdx["scheduled_datetime"]] = scheduledDt;
+          if (bkIdx["schedule_block"]     != null) bkRow[bkIdx["schedule_block"]]     = schedBlock;
+          if (bkIdx["duration_minutes"]   != null) bkRow[bkIdx["duration_minutes"]]   = durMins;
+          if (bkIdx["assigned_to"]        != null) bkRow[bkIdx["assigned_to"]]        = assignedTo;
+          if (bkIdx["assigned_crew_names"]!= null) bkRow[bkIdx["assigned_crew_names"]]= assignedTo;
+          if (bkIdx["status"]             != null && bkGet(bkRows[existingRowIdx], "status") !== "cancelled") bkRow[bkIdx["status"]] = "confirmed";
+          const endC = colToLetter(bkHdrs.length - 1);
+          await sheets.spreadsheets.values.update({
+            spreadsheetId, range: `Bookings!A${existingRowIdx + 1}:${endC}${existingRowIdx + 1}`,
+            valueInputOption: "RAW", requestBody: { values: [bkRow.slice(0, bkHdrs.length)] },
+          });
+          console.log(`[leads-schedule] Updated existing Booking row ${existingRowIdx + 1} for lead ${leadId}`);
+        } else {
+          // Create new booking row
+          const newBkId = `BK-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+          const newRow  = bkHdrs.map(h => {
+            switch (h) {
+              case "booking_id":         return newBkId;
+              case "quote_id":           return quoteId;
+              case "lead_id":            return leadId;
+              case "created_at":         return new Date().toISOString();
+              case "scheduled_datetime": return scheduledDt;
+              case "duration_minutes":   return durMins;
+              case "address":            return leadAddr;
+              case "customer_name":      return leadName;
+              case "phone":              return leadPhone;
+              case "email":              return leadEmail;
+              case "status":             return "confirmed";
+              case "schedule_block":     return schedBlock;
+              case "assigned_to":        return assignedTo;
+              case "assigned_crew_names":return assignedTo;
+              default:                   return "";
+            }
+          });
+          await sheets.spreadsheets.values.append({
+            spreadsheetId, range: "Bookings!A:A",
+            valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+            requestBody: { values: [newRow] },
+          });
+          // Also write the booking_id back to the Lead row
+          if (hIdx["booking_id"] != null) {
+            const bkIdColLetter = colToLetter(hIdx["booking_id"]);
+            sheets.spreadsheets.values.update({
+              spreadsheetId, range: `Leads!${bkIdColLetter}${sheetRow}`,
+              valueInputOption: "RAW", requestBody: { values: [[newBkId]] },
+            }).catch(() => {});
+          }
+          console.log(`[leads-schedule] Created Booking ${newBkId} for lead ${leadId}`);
+        }
+      } catch (bkErr) {
+        console.error("[leads-schedule] Booking upsert error:", bkErr.message);
+      }
+    });
 
     // ── Fire-and-forget: Google Calendar push ─────────────────────
     setImmediate(async () => {

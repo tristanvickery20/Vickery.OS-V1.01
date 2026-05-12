@@ -1,0 +1,1081 @@
+Below is the exact non-code architecture brief I would give Replit/Codex for the CRM marketing system.
+
+Core research takeaways first:
+
+Your market is big enough for a 6-truck residential electrical company, but not big enough to waste leads. The Beaumont–Port Arthur metro is about 398,733 people, made up of Hardin, Jefferson, and Orange counties.  ￼ Orange County has about 38,572 housing units and a high 75.2% owner-occupied rate, which is good for residential service, repairs, lighting, panels, fans, generators, and small upgrades.  ￼ Jefferson County adds about 110,841 housing units with a 62.5% owner-occupied rate, giving you volume in Beaumont/Port Arthur/Nederland/Groves/Port Neches.  ￼
+
+Owned & Operated’s marketing doctrine lines up with what you need: prioritize demand capture before brand fluff, do not spread budget thin, measure the whole funnel, and max out working channels like GBP, LSA, PPC, and SEO before dumping money into broad awareness. Their marketing episode specifically calls out Google Ads, GBP/GMB, LSAs, and SEO as non-negotiable demand-capture channels, and warns against billboards/brand spend before the company has enough lead flow.  ￼ They also say the fix for marketing confusion is tracking numbers, CRM data, and measuring from call to close, not just cost per lead.  ￼
+
+Your local competitors are mostly selling “experience, licensed, reliable, call us.” Lone Star Electric SETX claims 20+ years of experience, 100+ happy customers, broad service areas, financing, generator installs, panels, troubleshooting, rewiring, and repairs.  ￼ Christopher Electric pushes 24/7 service, free estimates, since 1984, BBB, chamber membership, and long-tenured technicians.  ￼ Savant is leaning hard into residential electrical plus generators/Generac, including generator maintenance and hurricane preparedness content.  ￼ Your opening is not “we have more experience.” Your opening is faster, cleaner, priced upfront, trackable, easier to book, better follow-up, and more transparent.
+
+⸻
+
+Give Replit This: Vickery Electric Marketing OS Architecture Brief
+
+Project Goal
+
+Build a Marketing Command Center inside the Vickery Electric CRM.
+
+This is not a generic marketing dashboard. This system must help Vickery Electric grow from a 1-truck / 2-person launch company targeting 100 leads per month into a future 6-truck / 12-person company without losing track of lead quality, call response, booked revenue, gross margin, reviews, referrals, reactivation, or contractor accountability.
+
+The CRM must become the source of truth for:
+
+* Where every lead came from.
+* Whether the lead was qualified.
+* Whether the customer saw a price.
+* Whether the customer booked.
+* Whether the job was completed.
+* Whether the job made money.
+* Whether the customer left a review.
+* Whether the customer referred someone.
+* Whether that marketing channel deserves more spend.
+
+The system should be built around this doctrine:
+
+Lead → sale → fulfillment → review → referral → reactivation → channel ROI.
+
+Do not build vague marketing screens. Build a measurable marketing operating system.
+
+⸻
+
+Strategic Reason
+
+Vickery Electric’s main competitive advantage is not age, size, or legacy reputation.
+
+The advantage is:
+
+1. Upfront pricing
+2. Instant estimator
+3. Fast response
+4. Online booking
+5. Photo-gated scope control
+6. CRM-enforced follow-up
+7. Clear job assumptions
+8. Tight source tracking
+9. Review/referral loop
+10. Owner visibility into profitable demand
+
+The local market already has experienced electricians. The CRM must help Vickery compete by being easier to buy from and easier to trust.
+
+⸻
+
+Marketing Doctrine To Build Around
+
+Use the Owned & Operated home-service marketing model:
+
+1. Demand capture before demand creation
+
+The CRM should prioritize channels where customers already need an electrician:
+
+* Google Business Profile
+* Google Local Services Ads
+* Google Search Ads
+* Organic SEO
+* Service pages
+* City pages
+* Referral traffic
+* Past customer reactivation
+
+Do not build the CRM around generic social media posting, broad branding, billboards, or vanity awareness first.
+
+Those can come later.
+
+2. Do not spread budget thin
+
+The CRM should help the owner identify which channel is working and push deeper into it before adding more channels.
+
+Example logic:
+
+* If GBP is producing profitable jobs, improve GBP/reviews/photos.
+* If LSA is profitable, increase LSA budget.
+* If PPC is profitable, add more service-specific landing pages.
+* If a channel produces leads but not booked revenue, flag it.
+* If a campaign produces low-margin work, flag it.
+* If a city creates too much drive time, flag it.
+
+3. Track booked revenue, not just leads
+
+The CRM must not treat “lead count” as success.
+
+Every campaign should track:
+
+* Leads
+* Qualified leads
+* Quotes
+* Booked jobs
+* Completed jobs
+* Revenue
+* Gross profit
+* Gross margin
+* Cost per lead
+* Cost per booked job
+* Cost per completed job
+* Return on ad spend
+* Lost reasons
+* Average ticket
+* Review conversion
+
+4. Reviews are a marketing asset
+
+Google reviews must be treated as a growth system, not a nice-to-have.
+
+The CRM should trigger review requests after happy paid jobs and track which customers left reviews.
+
+Reviews affect trust, GBP strength, LSA performance, and conversion.
+
+5. The call center / lead response process is part of marketing
+
+Missed calls and slow replies are marketing waste.
+
+The CRM must track:
+
+* First response time
+* Missed calls
+* Callback status
+* Unanswered form submissions
+* Quotes not followed up
+* Needs-review leads not reviewed
+* Booking drop-off
+
+⸻
+
+Local Market Strategy
+
+Primary Service Area Strategy
+
+The CRM should support service-area tiers.
+
+Tier 1: Core launch area
+
+Best for instant quote and fast dispatch.
+
+* Orange
+* West Orange
+* Little Cypress
+* Bridge City
+* Vidor
+* Mauriceville
+* Pinehurst
+* Nearby Orange County neighborhoods
+
+Goal: build density, reviews, and route efficiency.
+
+Tier 2: Expansion / controlled instant quote
+
+Can allow instant quotes, but with travel logic, minimums, or schedule controls.
+
+* Beaumont
+* Nederland
+* Groves
+* Port Neches
+* Lumberton
+* Port Arthur
+
+Goal: get profitable jobs without overextending the 1-truck operation.
+
+Tier 3: Custom quote / strategic only
+
+Use selectively.
+
+* Jasper
+* Silsbee
+* Kountze
+* Sour Lake
+* Newton
+* outer rural areas
+
+Goal: accept only higher-ticket work, generator leads, grouped routes, or jobs above minimum.
+
+⸻
+
+Market Positioning
+
+The CRM and website should support this message:
+
+“Get a clear electrical price upfront, book online, and know exactly what assumptions your quote is based on.”
+
+Secondary message:
+
+“Local, licensed electrical service with transparent pricing, photo-based review when needed, and fast follow-up.”
+
+Do not position as the oldest company.
+
+Do not position as the cheapest handyman.
+
+Do not position as emergency-first unless the business truly offers emergency service.
+
+Position as:
+
+* Transparent
+* Easy to book
+* Locally focused
+* Professional
+* Budget-conscious but not careless
+* Fast to respond
+* Quote-disciplined
+
+⸻
+
+Core Marketing Channels
+
+Channel 1: Google Business Profile
+
+CRM must support GBP growth.
+
+Track:
+
+* GBP leads
+* GBP calls
+* GBP form submissions
+* GBP reviews requested
+* GBP reviews received
+* GBP photos available
+* GBP posts planned
+* GBP service categories
+* GBP city/service landing links
+
+Why:
+
+GBP is likely the highest-trust local source and should become the foundation of the business.
+
+CRM features needed:
+
+* Review request automation
+* Photo asset library
+* “GBP-ready photos” tag
+* Customer permission tracking
+* Review dashboard
+* GBP campaign links
+* Service-area performance dashboard
+
+⸻
+
+Channel 2: Google Local Services Ads
+
+CRM must support LSA lead tracking.
+
+Track:
+
+* LSA lead source
+* Call/message source
+* Lead cost
+* Dispute/invalid lead status
+* Booked/not booked
+* Review impact
+* Service category
+* City/zip
+* Call answered/missed
+* Booking rate
+
+Why:
+
+LSA is direct demand capture. Google says LSA leads come as phone calls and messages from customers searching for selected services in selected areas.  ￼ Google also states that star rating and review count affect LSA ranking and that higher-rated providers usually stand out and book more jobs.  ￼
+
+CRM features needed:
+
+* LSA lead import/manual entry
+* LSA source tag
+* LSA budget field
+* LSA cost-per-lead report
+* LSA booked-job report
+* LSA call answer-rate report
+* LSA review impact report
+
+⸻
+
+Channel 3: Google Search Ads / PPC
+
+CRM must support service-specific PPC.
+
+PPC should not just send traffic to the homepage.
+
+Each campaign should connect to a dedicated service landing page.
+
+Examples:
+
+* Ceiling fan installation Orange TX
+* Recessed lighting Beaumont TX
+* Generator inlet / transfer switch Southeast Texas
+* Panel replacement Orange TX
+* EV charger install Beaumont TX
+* Dedicated circuit install
+* Exterior outlet install
+* Smart switch/dimmer install
+
+Why:
+
+Owned & Operated specifically talks about using a landing page for PPC instead of sending people straight to the main site, because the page needs to match the exact service the customer searched for.  ￼
+
+CRM features needed:
+
+* Campaign records
+* Landing page records
+* UTM tracking
+* GCLID storage
+* Quote-start event
+* Price-shown event
+* Booked event
+* Revenue attribution
+* Gross margin attribution
+* Search term notes
+* Agency task log
+
+⸻
+
+Channel 4: SEO / Service Pages / City Pages
+
+CRM should connect website content to leads and revenue.
+
+Pages needed:
+
+Service pages
+
+* Ceiling fan install
+* Fixture replacement
+* Recessed lighting
+* Dimmer/smart switch install
+* Outlet/receptacle replacement
+* GFCI install
+* Exterior outlet
+* Dedicated circuit
+* EV charger/prewire
+* Smoke/CO detector install
+* Surge protection
+* Panel inspection/replacement
+* Generator inlet/transfer switch
+* Standby generator interest page
+* Troubleshooting/diagnostic
+
+City pages
+
+* Orange electrician
+* West Orange electrician
+* Bridge City electrician
+* Vidor electrician
+* Beaumont electrician
+* Nederland electrician
+* Groves electrician
+* Port Neches electrician
+* Lumberton electrician
+* Port Arthur electrician
+
+CRM features needed:
+
+* Landing page source tracking
+* City/service lead report
+* SEO page performance report
+* Content task board
+* Photo asset library
+* Internal linking checklist
+* Review snippets by service/city
+
+⸻
+
+Channel 5: Referral System
+
+Referral should be simple and trackable.
+
+Rules:
+
+* Standard booked/completed referral reward: $50
+* Generator or large-ticket referral reward: $150
+* Reward is not payable until referred job is completed and paid
+* Referrals should not be asked at the same exact moment as reviews
+
+CRM features needed:
+
+* Referral code per customer
+* Referral code per employee/tech
+* Referral ledger
+* Referral status: pending, approved, paid, rejected
+* Referring customer link
+* Referred customer link
+* Referral payout task
+* Referral source dashboard
+
+⸻
+
+Channel 6: Reactivation
+
+Past customers are cheaper than new customers.
+
+CRM must segment customers automatically.
+
+Segments:
+
+* Past ceiling fan customers
+* Past lighting customers
+* Past panel/surge customers
+* Generator-interest customers
+* Quote expired but never booked
+* Customers with old homes
+* Customers who left reviews
+* Customers who referred someone
+* Customers with job completed 90/180/365 days ago
+
+Example campaigns:
+
+* Storm season generator/surge protection
+* Summer ceiling fan push
+* Holiday exterior outlet/lighting prep
+* Old-home electrical safety check
+* Past quote reminder
+* “Need another fixture/fan/outlet while we’re in the area?”
+
+CRM features needed:
+
+* Customer segments
+* Campaign templates
+* Campaign send log
+* Suppression list
+* Opt-out tracking
+* Revenue from reactivation
+
+⸻
+
+Channel 7: Offline / Weird Local Marketing
+
+This comes after demand capture is working.
+
+Do not build this as the main launch system, but the CRM should be ready.
+
+Potential local channels:
+
+* Door hangers around completed jobs
+* Referral cards
+* Yard signs
+* Truck QR code
+* Neighborhood postcards
+* Church bulletin only if very cheap
+* Local event booth
+* Generator/storm-prep flyer
+* Realtor/property manager leave-behind
+* Pizza box/local sponsorship test only if trackable
+
+Owned & Operated has discussed “weird” local channels like newspapers, church bulletins, pizza boxes, and other overlooked local media, but the point is that they must be trackable and not replace demand capture.  ￼
+
+CRM features needed:
+
+* Offline campaign records
+* QR code campaign tracking
+* Printed material inventory
+* Neighborhood/city targeting
+* Door hanger drop log
+* Jobs created from offline campaigns
+* Cost per booked job
+
+⸻
+
+CRM Architecture
+
+Main Module: Marketing Command Center
+
+Create a top-level CRM module called:
+
+Marketing
+
+Inside it, create these sections:
+
+1. Marketing Dashboard
+2. Lead Sources
+3. Campaigns
+4. Landing Pages
+5. Estimator Sessions
+6. Call Tracking
+7. Reviews
+8. Referrals
+9. Reactivation
+10. Content / Proof Assets
+11. Service Area Map
+12. Contractor Tasks
+13. Marketing Reports
+14. Settings
+
+⸻
+
+Dashboard Requirements
+
+Daily View
+
+Show:
+
+* New leads today
+* New leads this week
+* New leads this month
+* Leads by source
+* Missed calls
+* Average response time
+* Unanswered form submissions
+* Quotes created
+* Quotes accepted
+* Jobs booked
+* Needs-review leads pending
+* Photo requests pending
+* Stale leads
+* Reviews requested
+* Reviews received
+* Referral rewards pending
+* Marketing spend this month
+* Revenue booked from marketing
+* Gross profit from marketing
+
+Owner Alerts
+
+Create visible alerts:
+
+* Missed call not called back
+* Lead older than 15 minutes with no response
+* Quote shown but not followed up
+* Needs-review lead waiting over 4 business hours
+* Photo request not completed
+* Campaign producing leads but no booked jobs
+* Campaign with low gross margin
+* Service area producing excessive drive time
+* Reviews not requested on completed paid jobs
+* Referral reward pending approval
+
+⸻
+
+Lead Source Architecture
+
+Every lead must have source fields.
+
+Required lead fields:
+
+* Original source
+* Latest source
+* Channel
+* Campaign
+* UTM source
+* UTM medium
+* UTM campaign
+* UTM content
+* GCLID
+* Landing page
+* Referrer URL
+* Tracking phone number
+* Call recording link
+* Estimator session ID
+* Service type
+* City
+* Zip
+* Zone
+* Lead quality score
+* Lead status
+* Lost reason
+* Booked job ID
+* Completed job ID
+* Revenue
+* Gross profit
+* Gross margin
+* Review status
+* Referral status
+
+⸻
+
+Lead Quality Scoring
+
+Create automatic lead quality categories.
+
+A Lead
+
+Bookable now.
+
+Traits:
+
+* Inside Tier 1 or approved Tier 2
+* Fits service menu
+* Customer answered questions
+* Price shown
+* No high-risk flags
+* Photos uploaded if required
+* Schedule slot available
+
+Action:
+
+* Push booking
+* Create follow-up if not booked
+
+B Lead
+
+Human review needed.
+
+Traits:
+
+* Panel/generator/service upgrade
+* Troubleshooting
+* Old wiring
+* Customer unsure
+* Photos needed
+* Possible permit
+* Outer-zone lead
+* High ceiling/access risk
+
+Action:
+
+* Assign reviewer
+* Block instant booking until reviewed
+
+C Lead
+
+Bad fit or nurture only.
+
+Traits:
+
+* Outside service area
+* Too small for travel
+* Emergency request not offered
+* Commercial/GC not wanted
+* Unsafe/weird scope
+* Price-shopper with no intent
+* Not enough information
+
+Action:
+
+* Decline, nurture, or custom minimum
+
+⸻
+
+Campaign Architecture
+
+Every campaign should be its own record.
+
+Campaign fields:
+
+* Campaign name
+* Channel
+* Source
+* Service promoted
+* City/zone targeted
+* Start date
+* End date
+* Budget
+* Spend
+* Landing page
+* Tracking phone number
+* UTM campaign
+* Offer/message
+* Contractor/vendor owner
+* Status
+* Leads
+* Qualified leads
+* Quotes
+* Booked jobs
+* Completed jobs
+* Revenue
+* Gross profit
+* Gross margin
+* Cost per lead
+* Cost per booked job
+* Cost per completed job
+* Return on ad spend
+* Notes
+* Owner decision
+
+Owner decision options:
+
+* Increase budget
+* Hold
+* Reduce budget
+* Pause
+* Fix landing page
+* Fix targeting
+* Fix call handling
+* Fix pricing
+* Kill campaign
+
+⸻
+
+Estimator Session Architecture
+
+The estimator must feed marketing data into the CRM.
+
+Track these events:
+
+* Estimator started
+* Service selected
+* Question answered
+* Price calculated
+* Price shown
+* Address entered
+* Travel modifier applied
+* Photo required
+* Photo uploaded
+* Lead captured
+* Booking clicked
+* Booking completed
+* Abandoned before price
+* Abandoned after price
+* Needs review
+* Custom quote requested
+
+Estimator session fields:
+
+* Session ID
+* Service key
+* Source
+* Campaign
+* City
+* Zone
+* Price shown
+* Quote snapshot JSON
+* Pricing version
+* Abandonment point
+* Follow-up status
+* Lead ID
+* Job ID if booked
+
+⸻
+
+Call Tracking Architecture
+
+The CRM must treat calls as marketing events.
+
+Call record fields:
+
+* Call ID
+* Date/time
+* Source
+* Tracking number
+* Caller number
+* Matched customer
+* Matched lead
+* Answered/missed
+* Duration
+* Recording URL
+* CSR/owner assigned
+* Call outcome
+* Lead created yes/no
+* Booked yes/no
+* Needs review yes/no
+* Lost reason
+* Callback task status
+
+Call outcomes:
+
+* New lead
+* Existing customer
+* Booked job
+* Quote requested
+* Needs review
+* Not serviceable
+* Spam
+* Price objection
+* No answer on callback
+* Duplicate
+
+⸻
+
+Review System Architecture
+
+Trigger review request only after:
+
+* Job completed
+* Invoice paid or payment collected
+* No complaint flag
+* No safety/quality issue open
+
+Review workflow:
+
+1. Job completed.
+2. Tech marks customer mood: happy, neutral, unhappy.
+3. If happy and paid, CRM schedules review request.
+4. If no review after 24 hours, reminder.
+5. If no review after 3–5 days, final reminder.
+6. If review received, customer becomes referral-eligible.
+
+Review fields:
+
+* Review requested
+* Review requested date
+* Review platform
+* Review received
+* Review rating
+* Review text
+* Review source job
+* Review response needed
+* Review response completed
+
+⸻
+
+Referral System Architecture
+
+Referral should happen after the review ask, not at the same exact moment.
+
+Referral workflow:
+
+1. Customer completed and paid.
+2. Customer happy or left review.
+3. CRM sends referral message or creates tech handoff task.
+4. Referral code generated.
+5. New referred lead enters CRM.
+6. Referral connected to original customer.
+7. Reward becomes payable only after referred job is completed and paid.
+8. Owner approves payout.
+9. Payout marked paid.
+
+Referral statuses:
+
+* Generated
+* Shared
+* New lead received
+* Job booked
+* Job completed
+* Reward pending
+* Reward approved
+* Reward paid
+* Rejected
+
+⸻
+
+Proof Asset Library
+
+Build a library for marketing assets.
+
+Asset types:
+
+* Before photo
+* After photo
+* Team photo
+* Truck photo
+* Tool photo
+* Panel photo
+* Generator photo
+* Fixture/fan photo
+* Customer testimonial
+* Short video
+* Review screenshot
+* Job story
+
+Asset fields:
+
+* Asset ID
+* Job ID
+* Customer ID
+* Service type
+* City
+* Date
+* Marketing use allowed
+* Permission status
+* Best for GBP
+* Best for website
+* Best for social
+* Best for ad landing page
+* Notes
+
+This is important because Vickery needs proof quickly.
+
+⸻
+
+Contractor/Vendor Accountability
+
+Create a Contractor Task Board inside Marketing.
+
+Contractor types:
+
+* Google Ads / LSA contractor
+* SEO / GBP contractor
+* Website / CRO contractor
+* Photographer/content person
+* CSR/call answering team
+* Print/offline vendor
+* Marketing assistant/VA
+
+Each contractor task should have:
+
+* Task name
+* Contractor
+* Channel
+* Campaign
+* Due date
+* Status
+* Output expected
+* Link/file
+* Owner approval needed
+* Result metric
+* Notes
+
+Example tasks:
+
+* Publish Orange ceiling fan landing page
+* Upload 10 GBP photos
+* Add review link to post-job SMS
+* Review LSA invalid leads
+* Clean PPC search terms
+* Add new city page
+* Prepare storm-season generator campaign
+* Drop 100 door hangers around completed jobs
+* Create 5 before/after photo sets
+* Review missed-call report
+
+⸻
+
+Contract Help Plan
+
+Contract first: Google Ads / LSA specialist
+
+Reason:
+
+This is direct demand capture.
+
+They should be measured by booked revenue and gross margin, not clicks.
+
+CRM connection:
+
+* Campaigns
+* UTMs
+* GCLID
+* Call tracking
+* Lead status
+* Booked jobs
+* Completed revenue
+* Gross margin
+* Invalid lead notes
+
+Contract second: SEO / GBP contractor
+
+Reason:
+
+GBP and SEO build compounding local demand.
+
+CRM connection:
+
+* Review dashboard
+* Photo asset library
+* City pages
+* Service pages
+* GBP posts
+* GBP source tracking
+
+Contract third: website/conversion contractor
+
+Reason:
+
+The instant estimator and landing pages are your core sales advantage.
+
+CRM connection:
+
+* Estimator events
+* Landing page records
+* Abandonment points
+* Quote shown
+* Booking completed
+* Campaign conversion rates
+
+Contract fourth: photographer/content person
+
+Reason:
+
+You need proof faster than you can naturally accumulate it.
+
+CRM connection:
+
+* Job photos
+* Marketing permission
+* Asset library
+* GBP-ready assets
+* Service page assets
+
+Contract fifth: CSR/call answering overflow
+
+Reason:
+
+At scale, missed calls kill marketing ROI.
+
+CRM connection:
+
+* Call logs
+* Missed call tasks
+* Lead creation
+* Callback SLA
+* Booking outcomes
+* CSR performance
+
+⸻
+
+Scaling Logic
+
+1 Truck / 100 Leads Per Month
+
+CRM priority:
+
+* Source tracking
+* Speed-to-lead
+* Quote follow-up
+* Review generation
+* Estimator tracking
+* GBP proof
+* Basic campaign ROI
+
+Do not overbuild brand marketing.
+
+2 Trucks
+
+CRM priority:
+
+* CSR process
+* Capacity forecasting
+* LSA/PPC separation
+* City/service reporting
+* Review velocity
+* Contractor accountability
+
+3–4 Trucks
+
+CRM priority:
+
+* Route density
+* Service area controls
+* Reactivation
+* Referral payouts
+* Campaign-level profitability
+* Landing page testing
+* Call center metrics
+
+5–6 Trucks
+
+CRM priority:
+
+* Marketing budget controls
+* Multi-channel attribution
+* Department scorecards
+* Hiring triggers
+* Capacity-based ad throttling
+* Weekly/monthly marketing review workflow
+
+⸻
+
+Final System Concept
+
+Build the CRM marketing system around this operating loop:
+
+Lead Source
+→ Tracking
+→ CRM Lead
+→ Qualification
+→ Instant Quote or Review
+→ Booking
+→ Job Completion
+→ Invoice/Paid
+→ Review
+→ Referral
+→ Reactivation
+→ Channel ROI
+→ Owner Decision
+
+The system should answer these owner questions every day:
+
+* Where did my leads come from?
+* Which leads are worth chasing?
+* Which channels are producing booked jobs?
+* Which campaigns are wasting money?
+* Which services are most profitable?
+* Which cities are worth expanding into?
+* Which calls were missed?
+* Which quotes need follow-up?
+* Which customers should be asked for reviews?
+* Which customers should be asked for referrals?
+* Which past customers should be reactivated?
+* Which contractor is responsible for fixing each marketing issue?
+
+That is the exact architecture: a marketing command center tied directly to operations, revenue, reviews, and profit.

@@ -90,13 +90,13 @@ function blockStartIso(dateStr, block, tz) {
   return new Date(guess.getTime() + diff).toISOString();
 }
 
-// After booking, update the matching Lead record (non-fatal)
+// After booking, update the matching Lead record and return the lead's id (non-fatal)
 async function updateLeadSchedule(sheets, quote_id, date, block, startIso, snapshot) {
   try {
     const id       = SPREADSHEET_ID();
-    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Leads!A1:Y2000" });
+    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Leads!A1:AZ2000" });
     const rows     = leadsRes.data.values || [];
-    if (rows.length < 2) return;
+    if (rows.length < 2) return null;
 
     const headers       = rows[0];
     const lastQuoteIdx  = headers.indexOf("last_quote_id");
@@ -128,23 +128,25 @@ async function updateLeadSchedule(sheets, quote_id, date, block, startIso, snaps
 
     if (foundRowIdx === -1) {
       console.log(`[schedule-book] No matching Lead for quote_id=${quote_id}`);
-      return;
+      return null;
     }
 
     const row = [...(rows[foundRowIdx] || [])];
-    while (row.length < Math.max(schedDateIdx, schedWinIdx, statusIdx) + 1) row.push("");
+    while (row.length < headers.length) row.push("");
     if (schedDateIdx >= 0) row[schedDateIdx] = startIso.slice(0, 16);
     if (schedWinIdx  >= 0) row[schedWinIdx]  = block;
     if (statusIdx    >= 0 && row[statusIdx] !== "Scheduled") row[statusIdx] = "Scheduled";
 
-    const sheetRow = foundRowIdx + 1;
+    const sheetRow   = foundRowIdx + 1;
+    const endColLtr  = String.fromCharCode(65 + Math.min(headers.length - 1, 51)); // cap at AZ
     await sheets.spreadsheets.values.update({
       spreadsheetId: id,
-      range:         `Leads!A${sheetRow}:Y${sheetRow}`,
+      range:         `Leads!A${sheetRow}:${endColLtr}${sheetRow}`,
       valueInputOption: "RAW",
-      requestBody:   { majorDimension: "ROWS", values: [row.slice(0, 25)] },
+      requestBody:   { majorDimension: "ROWS", values: [row.slice(0, headers.length)] },
     });
     console.log(`[schedule-book] Lead row ${sheetRow} updated: block=${block} date=${date} status=Scheduled`);
+    return String(rows[foundRowIdx][0] || "").trim() || null; // return lead id
   } catch (err) {
     console.error("[schedule-book/updateLead]", err.message);
   }
@@ -343,8 +345,30 @@ async function handleBook(req, res) {
     const eventId = newId("EV");
     await _appendSnapshotEvent(sheets, id, eventId, quote_id, snapshot, bookingRows[0].id, now);
 
-    // Update lead schedule to primary block
-    await updateLeadSchedule(sheets, quote_id, bookingDate, block, primaryIso, snapshot);
+    // Update lead schedule to primary block; returns lead_id so we can backfill bookings
+    const resolvedLeadId = await updateLeadSchedule(sheets, quote_id, bookingDate, block, primaryIso, snapshot);
+    // Backfill lead_id into every booking row we just wrote (safe: Bookings schema has lead_id col)
+    if (resolvedLeadId) {
+      try {
+        const bkHdrResp = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!1:1" });
+        const bkHdrs = (bkHdrResp.data.values && bkHdrResp.data.values[0]) || [];
+        const lidColIdx = bkHdrs.indexOf("lead_id");
+        if (lidColIdx >= 0) {
+          const allBkResp = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:A" });
+          const bkIds = (allBkResp.data.values || []).map(r => String(r[0] || "").trim());
+          const bkLetter = String.fromCharCode(65 + lidColIdx);
+          for (const { id: bkId } of bookingRows) {
+            const rowNum = bkIds.indexOf(bkId);
+            if (rowNum > 0) {
+              sheets.spreadsheets.values.update({
+                spreadsheetId: id, range: `Bookings!${bkLetter}${rowNum + 1}`,
+                valueInputOption: "RAW", requestBody: { values: [[resolvedLeadId]] },
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch (e) { console.warn("[schedule-book] lead_id backfill:", e.message); }
+    }
 
     const blocksReserved = freshSegments.map((seg, i) => ({
       date:             seg.date,
