@@ -12,6 +12,17 @@
       .main-area { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
       .cal-wrap  { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
+      /* ── Toast notification ──────────────────────────────────────── */
+      #schedToast {
+        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px);
+        background: hsl(220 20% 18%); color: #fff; padding: 10px 20px; border-radius: 10px;
+        font-size: 14px; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,.4);
+        opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 9999;
+        white-space: nowrap;
+      }
+      #schedToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      #schedToast.error { background: hsl(0 60% 30%); }
+
       /* ── Header bar ─────────────────────────────────────────────── */
       .cal-hdr {
         display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -705,6 +716,7 @@
             <div class="cal-main" id="calMain">
               <div class="cal-loading">Loading schedule…</div>
             </div>
+            <div id="schedToast"></div>
             <aside class="cal-drawer desktop-only" id="calDrawer">
               <div class="drawer-toggle" id="drawerToggleInner">
                 <span class="drawer-toggle-icon">&#8249;</span>
@@ -1234,6 +1246,17 @@
           list = list.filter(b => b.status.toLowerCase() === S.filterStatus);
         }
         return list;
+      }
+
+      // ── Toast ─────────────────────────────────────────────────────
+      let _toastTimer = null;
+      function showToast(msg, isError = false) {
+        const el = document.getElementById("schedToast");
+        if (!el) return;
+        el.textContent = msg;
+        el.className = "show" + (isError ? " error" : "");
+        if (_toastTimer) clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => { el.className = ""; }, 3500);
       }
 
       // ── API ───────────────────────────────────────────────────────
@@ -2273,10 +2296,11 @@
               assigned_tech_id:  primaryId,
               assigned_tech_ids: allIds,
             });
+            showToast("Crew assignment saved");
             closeDetail();
             await loadData();
           } catch (err) {
-            alert("Failed to save: " + err.message);
+            showToast("Failed to save: " + err.message, true);
           }
         });
         document.getElementById("detailPreviewJob")?.addEventListener("click", () => {
@@ -3010,7 +3034,8 @@
         }
         S.selected.clear();
         await loadData();
-        if (failed.length) alert(`${failed.length} job(s) failed to reassign.`);
+        if (failed.length) showToast(`${failed.length} job(s) failed to reassign.`, true);
+        else showToast(`${ids.length} job${ids.length > 1 ? "s" : ""} reassigned`);
       });
       // Close modals on backdrop click
       [rescheduleModal, reassignModal].forEach(modal => {
