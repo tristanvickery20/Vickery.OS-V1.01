@@ -79,7 +79,8 @@ async function handleCreateAsset(req, res) {
     let client_id = body.client_id || "";
     let resolved_lead_id = body.lead_id || "";
 
-    const needsLookup = (!service_type || !city) && (body.job_id || body.lead_id);
+    // Always look up by job_id (to resolve lead_id/client_id); only skip if lead_id also absent and no job_id
+    const needsLookup = body.job_id || (body.lead_id && (!service_type || !city || !client_id));
     if (needsLookup) {
       try {
         const crmSheets = await getSheetsClient();
