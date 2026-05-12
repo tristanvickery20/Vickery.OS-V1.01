@@ -1,10 +1,14 @@
-/* crm-marketing.js — Marketing Hub front-end logic */
-(function () {
+/* crm-marketing.js — Marketing Hub front-end logic
+ * Exposes window.Mkt = { loadOverview, loadReviews, loadFollowup,
+ *   loadSegments, loadReferrals, loadTemplates, loadMktSettings }
+ * Each marketing sub-page includes this file and calls the function it needs.
+ */
+window.Mkt = (function () {
   "use strict";
 
   // ── Data stores (avoid JSON-in-attribute patterns) ────────────────────────
   const Store = {
-    queue:   {},  // lead_id → entry
+    queue:   {},
     pending: {},
     received: {},
     followup: {},
@@ -58,66 +62,27 @@
     return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "_");
   }
 
-  // ── Tab switching ─────────────────────────────────────────────────────────
-  const panels = { overview: false, reviews: false, followup: false, segments: false, referrals: false, templates: false };
-
-  document.querySelectorAll(".mhub-tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".mhub-tab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".mhub-panel").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      const id = btn.dataset.panel;
-      document.getElementById("panel-" + id).classList.add("active");
-      if (!panels[id]) { panels[id] = true; loadPanel(id); }
-    });
-  });
-
-  document.querySelectorAll(".rev-subtab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".rev-subtab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".rev-subpanel").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("subpanel-" + btn.dataset.subpanel).classList.add("active");
-    });
-  });
-
-  async function loadPanel(id) {
-    if (id === "overview")  return loadOverview();
-    if (id === "reviews")   return loadReviews();
-    if (id === "followup")  return loadFollowup();
-    if (id === "segments")  return loadSegments();
-    if (id === "referrals")  return loadReferrals();
-    if (id === "templates")   return loadTemplates();
-    if (id === "mkt-settings") return loadMktSettings();
-  }
-
-  document.getElementById("refreshBtn").addEventListener("click", () => {
-    const active = document.querySelector(".mhub-tab.active");
-    if (active) {
-      const id = active.dataset.panel;
-      panels[id] = false;
-      loadPanel(id);
-    }
-  });
-
   // ── OVERVIEW ──────────────────────────────────────────────────────────────
   async function loadOverview() {
-    panels.overview = true;
-    document.getElementById("overviewLoading").style.display = "block";
-    document.getElementById("overviewContent").style.display = "none";
+    const loadingEl = document.getElementById("overviewLoading");
+    const contentEl = document.getElementById("overviewContent");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading overview…"; }
+    if (contentEl) contentEl.style.display = "none";
     try {
       const d = await window.Api.fetchJson("/api/marketing/overview");
       const o = d.overview || {};
       renderStatGrid(o);
       renderSourceTable(o.source_breakdown || []);
-      document.getElementById("overviewLoading").style.display = "none";
-      document.getElementById("overviewContent").style.display = "block";
+      if (loadingEl) loadingEl.style.display = "none";
+      if (contentEl) contentEl.style.display = "block";
     } catch (e) {
-      document.getElementById("overviewLoading").textContent = "Error: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error: " + e.message;
     }
   }
 
   function renderStatGrid(o) {
+    const el = document.getElementById("statGrid");
+    if (!el) return;
     const cards = [
       { label: "Total Leads",         value: o.leads_total || 0,                         sub: "all time",             cls: "" },
       { label: "Booked",              value: o.booked_count || 0,                         sub: "ever scheduled",       cls: "accent-blue" },
@@ -133,7 +98,7 @@
       { label: "Repeat Customers",    value: (o.repeat_customer_rate_pct || 0) + "%",     sub: "2+ jobs by phone",     cls: "" },
       { label: "Stale Quotes",        value: o.stale_quote_count || 0,                    sub: "open, 48h+ no contact", cls: o.stale_quote_count > 0 ? "accent-amber" : "" },
     ];
-    document.getElementById("statGrid").innerHTML = cards.map(c => `
+    el.innerHTML = cards.map(c => `
       <div class="stat-card ${esc(c.cls)}">
         <div class="stat-card-label">${esc(c.label)}</div>
         <div class="stat-card-value">${esc(String(c.value))}</div>
@@ -143,6 +108,7 @@
 
   function renderSourceTable(breakdown) {
     const tbody = document.getElementById("sourceTableBody");
+    if (!tbody) return;
     if (!breakdown.length) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:hsl(220 15% 50%);padding:20px;">No source data yet — tag leads with a source when creating them.</td></tr>`;
       return;
@@ -162,13 +128,26 @@
 
   // ── REVIEWS ───────────────────────────────────────────────────────────────
   async function loadReviews() {
-    panels.reviews = true;
-    document.getElementById("reviewsLoading").style.display = "block";
+    const loadingEl = document.getElementById("reviewsLoading");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading reviews…"; }
     document.querySelectorAll(".rev-subpanel").forEach(p => { p.style.visibility = "hidden"; });
+
+    // Wire subtab switching (idempotent — only binds once via flag)
+    if (!loadReviews._tabsBound) {
+      loadReviews._tabsBound = true;
+      document.querySelectorAll(".rev-subtab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".rev-subtab").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".rev-subpanel").forEach(p => p.classList.remove("active"));
+          btn.classList.add("active");
+          const sp = document.getElementById("subpanel-" + btn.dataset.subpanel);
+          if (sp) sp.classList.add("active");
+        });
+      });
+    }
+
     try {
       const d = await window.Api.fetchJson("/api/reviews");
-
-      // Populate stores
       Store.queue = {}; (d.queue || []).forEach(r => { Store.queue[r.lead_id] = r; });
       Store.pending = {}; (d.pending || []).forEach(r => { Store.pending[r.lead_id] = r; });
       Store.received = {}; (d.received || []).forEach(r => { Store.received[r.lead_id] = r; });
@@ -183,10 +162,10 @@
       setBadge("receivedCount", (d.received || []).length);
       setBadge("responseDueCount", (d.response_due || []).length);
 
-      document.getElementById("reviewsLoading").style.display = "none";
+      if (loadingEl) loadingEl.style.display = "none";
       document.querySelectorAll(".rev-subpanel").forEach(p => { p.style.visibility = ""; });
     } catch (e) {
-      document.getElementById("reviewsLoading").textContent = "Error: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error: " + e.message;
     }
   }
 
@@ -201,6 +180,7 @@
 
   function renderReviewQueue(queue) {
     const el = document.getElementById("queueList");
+    if (!el) return;
     if (!queue.length) {
       el.innerHTML = `<div class="empty-state">No eligible jobs in the queue — great work! (Requires SMS opt-in + phone number on the lead.)</div>`;
       return;
@@ -218,8 +198,6 @@
           <button class="rev-btn rev-btn-ask" data-lead-id="${esc(r.lead_id)}" data-action="ask">Send Review Ask</button>
         </div>`;
     }).join("");
-
-    // Bind events via delegation (no JSON in attributes)
     el.querySelectorAll("[data-action='ask']").forEach(btn => {
       btn.addEventListener("click", () => sendReviewAsk(btn.dataset.leadId, btn));
     });
@@ -227,6 +205,7 @@
 
   function renderReviewPending(pending) {
     const el = document.getElementById("pendingList");
+    if (!el) return;
     if (!pending.length) { el.innerHTML = `<div class="empty-state">No pending review asks.</div>`; return; }
     el.innerHTML = pending.map(r => {
       const sid = safeId(r.lead_id);
@@ -284,6 +263,7 @@
 
   function renderReviewReceived(received) {
     const el = document.getElementById("receivedList");
+    if (!el) return;
     if (!received.length) { el.innerHTML = `<div class="empty-state">No reviews logged yet.</div>`; return; }
     el.innerHTML = received.map(r => {
       const sid = safeId(r.lead_id);
@@ -319,20 +299,16 @@
         </div>`;
     }).join("");
 
-    // Tag inputs style
     el.querySelectorAll(".tag-input").forEach(inp => {
       inp.style.cssText += "padding:5px 8px;border-radius:6px;background:hsl(220 20% 17%);color:hsl(220 20% 88%);border:1px solid hsl(220 20% 24%);font-size:12px;";
     });
-
     el.querySelectorAll("[data-action='copy']").forEach(btn => {
       btn.addEventListener("click", () => {
         navigator.clipboard.writeText(btn.dataset.copy || "").then(() => toast("Copied!", "success")).catch(() => toast("Copy failed", "error"));
       });
     });
-
     el.querySelectorAll("[data-action='save-tags']").forEach(btn => {
       btn.addEventListener("click", async () => {
-        const sid = btn.dataset.safeId;
         const revId = btn.dataset.revId;
         const leadId = btn.dataset.leadId;
         const card = document.getElementById("rcard-" + safeId(leadId));
@@ -360,6 +336,7 @@
 
   function renderResponseDue(due) {
     const el = document.getElementById("responseDueList");
+    if (!el) return;
     if (!due.length) { el.innerHTML = `<div class="empty-state">No reviews waiting for a response — great job staying on top of it!</div>`; return; }
     el.innerHTML = due.map(r => {
       const rev = r.review || {};
@@ -375,7 +352,6 @@
           <button class="rev-btn rev-btn-respond" data-lead-id="${esc(r.lead_id)}" data-action="mark-responded">Mark Responded</button>
         </div>`;
     }).join("");
-
     el.querySelectorAll("[data-action='mark-responded']").forEach(btn => {
       btn.addEventListener("click", () => markResponded(btn.dataset.leadId, btn));
     });
@@ -392,7 +368,6 @@
       });
       if (d.ok) {
         toast(d.sms_sent ? "Review ask sent via SMS!" : "Review ask logged (SMS not yet configured).", "success");
-        panels.reviews = false;
         setTimeout(() => loadReviews(), 600);
       } else {
         toast("Error: " + (d.error || "unknown"), "error");
@@ -415,7 +390,6 @@
       });
       if (d.ok) {
         toast(d.sms_sent ? "Reminder sent via SMS!" : "Reminder logged (SMS not configured).", "success");
-        panels.reviews = false;
         setTimeout(() => loadReviews(), 600);
       } else {
         toast("Error: " + (d.error || "unknown"), "error");
@@ -444,7 +418,6 @@
         }),
       });
       toast("Review logged!", "success");
-      panels.reviews = false;
       setTimeout(() => loadReviews(), 600);
     } catch (e) { toast("Error: " + e.message, "error"); }
   }
@@ -457,7 +430,6 @@
         body: JSON.stringify({ lead_id: leadId, response_status: "responded" }),
       });
       toast("Marked as responded!", "success");
-      panels.reviews = false;
       setTimeout(() => loadReviews(), 600);
     } catch (e) {
       toast("Error: " + e.message, "error");
@@ -467,23 +439,25 @@
 
   // ── FOLLOW-UP ─────────────────────────────────────────────────────────────
   async function loadFollowup() {
-    panels.followup = true;
-    document.getElementById("followupLoading").style.display = "block";
-    document.getElementById("followupContent").style.display = "none";
+    const loadingEl = document.getElementById("followupLoading");
+    const contentEl = document.getElementById("followupContent");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading follow-up queue…"; }
+    if (contentEl) contentEl.style.display = "none";
     try {
       const d = await window.Api.fetchJson("/api/marketing/followup");
       Store.followup = {};
       Object.values(d.buckets || {}).flat().forEach(r => { Store.followup[r.lead_id] = r; });
       renderFollowup(d.buckets || {});
-      document.getElementById("followupLoading").style.display = "none";
-      document.getElementById("followupContent").style.display = "block";
+      if (loadingEl) loadingEl.style.display = "none";
+      if (contentEl) contentEl.style.display = "block";
     } catch (e) {
-      document.getElementById("followupLoading").textContent = "Error: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error: " + e.message;
     }
   }
 
   function renderFollowup(buckets) {
     const el = document.getElementById("followupContent");
+    if (!el) return;
     const defs = [
       { key: "24h",  label: "1–2 Days Old",  cls: "bucket-24h",  desc: "Friendly first nudge" },
       { key: "72h",  label: "3–6 Days Old",  cls: "bucket-72h",  desc: "Getting warm — follow up soon" },
@@ -520,7 +494,6 @@
         if (arrow) arrow.textContent = rows.classList.contains("open") ? "▾" : "▸";
       });
     });
-
     el.querySelectorAll("[data-action='send-followup']").forEach(btn => {
       btn.addEventListener("click", () => sendFollowup(btn.dataset.leadId, btn));
     });
@@ -549,16 +522,17 @@
 
   // ── SEGMENTS ──────────────────────────────────────────────────────────────
   async function loadSegments() {
-    panels.segments = true;
-    document.getElementById("segmentsLoading").style.display = "block";
-    document.getElementById("segmentsContent").style.display = "none";
+    const loadingEl = document.getElementById("segmentsLoading");
+    const contentEl = document.getElementById("segmentsContent");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading smart lists…"; }
+    if (contentEl) contentEl.style.display = "none";
     try {
       const d = await window.Api.fetchJson("/api/marketing/segments");
       renderSegments(d.segments || {});
-      document.getElementById("segmentsLoading").style.display = "none";
-      document.getElementById("segmentsContent").style.display = "block";
+      if (loadingEl) loadingEl.style.display = "none";
+      if (contentEl) contentEl.style.display = "block";
     } catch (e) {
-      document.getElementById("segmentsLoading").textContent = "Error: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error: " + e.message;
     }
   }
 
@@ -573,6 +547,7 @@
 
   function renderSegments(segments) {
     const el = document.getElementById("segmentsContent");
+    if (!el) return;
     el.innerHTML = SEG_DEFS.map(def => {
       const rows = segments[def.key] || [];
       const rowsHtml = rows.length === 0
@@ -586,7 +561,6 @@
             else if (def.key === "high_value")    meta = fmt$(r.value);
             else meta = "No opt-in";
 
-            // Build quick actions: Send (where relevant), Call, View
             const phone = esc(r.phone || "");
             const lid   = esc(r.lead_id || "");
             const sendAction = ["needs_review_ask", "stale_quote", "reactivation_ready", "repeat_customers"].includes(def.key)
@@ -626,7 +600,6 @@
         if (arrow) arrow.textContent = rows.classList.contains("open") ? "▾" : "▸";
       });
     });
-
     el.querySelectorAll("[data-action='seg-send']").forEach(btn => {
       btn.addEventListener("click", async () => {
         const leadId = btn.dataset.leadId;
@@ -634,30 +607,23 @@
         const phone  = btn.dataset.phone;
         const seg    = btn.dataset.seg;
         if (!leadId && !phone) return alert("No lead ID or phone number available.");
-        const confirm = window.confirm(`Send a text to ${name || phone}?`);
-        if (!confirm) return;
-
-        btn.disabled = true;
-        btn.textContent = "Sending…";
+        if (!window.confirm(`Send a text to ${name || phone}?`)) return;
+        btn.disabled = true; btn.textContent = "Sending…";
         try {
-          // Route to review ask for review segments, follow-up for others
           if (seg === "needs_review_ask") {
             await window.Api.fetchJson("/api/reviews/ask", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+              method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lead_id: leadId, name, phone }),
             });
           } else {
             await window.Api.fetchJson("/api/marketing/followup/send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+              method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lead_id: leadId, name, phone }),
             });
           }
           btn.textContent = "Sent";
         } catch (e) {
-          btn.disabled = false;
-          btn.textContent = "Send";
+          btn.disabled = false; btn.textContent = "Send";
           alert("Error: " + e.message);
         }
       });
@@ -696,21 +662,65 @@
   }
 
   async function loadTemplates() {
-    panels.templates = true;
-    document.getElementById("templatesLoading").style.display = "block";
-    document.getElementById("templateGrid").style.display = "none";
+    const loadingEl = document.getElementById("templatesLoading");
+    const gridEl    = document.getElementById("templateGrid");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading templates…"; }
+    if (gridEl)    gridEl.style.display = "none";
+
+    // Bind new-template form handlers (idempotent)
+    if (!loadTemplates._formBound) {
+      loadTemplates._formBound = true;
+      const newTmplBtn  = document.getElementById("newTmplBtn");
+      const ntCancelBtn = document.getElementById("ntCancelBtn");
+      const ntSaveBtn   = document.getElementById("ntSaveBtn");
+      if (newTmplBtn) newTmplBtn.addEventListener("click", () => {
+        document.getElementById("newTmplForm").classList.toggle("open");
+      });
+      if (ntCancelBtn) ntCancelBtn.addEventListener("click", () => {
+        document.getElementById("newTmplForm").classList.remove("open");
+        const r = document.getElementById("ntResult"); if (r) r.textContent = "";
+      });
+      if (ntSaveBtn) ntSaveBtn.addEventListener("click", async () => {
+        const name     = document.getElementById("ntName").value.trim();
+        const category = document.getElementById("ntCategory").value;
+        const body     = document.getElementById("ntBody").value.trim();
+        const resultEl = document.getElementById("ntResult");
+        if (!name || !body) { resultEl.textContent = "Name and body are required."; resultEl.style.color = "hsl(0 70% 60%)"; return; }
+        resultEl.textContent = "Saving…"; resultEl.style.color = "";
+        try {
+          const d = await window.Api.fetchJson("/api/templates", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, category, channel: "SMS", body }),
+          });
+          if (d.ok) {
+            toast("Template created!", "success");
+            document.getElementById("newTmplForm").classList.remove("open");
+            document.getElementById("ntName").value = "";
+            document.getElementById("ntBody").value = "";
+            resultEl.textContent = "";
+            loadTemplates._formBound = false;
+            loadTemplates();
+          } else {
+            resultEl.textContent = d.error || "Error saving.";
+            resultEl.style.color = "hsl(0 70% 60%)";
+          }
+        } catch (e) { resultEl.textContent = e.message; resultEl.style.color = "hsl(0 70% 60%)"; }
+      });
+    }
+
     try {
       const d = await window.Api.fetchJson("/api/templates");
       renderTemplates(d.templates || []);
-      document.getElementById("templatesLoading").style.display = "none";
-      document.getElementById("templateGrid").style.display = "grid";
+      if (loadingEl) loadingEl.style.display = "none";
+      if (gridEl)    gridEl.style.display = "grid";
     } catch (e) {
-      document.getElementById("templatesLoading").textContent = "Error: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error: " + e.message;
     }
   }
 
   function renderTemplates(templates) {
     const grid = document.getElementById("templateGrid");
+    if (!grid) return;
     if (!templates.length) { grid.innerHTML = `<div class="empty-state">No templates found.</div>`; return; }
     grid.innerHTML = templates.map(t => {
       const isActive = t.active === "true";
@@ -749,17 +759,14 @@
         </div>`;
     }).join("");
 
-    // Bind all events via delegation — no JSON in attributes
     grid.querySelectorAll("[data-action='copy']").forEach(btn => {
       btn.addEventListener("click", () => {
         navigator.clipboard.writeText(btn.dataset.copy || "").then(() => toast("Copied!", "success")).catch(() => toast("Copy failed", "error"));
       });
     });
-
     grid.querySelectorAll("[data-action='toggle-active']").forEach(btn => {
       btn.addEventListener("click", () => toggleActive(btn.dataset.tmplId, btn.dataset.active === "true", btn));
     });
-
     grid.querySelectorAll("[data-action='toggle-edit']").forEach(btn => {
       btn.addEventListener("click", () => {
         const wrap = document.getElementById("edit-" + btn.dataset.tmplId);
@@ -769,30 +776,24 @@
         btn.textContent = open ? "Edit" : "Close";
       });
     });
-
     grid.querySelectorAll("[data-action='preview']").forEach(btn => {
       btn.addEventListener("click", () => {
         const tid = btn.dataset.tmplId;
-        const previewWrap = document.getElementById("preview-" + tid);
-        if (!previewWrap) return;
-        const isVisible = previewWrap.style.display !== "none";
-        if (isVisible) { previewWrap.style.display = "none"; btn.textContent = "Preview"; return; }
-        const bodyEl = document.getElementById("editBody-" + tid);
-        const displayEl = document.getElementById("tmplbody-" + tid);
-        const raw = (bodyEl && document.getElementById("edit-" + tid).classList.contains("open"))
-          ? bodyEl.value
-          : displayEl ? displayEl.textContent : "";
-        const previewText = previewWrap.querySelector(".tmpl-preview-text");
-        if (previewText) previewText.textContent = previewTemplate(raw);
-        previewWrap.style.display = "block";
-        btn.textContent = "Hide Preview";
+        const wrap = document.getElementById("preview-" + tid);
+        const bodyEl = document.getElementById("editBody-" + tid) || document.getElementById("tmplbody-" + tid);
+        if (!wrap) return;
+        const open = wrap.style.display !== "none";
+        wrap.style.display = open ? "none" : "block";
+        if (!open && bodyEl) {
+          const ptext = wrap.querySelector(".tmpl-preview-text");
+          if (ptext) ptext.textContent = previewTemplate(bodyEl.value || bodyEl.textContent);
+        }
+        btn.textContent = open ? "Preview" : "Hide Preview";
       });
     });
-
     grid.querySelectorAll("[data-action='save-tmpl']").forEach(btn => {
       btn.addEventListener("click", () => saveTemplate(btn.dataset.tmplId));
     });
-
     grid.querySelectorAll("[data-action='cancel-edit']").forEach(btn => {
       btn.addEventListener("click", () => {
         const wrap = document.getElementById("edit-" + btn.dataset.tmplId);
@@ -839,121 +840,84 @@
     } catch (e) { toast("Error: " + e.message, "error"); }
   }
 
-  // New template form
-  document.getElementById("newTmplBtn").addEventListener("click", () => {
-    document.getElementById("newTmplForm").classList.toggle("open");
-  });
-  document.getElementById("ntCancelBtn").addEventListener("click", () => {
-    document.getElementById("newTmplForm").classList.remove("open");
-    document.getElementById("ntResult").textContent = "";
-  });
-  document.getElementById("ntSaveBtn").addEventListener("click", async () => {
-    const name = document.getElementById("ntName").value.trim();
-    const category = document.getElementById("ntCategory").value;
-    const body = document.getElementById("ntBody").value.trim();
-    const resultEl = document.getElementById("ntResult");
-    if (!name || !body) { resultEl.textContent = "Name and body are required."; resultEl.style.color = "hsl(0 70% 60%)"; return; }
-    resultEl.textContent = "Saving…";
-    resultEl.style.color = "";
-    try {
-      const d = await window.Api.fetchJson("/api/templates", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, category, channel: "SMS", body }),
-      });
-      if (d.ok) {
-        toast("Template created!", "success");
-        document.getElementById("newTmplForm").classList.remove("open");
-        document.getElementById("ntName").value = "";
-        document.getElementById("ntBody").value = "";
-        resultEl.textContent = "";
-        panels.templates = false;
-        loadTemplates();
-      } else {
-        resultEl.textContent = d.error || "Error saving.";
-        resultEl.style.color = "hsl(0 70% 60%)";
-      }
-    } catch (e) { resultEl.textContent = e.message; resultEl.style.color = "hsl(0 70% 60%)"; }
-  });
-
   // ── MARKETING SETTINGS ────────────────────────────────────────────────────
-  // Settings save handler bound exactly once (flag prevents stacking on repeated tab visits)
   let mktSettingsSaveBound = false;
   function bindMktSettingsSaveOnce() {
     if (mktSettingsSaveBound) return;
     mktSettingsSaveBound = true;
-    document.getElementById("mktSettingsSaveBtn").addEventListener("click", async () => {
-      const btn    = document.getElementById("mktSettingsSaveBtn");
-      const result = document.getElementById("mktSettingsResult");
-      btn.disabled = true; btn.textContent = "Saving…";
-      result.textContent = "";
+    const saveBtn  = document.getElementById("mktSettingsSaveBtn");
+    const resultEl = document.getElementById("mktSettingsResult");
+    if (!saveBtn) return;
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+      if (resultEl) resultEl.textContent = "";
       try {
         const d = await window.Api.fetchJson("/api/marketing/settings", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            google_review_url:   document.getElementById("mktGoogleReviewUrl").value.trim(),
+            google_review_url:    document.getElementById("mktGoogleReviewUrl").value.trim(),
             high_value_threshold: Number(document.getElementById("mktHvThreshold").value) || 1000,
           }),
         });
-        if (d.ok) {
-          result.textContent = "Settings saved.";
-          result.style.color = "hsl(140 60% 50%)";
-        } else {
-          result.textContent = d.error || "Save failed.";
-          result.style.color = "hsl(0 70% 60%)";
+        if (resultEl) {
+          resultEl.textContent = d.ok ? "Settings saved." : (d.error || "Save failed.");
+          resultEl.style.color = d.ok ? "hsl(140 60% 50%)" : "hsl(0 70% 60%)";
         }
       } catch (e) {
-        result.textContent = e.message;
-        result.style.color = "hsl(0 70% 60%)";
+        if (resultEl) { resultEl.textContent = e.message; resultEl.style.color = "hsl(0 70% 60%)"; }
       }
-      btn.disabled = false; btn.textContent = "Save Settings";
+      saveBtn.disabled = false; saveBtn.textContent = "Save Settings";
     });
   }
 
   async function loadMktSettings() {
-    panels["mkt-settings"] = true;
-    const loading = document.getElementById("mktSettingsLoading");
-    const content = document.getElementById("mktSettingsContent");
-    loading.style.display = "block"; content.style.display = "none";
+    const loadingEl = document.getElementById("mktSettingsLoading");
+    const contentEl = document.getElementById("mktSettingsContent");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading settings…"; }
+    if (contentEl) contentEl.style.display = "none";
     try {
       const d = await window.Api.fetchJson("/api/marketing/settings");
       if (d.ok && d.settings) {
-        document.getElementById("mktGoogleReviewUrl").value  = d.settings.google_review_url   || "";
-        document.getElementById("mktHvThreshold").value      = d.settings.high_value_threshold || "1000";
+        const urlEl = document.getElementById("mktGoogleReviewUrl");
+        const hvEl  = document.getElementById("mktHvThreshold");
+        if (urlEl) urlEl.value = d.settings.google_review_url   || "";
+        if (hvEl)  hvEl.value  = d.settings.high_value_threshold || "1000";
       }
     } catch (e) { /* silently ignore — show whatever is in the inputs */ }
-    loading.style.display = "none"; content.style.display = "block";
+    if (loadingEl) loadingEl.style.display = "none";
+    if (contentEl) contentEl.style.display = "block";
     bindMktSettingsSaveOnce();
   }
 
   // ── REFERRAL CENTER ───────────────────────────────────────────────────────
-
-  // Sub-tab wiring — referral panel shares .rev-subtab/.rev-subpanel pattern
-  // but the elements are inside #panel-referrals, so we handle them separately.
-  document.querySelectorAll("#panel-referrals .rev-subtab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("#panel-referrals .rev-subtab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll("#panel-referrals .rev-subpanel").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      const sp = document.getElementById("subpanel-" + btn.dataset.subpanel);
-      if (sp) sp.classList.add("active");
-      // Lazy-load employee cards only when that tab is first opened
-      if (btn.dataset.subpanel === "ref-cards" && !_refCardsLoaded) {
-        _refCardsLoaded = true;
-        loadRefEmployeeCards();
-      }
-    });
-  });
-
   let _refCardsLoaded = false;
 
   async function loadReferrals() {
-    panels.referrals = true;
     _refCardsLoaded = false;
-    const loading = document.getElementById("refLoading");
-    const content = document.getElementById("refContent");
-    loading.style.display = "block";
-    content.style.display = "none";
+    const loadingEl = document.getElementById("refLoading");
+    const contentEl = document.getElementById("refContent");
+    if (loadingEl) { loadingEl.style.display = "block"; loadingEl.textContent = "Loading referral data…"; }
+    if (contentEl) contentEl.style.display = "none";
+
+    // Wire subtab switching (idempotent)
+    if (!loadReferrals._tabsBound) {
+      loadReferrals._tabsBound = true;
+      document.querySelectorAll(".ref-subtab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".ref-subtab").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".ref-subpanel").forEach(p => p.classList.remove("active"));
+          btn.classList.add("active");
+          const sp = document.getElementById("subpanel-" + btn.dataset.subpanel);
+          if (sp) sp.classList.add("active");
+          if (btn.dataset.subpanel === "ref-cards" && !_refCardsLoaded) {
+            _refCardsLoaded = true;
+            loadRefEmployeeCards();
+          }
+        });
+      });
+    }
+
     try {
       const d = await window.Api.fetchJson("/api/referrals");
       renderRefStats(d.stats || {});
@@ -961,10 +925,10 @@
       const ready = (d.rows || []).filter(r => (r.reward_status || "").toLowerCase() === "ready");
       renderRefRewardQueue(ready);
       setBadge("refRewardBadge", ready.length);
-      loading.style.display = "none";
-      content.style.display = "block";
+      if (loadingEl) loadingEl.style.display = "none";
+      if (contentEl) contentEl.style.display = "block";
     } catch (e) {
-      loading.textContent = "Error loading referrals: " + e.message;
+      if (loadingEl) loadingEl.textContent = "Error loading referrals: " + e.message;
     }
   }
 
@@ -1039,7 +1003,6 @@
         </td>
       </tr>`;
     }).join("");
-
     tbody.querySelectorAll("[data-action='save-ref-row']").forEach(btn => {
       btn.addEventListener("click", () => saveRefRow(btn.dataset.id, btn));
     });
@@ -1059,8 +1022,7 @@
         body: JSON.stringify({ status, reward_status, reward_amount }),
       });
       toast("Referral updated!", "success");
-      // Refresh the full panel so reward queue + badge re-render
-      panels.referrals = false;
+      loadReferrals._tabsBound = false;
       loadReferrals();
     } catch (e) {
       toast("Error: " + e.message, "error");
@@ -1096,7 +1058,6 @@
           </button>
         </div>`;
     }).join("");
-
     el.querySelectorAll("[data-action='notify-referrer']").forEach(btn => {
       btn.addEventListener("click", () => notifyReferrer(btn.dataset.refId, btn));
     });
@@ -1113,7 +1074,7 @@
       });
       if (d.ok) {
         toast(d.sms_sent ? "Reward SMS sent!" : "Logged (SMS not configured).", "success");
-        panels.referrals = false;
+        loadReferrals._tabsBound = false;
         loadReferrals();
       } else {
         toast("Error: " + (d.error || "unknown"), "error");
@@ -1125,7 +1086,6 @@
     }
   }
 
-  // ── Employee QR Cards ──────────────────────────────────────────────────────
   async function loadRefEmployeeCards() {
     const el = document.getElementById("refEmpCards");
     if (!el) return;
@@ -1157,7 +1117,6 @@
           </div>`;
       }).join("");
 
-      // Bind copy buttons
       el.querySelectorAll("[data-action='copy-ref-link']").forEach(btn => {
         btn.addEventListener("click", () => {
           navigator.clipboard.writeText(btn.dataset.copy || "")
@@ -1165,13 +1124,10 @@
             .catch(() => toast("Copy failed", "error"));
         });
       });
-
-      // Bind print buttons
       el.querySelectorAll("[data-action='print-ref-card']").forEach(btn => {
         btn.addEventListener("click", () => printEmpCard(btn.dataset.empName, btn.dataset.refUrl));
       });
 
-      // Load QR library then render QR codes
       loadQRLib(() => {
         d.employees.forEach(emp => {
           const sid  = safeId(emp.staff_id);
@@ -1179,14 +1135,8 @@
           const refUrl = `${baseUrl}/referral?employee=${encodeURIComponent(emp.staff_id)}&ref=${encodeURIComponent(emp.staff_id)}`;
           if (qrEl && window.QRCode) {
             try {
-              new window.QRCode(qrEl, {
-                text:       refUrl,
-                width:      120,
-                height:     120,
-                colorDark:  "#0d2a6e",
-                colorLight: "#ffffff",
-              });
-            } catch (err) {
+              new window.QRCode(qrEl, { text: refUrl, width: 120, height: 120, colorDark: "#0d2a6e", colorLight: "#ffffff" });
+            } catch {
               qrEl.style.cssText = "font-size:10px;color:hsl(220 15% 50%);word-break:break-all;padding:4px;";
               qrEl.textContent = refUrl;
             }
@@ -1196,7 +1146,6 @@
           }
         });
       });
-
     } catch (e) {
       el.innerHTML = `<div class="empty-state">Error loading employees: ${esc(e.message)}</div>`;
     }
@@ -1251,6 +1200,14 @@
     win.document.close();
   }
 
-  // ── Init ──────────────────────────────────────────────────────────────────
-  loadOverview();
+  // ── Public API ────────────────────────────────────────────────────────────
+  return {
+    loadOverview,
+    loadReviews,
+    loadFollowup,
+    loadSegments,
+    loadReferrals,
+    loadTemplates,
+    loadMktSettings,
+  };
 })();

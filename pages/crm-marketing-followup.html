@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Follow-Up Queue &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Follow-Up Queue</div>
+          <button id="refreshBtn" class="btn-save" style="padding:8px 18px;" type="button">Refresh</button>
+        </div>
+
+        <div id="followupLoading" class="loading-state">Loading follow-up queue…</div>
+        <div id="followupContent" style="display:none;"></div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-marketing.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    document.getElementById("refreshBtn").addEventListener("click", () => Mkt.loadFollowup());
+    Mkt.loadFollowup();
+  </script>
+</body>
+</html>

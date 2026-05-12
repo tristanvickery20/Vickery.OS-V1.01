@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Review Center &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Review Center</div>
+          <button id="refreshBtn" class="btn-save" style="padding:8px 18px;" type="button">Refresh</button>
+        </div>
+
+        <div class="rev-subtabs">
+          <button class="rev-subtab active" data-subpanel="queue">Queue <span id="queueCount" class="badge" style="margin-left:4px;"></span></button>
+          <button class="rev-subtab" data-subpanel="pending">Pending <span id="pendingCount" class="badge" style="margin-left:4px;"></span></button>
+          <button class="rev-subtab" data-subpanel="received">Received <span id="receivedCount" class="badge" style="margin-left:4px;"></span></button>
+          <button class="rev-subtab" data-subpanel="response_due">Response Due <span id="responseDueCount" class="badge" style="margin-left:4px;"></span></button>
+        </div>
+
+        <div id="reviewsLoading" class="loading-state">Loading reviews…</div>
+
+        <div class="rev-subpanel active" id="subpanel-queue">
+          <div id="queueList"></div>
+        </div>
+        <div class="rev-subpanel" id="subpanel-pending">
+          <div id="pendingList"></div>
+        </div>
+        <div class="rev-subpanel" id="subpanel-received">
+          <div id="receivedList"></div>
+        </div>
+        <div class="rev-subpanel" id="subpanel-response_due">
+          <div id="responseDueList"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-marketing.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    document.getElementById("refreshBtn").addEventListener("click", () => Mkt.loadReviews());
+    Mkt.loadReviews();
+  </script>
+</body>
+</html>

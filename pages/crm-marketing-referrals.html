@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Referral Center &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Referral Center</div>
+          <button id="refreshBtn" class="btn-save" style="padding:8px 18px;" type="button">Refresh</button>
+        </div>
+
+        <div id="refLoading" class="loading-state">Loading referral data&hellip;</div>
+        <div id="refContent" style="display:none;">
+
+          <div class="rev-subtabs" style="margin-bottom:16px;">
+            <button class="ref-subtab rev-subtab active" data-subpanel="ref-dash">Dashboard</button>
+            <button class="ref-subtab rev-subtab" data-subpanel="ref-ledger">Ledger</button>
+            <button class="ref-subtab rev-subtab" data-subpanel="ref-cards">Employee Cards</button>
+            <button class="ref-subtab rev-subtab" data-subpanel="ref-rewards">Reward Queue <span id="refRewardBadge" style="margin-left:4px;"></span></button>
+          </div>
+
+          <div class="ref-subpanel rev-subpanel active" id="subpanel-ref-dash">
+            <div class="stat-grid" id="refStatGrid"></div>
+            <div style="margin-top:16px;font-size:13px;color:hsl(var(--text-2,220 15% 55%));">
+              <strong style="color:hsl(var(--text-1,220 20% 90%));">Reward tiers:</strong>
+              Jobs under $1,000 → <strong>$50</strong> &nbsp;&bull;&nbsp;
+              Jobs $1,000–$4,999 → <strong>$100</strong> &nbsp;&bull;&nbsp;
+              Jobs $5,000+ → <strong>$150</strong>.
+              Set reward amount and mark "Ready" in the Ledger when the job is paid, then send the SMS from the Reward Queue.
+            </div>
+          </div>
+
+          <div class="ref-subpanel rev-subpanel" id="subpanel-ref-ledger">
+            <div style="overflow-x:auto;">
+              <table class="ref-ledger-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Referrer</th>
+                    <th>Referee</th>
+                    <th>Job</th>
+                    <th>Status</th>
+                    <th>Change Status</th>
+                    <th>Reward</th>
+                    <th>Reward $</th>
+                    <th>Save</th>
+                  </tr>
+                </thead>
+                <tbody id="refLedgerBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ref-subpanel rev-subpanel" id="subpanel-ref-cards">
+            <p style="font-size:13px;color:hsl(var(--text-2,220 15% 55%));margin-bottom:16px;">
+              Each employee gets a unique referral link. Share the link or print a card for their truck / clipboard.
+              Submissions through the link are automatically attributed to that employee in the Referral Ledger.
+            </p>
+            <div id="refEmpCards" class="ref-emp-grid"></div>
+          </div>
+
+          <div class="ref-subpanel rev-subpanel" id="subpanel-ref-rewards">
+            <p style="font-size:13px;color:hsl(var(--text-2,220 15% 55%));margin-bottom:12px;">
+              Referrers listed here have their reward status set to <strong>Ready</strong>.
+              Click <em>Send Reward SMS</em> to notify them — or mark the reward <strong>Paid</strong> in the Ledger once delivered.
+            </p>
+            <div id="refRewardQueueList"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-marketing.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    document.getElementById("refreshBtn").addEventListener("click", () => { Mkt.loadReferrals._tabsBound = false; Mkt.loadReferrals(); });
+    Mkt.loadReferrals();
+  </script>
+</body>
+</html>

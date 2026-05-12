@@ -1051,8 +1051,30 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, path.join(__dirname, "pages/crm-staff.html"), "text/html");
   }
 
-  if (req.url === "/crm/marketing") {
-    return serveFile(res, path.join(__dirname, "pages/crm-marketing.html"), "text/html");
+  if (req.url === "/crm/marketing" || req.url === "/crm/marketing/") {
+    res.writeHead(302, { Location: "/crm/marketing/overview" });
+    return res.end();
+  }
+  if (req.url === "/crm/marketing/overview") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-overview.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/reviews") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-reviews.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/followup") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-followup.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/segments") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-segments.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/referrals") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-referrals.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/templates") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-templates.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/settings") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-settings.html"), "text/html");
   }
 
   if (req.url === "/crm/schedule") {

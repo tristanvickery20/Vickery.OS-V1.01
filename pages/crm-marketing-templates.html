@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Templates &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Message Templates</div>
+          <div style="display:flex;gap:10px;">
+            <button id="newTmplBtn" type="button" class="btn-save" style="padding:7px 14px;font-size:12px;">+ New Template</button>
+            <button id="refreshBtn" class="btn-save" style="padding:8px 18px;background:hsl(var(--surface-2,220 20% 18%));color:hsl(var(--text-1,220 20% 90%));border:1px solid hsl(var(--border,220 20% 22%));" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div id="newTmplForm" class="new-tmpl-form">
+          <div style="font-weight:700;margin-bottom:12px;font-size:13px;">New Template</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input id="ntName" placeholder="Template name" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select id="ntCategory">
+                <option value="review_ask">Review Ask</option>
+                <option value="review_reminder">Review Reminder</option>
+                <option value="quote_followup">Quote Follow-Up</option>
+                <option value="job_complete_thankyou">Job Complete Thank-You</option>
+                <option value="reactivation">Reactivation</option>
+                <option value="referral_ask">Referral Ask</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label class="form-label">Message Body</label>
+            <textarea id="ntBody" class="tmpl-edit-textarea" placeholder="Use {first_name}, {service}, {review_link}, {city} as variables"></textarea>
+          </div>
+          <div class="tmpl-edit-actions">
+            <button id="ntSaveBtn" type="button" class="btn-save">Save Template</button>
+            <button id="ntCancelBtn" type="button" class="btn-cancel">Cancel</button>
+          </div>
+          <p id="ntResult" style="font-size:12px;margin-top:8px;"></p>
+        </div>
+
+        <div id="templatesLoading" class="loading-state">Loading templates…</div>
+        <div id="templateGrid" class="tmpl-grid" style="display:none;"></div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-marketing.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    document.getElementById("refreshBtn").addEventListener("click", () => { Mkt.loadTemplates._formBound = false; Mkt.loadTemplates(); });
+    Mkt.loadTemplates();
+  </script>
+</body>
+</html>

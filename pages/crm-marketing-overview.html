@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Marketing Overview &bull; Vickery CRM</title>
+  <link rel="icon" type="image/jpeg" href="/pages/img/crm-icon.jpg" />
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <link rel="stylesheet" href="/pages/css/marketing.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vickery CRM" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar" id="sidebarMount"></div>
+    <main class="main-area">
+      <div class="main-content">
+
+        <div class="page-header">
+          <div class="page-title">Marketing Overview</div>
+          <button id="refreshBtn" class="btn-save" style="padding:8px 18px;" type="button">Refresh</button>
+        </div>
+
+        <div id="overviewLoading" class="loading-state">Loading overview…</div>
+        <div id="overviewContent" style="display:none;">
+          <div class="stat-grid" id="statGrid"></div>
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:hsl(var(--text-2,220 15% 60%));letter-spacing:.5px;text-transform:uppercase;">Lead Source Breakdown</h3>
+          <div style="overflow-x:auto;">
+            <table class="src-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th style="text-align:right;">Leads</th>
+                  <th style="text-align:right;">Booked</th>
+                  <th style="text-align:right;">Revenue</th>
+                  <th>Close Rate</th>
+                </tr>
+              </thead>
+              <tbody id="sourceTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="/pages/js/api.js"></script>
+  <script src="/pages/js/crm-marketing.js"></script>
+  <script src="/pages/js/shell.js"></script>
+  <script>
+    document.getElementById("refreshBtn").addEventListener("click", () => Mkt.loadOverview());
+    Mkt.loadOverview();
+  </script>
+</body>
+</html>
