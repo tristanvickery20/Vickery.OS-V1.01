@@ -947,6 +947,18 @@
     } catch (_) {}
   }
 
-  init();
+  init().then(() => {
+    const refreshBtn = document.getElementById("cdRefreshBtn");
+    if (refreshBtn) {
+      refreshBtn.style.display = "inline-block";
+      refreshBtn.addEventListener("click", async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Refreshing…";
+        await silentRefresh();
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = "↺ Refresh";
+      });
+    }
+  });
   setInterval(silentRefresh, 60000);
 })();

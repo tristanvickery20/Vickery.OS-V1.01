@@ -271,6 +271,7 @@ async function handleUpdateLeadStatus(req, res) {
               ensured.index,
               promotion.client_id
             );
+            invalidateCache(spreadsheetId, "Leads");
           }
         }
       }
