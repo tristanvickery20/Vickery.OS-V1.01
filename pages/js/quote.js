@@ -31,7 +31,7 @@ const S = {
   photoGateUploading: false,   // true while gate photo is being uploaded to server
   confirmedPhotoModules: {},   // { [module]: true } — modules confirmed by successful server upload
   consultData: null,           // { service_id, service_name, ballparkRange, reason } — set when manual_review_required
-  locationAnswers: {},         // { distance: str, attendance: str } — universal location questions
+  locationAnswers: {},         // { distance, attendance, access_instructions } — universal location questions
   locationPhotos: [],          // File[] — area photos captured in questions step
   locationPhotoUploaded: false,// true once area photo successfully uploaded to server
   consents: {},                // { scope: bool, unattended: bool, location: bool }
@@ -242,10 +242,17 @@ function isLocationJob() {
   });
 }
 
-// Returns true when all required location questions are answered and photo uploaded.
+// Returns true when all required location questions are answered.
+// Photo and access instructions are only required when no one will be home.
 function locationQsComplete() {
   if (!isLocationJob()) return true;
-  return !!(S.locationAnswers.distance && S.locationAnswers.attendance && S.locationPhotoUploaded);
+  const { distance, attendance, access_instructions } = S.locationAnswers;
+  if (!distance || !attendance) return false;
+  if (attendance === "no_phone") {
+    if (!access_instructions?.trim()) return false;
+    if (!S.locationPhotoUploaded) return false;
+  }
+  return true;
 }
 
 // Returns true when all required consent boxes are checked.
@@ -1126,7 +1133,7 @@ function renderQuestions() {
 
 // ── Location questions section ─────────────────────────────────────────────────
 // Injected after service-specific questions for outlets/switches/lighting/fans.
-// Collects three required inputs: distance from panel, work area photo, attendance.
+// Collects location context: distance, attendance, and (when unattended) access instructions + required photo.
 function renderLocationSection() {
   const DIST_OPTIONS = [
     { id: "within_3ft", label: "Right there \u2014 within 3 feet" },
@@ -1138,13 +1145,15 @@ function renderLocationSection() {
   ];
   const ATTEND_OPTIONS = [
     { id: "yes_me",   label: "Yes \u2014 I\u2019ll be there" },
-    { id: "someone",  label: "Someone else will be there to meet you" },
-    { id: "no_phone", label: "No \u2014 I\u2019ll provide access and be reachable by phone" },
+    { id: "someone",  label: "Someone else will meet you" },
+    { id: "no_phone", label: "No \u2014 I won\u2019t be home (I\u2019ll provide access instructions)" },
   ];
 
+  const att           = S.locationAnswers.attendance || "";
   const guide         = PHOTO_MODULE_GUIDES.AREA_PHOTO;
   const photoUploaded = S.locationPhotoUploaded;
 
+  // Numbered step instructions for the area photo
   const stepsHtml = (guide.steps || []).map((s, i) => `
     <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
       <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:hsl(var(--primary));color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i + 1}</div>
@@ -1161,7 +1170,7 @@ function renderLocationSection() {
         </div>`).join("")}
     </div>` : "";
 
-  const photoAction = photoUploaded ? `
+  const photoUploadZone = photoUploaded ? `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:hsl(120 60% 97%);border:1.5px solid hsl(120 60% 80%);border-radius:10px;padding:12px 14px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(120 60% 40%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="7 12 10.5 15.5 17 8.5"/></svg>
@@ -1185,6 +1194,35 @@ function renderLocationSection() {
       <div id="locPhotoErr" style="display:none;margin-top:8px;padding:8px 10px;background:hsl(0 84% 97%);border:1px solid hsl(0 84% 85%);border-radius:8px;font-size:12px;color:hsl(0 72% 45%);"></div>
     </div>`;
 
+  // Conditional sections shown after attendance is selected
+  const noPhoneSection = `
+    <div id="locNoPhoneSection" style="display:${att === "no_phone" ? "block" : "none"};">
+      <div class="q-question" style="margin-top:20px;">
+        <div class="q-question-prompt">&#128273; How will the technician access the property? <span class="q-req">*</span></div>
+        <p class="q-muted" style="font-size:13px;margin:4px 0 10px;">Gate code, lockbox, hide-a-key location, neighbor to contact &mdash; give us what we need to get in safely. Pets secured? Alarm disabled? Note it here.</p>
+        <textarea id="locAccessInstructions" class="q-input"
+          rows="3"
+          placeholder="e.g. Gate code is 1234. Front door key is under the flowerpot. Dog is secured in the back bedroom."
+          style="width:100%;resize:vertical;font-size:13px;line-height:1.5;box-sizing:border-box;">${escHtml(S.locationAnswers.access_instructions || "")}</textarea>
+      </div>
+      <div class="q-question" style="margin-top:20px;">
+        <div class="q-question-prompt">&#128247; Photo of the work area <span class="q-req">*</span></div>
+        <p class="q-muted" style="font-size:13px;margin:4px 0 12px;">Since no one will be home, a photo is required so we can confirm the exact location before arrival. Mark the spot with tape, a sticky note, or point your finger at it &mdash; takes 30 seconds and prevents any confusion on job day.</p>
+        ${stepsHtml}
+        ${tipsHtml}
+        <div style="margin-top:12px;">${photoUploadZone}</div>
+      </div>
+    </div>`;
+
+  const attendedSection = `
+    <div id="locAttendedSection" style="display:${att && att !== "no_phone" ? "block" : "none"};">
+      <div class="q-question" style="margin-top:20px;">
+        <div class="q-question-prompt">&#128247; Work area photo <span style="color:hsl(var(--muted-foreground));font-weight:500;">(optional but helpful)</span></div>
+        <p class="q-muted" style="font-size:13px;margin:4px 0 12px;">A quick photo helps us confirm the estimate and plan materials in advance. You can always show us in person instead &mdash; totally fine either way.</p>
+        <div style="margin-top:4px;">${photoUploadZone}</div>
+      </div>
+    </div>`;
+
   return `
     <div class="q-card-section q-loc-section" style="margin-top:14px;">
       <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:hsl(var(--primary));margin-bottom:16px;">
@@ -1201,21 +1239,16 @@ function renderLocationSection() {
       </div>
 
       <div class="q-question" style="margin-top:20px;">
-        <div class="q-question-prompt">&#128247; Photo of the work area <span class="q-req">*</span></div>
-        <p class="q-muted" style="font-size:13px;margin:4px 0 12px;">Mark the exact spot with tape or a sticky note before taking the photo &mdash; it takes 30 seconds and prevents scope confusion on job day.</p>
-        ${stepsHtml}
-        ${tipsHtml}
-        <div style="margin-top:12px;">${photoAction}</div>
-      </div>
-
-      <div class="q-question" style="margin-top:20px;">
-        <div class="q-question-prompt">Will someone be there to confirm the location? <span class="q-req">*</span></div>
+        <div class="q-question-prompt">Will someone be home to confirm the location with the tech? <span class="q-req">*</span></div>
         <div class="q-loc-options">
           ${ATTEND_OPTIONS.map(o => `
-            <div class="q-loc-option${S.locationAnswers.attendance === o.id ? " selected" : ""}"
+            <div class="q-loc-option${att === o.id ? " selected" : ""}"
                  data-field="attendance" data-val="${escHtml(o.id)}">${escHtml(o.label)}</div>`).join("")}
         </div>
       </div>
+
+      ${noPhoneSection}
+      ${attendedSection}
     </div>`;
 }
 
@@ -1231,6 +1264,54 @@ function renderQuestion(q) {
 
   if (itype === "photo") {
     const photoList = S.photos[q.question_id] || [];
+    const guide = PHOTO_MODULE_GUIDES[q.question_id];
+
+    if (guide) {
+      // Rich guided photo upload — uses the same style as the panel/location guides
+      const uploaded = photoList.length > 0;
+      const miniSteps = (guide.steps || []).map((s, i) => `
+        <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:7px;">
+          <div style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:hsl(var(--primary));color:white;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i + 1}</div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;padding-top:1px;">${escHtml(s)}</p>
+        </div>`).join("");
+      const miniTips = (guide.tips || []).length ? `
+        <div style="background:hsl(210 20% 97%);border-radius:7px;padding:8px 10px;margin:8px 0;">
+          <p style="margin:0 0 4px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground));">Quick tips</p>
+          ${guide.tips.map(t => `
+            <div style="display:flex;gap:7px;align-items:flex-start;margin-top:3px;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px;"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style="font-size:11.5px;color:hsl(var(--muted-foreground));">${escHtml(t)}</span>
+            </div>`).join("")}
+        </div>` : "";
+      const actionHtml = uploaded ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:hsl(120 60% 97%);border:1.5px solid hsl(120 60% 80%);border-radius:9px;padding:10px 13px;">
+          <div style="display:flex;align-items:center;gap:9px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(120 60% 40%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="7 12 10.5 15.5 17 8.5"/></svg>
+            <p style="margin:0;font-size:13px;font-weight:700;color:hsl(120 60% 35%);">${photoList.length} photo${photoList.length !== 1 ? "s" : ""} added</p>
+          </div>
+          <label style="cursor:pointer;font-size:12px;color:hsl(var(--muted-foreground));text-decoration:underline;white-space:nowrap;">
+            Replace <input type="file" class="q-photo-inline" data-qid="${escHtml(q.question_id)}" accept="image/*" multiple style="display:none;">
+          </label>
+        </div>` : `
+        <div style="border:2px dashed hsl(var(--border));border-radius:9px;padding:14px;text-align:center;">
+          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 20px;background:hsl(var(--primary));color:white;border-radius:50px;font-size:13px;font-weight:700;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Add Photo (Optional)
+            <input type="file" class="q-photo-inline" data-qid="${escHtml(q.question_id)}" accept="image/*" multiple style="display:none;">
+          </label>
+          <p style="margin:7px 0 0;font-size:11.5px;color:hsl(var(--muted-foreground));">JPG, PNG or HEIC &bull; up to 5 photos</p>
+        </div>`;
+      return `
+        <div class="q-question" data-qid="${q.question_id}">
+          <div class="q-question-prompt">${escHtml(q.prompt)}</div>
+          <p class="q-muted" style="font-size:12.5px;margin:3px 0 10px;">Optional &mdash; helps us confirm the estimate and plan materials</p>
+          ${miniSteps}
+          ${miniTips}
+          <div style="margin-top:10px;">${actionHtml}</div>
+        </div>`;
+    }
+
+    // Simple photo (no guide available)
     const label = photoList.length
       ? `&#128247; ${photoList.length} photo${photoList.length !== 1 ? "s" : ""} added`
       : "&#128247; Add Photos (Optional)";
@@ -2286,9 +2367,26 @@ function bindEvents() {
       S.locationAnswers[field] = val;
       el.closest(".q-loc-options")?.querySelectorAll(".q-loc-option")
         .forEach(o => o.classList.toggle("selected", o === el));
+      // When attendance changes, show/hide the conditional access/photo sections
+      if (field === "attendance") {
+        const noPhone  = document.getElementById("locNoPhoneSection");
+        const attended = document.getElementById("locAttendedSection");
+        if (noPhone)  noPhone.style.display  = val === "no_phone" ? "block" : "none";
+        if (attended) attended.style.display = val && val !== "no_phone" ? "block" : "none";
+        // Scroll the newly-revealed section into view
+        const target = val === "no_phone" ? noPhone : attended;
+        target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
       const btn = document.getElementById("seePriceBtn");
       if (btn) btn.disabled = !locationQsComplete();
     });
+  });
+
+  // Access instructions textarea (unattended jobs)
+  document.getElementById("locAccessInstructions")?.addEventListener("input", e => {
+    S.locationAnswers.access_instructions = e.target.value;
+    const btn = document.getElementById("seePriceBtn");
+    if (btn) btn.disabled = !locationQsComplete();
   });
 
   // Location area photo — inline upload in questions step
@@ -2836,7 +2934,7 @@ async function submitLock() {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: S.answers, addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_phone: refPhone || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
@@ -3063,14 +3161,16 @@ async function submitBooking() {
     const r = await fetch("/api/schedule/book", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        quote_id:           S.quoteId,
-        scheduled_datetime: S.selectedSlot,
-        block:              S.selectedBlock?.block || null,
-        date:               S.selectedBlock?.date  || null,
-        address:            lockData?.address || "",
-        customer_name:      lockData?.customer_name || "",
-        final_price:        lockData?.final_price,
-        lead_source:        S.lead_source || "",
+        quote_id:             S.quoteId,
+        scheduled_datetime:   S.selectedSlot,
+        block:                S.selectedBlock?.block || null,
+        date:                 S.selectedBlock?.date  || null,
+        address:              lockData?.address || "",
+        customer_name:        lockData?.customer_name || "",
+        final_price:          lockData?.final_price,
+        lead_source:          S.lead_source || "",
+        attendance:           S.locationAnswers.attendance || "",
+        access_instructions:  S.locationAnswers.access_instructions || "",
       }),
     });
     const d = await r.json();
@@ -3102,16 +3202,18 @@ async function submitSiteVisitBooking(name, phone, email, address, lead_source, 
       body: JSON.stringify({
         name,
         phone,
-        email:          email || "",
+        email:               email || "",
         address,
-        lead_source:    lead_source || "Website",
-        service_id:     S.consultData?.service_id   || null,
-        service_name:   S.consultData?.service_name || null,
-        block:          S.selectedBlock?.block      || null,
-        date:           S.selectedBlock?.date        || null,
-        quote_id:       S.quoteId || null,
-        referrer_name:  referrer_name  || "",
-        referrer_phone: referrer_phone || "",
+        lead_source:         lead_source || "Website",
+        service_id:          S.consultData?.service_id   || null,
+        service_name:        S.consultData?.service_name || null,
+        block:               S.selectedBlock?.block      || null,
+        date:                S.selectedBlock?.date        || null,
+        quote_id:            S.quoteId || null,
+        referrer_name:       referrer_name  || "",
+        referrer_phone:      referrer_phone || "",
+        attendance:          S.locationAnswers.attendance || "",
+        access_instructions: S.locationAnswers.access_instructions || "",
       }),
     });
     const d = await r.json();

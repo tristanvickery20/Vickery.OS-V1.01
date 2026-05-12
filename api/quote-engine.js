@@ -110,7 +110,7 @@ function normalizeLeadSource(v) {
 // ── Lead upsert on lock ───────────────────────────────────────────────────────
 // Creates or updates the Lead row so schedule-book can find it by last_quote_id.
 // Non-fatal: any Sheets error is logged but does not break the quote response.
-async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent, referrer_name, referrer_phone }) {
+async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent, referrer_name, referrer_phone, attendance, access_instructions }) {
   try {
     const sheetId    = SPREADSHEET_ID();
     const cleanPhone = String(phone || "").replace(/\D/g, "");
@@ -146,6 +146,8 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       if (sms_marketing_consent) set("sms_marketing_consent", sms_marketing_consent);
       if (referrer_name)         set("referrer_name",         referrer_name);
       if (referrer_phone)        set("referrer_phone",        referrer_phone);
+      if (attendance)            set("attendance",            attendance);
+      if (access_instructions)   set("access_instructions",   access_instructions);
       const sIdx = idxOf("status");
       if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
       await sheets.spreadsheets.values.update({
@@ -183,6 +185,8 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
     if (sms_marketing_consent)  set("sms_marketing_consent",  sms_marketing_consent);
     if (referrer_name)          set("referrer_name",          referrer_name);
     if (referrer_phone)         set("referrer_phone",         referrer_phone);
+    if (attendance)             set("attendance",             attendance);
+    if (access_instructions)    set("access_instructions",    access_instructions);
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId, range: "Leads!A:A",
       valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
@@ -454,6 +458,7 @@ async function handleQuoteLock(req, res) {
       sms_opt_in, sms_marketing_consent,
       equipment_line_items,
       referrer_name, referrer_phone,
+      attendance, access_instructions,
     } = body;
 
     if (!quote_id)    return json(res, 400, { ok: false, error: "quote_id required" });
@@ -562,7 +567,7 @@ async function handleQuoteLock(req, res) {
     });
 
     // Upsert the Lead row so the booking can find it by last_quote_id
-    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrer_phone || "" });
+    await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrer_phone || "", attendance: attendance || "", access_instructions: access_instructions || "" });
 
     json(res, 200, lockResponse);
   } catch (err) {
