@@ -669,6 +669,17 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ ok: true, url }));
   }
 
+  // ── Lead materials / pull list (crew session OR CRM auth) ────────────────────
+  if (req.url.match(/^\/api\/leads\/[^/?]+\/materials/) && req.method === "GET") {
+    const crewOk = !!getCrewSession(req);
+    const crmOk  = isAuthed(req);
+    if (!crewOk && !crmOk) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    }
+    return handleGetLeadMaterials(req, res);
+  }
+
   // ── Public salary slip by share token (no CRM auth required) ─────────────────
   if (req.url.startsWith("/api/salary-slip/") && req.method === "GET") {
     const slipToken = req.url.split("?")[0].slice("/api/salary-slip/".length);
@@ -1229,10 +1240,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url.startsWith("/api/lead-snapshot") && req.method === "GET") {
     return handleGetLeadSnapshot(req, res);
-  }
-
-  if (req.url.match(/^\/api\/leads\/[^/?]+\/materials/) && req.method === "GET") {
-    return handleGetLeadMaterials(req, res);
   }
 
   if (req.url === "/api/leads/status" && req.method === "PATCH") {
