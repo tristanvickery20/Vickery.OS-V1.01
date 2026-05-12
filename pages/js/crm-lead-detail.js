@@ -198,6 +198,16 @@
                 <div class="ld-msg" id="ldNoteMsg"></div>
               </div>
 
+              <!-- Photos & Marketing -->
+              <div class="ld-card" id="ldPhotosCard">
+                <div class="ld-card-title">Photos
+                  <div class="ld-card-title-actions">
+                    <button class="ld-btn" id="ldAddPhotoBtn" style="padding:4px 10px;font-size:12px;">+ Add URL</button>
+                  </div>
+                </div>
+                <div id="ldPhotosContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading…</div>
+              </div>
+
               ${hasQuoteId ? `
               <div class="ld-card" id="ldMaterialsCard">
                 <div class="ld-card-title">Estimated Materials</div>
@@ -298,6 +308,7 @@
     loadLeadInvoice(lead.id || lead.lead_id, lead);
     loadBonusPanel(lead.id || lead.lead_id);
     loadAttributionPanel(lead.id || lead.lead_id, lead);
+    loadPhotosCard(lead.id || lead.lead_id, lead);
     loadRelatedJobs(lead);
   }
 
@@ -950,6 +961,159 @@
     } catch (err) {
       el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
     }
+  }
+
+  /* =============================================
+     PHOTOS CARD + FLAG FOR MARKETING
+  ============================================= */
+  async function loadPhotosCard(lid, lead) {
+    const el = document.getElementById('ldPhotosContent');
+    if (!el || !lid) return;
+    try {
+      const data = await window.Api.fetchJson('/api/attachments?entity_type=lead&entity_id=' + encodeURIComponent(lid));
+      const photos = (data.attachments || []).filter(a =>
+        (a.file_type || '').startsWith('image') || /\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(a.file_url || '')
+      );
+
+      if (!photos.length) {
+        el.innerHTML = `<div style="opacity:.6;font-style:italic;">No photos attached yet. Use + Add URL to add one.</div>`;
+      } else {
+        el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:8px;">` +
+          photos.map(p => `
+            <div style="border-radius:8px;overflow:hidden;border:1px solid hsl(var(--border));position:relative;aspect-ratio:1;">
+              <a href="${esc(p.file_url)}" target="_blank" rel="noopener">
+                <img src="${esc(p.file_url)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'" />
+              </a>
+              <button class="flag-mkt-btn" data-url="${esc(p.file_url)}" data-category="${esc(p.category || '')}"
+                style="position:absolute;bottom:4px;right:4px;padding:2px 6px;font-size:10px;font-weight:700;
+                border-radius:6px;border:none;background:hsl(220 80% 25% / .85);color:#fff;cursor:pointer;
+                backdrop-filter:blur(4px);">📣 Flag</button>
+            </div>`).join('') +
+          `</div>`;
+      }
+
+      // Wire + Add URL button
+      const addBtn = document.getElementById('ldAddPhotoBtn');
+      if (addBtn) {
+        addBtn.onclick = async () => {
+          const url = prompt('Photo URL (https://…):');
+          if (!url || !url.trim()) return;
+          await window.Api.fetchJson('/api/attachments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entity_type: 'lead', entity_id: lid, file_url: url.trim(), file_type: 'image/jpeg', category: 'job' }),
+          });
+          loadPhotosCard(lid, lead);
+        };
+      }
+
+      // Wire Flag for Marketing buttons
+      el.querySelectorAll('.flag-mkt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          openFlagMktModal(lid, lead, btn.dataset.url, btn.dataset.category);
+        });
+      });
+    } catch (err) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
+    }
+  }
+
+  function ensureFlagMktModal() {
+    if (document.getElementById('ldFlagMktModal')) return;
+    const div = document.createElement('div');
+    div.id = 'ldFlagMktModal';
+    div.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;';
+    div.innerHTML = `
+      <div id="ldFlagMktBackdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.55);"></div>
+      <div style="position:relative;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:24px 28px;width:400px;max-width:calc(100vw - 32px);box-shadow:0 8px 40px rgba(0,0,0,.25);">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;margin-bottom:16px;">📣 Flag for Marketing</div>
+        <input type="hidden" id="ldFlagUrl" />
+        <div style="margin-bottom:10px;font-size:12px;color:hsl(var(--muted-foreground));">Photo URL</div>
+        <div id="ldFlagUrlDisplay" style="font-size:11px;word-break:break-all;margin-bottom:14px;color:hsl(var(--foreground));"></div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Asset Type</label>
+          <select id="ldFlagType" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:13px;background:hsl(var(--background));color:hsl(var(--foreground));">
+            <option value="before_photo">Before Photo</option>
+            <option value="after_photo">After Photo</option>
+            <option value="panel_photo">Panel Photo</option>
+            <option value="fixture_photo">Fixture Photo</option>
+            <option value="job_story">Job Story</option>
+            <option value="team_photo">Team Photo</option>
+          </select>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:6px;">Best For</label>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ldFlagGbp" /> GBP</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ldFlagWebsite" /> Website</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ldFlagSocial" /> Social</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ldFlagAds" /> Ads</label>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:hsl(var(--muted-foreground));display:block;margin-bottom:4px;">Notes / Caption Idea</label>
+          <input id="ldFlagNotes" type="text" placeholder="Before: old panel. After: 200A upgrade." style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid hsl(var(--border));border-radius:8px;font-size:13px;background:hsl(var(--background));color:hsl(var(--foreground));" />
+        </div>
+        <div id="ldFlagMsg" style="font-size:13px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="ld-btn" id="ldFlagCancel">Cancel</button>
+          <button class="ld-btn ld-btn-primary" id="ldFlagSave">Add to Asset Library</button>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
+  }
+
+  function openFlagMktModal(lid, lead, fileUrl, category) {
+    ensureFlagMktModal();
+    const modal = document.getElementById('ldFlagMktModal');
+    document.getElementById('ldFlagUrl').value = fileUrl || '';
+    document.getElementById('ldFlagUrlDisplay').textContent = fileUrl ? fileUrl.slice(0, 60) + (fileUrl.length > 60 ? '…' : '') : '';
+    const typeMap = { before: 'before_photo', after: 'after_photo', panel: 'panel_photo', fixture: 'fixture_photo' };
+    document.getElementById('ldFlagType').value = typeMap[category] || 'after_photo';
+    document.getElementById('ldFlagGbp').checked = false;
+    document.getElementById('ldFlagWebsite').checked = false;
+    document.getElementById('ldFlagSocial').checked = false;
+    document.getElementById('ldFlagAds').checked = false;
+    document.getElementById('ldFlagNotes').value = '';
+    document.getElementById('ldFlagMsg').innerHTML = '';
+    modal.style.display = 'flex';
+
+    const close = () => { modal.style.display = 'none'; };
+    document.getElementById('ldFlagMktBackdrop').onclick = close;
+    document.getElementById('ldFlagCancel').onclick = close;
+
+    document.getElementById('ldFlagSave').onclick = async () => {
+      const btn = document.getElementById('ldFlagSave');
+      const msgEl = document.getElementById('ldFlagMsg');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const r = await window.Api.fetchJson('/api/marketing/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id:               lid,
+            asset_type:            document.getElementById('ldFlagType').value,
+            file_url:              fileUrl,
+            file_type:             'image',
+            permission_status:     'not_asked',
+            marketing_use_allowed: 'pending',
+            best_for_gbp:          document.getElementById('ldFlagGbp').checked,
+            best_for_website:      document.getElementById('ldFlagWebsite').checked,
+            best_for_social:       document.getElementById('ldFlagSocial').checked,
+            best_for_ads:          document.getElementById('ldFlagAds').checked,
+            notes:                 document.getElementById('ldFlagNotes').value.trim(),
+          }),
+        });
+        if (!r.ok) throw new Error(r.error || 'Save failed');
+        msgEl.style.color = 'hsl(142,50%,35%)';
+        msgEl.textContent = '✓ Added to Asset Library!';
+        setTimeout(close, 1200);
+      } catch (e) {
+        msgEl.style.color = 'hsl(0,70%,45%)';
+        msgEl.textContent = 'Error: ' + e.message;
+        btn.disabled = false; btn.textContent = 'Add to Asset Library';
+      }
+    };
   }
 
   async function loadRelatedJobs(lead) {

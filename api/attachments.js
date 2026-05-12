@@ -33,7 +33,7 @@ async function handleCreateAttachment(req, res) {
     const uploaded_by = String(body.uploaded_by || "admin").trim();
     const category = String(body.category || "general").trim().toLowerCase();
 
-    const validTypes = ["client", "job", "quote", "visit", "request"];
+    const validTypes = ["client", "job", "quote", "visit", "request", "lead"];
     if (!validTypes.includes(entity_type)) {
       return json(res, 400, { ok: false, error: "Invalid entity_type." });
     }
@@ -100,4 +100,27 @@ async function handleCreateAttachment(req, res) {
   }
 }
 
-module.exports = { handleCreateAttachment };
+// GET /api/attachments?entity_type=lead&entity_id=xxx
+async function handleGetAttachments(req, res) {
+  try {
+    const qs = new URL(req.url, "http://x").searchParams;
+    const entity_type = qs.get("entity_type") || "";
+    const entity_id   = qs.get("entity_id") || "";
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Attachments!A:K" });
+    const rows = resp.data.values || [];
+    if (!rows.length) return json(res, 200, { ok: true, attachments: [] });
+    const headers = rows[0].map((h) => String(h || "").trim());
+    const toObj = (r) => { const o = {}; headers.forEach((h, i) => { o[h] = String(r[i] || "").trim(); }); return o; };
+    let attachments = rows.slice(1).map(toObj).filter((a) => a.id);
+    if (entity_id)   attachments = attachments.filter((a) => a.entity_id === entity_id);
+    if (entity_type) attachments = attachments.filter((a) => a.entity_type === entity_type);
+    json(res, 200, { ok: true, attachments });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+module.exports = { handleCreateAttachment, handleGetAttachments };

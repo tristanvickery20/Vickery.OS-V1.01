@@ -49,6 +49,7 @@ const {
 } = require("./api/referrals");
 const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
 const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings, handleGetLeadSourceDetail, handleScoreLead } = require("./api/marketing");
+const { handleGetAssets, handleCreateAsset, handleUpdateAsset, handleGetContractorTasks, handleCreateContractorTask, handleUpdateContractorTask } = require("./api/marketing-assets");
 const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
 const {
   handleGetClients,
@@ -62,7 +63,7 @@ const {
   handleMergeClients,
 } = require("./api/clients");
 const { handleCreateNote } = require("./api/notes");
-const { handleCreateAttachment } = require("./api/attachments");
+const { handleCreateAttachment, handleGetAttachments } = require("./api/attachments");
 
 // Ticket 21
 const {
@@ -1073,6 +1074,12 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/crm/marketing/templates") {
     return serveFile(res, path.join(__dirname, "pages/crm-marketing-templates.html"), "text/html");
   }
+  if (req.url === "/crm/marketing/assets") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-assets.html"), "text/html");
+  }
+  if (req.url === "/crm/marketing/contractor-tasks") {
+    return serveFile(res, path.join(__dirname, "pages/crm-marketing-contractor-tasks.html"), "text/html");
+  }
   if (req.url === "/crm/marketing/settings") {
     return serveFile(res, path.join(__dirname, "pages/crm-marketing-settings.html"), "text/html");
   }
@@ -1277,6 +1284,9 @@ const server = http.createServer(async (req, res) => {
     return handleCreateNote(req, res);
   }
 
+  if (req.url.split("?")[0] === "/api/attachments" && req.method === "GET") {
+    return handleGetAttachments(req, res);
+  }
   if (req.url === "/api/attachments" && req.method === "POST") {
     return handleCreateAttachment(req, res);
   }
@@ -1414,6 +1424,28 @@ const server = http.createServer(async (req, res) => {
   if (_epath === "/api/marketing/lead-source-detail" && req.method === "GET") {
     if (!isAuthed(req)) { res.writeHead(401); return res.end(JSON.stringify({ok:false,error:"Unauthorized"})); }
     return handleGetLeadSourceDetail(req, res);
+  }
+
+  // Marketing Asset Library + Contractor Task Board (Task #75)
+  if (_epath === "/api/marketing/assets" && req.method === "GET") {
+    return handleGetAssets(req, res);
+  }
+  if (_epath === "/api/marketing/assets" && req.method === "POST") {
+    return handleCreateAsset(req, res);
+  }
+  if (_epath.startsWith("/api/marketing/assets/") && req.method === "PATCH") {
+    const assetId = _epath.replace("/api/marketing/assets/", "");
+    return handleUpdateAsset(req, res, assetId);
+  }
+  if (_epath === "/api/marketing/contractor-tasks" && req.method === "GET") {
+    return handleGetContractorTasks(req, res);
+  }
+  if (_epath === "/api/marketing/contractor-tasks" && req.method === "POST") {
+    return handleCreateContractorTask(req, res);
+  }
+  if (_epath.startsWith("/api/marketing/contractor-tasks/") && req.method === "PATCH") {
+    const taskId = _epath.replace("/api/marketing/contractor-tasks/", "");
+    return handleUpdateContractorTask(req, res, taskId);
   }
 
   // POST /api/leads/score — re-score a lead on demand (auth required)

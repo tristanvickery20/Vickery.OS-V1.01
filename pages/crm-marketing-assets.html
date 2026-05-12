@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proof Asset Library — Vickery Electric CRM</title>
+  <script>
+    (function(){const t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark');})();
+  </script>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 2px;
+    }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .filter-select, .filter-input {
+      padding: 7px 12px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      font-size: 13px;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      min-width: 130px;
+    }
+    .btn-primary {
+      padding: 8px 18px;
+      background: hsl(var(--primary));
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      padding: 7px 14px;
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .asset-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .asset-thumb {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      background: hsl(var(--muted));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      color: hsl(var(--muted-foreground));
+      text-decoration: none;
+    }
+    .asset-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .asset-body {
+      padding: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .asset-type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      background: hsl(220 60% 90%);
+      color: hsl(220 70% 30%);
+    }
+    .html.dark .asset-type-badge {
+      background: hsl(220 50% 20%);
+      color: hsl(220 70% 70%);
+    }
+    .asset-service {
+      font-size: 12px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+    .asset-meta {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+    }
+    .channel-dots {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .channel-dot {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      background: hsl(142 40% 90%);
+      color: hsl(142 50% 25%);
+      border: 1px solid hsl(142 40% 75%);
+    }
+    .perm-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .perm-granted   { background: hsl(142 40% 90%); color: hsl(142 50% 25%); }
+    .perm-not_asked { background: hsl(38 60% 90%);  color: hsl(38 60% 30%);  }
+    .perm-asked     { background: hsl(210 70% 90%); color: hsl(210 60% 30%); }
+    .perm-denied    { background: hsl(0 50% 92%);   color: hsl(0 50% 35%);   }
+    .asset-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .asset-actions button {
+      padding: 4px 10px;
+      font-size: 11px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 7px;
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+      cursor: pointer;
+    }
+    .asset-actions button:hover { background: hsl(var(--primary)); color: #fff; border-color: transparent; }
+    .stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: hsl(var(--muted));
+      border: 1px solid hsl(var(--border));
+      font-size: 12px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+    .stat-pill span { font-size: 14px; font-weight: 800; color: hsl(var(--primary)); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: hsl(var(--muted-foreground));
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+    }
+    .modal-box {
+      position: relative;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 24px 28px;
+      width: 440px;
+      max-width: calc(100vw - 32px);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+    .form-row { margin-bottom: 14px; }
+    .form-label {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      display: block;
+      margin-bottom: 4px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 12px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      font-size: 13px;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+    }
+    .form-textarea { min-height: 70px; resize: vertical; }
+    .form-check-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .form-check-row label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .msg-ok  { color: hsl(142 50% 35%); font-size: 13px; margin-top: 8px; }
+    .msg-err { color: hsl(0 70% 45%);   font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar-wrap" id="sidebarWrap">
+    <div class="sidebar-inner" id="sidebarInner"></div>
+  </div>
+  <div class="main-wrap">
+    <div class="main-inner">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Proof Asset Library</div>
+          <div class="page-subtitle">Photos, testimonials, and job documentation flagged for marketing use</div>
+        </div>
+        <button class="btn-primary" id="btnAddAsset">+ Add Asset</button>
+      </div>
+
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-pill">Loading…</div>
+      </div>
+
+      <div class="filter-bar">
+        <select class="filter-select" id="filterType">
+          <option value="">All Types</option>
+          <option value="before_photo">Before Photo</option>
+          <option value="after_photo">After Photo</option>
+          <option value="team_photo">Team Photo</option>
+          <option value="truck_photo">Truck Photo</option>
+          <option value="panel_photo">Panel Photo</option>
+          <option value="generator_photo">Generator Photo</option>
+          <option value="fixture_photo">Fixture Photo</option>
+          <option value="testimonial">Testimonial</option>
+          <option value="review_screenshot">Review Screenshot</option>
+          <option value="job_story">Job Story</option>
+        </select>
+        <select class="filter-select" id="filterPerm">
+          <option value="">All Permissions</option>
+          <option value="granted">Granted</option>
+          <option value="asked">Asked</option>
+          <option value="not_asked">Not Asked</option>
+          <option value="denied">Denied</option>
+        </select>
+        <input class="filter-input" id="filterService" type="text" placeholder="Service type…" />
+        <input class="filter-input" id="filterCity" type="text" placeholder="City…" />
+        <button class="btn-secondary" id="filterGbp" style="background:hsl(142 30% 94%);border-color:hsl(142 40% 75%);color:hsl(142 50% 25%);" data-active="0">⭐ GBP-Ready Only</button>
+      </div>
+
+      <div class="asset-grid" id="assetGrid">
+        <div class="empty-state"><div class="empty-icon">🖼️</div><p>Loading assets…</p></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Asset Modal -->
+<div class="modal-overlay" id="assetModal">
+  <div class="modal-backdrop" id="assetModalBackdrop"></div>
+  <div class="modal-box">
+    <div class="modal-title" id="assetModalTitle">Add Marketing Asset</div>
+    <input type="hidden" id="assetId" />
+
+    <div class="form-row">
+      <label class="form-label">Lead ID (optional)</label>
+      <input class="form-input" id="assetLeadId" type="text" placeholder="Auto-fills service type + city" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Asset Type</label>
+      <select class="form-select" id="assetType">
+        <option value="">— select —</option>
+        <option value="before_photo">Before Photo</option>
+        <option value="after_photo">After Photo</option>
+        <option value="team_photo">Team Photo</option>
+        <option value="truck_photo">Truck Photo</option>
+        <option value="panel_photo">Panel Photo</option>
+        <option value="generator_photo">Generator Photo</option>
+        <option value="fixture_photo">Fixture Photo</option>
+        <option value="testimonial">Testimonial</option>
+        <option value="review_screenshot">Review Screenshot</option>
+        <option value="job_story">Job Story</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">File URL (image link or upload path)</label>
+      <input class="form-input" id="assetFileUrl" type="text" placeholder="https://… or /uploads/…" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Service Type</label>
+      <input class="form-input" id="assetServiceType" type="text" placeholder="e.g. Panel Upgrade" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">City</label>
+      <input class="form-input" id="assetCity" type="text" placeholder="e.g. Orange" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Date Taken</label>
+      <input class="form-input" id="assetDateTaken" type="date" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Permission Status</label>
+      <select class="form-select" id="assetPermStatus">
+        <option value="not_asked">Not Asked</option>
+        <option value="asked">Asked</option>
+        <option value="granted">Granted</option>
+        <option value="denied">Denied</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Marketing Use Allowed</label>
+      <select class="form-select" id="assetMktAllowed">
+        <option value="pending">Pending</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label" style="margin-bottom:8px;">Best For</label>
+      <div class="form-check-row">
+        <label><input type="checkbox" id="assetGbp" /> GBP</label>
+        <label><input type="checkbox" id="assetWebsite" /> Website</label>
+        <label><input type="checkbox" id="assetSocial" /> Social</label>
+        <label><input type="checkbox" id="assetAds" /> Ads</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" id="assetNotes" placeholder="Caption ideas, context…"></textarea>
+    </div>
+
+    <div id="assetModalMsg"></div>
+    <div class="form-actions">
+      <button class="btn-secondary" id="assetModalCancel">Cancel</button>
+      <button class="btn-primary" id="assetModalSave">Save Asset</button>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+(function () {
+  const Api = {
+    fetchJson: async (url, opts) => {
+      const r = await fetch(url, opts);
+      const text = await r.text();
+      try { return JSON.parse(text); } catch { return { ok: false, error: text }; }
+    }
+  };
+
+  const ASSET_TYPE_LABELS = {
+    before_photo: 'Before', after_photo: 'After', team_photo: 'Team', truck_photo: 'Truck',
+    panel_photo: 'Panel', generator_photo: 'Generator', fixture_photo: 'Fixture',
+    testimonial: 'Testimonial', review_screenshot: 'Review', job_story: 'Job Story',
+  };
+
+  const PERM_LABELS = { not_asked: 'Not Asked', asked: 'Asked', granted: 'Granted', denied: 'Denied' };
+  const PERM_CLASS  = { not_asked: 'perm-not_asked', asked: 'perm-asked', granted: 'perm-granted', denied: 'perm-denied' };
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  let allAssets = [];
+  let editingId = null;
+
+  function buildQuery() {
+    const p = new URLSearchParams();
+    const type = document.getElementById('filterType').value;
+    const perm = document.getElementById('filterPerm').value;
+    const svc  = document.getElementById('filterService').value.trim();
+    const city = document.getElementById('filterCity').value.trim();
+    const gbp  = document.getElementById('filterGbp').dataset.active === '1';
+    if (type) p.set('type', type);
+    if (perm) p.set('permission_status', perm);
+    if (svc)  p.set('service', svc);
+    if (city) p.set('city', city);
+    if (gbp)  p.set('gbp_ready', '1');
+    return p.toString();
+  }
+
+  async function load() {
+    const q = buildQuery();
+    const data = await Api.fetchJson('/api/marketing/assets' + (q ? '?' + q : ''));
+    allAssets = (data.assets || []);
+    renderStats();
+    renderGrid();
+  }
+
+  function renderStats() {
+    const total = allAssets.length;
+    const granted = allAssets.filter(a => a.permission_status === 'granted').length;
+    const gbpReady = allAssets.filter(a => a.best_for_gbp === 'true' && a.marketing_use_allowed === 'yes').length;
+    const pending = allAssets.filter(a => a.permission_status === 'not_asked' || a.permission_status === 'asked').length;
+    document.getElementById('statsBar').innerHTML = `
+      <div class="stat-pill">Total <span>${total}</span></div>
+      <div class="stat-pill">Permission Granted <span>${granted}</span></div>
+      <div class="stat-pill">GBP-Ready <span>${gbpReady}</span></div>
+      <div class="stat-pill">Permission Pending <span>${pending}</span></div>
+    `;
+  }
+
+  function isImage(url) {
+    return /\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(url);
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('assetGrid');
+    if (!allAssets.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🖼️</div><p>No assets found. Add your first proof photo above.</p></div>`;
+      return;
+    }
+    grid.innerHTML = allAssets.map(a => {
+      const typeLabel = ASSET_TYPE_LABELS[a.asset_type] || a.asset_type || 'Unknown';
+      const permClass = PERM_CLASS[a.permission_status] || 'perm-not_asked';
+      const permLabel = PERM_LABELS[a.permission_status] || a.permission_status || '—';
+      const channels = [];
+      if (a.best_for_gbp === 'true')     channels.push('GBP');
+      if (a.best_for_website === 'true') channels.push('Website');
+      if (a.best_for_social === 'true')  channels.push('Social');
+      if (a.best_for_ads === 'true')     channels.push('Ads');
+
+      const thumbHtml = a.file_url && isImage(a.file_url)
+        ? `<a class="asset-thumb" href="${esc(a.file_url)}" target="_blank" rel="noopener"><img src="${esc(a.file_url)}" alt="${esc(typeLabel)}" loading="lazy" onerror="this.style.display='none'" /></a>`
+        : `<div class="asset-thumb" style="font-size:36px;">${a.asset_type === 'testimonial' ? '💬' : a.asset_type === 'review_screenshot' ? '⭐' : a.asset_type === 'job_story' ? '📖' : '📷'}</div>`;
+
+      return `<div class="asset-card" data-id="${esc(a.asset_id)}">
+        ${thumbHtml}
+        <div class="asset-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span class="asset-type-badge">${esc(typeLabel)}</span>
+            <span class="perm-badge ${permClass}">${esc(permLabel)}</span>
+          </div>
+          ${a.service_type ? `<div class="asset-service">${esc(a.service_type)}</div>` : ''}
+          <div class="asset-meta">${[a.city, a.date_taken].filter(Boolean).join(' · ')}</div>
+          ${channels.length ? `<div class="channel-dots">${channels.map(c => `<span class="channel-dot">${esc(c)}</span>`).join('')}</div>` : ''}
+          ${a.notes ? `<div class="asset-meta" style="font-style:italic;margin-top:4px;">${esc(a.notes.slice(0, 80))}</div>` : ''}
+          <div class="asset-actions">
+            ${a.file_url ? `<button onclick="window.open('${esc(a.file_url)}','_blank')">View</button>` : ''}
+            <button class="edit-btn">Edit</button>
+            ${a.permission_status === 'not_asked' ? `<button class="ask-perm-btn" style="background:hsl(142 30% 92%);color:hsl(142 50% 25%);border-color:hsl(142 40% 70%);">Mark Asked</button>` : ''}
+            ${a.permission_status === 'asked' ? `<button class="grant-perm-btn" style="background:hsl(142 30% 92%);color:hsl(142 50% 25%);border-color:hsl(142 40% 70%);">Grant</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.edit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.asset-card');
+        const id = card.dataset.id;
+        openModal(allAssets.find(a => a.asset_id === id));
+      });
+    });
+    grid.querySelectorAll('.ask-perm-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('.asset-card').dataset.id;
+        await Api.fetchJson('/api/marketing/assets/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission_status: 'asked' }) });
+        load();
+      });
+    });
+    grid.querySelectorAll('.grant-perm-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('.asset-card').dataset.id;
+        await Api.fetchJson('/api/marketing/assets/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission_status: 'granted', marketing_use_allowed: 'yes' }) });
+        load();
+      });
+    });
+  }
+
+  function openModal(asset) {
+    editingId = asset ? asset.asset_id : null;
+    document.getElementById('assetModalTitle').textContent = asset ? 'Edit Asset' : 'Add Marketing Asset';
+    document.getElementById('assetId').value = asset ? asset.asset_id : '';
+    document.getElementById('assetLeadId').value = asset ? asset.lead_id : '';
+    document.getElementById('assetType').value = asset ? asset.asset_type : '';
+    document.getElementById('assetFileUrl').value = asset ? asset.file_url : '';
+    document.getElementById('assetServiceType').value = asset ? asset.service_type : '';
+    document.getElementById('assetCity').value = asset ? asset.city : '';
+    document.getElementById('assetDateTaken').value = asset ? asset.date_taken : new Date().toISOString().slice(0, 10);
+    document.getElementById('assetPermStatus').value = asset ? asset.permission_status : 'not_asked';
+    document.getElementById('assetMktAllowed').value = asset ? asset.marketing_use_allowed : 'pending';
+    document.getElementById('assetGbp').checked = asset ? asset.best_for_gbp === 'true' : false;
+    document.getElementById('assetWebsite').checked = asset ? asset.best_for_website === 'true' : false;
+    document.getElementById('assetSocial').checked = asset ? asset.best_for_social === 'true' : false;
+    document.getElementById('assetAds').checked = asset ? asset.best_for_ads === 'true' : false;
+    document.getElementById('assetNotes').value = asset ? asset.notes : '';
+    document.getElementById('assetModalMsg').innerHTML = '';
+    document.getElementById('assetModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('assetModal').style.display = 'none'; }
+
+  document.getElementById('btnAddAsset').addEventListener('click', () => openModal(null));
+  document.getElementById('assetModalCancel').addEventListener('click', closeModal);
+  document.getElementById('assetModalBackdrop').addEventListener('click', closeModal);
+
+  document.getElementById('assetModalSave').addEventListener('click', async () => {
+    const btn = document.getElementById('assetModalSave');
+    const msgEl = document.getElementById('assetModalMsg');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const body = {
+      lead_id:               document.getElementById('assetLeadId').value.trim(),
+      asset_type:            document.getElementById('assetType').value,
+      file_url:              document.getElementById('assetFileUrl').value.trim(),
+      service_type:          document.getElementById('assetServiceType').value.trim(),
+      city:                  document.getElementById('assetCity').value.trim(),
+      date_taken:            document.getElementById('assetDateTaken').value,
+      permission_status:     document.getElementById('assetPermStatus').value,
+      marketing_use_allowed: document.getElementById('assetMktAllowed').value,
+      best_for_gbp:          document.getElementById('assetGbp').checked,
+      best_for_website:      document.getElementById('assetWebsite').checked,
+      best_for_social:       document.getElementById('assetSocial').checked,
+      best_for_ads:          document.getElementById('assetAds').checked,
+      notes:                 document.getElementById('assetNotes').value.trim(),
+    };
+    try {
+      let r;
+      if (editingId) {
+        r = await Api.fetchJson('/api/marketing/assets/' + encodeURIComponent(editingId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } else {
+        r = await Api.fetchJson('/api/marketing/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      }
+      if (!r.ok) throw new Error(r.error || 'Save failed');
+      closeModal();
+      load();
+    } catch (e) {
+      msgEl.innerHTML = `<span class="msg-err">${esc(e.message)}</span>`;
+      btn.disabled = false; btn.textContent = 'Save Asset';
+    }
+  });
+
+  // Filters
+  ['filterType', 'filterPerm'].forEach(id => document.getElementById(id).addEventListener('change', load));
+  let filterTimer;
+  ['filterService', 'filterCity'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearTimeout(filterTimer); filterTimer = setTimeout(load, 350); }));
+  document.getElementById('filterGbp').addEventListener('click', function () {
+    const next = this.dataset.active === '1' ? '0' : '1';
+    this.dataset.active = next;
+    this.style.background = next === '1' ? 'hsl(142 40% 82%)' : 'hsl(142 30% 94%)';
+    load();
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

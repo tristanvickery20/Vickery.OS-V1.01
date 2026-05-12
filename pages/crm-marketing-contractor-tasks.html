@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contractor Task Board — Vickery Electric CRM</title>
+  <script>
+    (function(){const t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark');})();
+  </script>
+  <link rel="stylesheet" href="/pages/css/brand.css" />
+  <link rel="stylesheet" href="/pages/css/shell.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      color: hsl(var(--foreground));
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 2px;
+    }
+    .btn-primary {
+      padding: 8px 18px;
+      background: hsl(var(--primary));
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      padding: 7px 14px;
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* Kanban board */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .kanban-board { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .kanban-board { grid-template-columns: 1fr; }
+    }
+    .kanban-col {
+      background: hsl(var(--muted) / .5);
+      border: 1px solid hsl(var(--border));
+      border-radius: 12px;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+    .kanban-col.drag-over {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary) / .06);
+    }
+    .kanban-col-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .col-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .col-count {
+      font-size: 11px;
+      font-weight: 700;
+      background: hsl(var(--muted));
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: hsl(var(--muted-foreground));
+    }
+    .col-pending  .col-label { color: hsl(38 70% 40%);  }
+    .col-in_progress .col-label { color: hsl(210 70% 40%); }
+    .col-done     .col-label { color: hsl(142 50% 35%); }
+    .col-blocked  .col-label { color: hsl(0 65% 45%);   }
+
+    .kanban-cards {
+      padding: 10px 10px 14px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .task-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 10px;
+      padding: 12px;
+      cursor: grab;
+      position: relative;
+    }
+    .task-card:active { cursor: grabbing; }
+    .task-card.dragging { opacity: .45; }
+    .task-card.overdue {
+      border-color: hsl(0 60% 60%);
+      box-shadow: 0 0 0 2px hsl(0 60% 88%);
+    }
+    .task-card.overdue .task-name { color: hsl(0 60% 40%); }
+    .task-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 5px;
+      line-height: 1.3;
+    }
+    .task-contractor {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 6px;
+    }
+    .task-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .task-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      background: hsl(220 50% 92%);
+      color: hsl(220 60% 30%);
+      border: 1px solid hsl(220 50% 80%);
+    }
+    .task-due {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .task-due.overdue-due { color: hsl(0 60% 45%); font-weight: 700; }
+    .task-metric {
+      font-size: 11px;
+      color: hsl(var(--muted-foreground));
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .task-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: hsl(var(--primary));
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .task-approval-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      background: hsl(38 60% 90%);
+      color: hsl(38 65% 30%);
+      border: 1px solid hsl(38 60% 72%);
+      margin-top: 4px;
+    }
+    .task-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 9px;
+      flex-wrap: wrap;
+    }
+    .task-actions button {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+      cursor: pointer;
+    }
+    .task-actions button:hover {
+      background: hsl(var(--primary));
+      color: #fff;
+      border-color: transparent;
+    }
+    .add-task-btn {
+      margin: 0 10px 10px;
+      width: calc(100% - 20px);
+      padding: 6px;
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+      border: 1px dashed hsl(var(--border));
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .add-task-btn:hover { border-color: hsl(var(--primary)); color: hsl(var(--primary)); }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+    }
+    .modal-box {
+      position: relative;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 16px;
+      padding: 24px 28px;
+      width: 460px;
+      max-width: calc(100vw - 32px);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+    .form-row { margin-bottom: 13px; }
+    .form-label { font-size: 12px; color: hsl(var(--muted-foreground)); display: block; margin-bottom: 4px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; box-sizing: border-box;
+      padding: 8px 12px;
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      font-size: 13px;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+    }
+    .form-textarea { min-height: 70px; resize: vertical; }
+    .form-check { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .msg-err { color: hsl(0 70% 45%); font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar-wrap" id="sidebarWrap">
+    <div class="sidebar-inner" id="sidebarInner"></div>
+  </div>
+  <div class="main-wrap">
+    <div class="main-inner">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Contractor Task Board</div>
+          <div class="page-subtitle">Track deliverables from marketing contractors — SEO, Ads, Photography, Web, VA</div>
+        </div>
+        <button class="btn-primary" id="btnAddTask">+ New Task</button>
+      </div>
+
+      <div class="kanban-board" id="kanbanBoard">
+        <div style="text-align:center;padding:40px;color:hsl(var(--muted-foreground));grid-column:1/-1;">Loading…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal-backdrop" id="taskModalBackdrop"></div>
+  <div class="modal-box">
+    <div class="modal-title" id="taskModalTitle">New Contractor Task</div>
+    <input type="hidden" id="taskId" />
+
+    <div class="form-row">
+      <label class="form-label">Task Name *</label>
+      <input class="form-input" id="taskName" type="text" placeholder="e.g. Post 4 before/after photos to GBP" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label class="form-label">Contractor Name</label>
+        <input class="form-input" id="taskContractor" type="text" placeholder="e.g. John SEO" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Contractor Type</label>
+        <select class="form-select" id="taskContractorType">
+          <option value="">— type —</option>
+          <option value="google_ads">Google Ads</option>
+          <option value="seo_gbp">SEO / GBP</option>
+          <option value="website_cro">Website / CRO</option>
+          <option value="photographer">Photographer</option>
+          <option value="csr">CSR</option>
+          <option value="print_offline">Print / Offline</option>
+          <option value="va">VA</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label class="form-label">Channel</label>
+        <input class="form-input" id="taskChannel" type="text" placeholder="e.g. GBP, Google Ads" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Campaign ID</label>
+        <input class="form-input" id="taskCampaignId" type="text" placeholder="optional" />
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row">
+        <label class="form-label">Due Date</label>
+        <input class="form-input" id="taskDueDate" type="date" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="taskStatus">
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="done">Done</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Output Expected</label>
+      <input class="form-input" id="taskOutputExpected" type="text" placeholder="e.g. 4 GBP posts published" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Link or File URL</label>
+      <input class="form-input" id="taskLinkOrFile" type="text" placeholder="https://…" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Result Metric</label>
+      <input class="form-input" id="taskResultMetric" type="text" placeholder="e.g. 12 new GBP photos uploaded" />
+    </div>
+    <div class="form-row">
+      <label class="form-check">
+        <input type="checkbox" id="taskApprovalNeeded" />
+        Owner approval required before contractor delivers
+      </label>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" id="taskNotes" placeholder="Context, instructions…"></textarea>
+    </div>
+
+    <div id="taskModalMsg"></div>
+    <div class="form-actions">
+      <button class="btn-secondary" id="taskModalCancel">Cancel</button>
+      <button class="btn-primary" id="taskModalSave">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<script src="/pages/js/shell.js"></script>
+<script>
+(function () {
+  const Api = {
+    fetchJson: async (url, opts) => {
+      const r = await fetch(url, opts);
+      const text = await r.text();
+      try { return JSON.parse(text); } catch { return { ok: false, error: text }; }
+    }
+  };
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  const STATUSES = ['pending', 'in_progress', 'done', 'blocked'];
+  const STATUS_LABELS = { pending: 'Pending', in_progress: 'In Progress', done: 'Done', blocked: 'Blocked' };
+  const TYPE_LABELS = {
+    google_ads: 'Google Ads', seo_gbp: 'SEO/GBP', website_cro: 'Web/CRO',
+    photographer: 'Photographer', csr: 'CSR', print_offline: 'Print', va: 'VA',
+  };
+
+  let allTasks = [];
+  let editingId = null;
+  let draggedId = null;
+
+  async function load() {
+    const data = await Api.fetchJson('/api/marketing/contractor-tasks');
+    allTasks = data.tasks || [];
+    renderBoard();
+  }
+
+  function isOverdue(task) {
+    if (!task.due_date || task.status === 'done') return false;
+    const today = new Date(); today.setHours(0,0,0,0);
+    return new Date(task.due_date) < today;
+  }
+
+  function renderBoard() {
+    const board = document.getElementById('kanbanBoard');
+    board.innerHTML = STATUSES.map(status => {
+      const col_tasks = allTasks.filter(t => t.status === status);
+      return `
+        <div class="kanban-col col-${status}" data-status="${status}" id="col-${status}">
+          <div class="kanban-col-header">
+            <span class="col-label">${STATUS_LABELS[status]}</span>
+            <span class="col-count">${col_tasks.length}</span>
+          </div>
+          <div class="kanban-cards" data-status="${status}">
+            ${col_tasks.map(t => renderCard(t)).join('')}
+          </div>
+          <button class="add-task-btn" data-status="${status}">+ Add task</button>
+        </div>`;
+    }).join('');
+
+    // Wire drag events on cards
+    board.querySelectorAll('.task-card').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        draggedId = card.dataset.id;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+
+    // Wire drop zones
+    board.querySelectorAll('.kanban-cards').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.closest('.kanban-col').classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.closest('.kanban-col').classList.remove('drag-over'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.closest('.kanban-col').classList.remove('drag-over');
+        const newStatus = zone.dataset.status;
+        if (!draggedId || !newStatus) return;
+        const task = allTasks.find(t => t.task_id === draggedId);
+        if (!task || task.status === newStatus) return;
+        // Optimistic update
+        task.status = newStatus;
+        renderBoard();
+        await Api.fetchJson('/api/marketing/contractor-tasks/' + encodeURIComponent(draggedId), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        draggedId = null;
+      });
+    });
+
+    // Wire edit buttons
+    board.querySelectorAll('.edit-task-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        openModal(allTasks.find(t => t.task_id === id));
+      });
+    });
+
+    // Wire archive buttons
+    board.querySelectorAll('.archive-task-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!confirm('Archive this task?')) return;
+        await Api.fetchJson('/api/marketing/contractor-tasks/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled' }),
+        });
+        load();
+      });
+    });
+
+    // Wire add-task buttons at bottom of column
+    board.querySelectorAll('.add-task-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openModal(null, btn.dataset.status);
+      });
+    });
+  }
+
+  function renderCard(task) {
+    const overdue = isOverdue(task);
+    const typeLabel = TYPE_LABELS[task.contractor_type] || task.contractor_type || '';
+    const dueText = task.due_date ? fmtDate(task.due_date) : '';
+    const channels = [];
+    if (task.channel) channels.push(task.channel);
+    if (typeLabel) channels.push(typeLabel);
+
+    return `<div class="task-card${overdue ? ' overdue' : ''}" draggable="true" data-id="${esc(task.task_id)}">
+      <div class="task-name">${esc(task.task_name)}</div>
+      ${task.contractor_name ? `<div class="task-contractor">${esc(task.contractor_name)}</div>` : ''}
+      ${channels.length ? `<div class="task-tags">${channels.map(c=>`<span class="task-tag">${esc(c)}</span>`).join('')}</div>` : ''}
+      ${dueText ? `<div class="task-due${overdue ? ' overdue-due' : ''}">📅 ${esc(dueText)}${overdue ? ' — OVERDUE' : ''}</div>` : ''}
+      ${task.output_expected ? `<div class="task-metric">Expected: ${esc(task.output_expected)}</div>` : ''}
+      ${task.result_metric ? `<div class="task-metric">Result: ${esc(task.result_metric)}</div>` : ''}
+      ${task.link_or_file ? `<a class="task-link" href="${esc(task.link_or_file)}" target="_blank" rel="noopener">📎 ${esc(task.link_or_file.slice(0, 40))}…</a>` : ''}
+      ${task.owner_approval_needed === 'true' ? `<div class="task-approval-badge">⚠ Owner Approval Needed</div>` : ''}
+      <div class="task-actions">
+        <button class="edit-task-btn" data-id="${esc(task.task_id)}">Edit</button>
+        <button class="archive-task-btn" data-id="${esc(task.task_id)}">Archive</button>
+      </div>
+    </div>`;
+  }
+
+  function fmtDate(s) {
+    if (!s) return '';
+    const d = new Date(s + (s.includes('T') ? '' : 'T00:00:00'));
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function openModal(task, defaultStatus) {
+    editingId = task ? task.task_id : null;
+    document.getElementById('taskModalTitle').textContent = task ? 'Edit Task' : 'New Contractor Task';
+    document.getElementById('taskId').value = task ? task.task_id : '';
+    document.getElementById('taskName').value = task ? task.task_name : '';
+    document.getElementById('taskContractor').value = task ? task.contractor_name : '';
+    document.getElementById('taskContractorType').value = task ? task.contractor_type : '';
+    document.getElementById('taskChannel').value = task ? task.channel : '';
+    document.getElementById('taskCampaignId').value = task ? task.campaign_id : '';
+    document.getElementById('taskDueDate').value = task ? task.due_date : '';
+    document.getElementById('taskStatus').value = task ? task.status : (defaultStatus || 'pending');
+    document.getElementById('taskOutputExpected').value = task ? task.output_expected : '';
+    document.getElementById('taskLinkOrFile').value = task ? task.link_or_file : '';
+    document.getElementById('taskResultMetric').value = task ? task.result_metric : '';
+    document.getElementById('taskApprovalNeeded').checked = task ? task.owner_approval_needed === 'true' : false;
+    document.getElementById('taskNotes').value = task ? task.notes : '';
+    document.getElementById('taskModalMsg').innerHTML = '';
+    document.getElementById('taskModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('taskModal').style.display = 'none'; }
+
+  document.getElementById('btnAddTask').addEventListener('click', () => openModal(null));
+  document.getElementById('taskModalCancel').addEventListener('click', closeModal);
+  document.getElementById('taskModalBackdrop').addEventListener('click', closeModal);
+
+  document.getElementById('taskModalSave').addEventListener('click', async () => {
+    const btn = document.getElementById('taskModalSave');
+    const msgEl = document.getElementById('taskModalMsg');
+    const taskName = document.getElementById('taskName').value.trim();
+    if (!taskName) { msgEl.innerHTML = `<span class="msg-err">Task name is required.</span>`; return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const body = {
+      task_name:             taskName,
+      contractor_name:       document.getElementById('taskContractor').value.trim(),
+      contractor_type:       document.getElementById('taskContractorType').value,
+      channel:               document.getElementById('taskChannel').value.trim(),
+      campaign_id:           document.getElementById('taskCampaignId').value.trim(),
+      due_date:              document.getElementById('taskDueDate').value,
+      status:                document.getElementById('taskStatus').value,
+      output_expected:       document.getElementById('taskOutputExpected').value.trim(),
+      link_or_file:          document.getElementById('taskLinkOrFile').value.trim(),
+      result_metric:         document.getElementById('taskResultMetric').value.trim(),
+      owner_approval_needed: document.getElementById('taskApprovalNeeded').checked,
+      notes:                 document.getElementById('taskNotes').value.trim(),
+    };
+    try {
+      let r;
+      if (editingId) {
+        r = await Api.fetchJson('/api/marketing/contractor-tasks/' + encodeURIComponent(editingId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } else {
+        r = await Api.fetchJson('/api/marketing/contractor-tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      }
+      if (!r.ok) throw new Error(r.error || 'Save failed');
+      closeModal();
+      load();
+    } catch (e) {
+      msgEl.innerHTML = `<span class="msg-err">${esc(e.message)}</span>`;
+      btn.disabled = false; btn.textContent = 'Save Task';
+    }
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
