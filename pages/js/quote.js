@@ -3157,7 +3157,7 @@ async function submitLock() {
 
     const r = await fetch("/api/quote/lock", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_contact: refContact || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "" }),
+      body: JSON.stringify({ quote_id: S.quoteId, job_type_id: primaryTypeId(), answers: autoInjectKnownAnswers(S.answers, primaryQty()), addons: S.addons, qty: primaryQty(), customer_name: name, name, phone, email, address, zip, lead_source: S.lead_source || "", sms_opt_in: smsOps, sms_marketing_consent: smsMkt, equipment_line_items: buildEquipmentLineItems(), referrer_name: refName || "", referrer_contact: refContact || "", attendance: S.locationAnswers.attendance || "", access_instructions: S.locationAnswers.access_instructions || "", ...getUtmPayload() }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || "Lock failed.");
@@ -3632,6 +3632,47 @@ function loadingHTML(msg) {
 }
 function errHTML(msg) {
   return `<div class="q-error-box" style="margin-top:24px;">${escHtml(msg)}</div>`;
+}
+
+// ── UTM / attribution capture ──────────────────────────────────────────────────
+// Reads UTM params from the current URL on page load and stores them in
+// sessionStorage so they can be forwarded to the API on lock/submit.
+(function captureUtms() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const utm_source   = p.get("utm_source")   || sessionStorage.getItem("utm_source")   || "";
+    const utm_medium   = p.get("utm_medium")   || sessionStorage.getItem("utm_medium")   || "";
+    const utm_campaign = p.get("utm_campaign") || sessionStorage.getItem("utm_campaign") || "";
+    const utm_content  = p.get("utm_content")  || sessionStorage.getItem("utm_content")  || "";
+    const gclid        = p.get("gclid")        || sessionStorage.getItem("gclid")        || "";
+    if (utm_source)   sessionStorage.setItem("utm_source",   utm_source);
+    if (utm_medium)   sessionStorage.setItem("utm_medium",   utm_medium);
+    if (utm_campaign) sessionStorage.setItem("utm_campaign", utm_campaign);
+    if (utm_content)  sessionStorage.setItem("utm_content",  utm_content);
+    if (gclid)        sessionStorage.setItem("gclid",        gclid);
+    // Capture landing page on first touch only
+    if (!sessionStorage.getItem("landing_page")) {
+      sessionStorage.setItem("landing_page", window.location.href);
+    }
+    // Capture referrer URL
+    if (!sessionStorage.getItem("referrer_url") && document.referrer) {
+      sessionStorage.setItem("referrer_url", document.referrer);
+    }
+  } catch (_) { /* non-fatal — sessionStorage may be blocked */ }
+})();
+
+function getUtmPayload() {
+  try {
+    return {
+      utm_source:   sessionStorage.getItem("utm_source")   || "",
+      utm_medium:   sessionStorage.getItem("utm_medium")   || "",
+      utm_campaign: sessionStorage.getItem("utm_campaign") || "",
+      utm_content:  sessionStorage.getItem("utm_content")  || "",
+      gclid:        sessionStorage.getItem("gclid")        || "",
+      landing_page: sessionStorage.getItem("landing_page") || "",
+      referrer_url: sessionStorage.getItem("referrer_url") || "",
+    };
+  } catch (_) { return {}; }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

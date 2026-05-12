@@ -311,7 +311,9 @@ async function handleGetSegments(req, res) {
       const value   = inv > 0 ? inv : (paid > 0 ? paid : est);
       const phoneDigits = phone.replace(/\D/g, "");
 
-      const baseEntry = { lead_id: leadId, name, phone, email, status, last_activity: lastAct, value };
+      const scoreIdx2 = headers.indexOf("lead_quality_score");
+      const qScore2   = scoreIdx2 >= 0 ? String(row[scoreIdx2] || "").trim() : "";
+      const baseEntry = { lead_id: leadId, name, phone, email, status, last_activity: lastAct, value, lead_quality_score: qScore2 };
 
       // 1. Needs Review Ask — requires sms_opt_in + phone (same eligibility as review engine queue)
       const hasSmsOptIn = smsOpt === "true" || smsOpt === "yes" || smsOpt === "1";
@@ -407,7 +409,9 @@ async function handleGetFollowupQueue(req, res) {
       const job    = String(row[jobIdx] || "").trim() || "Service";
       const days   = daysSince(lastAct);
 
-      const entry = { lead_id: leadId, name, phone, email, status, job_type: job, days_stale: days, estimated_value: est, last_activity: lastAct };
+      const scoreIdx = headers.indexOf("lead_quality_score");
+      const qScore   = scoreIdx >= 0 ? String(row[scoreIdx] || "").trim() : "";
+      const entry = { lead_id: leadId, name, phone, email, status, job_type: job, days_stale: days, estimated_value: est, last_activity: lastAct, lead_quality_score: qScore };
 
       if (days < 3)        buckets["24h"].push(entry);
       else if (days < 7)   buckets["72h"].push(entry);
@@ -487,6 +491,103 @@ async function handleSendFollowup(req, res) {
   }
 }
 
+// GET /api/marketing/lead-source-detail?lead_id=X
+async function handleGetLeadSourceDetail(req, res) {
+  try {
+    const qs     = new URL(req.url, "http://x").searchParams;
+    const leadId = (qs.get("lead_id") || "").trim();
+    if (!leadId) return json(res, 400, { ok: false, error: "lead_id required" });
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.CRM_SHEET_ID;
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Leads!A1:BZ5000" });
+    const values = resp.data.values || [];
+    if (values.length < 2) return json(res, 404, { ok: false, error: "Lead not found" });
+
+    const headers = (values[0] || []).map(h => String(h || "").trim());
+    const idxOf = h => headers.indexOf(h);
+    const row = values.slice(1).find(r => String(r[idxOf("id")] || "").trim() === leadId);
+    if (!row) return json(res, 404, { ok: false, error: "Lead not found" });
+
+    const g = h => String(row[idxOf(h)] || "").trim();
+    json(res, 200, {
+      ok: true,
+      lead_id:              leadId,
+      utm_source:           g("utm_source"),
+      utm_medium:           g("utm_medium"),
+      utm_campaign:         g("utm_campaign"),
+      utm_content:          g("utm_content"),
+      gclid:                g("gclid"),
+      landing_page:         g("landing_page"),
+      tracking_phone:       g("tracking_phone"),
+      referrer_url:         g("referrer_url"),
+      estimator_session_id: g("estimator_session_id"),
+      lead_quality_score:   g("lead_quality_score"),
+      lost_reason:          g("lost_reason"),
+      lead_source:          g("lead_source"),
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+// POST /api/leads/score — re-score a lead on demand
+async function handleScoreLead(req, res) {
+  try {
+    let body = "";
+    req.on("data", c => (body += c));
+    req.on("end", async () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const leadId = String(data.lead_id || "").trim();
+        if (!leadId) return json(res, 400, { ok: false, error: "lead_id required" });
+
+        const sheets = await getSheetsClient();
+        const spreadsheetId = process.env.CRM_SHEET_ID;
+        const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Leads!A1:BZ5000" });
+        const values = resp.data.values || [];
+        if (values.length < 2) return json(res, 404, { ok: false, error: "Lead not found" });
+
+        const headers = (values[0] || []).map(h => String(h || "").trim());
+        const idxOf = h => headers.indexOf(h);
+        const rowIdx = values.slice(1).findIndex(r => String(r[idxOf("id")] || "").trim() === leadId);
+        if (rowIdx === -1) return json(res, 404, { ok: false, error: "Lead not found" });
+        const row = values[rowIdx + 1];
+
+        const g = h => String(row[idxOf(h)] || "").trim();
+        const { scoreLeadQuality } = require("../lib/leadQualityScore");
+        const score = scoreLeadQuality({
+          address:             g("address"),
+          job_type:            g("job_type"),
+          notes:               g("notes"),
+          lead_source:         g("lead_source"),
+          phone:               g("phone"),
+          quote_snapshot_json: g("quote_snapshot_json"),
+        });
+
+        const scoreColIdx = idxOf("lead_quality_score");
+        if (scoreColIdx >= 0) {
+          const { colToLetter } = require("../lib/sheets");
+          const col = colToLetter(scoreColIdx);
+          const sheetRow = rowIdx + 2;
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `Leads!${col}${sheetRow}`,
+            valueInputOption: "RAW",
+            requestBody: { values: [[score]] },
+          });
+        }
+
+        json(res, 200, { ok: true, lead_id: leadId, lead_quality_score: score });
+      } catch (e) {
+        json(res, 500, { ok: false, error: e.message });
+      }
+    });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
 // GET /api/marketing/sources
 async function handleGetSources(req, res) {
   json(res, 200, { ok: true, sources: SOURCE_CATEGORIES });
@@ -531,5 +632,7 @@ module.exports = {
   handleGetSources,
   handleGetMarketingSettings,
   handleSaveMarketingSettings,
+  handleGetLeadSourceDetail,
+  handleScoreLead,
   SOURCE_CATEGORIES,
 };

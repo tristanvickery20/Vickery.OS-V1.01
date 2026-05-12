@@ -48,7 +48,7 @@ const {
   seedReferralTemplates,
 } = require("./api/referrals");
 const { handleGetReviews, handleSendAsk, handleSendReminder, handleUpdateReview } = require("./api/reviews");
-const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings } = require("./api/marketing");
+const { handleGetOverview, handleGetSegments, handleGetFollowupQueue, handleSendFollowup, handleGetSources, handleGetMarketingSettings, handleSaveMarketingSettings, handleGetLeadSourceDetail, handleScoreLead } = require("./api/marketing");
 const { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate } = require("./api/templates");
 const {
   handleGetClients,
@@ -1410,6 +1410,16 @@ const server = http.createServer(async (req, res) => {
   }
   if (_epath === "/api/marketing/settings" && req.method === "POST") {
     return handleSaveMarketingSettings(req, res);
+  }
+  if (_epath === "/api/marketing/lead-source-detail" && req.method === "GET") {
+    if (!isAuthed(req)) { res.writeHead(401); return res.end(JSON.stringify({ok:false,error:"Unauthorized"})); }
+    return handleGetLeadSourceDetail(req, res);
+  }
+
+  // POST /api/leads/score — re-score a lead on demand (auth required)
+  if (_epath === "/api/leads/score" && req.method === "POST") {
+    if (!isAuthed(req)) { res.writeHead(401); return res.end(JSON.stringify({ok:false,error:"Unauthorized"})); }
+    return handleScoreLead(req, res);
   }
 
   // Reviews API

@@ -484,6 +484,34 @@ async function handleUpdateLead(req, res) {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
 
+      // Re-score lead quality on status change (fire-and-forget)
+      setImmediate(async () => {
+        try {
+          const qsIdx = idx("lead_quality_score");
+          if (qsIdx < 0) return;
+          const { scoreLeadQuality } = require("../lib/leadQualityScore");
+          const score = scoreLeadQuality({
+            address:             String(row[idx("address")]  || ""),
+            job_type:            String(row[idx("job_type")] || ""),
+            notes:               String(row[i_notes]         || ""),
+            lead_source:         String(row[idx("lead_source")] || ""),
+            phone:               String(row[idx("phone")]    || ""),
+            quote_snapshot_json: String(row[idx("quote_snapshot_json")] || ""),
+          });
+          if (score) {
+            const { getSheetsClient: _gsc, colToLetter: _ctl } = require("../lib/sheets");
+            const _sheets2 = await _gsc();
+            const _col = _ctl(qsIdx);
+            await _sheets2.spreadsheets.values.update({
+              spreadsheetId: process.env.CRM_SHEET_ID,
+              range: `Leads!${_col}${sheetRowNumber}`,
+              valueInputOption: "RAW",
+              requestBody: { values: [[score]] },
+            });
+          }
+        } catch (_) { /* scoring is non-fatal */ }
+      });
+
       // Fire-and-forget: Google Calendar push when lead becomes Scheduled/In Progress
       const newStatus = String(row[i_status] || "");
       if (newStatus === "Scheduled" || newStatus === "In Progress") {

@@ -113,7 +113,7 @@ function normalizeLeadSource(v) {
 // Creates or updates the Lead row so schedule-book can find it by last_quote_id.
 // Non-fatal: any Sheets error is logged but does not break the quote response.
 // Returns the lead_id that was found or created (or "" on failure).
-async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent, referrer_name, referrer_phone, attendance, access_instructions }) {
+async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source, sms_opt_in, sms_marketing_consent, referrer_name, referrer_phone, attendance, access_instructions, utm_source, utm_medium, utm_campaign, utm_content, gclid, landing_page, tracking_phone, referrer_url, answers, classification }) {
   try {
     const sheetId    = SPREADSHEET_ID();
     const cleanPhone = String(phone || "").replace(/\D/g, "");
@@ -165,6 +165,22 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
       if (referrer_phone)        set("referrer_phone",        referrer_phone);
       if (attendance)            set("attendance",            attendance);
       if (access_instructions)   set("access_instructions",   access_instructions);
+      if (utm_source    && !row[idxOf("utm_source")])    set("utm_source",    utm_source);
+      if (utm_medium    && !row[idxOf("utm_medium")])    set("utm_medium",    utm_medium);
+      if (utm_campaign  && !row[idxOf("utm_campaign")])  set("utm_campaign",  utm_campaign);
+      if (utm_content   && !row[idxOf("utm_content")])   set("utm_content",   utm_content);
+      if (gclid         && !row[idxOf("gclid")])         set("gclid",         gclid);
+      if (landing_page  && !row[idxOf("landing_page")])  set("landing_page",  landing_page);
+      if (tracking_phone && !row[idxOf("tracking_phone")]) set("tracking_phone", tracking_phone);
+      if (referrer_url  && !row[idxOf("referrer_url")])  set("referrer_url",  referrer_url);
+      if (quote_id      && !row[idxOf("estimator_session_id")]) set("estimator_session_id", quote_id);
+      // Re-score with latest info (use real answers + classification for disqualifier check)
+      try {
+        const { scoreLeadQuality } = require("../lib/leadQualityScore");
+        const snapJson = answers ? JSON.stringify({ classification: classification || "", answers: answers }) : "";
+        const score = scoreLeadQuality({ address: row[idxOf("address")] || address || "", job_type: row[idxOf("job_type")] || job_type_id || "", notes: "", lead_source: row[idxOf("lead_source")] || lead_source || "", phone: phone || "", quote_snapshot_json: snapJson });
+        if (score) set("lead_quality_score", score);
+      } catch (_) { /* non-fatal */ }
       const sIdx = idxOf("status");
       if (sIdx >= 0 && (!row[sIdx] || row[sIdx] === "Lead")) row[sIdx] = "Estimate Sent";
       await sheets.spreadsheets.values.update({
@@ -213,6 +229,22 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
     if (referrer_phone)         set("referrer_phone",         referrer_phone);
     if (attendance)             set("attendance",             attendance);
     if (access_instructions)    set("access_instructions",    access_instructions);
+    if (utm_source)             set("utm_source",             utm_source);
+    if (utm_medium)             set("utm_medium",             utm_medium);
+    if (utm_campaign)           set("utm_campaign",           utm_campaign);
+    if (utm_content)            set("utm_content",            utm_content);
+    if (gclid)                  set("gclid",                  gclid);
+    if (landing_page)           set("landing_page",           landing_page);
+    if (tracking_phone)         set("tracking_phone",         tracking_phone);
+    if (referrer_url)           set("referrer_url",           referrer_url);
+    set("estimator_session_id", quote_id);
+    // Score quality (pass real answers + classification so disqualifiers are evaluated)
+    try {
+      const { scoreLeadQuality } = require("../lib/leadQualityScore");
+      const snapJson = answers ? JSON.stringify({ classification: classification || "", answers: answers }) : "";
+      const score = scoreLeadQuality({ address: address || "", job_type: job_type_id || "", notes: "", lead_source: lead_source || "", phone: phone || "", quote_snapshot_json: snapJson });
+      if (score) set("lead_quality_score", score);
+    } catch (_) { /* non-fatal */ }
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId, range: "Leads!A:A",
       valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
@@ -487,6 +519,8 @@ async function handleQuoteLock(req, res) {
       equipment_line_items,
       referrer_name, referrer_phone, referrer_contact,
       attendance, access_instructions,
+      utm_source, utm_medium, utm_campaign, utm_content,
+      gclid, landing_page, tracking_phone, referrer_url,
     } = body;
     const referrerContact = referrer_contact || referrer_phone || "";
 
@@ -573,7 +607,7 @@ async function handleQuoteLock(req, res) {
       : "";
 
     // Upsert Lead first so we have lead_id to stamp on the snapshot
-    const leadId = await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrerContact, attendance: attendance || "", access_instructions: access_instructions || "" });
+    const leadId = await upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, phone, address, pricing, lead_source: lead_source || "", sms_opt_in: sms_opt_in || "", sms_marketing_consent: sms_marketing_consent || "", referrer_name: referrer_name || "", referrer_phone: referrerContact, attendance: attendance || "", access_instructions: access_instructions || "", utm_source: utm_source || "", utm_medium: utm_medium || "", utm_campaign: utm_campaign || "", utm_content: utm_content || "", gclid: gclid || "", landing_page: landing_page || "", tracking_phone: tracking_phone || "", referrer_url: referrer_url || "", answers: answers || {}, classification: cls.status || "" });
 
     await appendSnapshot(sheets, {
       event_id:              newEventId(),

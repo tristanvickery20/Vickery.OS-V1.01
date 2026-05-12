@@ -225,6 +225,11 @@ async function handleGetLeads(req, res) {
           sms_opt_in: "",
           lead_id: rawId,
           job_number: "",
+          lead_quality_score: String(getCellByHeader(r, lidx, "lead_quality_score") || ""),
+          utm_source:   String(getCellByHeader(r, lidx, "utm_source")   || ""),
+          utm_medium:   String(getCellByHeader(r, lidx, "utm_medium")   || ""),
+          utm_campaign: String(getCellByHeader(r, lidx, "utm_campaign") || ""),
+          lead_source:  String(getCellByHeader(r, lidx, "lead_source")  || ""),
         };
         attachFinancials(lead, laborMinutesByLead, expenseCostByLead, laborRateTech);
         return lead;
@@ -396,6 +401,31 @@ async function handleCreateLead(req, res) {
       setCellByHeader(row, idx, "job_number",      jobNumber);
       setCellByHeader(row, idx, "lead_source",     normalizeLeadSource(data.lead_source));
       setCellByHeader(row, idx, "referring_customer", data.referring_customer || "");
+
+      // UTM / attribution fields
+      setCellByHeader(row, idx, "utm_source",          data.utm_source          || "");
+      setCellByHeader(row, idx, "utm_medium",          data.utm_medium          || "");
+      setCellByHeader(row, idx, "utm_campaign",        data.utm_campaign        || "");
+      setCellByHeader(row, idx, "utm_content",         data.utm_content         || "");
+      setCellByHeader(row, idx, "gclid",               data.gclid               || "");
+      setCellByHeader(row, idx, "landing_page",        data.landing_page        || "");
+      setCellByHeader(row, idx, "tracking_phone",      data.tracking_phone      || "");
+      setCellByHeader(row, idx, "referrer_url",        data.referrer_url        || "");
+      setCellByHeader(row, idx, "estimator_session_id", data.estimator_session_id || data.last_quote_id || "");
+
+      // Lead quality score
+      try {
+        const { scoreLeadQuality } = require("../lib/leadQualityScore");
+        const score = scoreLeadQuality({
+          address: data.address || "",
+          job_type: data.job_type || "",
+          notes: data.job_description || data.notes || "",
+          lead_source: data.lead_source || "",
+          phone: data.phone || "",
+          quote_snapshot_json: data.quote_snapshot_json || "",
+        });
+        setCellByHeader(row, idx, "lead_quality_score", score);
+      } catch (_) { /* scoring is non-fatal */ }
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,

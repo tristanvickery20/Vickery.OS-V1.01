@@ -109,7 +109,17 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </div>
           <div>
-            <div class="ld-hero-name">${esc(lead.name || 'Unnamed Lead')}</div>
+            <div class="ld-hero-name" style="display:flex;align-items:center;gap:8px;">
+              ${esc(lead.name || 'Unnamed Lead')}
+              ${(function(){
+                const score = lead.lead_quality_score || "";
+                const SCORE_COLORS = { A: 'hsl(142,50%,40%)', B: 'hsl(38,80%,40%)', C: 'hsl(0,70%,50%)' };
+                const SCORE_BG     = { A: 'hsl(142,30%,94%)', B: 'hsl(38,50%,94%)',  C: 'hsl(0,50%,95%)' };
+                return score
+                  ? `<span title="Lead quality score: ${esc(score)}" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;background:${SCORE_BG[score]||'hsl(220,10%,94%)'};color:${SCORE_COLORS[score]||'hsl(220,15%,55%)'};border:1.5px solid ${SCORE_COLORS[score]||'hsl(220,15%,55%)'};flex-shrink:0;">${esc(score)}</span>`
+                  : '';
+              })()}
+            </div>
             <div class="ld-hero-sub">
               ${lead.lead_id ? `ID ${esc(lead.lead_id)}` : `ID ${esc(lead.id)}`}
             </div>
@@ -253,6 +263,15 @@
                 <div id="ldBonusContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
               </div>
 
+              <!-- Source & Attribution -->
+              <div class="ld-card" id="ldAttrCard">
+                <div class="ld-card-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" id="ldAttrToggle">
+                  <span>Source &amp; Attribution</span>
+                  <span id="ldAttrChevron" style="font-size:12px;color:hsl(var(--muted-foreground));">&#9660;</span>
+                </div>
+                <div id="ldAttrContent" style="font-size:13px;color:hsl(var(--muted-foreground));padding:4px 0;">Loading&hellip;</div>
+              </div>
+
             </div>
           </div>
 
@@ -278,6 +297,7 @@
     }
     loadLeadInvoice(lead.id || lead.lead_id, lead);
     loadBonusPanel(lead.id || lead.lead_id);
+    loadAttributionPanel(lead.id || lead.lead_id, lead);
     loadRelatedJobs(lead);
   }
 
@@ -861,6 +881,72 @@
       }
 
       el.innerHTML = html;
+    } catch (err) {
+      el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
+    }
+  }
+
+  async function loadAttributionPanel(lid, lead) {
+    const el = document.getElementById('ldAttrContent');
+    if (!el || !lid) return;
+    try {
+      const d = await window.Api.fetchJson('/api/marketing/lead-source-detail?lead_id=' + encodeURIComponent(lid));
+      if (!d.ok) {
+        el.innerHTML = `<span style="opacity:.6;">Could not load attribution data.</span>`;
+        return;
+      }
+
+      const SCORE_COLORS = { A: 'hsl(142,50%,40%)', B: 'hsl(38,80%,40%)', C: 'hsl(0,70%,50%)' };
+      const score = d.lead_quality_score;
+      const scoreColor = SCORE_COLORS[score] || 'hsl(220,15%,55%)';
+      const scoreBg    = score === 'A' ? 'hsl(142,30%,94%)' : score === 'B' ? 'hsl(38,50%,94%)' : score === 'C' ? 'hsl(0,50%,95%)' : 'hsl(220,10%,94%)';
+
+      function attrRow(label, val) {
+        if (!val) return '';
+        return `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid hsl(var(--border));">
+          <span style="font-size:12px;color:hsl(var(--muted-foreground));min-width:120px;flex:0 0 120px;">${label}</span>
+          <span style="font-size:12px;color:hsl(var(--foreground));font-weight:500;word-break:break-all;">${esc(val)}</span>
+        </div>`;
+      }
+
+      let html = '';
+      if (score) {
+        html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground));">Quality Score</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-size:13px;font-weight:800;background:${scoreBg};color:${scoreColor};border:1.5px solid ${scoreColor};">${esc(score)}</span>
+        </div>`;
+      }
+
+      html += attrRow('Lead Source',    d.lead_source);
+      html += attrRow('UTM Source',     d.utm_source);
+      html += attrRow('UTM Medium',     d.utm_medium);
+      html += attrRow('UTM Campaign',   d.utm_campaign);
+      html += attrRow('UTM Content',    d.utm_content);
+      html += attrRow('GCLID',          d.gclid);
+      html += attrRow('Landing Page',   d.landing_page);
+      html += attrRow('Tracking Phone', d.tracking_phone);
+      html += attrRow('Referrer URL',   d.referrer_url);
+      html += attrRow('Session ID',     d.estimator_session_id);
+      if (d.lost_reason) {
+        html += attrRow('Lost Reason',  d.lost_reason);
+      }
+
+      if (!html) {
+        html = '<span style="opacity:.6;font-size:13px;">No attribution data captured yet.</span>';
+      }
+
+      el.innerHTML = html;
+
+      // Wire collapse/expand toggle
+      const toggle = document.getElementById('ldAttrToggle');
+      const chevron = document.getElementById('ldAttrChevron');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const isOpen = el.style.display !== 'none';
+          el.style.display = isOpen ? 'none' : '';
+          if (chevron) chevron.innerHTML = isOpen ? '&#9658;' : '&#9660;';
+        });
+      }
     } catch (err) {
       el.innerHTML = `<span style="color:hsl(0,70%,50%);font-size:13px;">Error: ${esc(err.message)}</span>`;
     }

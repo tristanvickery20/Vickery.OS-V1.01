@@ -1005,6 +1005,7 @@ async function renderResult(siteVisitForced) {
         productSelections: S.productSelections,
         sameForAll: S.sameForAll,
         equipmentUpgradeDelta: equipDelta,
+        ...getIeUtmPayload(),
       }),
     });
     const d = await r.json();
@@ -1068,6 +1069,43 @@ async function renderResult(siteVisitForced) {
   } catch (e) {
     show(`<div class="status-msg error-msg">Network error: ${esc(e.message)}</div>${renderDebug()}`);
   }
+}
+
+// ── UTM / attribution capture ──────────────────────────────────────────────────
+(function captureIeUtms() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const utm_source   = p.get("utm_source")   || sessionStorage.getItem("utm_source")   || "";
+    const utm_medium   = p.get("utm_medium")   || sessionStorage.getItem("utm_medium")   || "";
+    const utm_campaign = p.get("utm_campaign") || sessionStorage.getItem("utm_campaign") || "";
+    const utm_content  = p.get("utm_content")  || sessionStorage.getItem("utm_content")  || "";
+    const gclid        = p.get("gclid")        || sessionStorage.getItem("gclid")        || "";
+    if (utm_source)   sessionStorage.setItem("utm_source",   utm_source);
+    if (utm_medium)   sessionStorage.setItem("utm_medium",   utm_medium);
+    if (utm_campaign) sessionStorage.setItem("utm_campaign", utm_campaign);
+    if (utm_content)  sessionStorage.setItem("utm_content",  utm_content);
+    if (gclid)        sessionStorage.setItem("gclid",        gclid);
+    if (!sessionStorage.getItem("landing_page")) {
+      sessionStorage.setItem("landing_page", window.location.href);
+    }
+    if (!sessionStorage.getItem("referrer_url") && document.referrer) {
+      sessionStorage.setItem("referrer_url", document.referrer);
+    }
+  } catch (_) { /* non-fatal */ }
+})();
+
+function getIeUtmPayload() {
+  try {
+    return {
+      utm_source:   sessionStorage.getItem("utm_source")   || "",
+      utm_medium:   sessionStorage.getItem("utm_medium")   || "",
+      utm_campaign: sessionStorage.getItem("utm_campaign") || "",
+      utm_content:  sessionStorage.getItem("utm_content")  || "",
+      gclid:        sessionStorage.getItem("gclid")        || "",
+      landing_page: sessionStorage.getItem("landing_page") || "",
+      referrer_url: sessionStorage.getItem("referrer_url") || "",
+    };
+  } catch (_) { return {}; }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

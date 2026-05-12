@@ -374,6 +374,15 @@
         document.getElementById("ref_slug").value        = ref;
         document.getElementById("refAttrBanner").style.display = "block";
       }
+      // Capture UTMs into sessionStorage for passthrough
+      try {
+        ["utm_source","utm_medium","utm_campaign","utm_content","gclid"].forEach(k => {
+          const v = p.get(k) || sessionStorage.getItem(k) || "";
+          if (v) sessionStorage.setItem(k, v);
+        });
+        if (!sessionStorage.getItem("landing_page")) sessionStorage.setItem("landing_page", window.location.href);
+        if (!sessionStorage.getItem("referrer_url") && document.referrer) sessionStorage.setItem("referrer_url", document.referrer);
+      } catch (_) { /* non-fatal */ }
     })();
 
     // ── Form submission ────────────────────────────────────────────────────────
@@ -386,6 +395,7 @@
       btn.disabled = true;
       btn.textContent = "Submitting\u2026";
 
+      const utmGet = k => { try { return sessionStorage.getItem(k) || ""; } catch { return ""; } };
       const body = {
         referrer_name:  document.getElementById("ref_your_name").value.trim(),
         referrer_phone: document.getElementById("ref_your_phone").value.trim(),
@@ -396,10 +406,23 @@
         referral_slug:  document.getElementById("ref_slug").value.trim(),
         employee_id:    document.getElementById("ref_employee_id").value.trim(),
         source: "public_form",
+        your_name:  document.getElementById("ref_your_name").value.trim(),
+        your_phone: document.getElementById("ref_your_phone").value.trim(),
+        ref_name:   document.getElementById("ref_name").value.trim(),
+        ref_phone:  document.getElementById("ref_phone").value.trim(),
+        ref_city:   document.getElementById("ref_city").value.trim(),
+        ref_job:    document.getElementById("ref_job").value.trim(),
+        utm_source:   utmGet("utm_source"),
+        utm_medium:   utmGet("utm_medium"),
+        utm_campaign: utmGet("utm_campaign"),
+        utm_content:  utmGet("utm_content"),
+        gclid:        utmGet("gclid"),
+        landing_page: utmGet("landing_page"),
+        referrer_url: utmGet("referrer_url"),
       };
 
       try {
-        const r    = await fetch("/api/referrals", {
+        const r    = await fetch("/api/referral/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

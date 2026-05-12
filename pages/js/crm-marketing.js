@@ -468,12 +468,20 @@ window.Mkt = (function () {
       const rows = buckets[def.key] || [];
       const rowsHtml = rows.length === 0
         ? `<div class="empty-state" style="padding:14px;">None in this bucket.</div>`
-        : rows.map(r => `
+        : rows.map(r => {
+            const score = r.lead_quality_score || "";
+            const SCORE_COLORS = { A: 'hsl(142,50%,40%)', B: 'hsl(38,80%,40%)', C: 'hsl(0,70%,50%)' };
+            const SCORE_BG     = { A: 'hsl(142,30%,94%)', B: 'hsl(38,50%,94%)',  C: 'hsl(0,50%,95%)' };
+            const scoreBadge = score
+              ? `<span title="Lead quality score" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:800;background:${SCORE_BG[score]||'hsl(220,10%,94%)'};color:${SCORE_COLORS[score]||'hsl(220,15%,55%)'};border:1px solid ${SCORE_COLORS[score]||'hsl(220,15%,55%)'};margin-left:4px;">${esc(score)}</span>`
+              : "";
+            return `
             <div class="bucket-row">
-              <div class="bucket-row-name">${esc(r.name)}</div>
+              <div class="bucket-row-name">${esc(r.name)}${scoreBadge}</div>
               <div class="bucket-row-meta">${esc(r.job_type || "—")} &bull; ${daysBadge(r.days_stale)} &bull; ${r.estimated_value > 0 ? fmt$(r.estimated_value) : "—"}</div>
               <button class="bucket-send-btn" data-lead-id="${esc(r.lead_id)}" data-action="send-followup">Send Text</button>
-            </div>`).join("");
+            </div>`;
+          }).join("");
       return `
         <div class="bucket-section">
           <div class="bucket-header ${def.cls}" data-action="toggle-bucket">
@@ -569,10 +577,16 @@ window.Mkt = (function () {
             const callBtn  = phone ? `<a class="seg-qa-btn seg-qa-call" href="tel:${phone}" title="Call ${esc(r.name)}">Call</a>` : "";
             const viewBtn  = lid  ? `<a class="seg-qa-btn seg-qa-view" href="/crm/lead/${lid}">View</a>` : "";
 
+            const segScore = r.lead_quality_score || "";
+            const SCORE_COLORS2 = { A: 'hsl(142,50%,40%)', B: 'hsl(38,80%,40%)', C: 'hsl(0,70%,50%)' };
+            const SCORE_BG2     = { A: 'hsl(142,30%,94%)', B: 'hsl(38,50%,94%)',  C: 'hsl(0,50%,95%)' };
+            const segScoreBadge = segScore
+              ? `<span title="Lead quality score" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:10px;font-weight:800;background:${SCORE_BG2[segScore]||'hsl(220,10%,94%)'};color:${SCORE_COLORS2[segScore]||'hsl(220,15%,55%)'};border:1px solid ${SCORE_COLORS2[segScore]||'hsl(220,15%,55%)'};margin-left:4px;flex-shrink:0;">${esc(segScore)}</span>`
+              : "";
             return `
               <div class="seg-row">
                 <div class="seg-row-info">
-                  <span class="seg-row-name">${esc(r.name)}</span>
+                  <span class="seg-row-name" style="display:flex;align-items:center;">${esc(r.name)}${segScoreBadge}</span>
                   <span class="seg-row-meta">${esc(r.phone || "No phone")} &bull; ${meta}</span>
                 </div>
                 <div class="seg-row-actions">${sendAction}${callBtn}${viewBtn}</div>
