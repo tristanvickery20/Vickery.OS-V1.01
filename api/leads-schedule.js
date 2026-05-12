@@ -110,7 +110,6 @@ async function handleScheduleLead(req, res) {
     };
 
     invalidateCache(spreadsheetId, "Leads");
-    invalidateCache(spreadsheetId, "Bookings");
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, lead }));
@@ -165,6 +164,7 @@ async function handleScheduleLead(req, res) {
             spreadsheetId, range: `Bookings!A${existingRowIdx + 1}:${endC}${existingRowIdx + 1}`,
             valueInputOption: "RAW", requestBody: { values: [bkRow.slice(0, bkHdrs.length)] },
           });
+          invalidateCache(spreadsheetId, "Bookings");
           console.log(`[leads-schedule] Updated existing Booking row ${existingRowIdx + 1} for lead ${leadId}`);
         } else {
           // Create new booking row
@@ -193,6 +193,7 @@ async function handleScheduleLead(req, res) {
             valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
             requestBody: { values: [newRow] },
           });
+          invalidateCache(spreadsheetId, "Bookings");
           // Also write the booking_id back to the Lead row
           if (hIdx["booking_id"] != null) {
             const bkIdColLetter = colToLetter(hIdx["booking_id"]);
@@ -204,7 +205,7 @@ async function handleScheduleLead(req, res) {
           console.log(`[leads-schedule] Created Booking ${newBkId} for lead ${leadId}`);
         }
       } catch (bkErr) {
-        console.error("[leads-schedule] Booking upsert error:", bkErr.message);
+        console.error("[leads-schedule] Booking upsert failed:", bkErr);
       }
     });
 

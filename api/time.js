@@ -1,4 +1,4 @@
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient, invalidateCache } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { pushTimeToQuickBooks } = require("./settings");
 
@@ -121,6 +121,8 @@ async function handleCreateTime(req, res) {
         requestBody: { majorDimension: "ROWS", values: [row] },
       });
 
+      invalidateCache(spreadsheetId, "Time");
+
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, entry }));
 
@@ -207,6 +209,8 @@ async function handleUpdateTime(req, res, timeId, crewSess) {
         valueInputOption: "RAW",
         requestBody: { majorDimension: "ROWS", values: [updated] },
       });
+
+      invalidateCache(spreadsheetId, "Time");
 
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, id: timeId }));

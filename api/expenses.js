@@ -1,4 +1,4 @@
-const { getSheetsClient } = require("../lib/sheets");
+const { getSheetsClient, invalidateCache } = require("../lib/sheets");
 const { logAudit, genRequestId } = require("../lib/audit");
 const { pushExpenseToQuickBooks } = require("./settings");
 
@@ -107,6 +107,8 @@ async function handleCreateExpense(req, res) {
         insertDataOption: "INSERT_ROWS",
         requestBody: { majorDimension: "ROWS", values: [row] },
       });
+
+      invalidateCache(spreadsheetId, "Expenses");
 
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, entry }));

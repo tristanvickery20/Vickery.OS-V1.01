@@ -918,5 +918,35 @@
     }
   }
 
+  async function silentRefresh() {
+    if (!clientData) return;
+    try {
+      const base = "/api/clients/" + encodeURIComponent(clientId);
+      const phone = (clientData.phone || "").replace(/\D/g, "");
+      const [rRes, qRes, leadsRes, nRes, aRes, invRes, tlRes] = await Promise.all([
+        fetchJSON(base + "/requests"),
+        fetchJSON(base + "/quotes"),
+        phone
+          ? fetchJSON("/api/leads?phone=" + encodeURIComponent(phone))
+          : Promise.resolve({ ok: true, leads: [] }),
+        fetchJSON(base + "/notes"),
+        fetchJSON(base + "/attachments"),
+        fetchJSON("/api/invoices?client_id=" + encodeURIComponent(clientId)),
+        fetchJSON(base + "/timeline").catch(() => ({ ok: false })),
+      ]);
+      requestsData  = rRes.ok   ? rRes.requests       : requestsData;
+      quotesData    = qRes.ok   ? qRes.quotes          : quotesData;
+      jobsData      = leadsRes.ok ? (leadsRes.leads || []) : jobsData;
+      notesData     = nRes.ok   ? nRes.notes           : notesData;
+      attachmentsData = aRes.ok ? aRes.attachments     : attachmentsData;
+      invoicesData  = invRes.ok ? invRes.invoices      : invoicesData;
+      if (tlRes.ok) {
+        timelineData = { events: tlRes.timeline, summary: tlRes.summary };
+      }
+      renderTabContent();
+    } catch (_) {}
+  }
+
   init();
+  setInterval(silentRefresh, 60000);
 })();
