@@ -2002,6 +2002,36 @@
             const hour   = Number(cell.dataset.hour);
             const newDt  = localToUtcIso(curDate, hour, 0);
 
+            // Resolve tech display name for toast + optimistic label
+            const staffRec = S.staff.find(s => s.staff_id === techId);
+            const techName = techId
+              ? (staffRec
+                  ? (staffRec.name || `${staffRec.first_name || ""} ${staffRec.last_name || ""}`.trim() || "Unknown")
+                  : "Unknown")
+              : "Unassigned";
+
+            // Optimistic DOM move: grab the chip, remember its original parent
+            // so we can snap it back on error
+            const chipEl    = calMain.querySelector(`.dv-chip[data-id="${CSS.escape(S.dragging)}"]`);
+            const origParent = chipEl ? chipEl.parentElement : null;
+            const origLeft   = chipEl ? chipEl.style.left : "";
+            if (chipEl) {
+              chipEl.style.left = "3px";
+              cell.appendChild(chipEl);
+              // Add or update inline tech label on the chip
+              let techLbl = chipEl.querySelector(".chip-tech-lbl");
+              if (!techLbl) {
+                techLbl = document.createElement("span");
+                techLbl.className = "chip-tech-lbl";
+                Object.assign(techLbl.style, {
+                  fontSize: "9px", opacity: "0.75", display: "block",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                });
+                chipEl.appendChild(techLbl);
+              }
+              techLbl.textContent = techName;
+            }
+
             const updates = {
               scheduled_datetime: newDt,
               assigned_tech_id: techId,
@@ -2009,8 +2039,16 @@
 
             try {
               await patchBooking(S.dragging, updates);
+              showToast(techId ? `Assigned to ${techName}` : "Moved to Unassigned");
               await loadData();
             } catch (err) {
+              // Snap chip back to original cell
+              if (chipEl && origParent) {
+                chipEl.style.left = origLeft;
+                origParent.appendChild(chipEl);
+                const techLbl = chipEl.querySelector(".chip-tech-lbl");
+                if (techLbl) techLbl.remove();
+              }
               showToast("Failed to assign: " + err.message, true);
             }
           });
