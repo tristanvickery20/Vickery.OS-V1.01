@@ -308,8 +308,9 @@ tr:hover td{ background: rgba(255,255,255,0.02); }
     position:fixed;
     left:0; top:0; bottom:0;
     height:100vh;
+    height: -webkit-fill-available; /* iOS Safari: exclude browser chrome from height */
     overflow-y: scroll;
-    overscroll-behavior: contain;
+    overscroll-behavior-y: none; /* prevent rubber-band bounce that hides footer */
     -webkit-overflow-scrolling: touch;
     transform: translateX(-102%);
     transition: transform .18s ease;
@@ -317,6 +318,10 @@ tr:hover td{ background: rgba(255,255,255,0.02); }
     box-shadow: 30px 0 80px rgba(0,0,0,0.55);
   }
   .sidebar.open{ transform: translateX(0); }
+  /* Ensure Logout button clears iOS home indicator / browser chrome */
+  .sidebar .sidebar-footer{
+    padding-bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+  }
 
   .main-area{
     padding:12px;
