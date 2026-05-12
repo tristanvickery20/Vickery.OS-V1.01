@@ -182,6 +182,15 @@ async function upsertLeadOnLock(sheets, { quote_id, job_type_id, customer_name, 
     // No separate Clients tab write needed.
 
     // ── 3. Genuinely new customer — append to Leads ──────────────────────────
+    // Guard: if the caller provided neither a phone nor a customer name this is a
+    // pricing-only call (e.g. the ZIP reprice that runs while the user is still
+    // filling out the contact form).  Creating a stub row here would leave an
+    // orphaned lead when the real final-submit arrives and Pass-1 (phone match)
+    // hits a different existing row for a repeat customer.
+    if (!cleanPhone && !customer_name) {
+      console.log(`[quote/lock] upsertLead skipped — no phone or name (pricing-only call) quote_id=${quote_id}`);
+      return "";
+    }
     const leadId = "LEAD-" + crypto.randomBytes(4).toString("hex").toUpperCase();
     const now    = nowIso();
     const newRow = new Array(Math.max(headers.length, 27)).fill("");
