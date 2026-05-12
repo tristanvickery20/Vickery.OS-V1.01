@@ -1294,6 +1294,9 @@
           S.unscheduled = d.unscheduled || [];
           S.staff       = d.staff       || [];
           S.tz          = d.timezone    || S.tz;
+          if (d.staff_degraded) {
+            showToast("⚠ Could not load tech list: " + (d.staff_error || "Staff tab unavailable — reassignment disabled"), true);
+          }
           populateTechFilter();
           renderAll();
         } catch (err) {

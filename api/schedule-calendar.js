@@ -126,12 +126,17 @@ async function handleGetCalendar(req, res) {
 
     await ensureTabHeaders("Bookings");
 
+    let staffError = null;
     const [rulesRes, bookingsRes, staffRes] = await Promise.all([
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" })
         .catch(() => ({ data: { values: [] } })),
       sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Z" }),
       sheets.spreadsheets.values.get({ spreadsheetId: require("../lib/hrSheetClient").hrSpreadsheetId(), range: "Staff!A:Z" })
-        .catch(err => { console.error("[schedule-calendar] Staff read failed:", err.message); return { data: { values: [] } }; }),
+        .catch(err => {
+          staffError = err.message;
+          console.error("[schedule-calendar] Staff read failed:", err.message);
+          return { data: { values: [] } };
+        }),
     ]);
 
     const rulesRows = rulesRes.data.values || [];
@@ -208,12 +213,14 @@ async function handleGetCalendar(req, res) {
     }
 
     json(res, 200, {
-      ok:          true,
-      timezone:    tz,
-      bookings:    scheduled,    // flat list (frontend convenience)
-      by_date:     byDate,       // grouped by local date (API contract)
-      unscheduled: unscheduled,
-      staff:       staffOut,
+      ok:             true,
+      timezone:       tz,
+      bookings:       scheduled,    // flat list (frontend convenience)
+      by_date:        byDate,       // grouped by local date (API contract)
+      unscheduled:    unscheduled,
+      staff:          staffOut,
+      staff_degraded: staffError !== null,
+      staff_error:    staffError || undefined,
     });
   } catch (err) {
     console.error("[schedule-calendar]", err.message);
