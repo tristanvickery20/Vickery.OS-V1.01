@@ -538,10 +538,25 @@
         wrapEl.innerHTML = techs.map(t => {
           const name = t.name || ((t.firstName || '') + ' ' + (t.lastName || '')).trim();
           const sel  = selSet.has(name);
-          return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;border:1.5px solid ${sel ? 'hsl(var(--primary))' : 'hsl(var(--border))'};cursor:pointer;font-size:12px;font-weight:600;background:${sel ? 'hsl(var(--primary)/.1)' : 'transparent'};color:${sel ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'};">
+          return `<label class="ld-assign-pill${sel ? ' ld-assign-pill-sel' : ''}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;border:1.5px solid ${sel ? 'hsl(var(--primary))' : 'hsl(var(--border))'};cursor:pointer;font-size:12px;font-weight:600;background:${sel ? 'hsl(var(--primary)/.1)' : 'transparent'};color:${sel ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'};">
             <input type="checkbox" class="ld-assign-cb" value="${esc(name)}"${sel ? ' checked' : ''} style="accent-color:hsl(var(--primary));"> ${esc(name)}
           </label>`;
         }).join('');
+        // Update pill visual state whenever a checkbox changes
+        wrapEl.addEventListener('change', function(e) {
+          if (!e.target.classList.contains('ld-assign-cb')) return;
+          const lbl = e.target.closest('label');
+          if (!lbl) return;
+          if (e.target.checked) {
+            lbl.style.borderColor  = 'hsl(var(--primary))';
+            lbl.style.background   = 'hsl(var(--primary)/.1)';
+            lbl.style.color        = 'hsl(var(--primary))';
+          } else {
+            lbl.style.borderColor  = 'hsl(var(--border))';
+            lbl.style.background   = 'transparent';
+            lbl.style.color        = 'hsl(var(--foreground))';
+          }
+        });
       })
       .catch(() => {
         wrapEl.innerHTML = `<input type="text" class="ld-assign-fallback ld-status-select" placeholder="Technician name(s)" value="${esc(currentAssignees || '')}" style="width:100%;margin:0;">`;

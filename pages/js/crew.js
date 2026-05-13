@@ -943,6 +943,7 @@ function jobCard(j) {
         <div class="job-block">${block}${dur}</div>
         <div class="job-customer">${esc(j.customer_name || "Customer")}${gpsBadge}</div>
         <div class="job-address">${esc(j.address || "—")}</div>
+        ${j.assigned_to ? `<div class="job-assigned" style="font-size:11px;color:hsl(220 15% 55%);margin-top:2px;">👷 ${esc(j.assigned_to)}</div>` : ""}
         <div class="job-tap-hint">Tap to view details</div>
       </div>
       ${timerHtml}

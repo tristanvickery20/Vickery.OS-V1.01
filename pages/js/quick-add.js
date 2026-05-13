@@ -760,7 +760,7 @@
           address: g("qa-f-addr"), job_type: g("qa-f-jtype"),
           status: "New", notes: notesWithDur,
           scheduled_date: schedDT,
-          assigned_to: getAssignedNames()[0] || "",
+          assigned_to: getAssignedNames().join(", ") || "",
         }),
       }).then(function (r) { return r.json(); });
 
