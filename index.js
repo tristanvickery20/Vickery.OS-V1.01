@@ -68,6 +68,7 @@ const {
 } = require("./api/clients");
 const { handleCreateNote } = require("./api/notes");
 const { handleCreateAttachment, handleGetAttachments } = require("./api/attachments");
+const { handleBackfillPhotoAttachments } = require("./api/admin-backfill-photos");
 
 // Ticket 21
 const {
@@ -804,6 +805,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Material price auto-update (manual trigger) ────────────────────────────
+  if (_epath === "/api/admin/backfill-photo-attachments" && req.method === "POST") {
+    if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
+    return handleBackfillPhotoAttachments(req, res);
+  }
   if (_epath === "/api/admin/materials/price-update" && req.method === "POST") {
     if (!isAuthed(req)) { res.writeHead(401); res.end(JSON.stringify({ok:false,error:"Unauthorized"})); return; }
     (async () => {

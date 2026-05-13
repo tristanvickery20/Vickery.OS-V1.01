@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { getSheetsClient } = require("../lib/sheets");
+const { appendAttachmentRow } = require("./attachments");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 const UPLOADS_DIR = path.join(__dirname, "../uploads");
@@ -104,6 +105,16 @@ async function handlePhotoUpload(req, res) {
 
     const fileUrl = `/uploads/${safeName}`;
     appendPhotoSnapshot(quote_id, fileUrl).catch(() => {});
+
+    // Mirror to Attachments sheet so CRM lead detail Photos card can display it
+    appendAttachmentRow({
+      entity_type: "lead",
+      entity_id: quote_id,
+      file_url: fileUrl,
+      file_type: "image",
+      category: "before",
+      uploaded_by: "customer",
+    }).catch(() => {});
 
     // Record gate photo module confirmation for server-side gate enforcement
     if (photoModule) recordGatePhoto(quote_id, String(photoModule));

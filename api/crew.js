@@ -841,6 +841,8 @@ async function handleGetInvoiceForBooking(req, res) {
   }
 }
 
+const { appendAttachmentRow } = require("./attachments");
+
 // ── POST /api/crew/photo — crew-session photo upload ─────────────────────────
 const _crewUploadsDir = require("path").join(__dirname, "../uploads");
 async function handleCrewPhotoUpload(req, res) {
@@ -896,6 +898,19 @@ async function handleCrewPhotoUpload(req, res) {
         });
       } catch (_) {}
     }
+    // Mirror to Attachments sheet so CRM lead detail Photos card can display it
+    const attachEntityId = quote_id || booking_id;
+    if (attachEntityId) {
+      appendAttachmentRow({
+        entity_type: "lead",
+        entity_id: attachEntityId,
+        file_url: fileUrl,
+        file_type: "image",
+        category: "after",
+        uploaded_by: techName,
+      }).catch(() => {});
+    }
+
     json(res, 200, { ok: true, url: fileUrl });
   } catch (err) {
     json(res, 500, { ok: false, error: err.message });

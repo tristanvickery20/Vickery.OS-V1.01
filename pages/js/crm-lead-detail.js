@@ -970,8 +970,24 @@
     const el = document.getElementById('ldPhotosContent');
     if (!el || !lid) return;
     try {
+      // Fetch by lead_id — covers manually-added URLs
       const data = await window.Api.fetchJson('/api/attachments?entity_type=lead&entity_id=' + encodeURIComponent(lid));
-      const photos = (data.attachments || []).filter(a =>
+      let attachments = data.attachments || [];
+
+      // Also fetch by last_quote_id — covers photos uploaded during the quote wizard
+      // and crew portal uploads (stored with entity_id = quote_id)
+      const quoteId = (lead && lead.last_quote_id) ? lead.last_quote_id : '';
+      if (quoteId && quoteId !== lid) {
+        try {
+          const qData = await window.Api.fetchJson('/api/attachments?entity_type=lead&entity_id=' + encodeURIComponent(quoteId));
+          const qPhotos = qData.attachments || [];
+          // Merge, deduplicating by file_url
+          const seen = new Set(attachments.map(a => a.file_url));
+          qPhotos.forEach(a => { if (!seen.has(a.file_url)) { seen.add(a.file_url); attachments.push(a); } });
+        } catch (_) {}
+      }
+
+      const photos = attachments.filter(a =>
         (a.file_type || '').startsWith('image') || /\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(a.file_url || '')
       );
 

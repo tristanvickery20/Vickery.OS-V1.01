@@ -123,4 +123,32 @@ async function handleGetAttachments(req, res) {
   }
 }
 
-module.exports = { handleCreateAttachment, handleGetAttachments };
+/**
+ * Internal helper — writes one row to the Attachments sheet directly.
+ * Bypasses HTTP-URL validation so /uploads/ paths from server uploads work.
+ * Safe to call fire-and-forget (.catch(() => {})).
+ */
+async function appendAttachmentRow({ id, entity_type, entity_id, file_url, file_type, category, uploaded_by }) {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = process.env.CRM_SHEET_ID;
+  const created_at = new Date().toISOString();
+  const safeId = id || ("ATT-" + Date.now() + "-" + Math.floor(Math.random() * 9999));
+  const headersResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Attachments!1:1" });
+  const headers = (headersResp.data.values && headersResp.data.values[0]) || [];
+  const rowObj = {
+    id: safeId, created_at, entity_type: entity_type || "lead",
+    entity_id: entity_id || "", file_url: file_url || "",
+    file_type: file_type || "image", category: category || "general",
+    uploaded_by: uploaded_by || "system",
+  };
+  const row = headers.length ? headers.map(h => rowObj[h] || "") : Object.values(rowObj);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Attachments!A:A",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { majorDimension: "ROWS", values: [row] },
+  });
+}
+
+module.exports = { handleCreateAttachment, handleGetAttachments, appendAttachmentRow };
