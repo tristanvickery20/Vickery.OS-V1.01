@@ -176,7 +176,7 @@
         <td>${esc(j.job_type || "–")}</td>
         <td>${price}</td>
         <td>${durLabel}</td>
-        <td>${esc(j.assigned_to || "–")}</td>
+        <td>${(j.assigned_to || "").split(",").map(n => n.trim()).filter(Boolean).map(n => `<span style="display:inline-block;padding:1px 8px;border-radius:99px;background:hsl(220 60% 94%);color:hsl(220 60% 30%);font-size:11px;font-weight:600;margin:1px 2px;">${esc(n)}</span>`).join("") || "–"}</td>
         <td>${statusBadge(j.status)}</td>
       </tr>`;
   }

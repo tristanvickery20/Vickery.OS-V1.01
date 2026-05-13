@@ -84,7 +84,8 @@ async function handleScheduleLead(req, res) {
 
     row[8] = "Scheduled";
     row[13] = normalizeScheduledDate(data.scheduled_date);
-    row[14] = String(data.assigned_to || "");
+    // Normalize comma-separated assignees: "Alice , Bob" → "Alice, Bob"
+    row[14] = String(data.assigned_to || "").split(",").map(s => s.trim()).filter(Boolean).join(", ");
     row[16] = String(data.schedule_window || row[16] || "");
     row[17] = String(data.schedule_preference || row[17] || "");
     row[18] = String(Math.max(0, Math.min(1440, Math.round(Number(data.duration_minutes || 0)))));

@@ -40,12 +40,19 @@ async function readBody(req) {
   });
 }
 
+// Normalize comma-separated assignee string: "Alice , Bob,  Carol" → "Alice, Bob, Carol"
+function normalizeAssignees(raw) {
+  if (!raw) return "";
+  return String(raw).split(",").map(s => s.trim()).filter(Boolean).join(", ");
+}
+
 async function handleGetTasks(req, res) {
   try {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.CRM_SHEET_ID;
     const url = new URL("http://x" + req.url);
     const filterStatus   = (url.searchParams.get("status")      || "").toLowerCase();
+    // assigned_to filter uses contains so "Alice" matches "Alice, Bob" (multi-assignee)
     const filterAssigned = (url.searchParams.get("assigned_to") || "").toLowerCase();
 
     let values;
@@ -67,6 +74,7 @@ async function handleGetTasks(req, res) {
       .map(mapRowToTask);
 
     if (filterStatus)   tasks = tasks.filter((t) => t.status.toLowerCase() === filterStatus);
+    // .includes() supports multi-assignee: matches any name in a comma-separated list
     if (filterAssigned) tasks = tasks.filter((t) => t.assigned_to.toLowerCase().includes(filterAssigned));
 
     tasks.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -85,8 +93,9 @@ async function handleCreateTask(req, res, serverOverrides = {}) {
     const { title, type, due_date, related_lead_id, priority, notes } = body;
     // created_by and assigned_to always come from server overrides when provided
     const created_by  = serverOverrides.created_by  || "admin";
-    const assigned_to = serverOverrides.assigned_to != null ? serverOverrides.assigned_to
-                      : (body.assigned_to || "");
+    const assigned_to = normalizeAssignees(
+      serverOverrides.assigned_to != null ? serverOverrides.assigned_to : (body.assigned_to || "")
+    );
 
     if (!title || !String(title).trim()) {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -187,7 +196,7 @@ async function handleUpdateTask(req, res, taskId) {
     if (body.title          !== undefined) row[1]  = String(body.title);
     if (body.type           !== undefined) row[2]  = String(body.type);
     if (body.due_date       !== undefined) row[3]  = String(body.due_date);
-    if (body.assigned_to    !== undefined) row[4]  = String(body.assigned_to);
+    if (body.assigned_to    !== undefined) row[4]  = normalizeAssignees(body.assigned_to);
     if (body.related_lead_id!== undefined) row[5]  = String(body.related_lead_id);
     if (body.priority       !== undefined) row[6]  = String(body.priority);
     if (body.notes          !== undefined) row[7]  = String(body.notes);
