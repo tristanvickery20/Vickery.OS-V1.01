@@ -873,14 +873,14 @@ async function handleCrewPhotoUpload(req, res) {
     const ref  = (quote_id || booking_id || "job").replace(/[^A-Z0-9-]/gi, "");
     const fname = `crew-${ref}-${Date.now()}.${ext}`;
     fs.writeFileSync(require("path").join(_crewUploadsDir, fname), buf);
-    const fileUrl = `/uploads/${fname}`;
+    const fileUrl  = `/uploads/${fname}`;
+    const techName = [session.firstName, session.lastName].filter(Boolean).join(" ") || "Crew";
 
     // Log to QuoteSnapshots if we have a quote_id so the office can see it
     if (quote_id || booking_id) {
       try {
-        const sheets = await getSheetsClient();
-        const crmId  = process.env.CRM_SHEET_ID;
-        const techName = [session.firstName, session.lastName].filter(Boolean).join(" ") || "Crew";
+        const sheets   = await getSheetsClient();
+        const crmId    = process.env.CRM_SHEET_ID;
         const noteText = `Crew photo by ${techName}${booking_id ? " · " + booking_id : ""}`;
         const newEvtId = "EV-" + crypto.randomBytes(4).toString("hex").toUpperCase();
         const row = [
