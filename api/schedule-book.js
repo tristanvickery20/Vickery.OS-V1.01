@@ -237,7 +237,7 @@ async function handleBook(req, res) {
     // ── Block-based path: hours-aware multi-block planning ───────────────────
     const jobMins  = getJobMinsFromSnapshot(snapshot);
     const capMins  = getBlockCapacityMins(rules);
-    const leadHours = Number(rules.lead_time_hours) || 4;
+    const leadHours = Number(rules.lead_time_hours) || 3;
 
     // Lead-time guard: reject if the requested block starts within the cutoff window
     const reqBlockIso = blockStartIso(bookingDate, block, tz);

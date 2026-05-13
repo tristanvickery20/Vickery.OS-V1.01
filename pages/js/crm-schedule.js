@@ -100,6 +100,7 @@
       .map(b => ({
         source:           "booking",
         id:               b.booking_id,
+        lead_id:          b.lead_id || "",
         date:             toLocalDate(b.scheduled_datetime),
         block:            b.schedule_block || inferBlock(b.scheduled_datetime),
         customer_name:    b.customer_name,
@@ -118,10 +119,12 @@
       }));
 
     // ── Merge, deduplicate ────────────────────────────────────────────────────
+    // Canonical key: use lead_id when available so a booking that already has a
+    // matching lead entry (LEAD-xxx) resolves to the same key and gets suppressed.
     const seen    = new Set();
     const allJobs = [];
     for (const j of [...leadsJobs, ...bookingJobs]) {
-      const key = j.id || `${j.date}:${j.customer_name}`;
+      const key = j.lead_id || j.id || `${j.date}:${j.customer_name}`;
       if (seen.has(key)) continue;
       seen.add(key);
       allJobs.push(j);

@@ -9,7 +9,7 @@ const { generateSlots }     = require("../lib/slotEngine");
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
 const SCHEDULER_DEFAULTS = [
-  "America/Chicago", "4", "30", "180",
+  "America/Chicago", "3", "30", "180",
   "08:00", "17:00", "09:00", "13:00",
   "FALSE", "3",
 ];
@@ -37,21 +37,23 @@ async function ensureSchedulerRules(sheets, id) {
     console.log("[SchedulerRules] Default row written.");
     rows[1] = SCHEDULER_DEFAULTS;
   } else {
-    // Patch: if lead_time_hours is "0" (unsafe — allows same-day booking), update to "4"
+    // Patch: ensure lead_time_hours is exactly "3" (3-hour same-day advance window)
+    // Fixes blank/zero values and updates any prior "4" default to "3".
     const headers = rows[0] || [];
     const data    = rows[1] || [];
     const ltIdx   = headers.indexOf("lead_time_hours");
-    if (ltIdx >= 0 && (data[ltIdx] === "0" || data[ltIdx] === "" || !data[ltIdx])) {
-      data[ltIdx] = "4";
+    const ltVal   = ltIdx >= 0 ? String(data[ltIdx] || "").trim() : "";
+    if (ltIdx >= 0 && (ltVal === "0" || ltVal === "" || ltVal === "4" || !ltVal)) {
+      data[ltIdx] = "3";
       rows[1]     = data;
       const colLetter = String.fromCharCode(65 + ltIdx);
       await sheets.spreadsheets.values.update({
         spreadsheetId: id,
         range:         `SchedulerRules!${colLetter}2`,
         valueInputOption: "RAW",
-        requestBody:   { majorDimension: "ROWS", values: [["4"]] },
+        requestBody:   { majorDimension: "ROWS", values: [["3"]] },
       });
-      console.log("[SchedulerRules] lead_time_hours patched 0→4.");
+      console.log(`[SchedulerRules] lead_time_hours patched ${ltVal || "blank"}→3.`);
     }
   }
   return rows;
