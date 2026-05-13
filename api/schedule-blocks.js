@@ -106,7 +106,7 @@ async function handleGetBlocks(req, res) {
     const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
 
     const tz         = rules.timezone       || "America/Chicago";
-    const leadHours  = Number(rules.lead_time_hours) || 4;
+    const leadHours  = Number(rules.lead_time_hours) || 3;
     const satEnabled = String(rules.saturday_start || "").length > 0;
     const sunEnabled = String(rules.sunday_enabled || "").toLowerCase() === "true";
     const mornCap    = Number(rules.morning_capacity   || 3);
@@ -143,7 +143,7 @@ async function handleGetBlocks(req, res) {
     const earliest = new Date(now.getTime() + leadHours * 3600000);
     const blocks   = [];
     let daysChecked = 0;
-    let di          = 0;
+    let di          = -1; // start at 0 = today so same-day blocks can appear
 
     while (daysChecked < limit && di < 90) {
       di++;
