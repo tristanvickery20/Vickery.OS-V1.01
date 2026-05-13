@@ -338,14 +338,21 @@ async function handleCrewNotify(req, res) {
     const session = getCrewSession(req);
     if (!session) return json(res, 401, { ok: false, error: "Not authenticated" });
 
-    const { action, phone, customer_name, booking_id } = await readBody(req);
-    const template = CREW_TEMPLATES[action];
-    if (!template)  return json(res, 400, { ok: false, error: "Unknown action." });
-    if (!phone)     return json(res, 400, { ok: false, error: "Customer phone is required." });
+    const { action, phone, customer_name, booking_id, message } = await readBody(req);
+    if (!phone) return json(res, 400, { ok: false, error: "Customer phone is required." });
 
-    const techName = session.firstName || "Your technician";
-    const body     = buildMessage(template, { tech_name: techName });
-    const sent     = await sendSms(phone, body);
+    let msgBody;
+    if (action === "custom") {
+      const raw = String(message || "").trim();
+      if (!raw) return json(res, 400, { ok: false, error: "Message text is required." });
+      msgBody = raw;
+    } else {
+      const template = CREW_TEMPLATES[action];
+      if (!template) return json(res, 400, { ok: false, error: "Unknown action." });
+      const techName = session.firstName || "Your technician";
+      msgBody = buildMessage(template, { tech_name: techName });
+    }
+    const sent = await sendSms(phone, msgBody);
     console.log(`[crew/notify] booking=${booking_id} action=${action} phone=${phone} sent=${sent}`);
     json(res, 200, { ok: true, sent });
   } catch (err) {

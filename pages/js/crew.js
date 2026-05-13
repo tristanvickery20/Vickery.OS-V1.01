@@ -1000,6 +1000,100 @@ function closeJobDetail() {
   if (typeof _unlockBody === "function") _unlockBody();
 }
 
+// ── Photos grid renderer ──────────────────────────────────────────────────────
+function renderPhotosGrid(urls) {
+  const list = document.getElementById("jdPhotosList");
+  if (!list) return;
+  list.innerHTML = urls.length
+    ? urls.map(url =>
+        `<a href="${esc(url)}" target="_blank" rel="noopener" class="jd-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`
+      ).join("")
+    : `<span class="jd-photos-empty">No photos yet</span>`;
+}
+
+// ── Crew photo upload ─────────────────────────────────────────────────────────
+async function uploadCrewPhoto(file) {
+  const job = _detailJob;
+  if (!job || !file) return;
+  const statusEl = document.getElementById("jdUploadStatus");
+  if (statusEl) { statusEl.textContent = "Uploading…"; statusEl.style.display = "block"; statusEl.style.color = "hsl(220 15% 55%)"; }
+
+  try {
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = e => res(e.target.result.split(",")[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+
+    const r = await fetch("/api/crew/photo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_id:   job.quote_id   || "",
+        booking_id: job.booking_id || "",
+        base64,
+        mime_type: file.type || "image/jpeg",
+      }),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || "Upload failed");
+
+    // Append new photo to the live grid
+    const list = document.getElementById("jdPhotosList");
+    if (list) {
+      const empty = list.querySelector(".jd-photos-empty");
+      if (empty) empty.remove();
+      const a = document.createElement("a");
+      a.href = data.url; a.target = "_blank"; a.rel = "noopener"; a.className = "jd-photo-thumb";
+      a.innerHTML = `<img src="${esc(data.url)}" alt="Job photo" loading="lazy" />`;
+      list.appendChild(a);
+    }
+    // Also update in-memory job so re-opens show new photo
+    if (job.scope_photos) job.scope_photos.push(data.url);
+    else job.scope_photos = [data.url];
+
+    if (statusEl) { statusEl.textContent = "Photo saved!"; statusEl.style.color = "hsl(142 55% 55%)"; setTimeout(() => { statusEl.style.display = "none"; }, 3000); }
+  } catch (err) {
+    if (statusEl) { statusEl.textContent = err.message || "Upload failed — try again"; statusEl.style.color = "hsl(0 65% 55%)"; statusEl.style.display = "block"; }
+  }
+}
+
+// ── Custom SMS to customer ────────────────────────────────────────────────────
+async function sendCustomNotify() {
+  const job = _detailJob;
+  if (!job?.phone) return;
+  const textarea = document.getElementById("notifyCustomText");
+  const btn      = document.getElementById("notifySendCustom");
+  if (!textarea || !btn) return;
+  const msg = (textarea.value || "").trim();
+  if (!msg) { textarea.focus(); return; }
+
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  try {
+    const r = await fetch("/api/crew/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "custom", message: msg, phone: job.phone, customer_name: job.customer_name, booking_id: job.booking_id }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      btn.textContent = "Sent!";
+      btn.classList.add("sent");
+      textarea.value = "";
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove("sent"); btn.disabled = false; }, 3500);
+    } else {
+      showToast(data.error || "Send failed", true);
+      btn.textContent = orig; btn.disabled = false;
+    }
+  } catch {
+    showToast("Network error — try again", true);
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
 async function sendCrewNotify(action, btn) {
   if (!_detailJob?.phone) return;
   const orig = btn.textContent;
@@ -1048,9 +1142,16 @@ function bindJobDetailOverlay() {
     sendCrewNotify("we_are_here", e.currentTarget));
   document.getElementById("notifyRunningLate")?.addEventListener("click", e =>
     sendCrewNotify("running_late", e.currentTarget));
+  document.getElementById("notifySendCustom")?.addEventListener("click", sendCustomNotify);
   document.getElementById("btnMarkComplete")?.addEventListener("click", markJobComplete);
   document.getElementById("btnGenerateInvoice")?.addEventListener("click", generateCrewInvoice);
   document.getElementById("btnSendInvoice")?.addEventListener("click", sendInvoiceBySms);
+  // Photo upload — fire on each file selected
+  document.getElementById("jdPhotoInput")?.addEventListener("change", async e => {
+    const files = Array.from(e.target.files || []);
+    for (const f of files) await uploadCrewPhoto(f);
+    e.target.value = "";
+  });
   bindLineItemButton();
 }
 
@@ -1479,13 +1580,6 @@ function openJobDetail(j) {
     if (items.length === 0 && j.scope_of_work) {
       html += `<div class="scope-plain">${esc(j.scope_of_work)}</div>`;
     }
-    if (photos.length > 0) {
-      html += `<div class="scope-photos-label">Photos</div><div class="scope-photos">`;
-      photos.forEach(url => {
-        html += `<a href="${esc(url)}" target="_blank" rel="noopener" class="scope-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`;
-      });
-      html += `</div>`;
-    }
   } else {
     const notice = clsLabel ? `<div class="scope-status">${esc(clsLabel)}</div>` : "";
     const isOnline = !!j.quote_id;
@@ -1638,21 +1732,17 @@ function openJobDetail(j) {
     }
   }
 
-  // Photos section — shows scope_photos as tappable thumbnails
-  const photosSection  = document.getElementById("jdPhotosSection");
-  const photosList     = document.getElementById("jdPhotosList");
-  const sectionPhotos  = Array.isArray(j.scope_photos) ? j.scope_photos.filter(Boolean) : [];
+  // Photos section — existing job photos + crew upload button
+  const photosSection = document.getElementById("jdPhotosSection");
+  const photosList    = document.getElementById("jdPhotosList");
   if (photosSection && photosList) {
-    if (sectionPhotos.length > 0) {
-      photosList.innerHTML = sectionPhotos.map(url =>
-        `<a href="${esc(url)}" target="_blank" rel="noopener" class="jd-photo-thumb"><img src="${esc(url)}" alt="Job photo" loading="lazy" /></a>`
-      ).join("");
-      photosSection.style.display = "block";
-    } else {
-      photosSection.style.display = "none";
-      photosList.innerHTML = "";
-    }
+    const sectionPhotos = Array.isArray(j.scope_photos) ? j.scope_photos.filter(Boolean) : [];
+    renderPhotosGrid(sectionPhotos);
+    photosSection.style.display = "block";
   }
+  // Reset file input so same file can be re-selected on next job open
+  const photoInput = document.getElementById("jdPhotoInput");
+  if (photoInput) photoInput.value = "";
 
   _detailJob = j;
   document.getElementById("jobDetailOverlay").classList.add("open");

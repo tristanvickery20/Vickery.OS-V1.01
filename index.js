@@ -31,7 +31,7 @@ const { handleCreateQuote } = require("./api/quotes");
 const { handleScheduleSuggest } = require("./api/schedule-suggest");
 const { handleGetAudit } = require("./api/audit");
 const { handleActualsRollup, handleSaveActuals, saveActualsToConfig } = require("./api/actuals-rollup");
-const { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking } = require("./api/crew");
+const { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking, handleCrewPhotoUpload } = require("./api/crew");
 const {
   handleSignup, handleLogin, handleLogout, handleMe,
   handleListStaff, handlePendingCount, handleUpdateStaff,
@@ -667,6 +667,11 @@ const server = http.createServer(async (req, res) => {
     const url = `/uploads/receipts/${fname}`;
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ ok: true, url }));
+  }
+
+  // ── Crew photo upload (crew session required) ─────────────────────────────────
+  if (req.url === "/api/crew/photo" && req.method === "POST") {
+    return handleCrewPhotoUpload(req, res);
   }
 
   // ── Lead materials / pull list (crew session OR CRM auth) ────────────────────

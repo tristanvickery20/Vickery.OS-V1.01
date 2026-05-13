@@ -841,4 +841,65 @@ async function handleGetInvoiceForBooking(req, res) {
   }
 }
 
-module.exports = { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking };
+// ── POST /api/crew/photo — crew-session photo upload ─────────────────────────
+const _crewUploadsDir = require("path").join(__dirname, "../uploads");
+async function handleCrewPhotoUpload(req, res) {
+  try {
+    const session = getCrewSession(req);
+    if (!session) return json(res, 401, { ok: false, error: "Not authenticated" });
+
+    const body = await new Promise((resolve, reject) => {
+      let raw = "";
+      req.on("data", c => (raw += c));
+      req.on("end", () => { try { resolve(JSON.parse(raw || "{}")); } catch (e) { reject(e); } });
+      req.on("error", reject);
+    });
+    const { quote_id = "", booking_id = "", base64, mime_type = "image/jpeg" } = body;
+    if (!base64) return json(res, 400, { ok: false, error: "base64 required" });
+
+    const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic"]);
+    const EXT_MAP2 = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic" };
+    const type = mime_type.toLowerCase();
+    if (!ALLOWED.has(type)) return json(res, 400, { ok: false, error: "Unsupported image type" });
+
+    const fs = require("fs");
+    const buf = Buffer.from(base64, "base64");
+    if (buf.length > 10 * 1024 * 1024) return json(res, 400, { ok: false, error: "File too large (max 10 MB)" });
+    if (!fs.existsSync(_crewUploadsDir)) fs.mkdirSync(_crewUploadsDir, { recursive: true });
+
+    const ext  = EXT_MAP2[type] || "jpg";
+    const ref  = (quote_id || booking_id || "job").replace(/[^A-Z0-9-]/gi, "");
+    const fname = `crew-${ref}-${Date.now()}.${ext}`;
+    fs.writeFileSync(require("path").join(_crewUploadsDir, fname), buf);
+    const fileUrl = `/uploads/${fname}`;
+
+    // Log to QuoteSnapshots if we have a quote_id so the office can see it
+    if (quote_id || booking_id) {
+      try {
+        const sheets = await getSheetsClient();
+        const crmId  = process.env.CRM_SHEET_ID;
+        const techName = [session.firstName, session.lastName].filter(Boolean).join(" ") || "Crew";
+        const noteText = `Crew photo by ${techName}${booking_id ? " · " + booking_id : ""}`;
+        const newEvtId = "EV-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+        const row = [
+          newEvtId, quote_id, new Date().toISOString(), "crew_photo_uploaded",
+          "", "[]", "[]", "", "", "", "", "", "",
+          "", "", "crew_photo", "", "", "", "", fileUrl,
+          "", booking_id, "", "", "", "", "", "", "", noteText,
+        ];
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: crmId,
+          range: "QuoteSnapshots!A:A",
+          valueInputOption: "RAW",
+          insertDataOption: "INSERT_ROWS",
+          requestBody: { majorDimension: "ROWS", values: [row] },
+        });
+      } catch (_) {}
+    }
+    json(res, 200, { ok: true, url: fileUrl });
+  } catch (err) {
+    json(res, 500, { ok: false, error: err.message });
+  }
+}
+
+module.exports = { handleGetCrewMembers, handleGetTodayJobs, handleGenerateInvoice, handleGetInvoiceForBooking, handleCrewPhotoUpload };

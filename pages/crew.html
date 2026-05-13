@@ -525,7 +525,67 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      margin-bottom: 10px;
     }
+    .jd-photos-empty {
+      font-size: 13px;
+      color: hsl(220 15% 40%);
+      font-style: italic;
+    }
+    .btn-upload-photo {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: 10px;
+      border: 1.5px dashed hsl(220 10% 30%);
+      background: hsl(220 10% 13%);
+      color: hsl(220 15% 62%);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      user-select: none;
+      margin-top: 2px;
+    }
+    .btn-upload-photo:active { background: hsl(220 10% 17%); border-color: hsl(219 74% 55%); color: hsl(219 74% 70%); }
+    .notify-custom-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      margin-top: 10px;
+    }
+    .notify-custom-input {
+      flex: 1;
+      background: hsl(220 10% 13%);
+      border: 1.5px solid hsl(220 10% 24%);
+      border-radius: 10px;
+      color: hsl(220 15% 88%);
+      font-size: 14px;
+      font-family: inherit;
+      padding: 10px 12px;
+      resize: none;
+      line-height: 1.45;
+    }
+    .notify-custom-input:focus { outline: none; border-color: hsl(219 74% 50%); }
+    .btn-notify-custom {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      background: hsl(219 74% 40%);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .btn-notify-custom:hover { background: hsl(219 74% 46%); }
+    .btn-notify-custom.sent { background: hsl(142 55% 35%); }
+    .btn-notify-custom:disabled { opacity: .55; cursor: default; }
     .jd-photo-thumb {
       display: block;
       width: 88px;
@@ -1421,9 +1481,15 @@
       <div id="jdMaterialsList" class="jd-pull-list"></div>
     </div>
 
-    <div class="jd-section" id="jdPhotosSection" style="display:none;">
+    <div class="jd-section" id="jdPhotosSection">
       <div class="jd-label">Photos</div>
       <div id="jdPhotosList" class="jd-photos-grid"></div>
+      <label class="btn-upload-photo" id="jdUploadPhotoLabel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Add Photo
+        <input type="file" id="jdPhotoInput" accept="image/*" capture="environment" multiple style="display:none;">
+      </label>
+      <div id="jdUploadStatus" style="display:none;font-size:13px;margin-top:6px;font-weight:600;"></div>
     </div>
 
     <div class="jd-section" id="jdNotifySection" style="display:none;">
@@ -1432,6 +1498,10 @@
         <button class="btn-notify" id="notifyOnTheWay">On the way</button>
         <button class="btn-notify" id="notifyWeAreHere">We're here</button>
         <button class="btn-notify" id="notifyRunningLate">Running late</button>
+      </div>
+      <div class="notify-custom-row">
+        <textarea id="notifyCustomText" class="notify-custom-input" rows="2" placeholder="Type a custom message to the customer…" maxlength="300"></textarea>
+        <button class="btn-notify-custom" id="notifySendCustom">Send</button>
       </div>
     </div>
 
