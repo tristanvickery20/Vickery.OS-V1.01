@@ -1032,6 +1032,7 @@ async function uploadCrewPhoto(file) {
       body: JSON.stringify({
         quote_id:   job.quote_id   || "",
         booking_id: job.booking_id || "",
+        lead_id:    job.lead_id    || "",
         base64,
         mime_type: file.type || "image/jpeg",
       }),

@@ -33,17 +33,21 @@ async function handleBackfillPhotoAttachments(req, res) {
     const PHOTO_EVENTS = new Set(["photo_uploaded", "crew_photo_uploaded"]);
     const isPhotoUrl = u => /^\/uploads\//.test(u) || /^https?:\/\//.test(u);
 
-    // Gather candidate (quote_id, url, event_type) triples
+    // Gather candidate (entity_id, url, event_type) triples.
+    // Prefer lead_id → quote_id as entity_id so the CRM lead detail card can find them.
     const candidates = [];
     for (const row of snapData) {
       const evtType = sg(row, "event_type");
       if (!PHOTO_EVENTS.has(evtType)) continue;
-      // URL is stored in the "notes" column (col index 20, header "notes")
+      // URL is stored in the "notes" column
       const url = sg(row, "notes");
       if (!url || !isPhotoUrl(url)) continue;
+      // Use lead_id if present, else quote_id — these are what loadPhotosCard queries by
+      const leadId  = sg(row, "lead_id");
       const quoteId = sg(row, "quote_id");
-      if (!quoteId) continue;
-      candidates.push({ quote_id: quoteId, file_url: url, event_type: evtType });
+      const entityId = leadId || quoteId;
+      if (!entityId) continue; // no resolvable ID — skip
+      candidates.push({ entity_id: entityId, file_url: url, event_type: evtType });
     }
 
     if (!candidates.length) return json(res, 200, { ok: true, created: 0, skipped: 0, message: "No photo events found in QuoteSnapshots." });
@@ -66,12 +70,12 @@ async function handleBackfillPhotoAttachments(req, res) {
     // 3. Write missing ones
     let created = 0;
     let skipped = 0;
-    for (const { quote_id, file_url, event_type } of candidates) {
+    for (const { entity_id, file_url, event_type } of candidates) {
       if (existingUrls.has(file_url)) { skipped++; continue; }
       const isCrew = event_type === "crew_photo_uploaded";
       await appendAttachmentRow({
         entity_type: "lead",
-        entity_id: quote_id,
+        entity_id,
         file_url,
         file_type: "image",
         category: isCrew ? "after" : "before",

@@ -856,7 +856,7 @@ async function handleCrewPhotoUpload(req, res) {
       req.on("end", () => { try { resolve(JSON.parse(raw || "{}")); } catch (e) { reject(e); } });
       req.on("error", reject);
     });
-    const { quote_id = "", booking_id = "", base64, mime_type = "image/jpeg" } = body;
+    const { quote_id = "", booking_id = "", lead_id = "", base64, mime_type = "image/jpeg" } = body;
     if (!base64) return json(res, 400, { ok: false, error: "base64 required" });
 
     const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic"]);
@@ -898,8 +898,10 @@ async function handleCrewPhotoUpload(req, res) {
         });
       } catch (_) {}
     }
-    // Mirror to Attachments sheet so CRM lead detail Photos card can display it
-    const attachEntityId = quote_id || booking_id;
+    // Mirror to Attachments sheet so CRM lead detail Photos card can display it.
+    // Prefer lead_id or quote_id — the lead detail card queries by those two values.
+    // Fall back to booking_id only if nothing better is available.
+    const attachEntityId = lead_id || quote_id || booking_id;
     if (attachEntityId) {
       appendAttachmentRow({
         entity_type: "lead",
