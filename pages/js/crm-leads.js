@@ -34,6 +34,71 @@
     return s;
   }
 
+  // Build a compact multi-checkbox assignee picker for a table cell.
+  // Returns { el, getValue(), setValue(name) }
+  function makeAssigneeChips(techs, currentAssigned) {
+    const selNames = new Set(
+      String(currentAssigned || "").split(",").map(s => s.trim()).filter(Boolean)
+    );
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-wrap:wrap;gap:3px;min-width:120px;";
+
+    techs.forEach(t => {
+      const name = t.name || t.id || "";
+      const checked = selNames.has(name);
+      const lbl = document.createElement("label");
+      lbl.style.cssText = `display:inline-flex;align-items:center;gap:3px;padding:2px 8px;` +
+        `border-radius:99px;border:1.5px solid ${checked ? "hsl(220 80% 45%)" : "hsl(220 15% 80%)"};` +
+        `cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;` +
+        `background:${checked ? "hsl(220 80% 93%)" : "transparent"};` +
+        `color:${checked ? "hsl(220 60% 30%)" : "hsl(220 10% 45%)"};`;
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = name;
+      cb.checked = checked;
+      cb.style.cssText = "accent-color:hsl(220 80% 45%);width:auto;margin:0;";
+      cb.addEventListener("change", () => {
+        lbl.style.borderColor  = cb.checked ? "hsl(220 80% 45%)" : "hsl(220 15% 80%)";
+        lbl.style.background   = cb.checked ? "hsl(220 80% 93%)" : "transparent";
+        lbl.style.color        = cb.checked ? "hsl(220 60% 30%)" : "hsl(220 10% 45%)";
+      });
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(name));
+      wrap.appendChild(lbl);
+    });
+
+    if (!techs.length) {
+      const note = document.createElement("span");
+      note.style.cssText = "font-size:11px;color:hsl(220 10% 55%);";
+      note.textContent = "(no crew)";
+      wrap.appendChild(note);
+    }
+
+    return {
+      el: wrap,
+      getValue() {
+        return Array.from(wrap.querySelectorAll("input[type=checkbox]:checked"))
+          .map(cb => cb.value).filter(Boolean).join(", ");
+      },
+      // Select a tech by id or name (used by schedule suggest onApply)
+      setValue(idOrName) {
+        const match = techs.find(t => t.id === idOrName || t.name === idOrName);
+        const targetName = match ? (match.name || match.id) : idOrName;
+        wrap.querySelectorAll("input[type=checkbox]").forEach(cb => {
+          if (cb.value === targetName) {
+            cb.checked = true;
+            const lbl2 = cb.closest("label");
+            if (lbl2) {
+              lbl2.style.borderColor = "hsl(220 80% 45%)";
+              lbl2.style.background  = "hsl(220 80% 93%)";
+              lbl2.style.color       = "hsl(220 60% 30%)";
+            }
+          }
+        });
+      },
+    };
+  }
+
   async function render() {
     statusEl.textContent = "Loading...";
     tbody.innerHTML = "";
@@ -63,7 +128,7 @@
         dateInput.type = "datetime-local";
         dateInput.value = lead.scheduled_date || "";
 
-        const techSelect = H.makeTechSelect(techs, lead.assigned_to || "");
+        const assigneeChips = makeAssigneeChips(techs, lead.assigned_to || "");
         const durationInput = H.numInput(lead.duration_minutes, "15");
         const depositReceivedInput = H.numInput(lead.deposit_received, "1");
 
@@ -97,7 +162,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   id: lead.id, scheduled_date: dateInput.value,
-                  assigned_to: techSelect.value,
+                  assigned_to: assigneeChips.getValue(),
                   duration_minutes: Number(durationInput.value || 0),
                   schedule_window: lead.schedule_window || "",
                   schedule_preference: lead.schedule_preference || "",
@@ -117,7 +182,7 @@
                 body: JSON.stringify({
                   id: lead.id, status: statusSelect.value,
                   scheduled_date: dateInput.value,
-                  assigned_to: techSelect.value,
+                  assigned_to: assigneeChips.getValue(),
                   duration_minutes: Number(durationInput.value || 0),
                   deposit_received: Number(depositReceivedInput.value || 0),
                   deposit_override: overrideCheck.checked,
@@ -160,7 +225,7 @@
         tr.children[6].appendChild(depositReceivedInput);
         tr.children[8].appendChild(statusSelect);
         tr.children[9].appendChild(dateInput);
-        tr.children[10].appendChild(techSelect);
+        tr.children[10].appendChild(assigneeChips.el);
         tr.children[11].appendChild(durationInput);
         tr.children[12].appendChild(overrideCheck);
         tr.children[13].appendChild(invoicedInput);
@@ -176,7 +241,7 @@
           appendEl: (el) => { suggestMsg.appendChild(el); },
           onApply: (techId, startTime) => {
             dateInput.value = startTime;
-            techSelect.value = techId;
+            assigneeChips.setValue(techId);
           },
         });
 
