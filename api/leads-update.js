@@ -486,6 +486,44 @@ async function handleUpdateLead(req, res) {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
 
+      // Sync assigned_crew_names on the Booking row when assigned_to changes (fire-and-forget)
+      if (data.assigned_to !== undefined && i_assigned >= 0 &&
+          String(oldSnap[i_assigned] || "") !== String(row[i_assigned] || "")) {
+        const newAssigned = String(row[i_assigned] || "");
+        setImmediate(async () => {
+          try {
+            const { getSheetsClient: _gsc2, colToLetter: _ctl2, invalidateCache: _ic2 } = require("../lib/sheets");
+            const _sheets3 = await _gsc2();
+            const bkResp = await _sheets3.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" });
+            const bkRows = bkResp.data.values || [];
+            if (bkRows.length < 2) return;
+            const bkHdrs = bkRows[0] || [];
+            const bkIdx  = Object.fromEntries(bkHdrs.map((h, i2) => [String(h).trim(), i2]));
+            const lidIdx = bkIdx["lead_id"]            ?? -1;
+            const atIdx  = bkIdx["assigned_to"]        ?? -1;
+            const acnIdx = bkIdx["assigned_crew_names"] ?? -1;
+            if (lidIdx < 0 || (atIdx < 0 && acnIdx < 0)) return;
+            for (let bi = 1; bi < bkRows.length; bi++) {
+              if (String(bkRows[bi]?.[lidIdx] || "").trim() !== id) continue;
+              const bkRow = [...(bkRows[bi] || [])];
+              while (bkRow.length < bkHdrs.length) bkRow.push("");
+              if (atIdx  >= 0) bkRow[atIdx]  = newAssigned;
+              if (acnIdx >= 0) bkRow[acnIdx] = newAssigned;
+              const endC = _ctl2(bkHdrs.length - 1);
+              await _sheets3.spreadsheets.values.update({
+                spreadsheetId, range: `Bookings!A${bi + 1}:${endC}${bi + 1}`,
+                valueInputOption: "RAW", requestBody: { values: [bkRow.slice(0, bkHdrs.length)] },
+              });
+              _ic2(spreadsheetId, "Bookings");
+              console.log(`[leads-update] Synced assigned_crew_names="${newAssigned}" to Booking row ${bi + 1} for lead ${id}`);
+              break;
+            }
+          } catch (bkErr) {
+            console.error("[leads-update] Booking assignee sync error:", bkErr.message);
+          }
+        });
+      }
+
       // Re-score lead quality on status change (fire-and-forget)
       setImmediate(async () => {
         try {

@@ -512,12 +512,47 @@
           <label>Time Window<input id="ldSchedWindow" type="text" class="ld-status-select" placeholder="Morning / Afternoon"></label>
           <label>Schedule Preference<input id="ldSchedPref" type="text" class="ld-status-select" placeholder="Customer preference"></label>
           <label>Duration Minutes<input id="ldSchedDuration" type="number" min="0" max="1440" class="ld-status-select"></label>
-          <label>Assigned To / Technician<input id="ldSchedAssigned" type="text" class="ld-status-select" placeholder="Technician name"></label>
+          <label style="grid-column:1/-1;">Assigned To (select one or more)
+            <div id="ldSchedAssignChecks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;padding:8px;border:1px solid hsl(var(--border));border-radius:8px;min-height:38px;max-height:130px;overflow-y:auto;">
+              <span style="font-size:12px;color:hsl(var(--muted-foreground));">Loading…</span>
+            </div>
+          </label>
         </div>
         <div id="ldSchedErr" style="display:none;color:hsl(0 70% 45%);font-size:12px;margin-top:8px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;"><button class="ld-btn" id="ldSchedCancel">Cancel</button><button class="ld-btn ld-btn-primary" id="ldSchedSave">Save</button></div>
       </div>`;
     document.body.appendChild(div);
+  }
+
+  function renderSchedAssignChecks(wrapEl, currentAssignees) {
+    wrapEl.innerHTML = '<span style="font-size:12px;color:hsl(var(--muted-foreground));">Loading…</span>';
+    fetch('/api/techs')
+      .then(r => r.json())
+      .then(data => {
+        const techs = data.techs || data.staff || [];
+        if (!techs.length) {
+          wrapEl.innerHTML = '<span style="font-size:12px;color:hsl(var(--muted-foreground));">No crew members found</span>';
+          return;
+        }
+        const selSet = new Set((currentAssignees || '').split(',').map(s => s.trim()).filter(Boolean));
+        wrapEl.innerHTML = techs.map(t => {
+          const name = t.name || ((t.firstName || '') + ' ' + (t.lastName || '')).trim();
+          const sel  = selSet.has(name);
+          return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;border:1.5px solid ${sel ? 'hsl(var(--primary))' : 'hsl(var(--border))'};cursor:pointer;font-size:12px;font-weight:600;background:${sel ? 'hsl(var(--primary)/.1)' : 'transparent'};color:${sel ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'};">
+            <input type="checkbox" class="ld-assign-cb" value="${esc(name)}"${sel ? ' checked' : ''} style="accent-color:hsl(var(--primary));"> ${esc(name)}
+          </label>`;
+        }).join('');
+      })
+      .catch(() => {
+        wrapEl.innerHTML = `<input type="text" class="ld-assign-fallback ld-status-select" placeholder="Technician name(s)" value="${esc(currentAssignees || '')}" style="width:100%;margin:0;">`;
+      });
+  }
+
+  function getSchedAssignedTo() {
+    const checks = document.querySelectorAll('#ldSchedAssignChecks .ld-assign-cb:checked');
+    if (checks.length) return Array.from(checks).map(cb => cb.value).join(', ');
+    const fallback = document.querySelector('#ldSchedAssignChecks .ld-assign-fallback');
+    return fallback ? fallback.value.trim() : '';
   }
 
   function openScheduleModal(lead) {
@@ -528,8 +563,8 @@
     document.getElementById('ldSchedWindow').value = lead.schedule_window || '';
     document.getElementById('ldSchedPref').value = lead.schedule_preference || '';
     document.getElementById('ldSchedDuration').value = lead.duration_minutes || '';
-    document.getElementById('ldSchedAssigned').value = lead.assigned_to || '';
     document.getElementById('ldSchedErr').style.display = 'none';
+    renderSchedAssignChecks(document.getElementById('ldSchedAssignChecks'), lead.assigned_to || '');
     modal.style.display = 'flex';
     const close = () => { modal.style.display = 'none'; };
     document.getElementById('ldScheduleBackdrop').onclick = close;
@@ -538,7 +573,8 @@
       const btn = document.getElementById('ldSchedSave');
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        const body = { id: lead.id, scheduled_date: document.getElementById('ldSchedDate').value, schedule_window: document.getElementById('ldSchedWindow').value.trim(), schedule_preference: document.getElementById('ldSchedPref').value.trim(), duration_minutes: Number(document.getElementById('ldSchedDuration').value || 0), assigned_to: document.getElementById('ldSchedAssigned').value.trim() };
+        const assignedTo = getSchedAssignedTo();
+        const body = { id: lead.id, scheduled_date: document.getElementById('ldSchedDate').value, schedule_window: document.getElementById('ldSchedWindow').value.trim(), schedule_preference: document.getElementById('ldSchedPref').value.trim(), duration_minutes: Number(document.getElementById('ldSchedDuration').value || 0), assigned_to: assignedTo };
         const r = await window.Api.fetchJson('/api/leads/schedule', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!r.ok) throw new Error(r.error || 'Schedule save failed');
         Object.assign(lead, body, { status: 'Scheduled' });
