@@ -530,36 +530,50 @@
       .then(r => r.json())
       .then(data => {
         const techs = data.techs || data.staff || [];
+        wrapEl.innerHTML = '';
         if (!techs.length) {
-          wrapEl.innerHTML = '<span style="font-size:12px;color:hsl(var(--muted-foreground));">No crew members found</span>';
+          const msg = document.createElement('span');
+          msg.style.cssText = 'font-size:12px;color:hsl(var(--muted-foreground));';
+          msg.textContent = 'No crew members found';
+          wrapEl.appendChild(msg);
           return;
         }
         const selSet = new Set((currentAssignees || '').split(',').map(s => s.trim()).filter(Boolean));
-        wrapEl.innerHTML = techs.map(t => {
+        techs.forEach(t => {
           const name = t.name || ((t.firstName || '') + ' ' + (t.lastName || '')).trim();
           const sel  = selSet.has(name);
-          return `<label class="ld-assign-pill${sel ? ' ld-assign-pill-sel' : ''}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;border:1.5px solid ${sel ? 'hsl(var(--primary))' : 'hsl(var(--border))'};cursor:pointer;font-size:12px;font-weight:600;background:${sel ? 'hsl(var(--primary)/.1)' : 'transparent'};color:${sel ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'};">
-            <input type="checkbox" class="ld-assign-cb" value="${esc(name)}"${sel ? ' checked' : ''} style="accent-color:hsl(var(--primary));"> ${esc(name)}
-          </label>`;
-        }).join('');
-        // Update pill visual state whenever a checkbox changes
-        wrapEl.addEventListener('change', function(e) {
-          if (!e.target.classList.contains('ld-assign-cb')) return;
-          const lbl = e.target.closest('label');
-          if (!lbl) return;
-          if (e.target.checked) {
-            lbl.style.borderColor  = 'hsl(var(--primary))';
-            lbl.style.background   = 'hsl(var(--primary)/.1)';
-            lbl.style.color        = 'hsl(var(--primary))';
-          } else {
-            lbl.style.borderColor  = 'hsl(var(--border))';
-            lbl.style.background   = 'transparent';
-            lbl.style.color        = 'hsl(var(--foreground))';
-          }
+          const lbl  = document.createElement('label');
+          lbl.style.cssText = `display:inline-flex;align-items:center;gap:5px;padding:4px 12px;` +
+            `border-radius:99px;border:1.5px solid ${sel ? 'hsl(var(--primary))' : 'hsl(var(--border))'};` +
+            `cursor:pointer;font-size:12px;font-weight:600;` +
+            `background:${sel ? 'hsl(var(--primary)/.1)' : 'transparent'};` +
+            `color:${sel ? 'hsl(var(--primary))' : 'hsl(var(--foreground))'}; margin:2px;`;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.className = 'ld-assign-cb';
+          cb.value = name;           // raw string — no HTML escaping needed on DOM .value
+          cb.checked = sel;
+          cb.style.cssText = 'accent-color:hsl(var(--primary));';
+          // Individual listener per checkbox — no stacking on the wrapper element
+          cb.addEventListener('change', () => {
+            lbl.style.borderColor = cb.checked ? 'hsl(var(--primary))' : 'hsl(var(--border))';
+            lbl.style.background  = cb.checked ? 'hsl(var(--primary)/.1)' : 'transparent';
+            lbl.style.color       = cb.checked ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
+          });
+          lbl.appendChild(cb);
+          lbl.appendChild(document.createTextNode(' ' + name));  // raw text node — XSS-safe
+          wrapEl.appendChild(lbl);
         });
       })
       .catch(() => {
-        wrapEl.innerHTML = `<input type="text" class="ld-assign-fallback ld-status-select" placeholder="Technician name(s)" value="${esc(currentAssignees || '')}" style="width:100%;margin:0;">`;
+        wrapEl.innerHTML = '';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'ld-assign-fallback ld-status-select';
+        inp.placeholder = 'Technician name(s)';
+        inp.value = currentAssignees || '';   // raw .value — no HTML escaping needed
+        inp.style.cssText = 'width:100%;margin:0;';
+        wrapEl.appendChild(inp);
       });
   }
 
