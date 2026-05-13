@@ -229,6 +229,36 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, filePath, mime);
   }
 
+  // ── SEO: robots.txt + sitemap.xml ────────────────────────────────────────────
+  if (req.url === "/robots.txt") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end(
+      "User-agent: *\nAllow: /\nDisallow: /crm/\nDisallow: /api/\nDisallow: /login\nDisallow: /people/\n\nSitemap: https://vickery-os-v-101.replit.app/sitemap.xml\n"
+    );
+  }
+
+  if (req.url === "/sitemap.xml") {
+    const base = "https://vickery-os-v-101.replit.app";
+    const today = new Date().toISOString().slice(0, 10);
+    const urls = [
+      { loc: "/",             priority: "1.0", changefreq: "weekly"  },
+      { loc: "/services",     priority: "0.9", changefreq: "monthly" },
+      { loc: "/service-area", priority: "0.9", changefreq: "monthly" },
+      { loc: "/why-vickery",  priority: "0.8", changefreq: "monthly" },
+      { loc: "/reviews",      priority: "0.8", changefreq: "weekly"  },
+      { loc: "/financing",    priority: "0.7", changefreq: "monthly" },
+      { loc: "/contact",      priority: "0.7", changefreq: "monthly" },
+      { loc: "/referral",     priority: "0.6", changefreq: "monthly" },
+      { loc: "/about",        priority: "0.6", changefreq: "monthly" },
+      { loc: "/quote",        priority: "0.8", changefreq: "monthly" },
+    ];
+    const urlTags = urls.map(u =>
+      `  <url>\n    <loc>${base}${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`
+    ).join("\n");
+    res.writeHead(200, { "Content-Type": "application/xml" });
+    return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlTags}\n</urlset>\n`);
+  }
+
   // PUBLIC PAGES
   if (req.url === "/") {
     return serveFile(res, path.join(__dirname, "pages/site-home.html"), "text/html");
