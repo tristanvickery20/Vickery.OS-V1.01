@@ -122,17 +122,21 @@ function buildScopeItems(selectedOptionsJson, selectedAddonsJson, modulesById) {
   return { items, qty, classification, addons, photos };
 }
 
-// Extract photo URLs from a module answer — supports string URL, JSON array, or comma list
+// Extract photo URLs from a module answer — supports string URL, JSON array, or comma list.
+// Accepts both absolute https:// URLs and relative /uploads/ paths (locally saved files).
 function extractPhotoUrls(value) {
   if (!value) return [];
   const s = String(value).trim();
+  const isPhotoUrl = u => /^https?:\/\//.test(u) || /^\/uploads\//.test(u);
   // JSON array of URLs
   try {
     const arr = JSON.parse(s);
-    if (Array.isArray(arr)) return arr.map(String).filter(u => /^https?:\/\//.test(u));
+    if (Array.isArray(arr)) return arr.map(String).filter(isPhotoUrl);
   } catch {}
+  // Single value that is itself a URL
+  if (isPhotoUrl(s)) return [s];
   // Comma-separated URLs
-  return s.split(",").map(u => u.trim()).filter(u => /^https?:\/\//.test(u));
+  return s.split(",").map(u => u.trim()).filter(isPhotoUrl);
 }
 
 async function handleGetCrewMembers(req, res) {
@@ -244,7 +248,9 @@ async function handleGetTodayJobs(req, res) {
     const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 
     // Build QuoteSnapshots lookup: quote_id → snapshot (prefer "locked" rows)
-    const snapshotMap = {};
+    // Also collect uploaded photo URLs from photo_uploaded event rows.
+    const snapshotMap  = {};
+    const uploadedPhotosByQuoteId = {}; // quote_id → string[]
     if (quoteRows.length > 1) {
       const [qHeaders, ...qData] = quoteRows;
       const qi = Object.fromEntries(qHeaders.map((h, i) => [h, i]));
@@ -252,6 +258,17 @@ async function handleGetTodayJobs(req, res) {
         const qid     = String(r[qi["quote_id"]   ?? -1] ?? "").trim();
         const evtType = String(r[qi["event_type"] ?? -1] ?? "").trim();
         if (!qid) return;
+
+        // photo_uploaded rows store the local file URL in the "notes" column
+        if (evtType === "photo_uploaded") {
+          const url = String(r[qi["notes"] ?? -1] ?? "").trim();
+          if (url && (/^\/uploads\//.test(url) || /^https?:\/\//.test(url))) {
+            if (!uploadedPhotosByQuoteId[qid]) uploadedPhotosByQuoteId[qid] = [];
+            uploadedPhotosByQuoteId[qid].push(url);
+          }
+          return;
+        }
+
         const entry = {
           selected_options_json: String(r[qi["selected_options_json"] ?? -1] ?? "").trim(),
           selected_addons_json:  String(r[qi["selected_addons_json"]  ?? -1] ?? "").trim(),
@@ -357,6 +374,20 @@ async function handleGetTodayJobs(req, res) {
           snap.selected_addons_json,
           modulesById,
         );
+
+        // Merge in uploaded photos from photo_uploaded snapshot events (stored
+        // as /uploads/ paths in the "notes" column of those rows).
+        const extraPhotos = [
+          ...(uploadedPhotosByQuoteId[qid] || []),
+          ...(leadRec && leadRec.last_quote_id && leadRec.last_quote_id !== qid
+            ? (uploadedPhotosByQuoteId[leadRec.last_quote_id] || [])
+            : []),
+        ];
+        if (extraPhotos.length) {
+          // Deduplicate against photos already found in selected_options_json
+          const seen = new Set(scopeResult.photos);
+          extraPhotos.forEach(u => { if (!seen.has(u)) { seen.add(u); scopeResult.photos.push(u); } });
+        }
 
         const scopeRaw     = get("scope_of_work");
         const bookingNotes = get("notes");
