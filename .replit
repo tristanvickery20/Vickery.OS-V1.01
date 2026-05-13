@@ -45,3 +45,6 @@ TRACCAR_URL = "http://157.230.184.147:8082"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 60000
+
+[deployment]
+deploymentTarget = "cloudrun"
