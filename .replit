@@ -47,4 +47,5 @@ path = "scripts/post-merge.sh"
 timeoutMs = 60000
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+run = ["node", "index.js"]
