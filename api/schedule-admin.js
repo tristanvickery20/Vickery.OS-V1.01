@@ -1,10 +1,14 @@
 // api/schedule-admin.js
 // GET /api/schedule/bookings — admin endpoint, returns all bookings from Bookings sheet.
 // Auth-protected (behind requireAuth in index.js routing order).
+//
+// Leads is the canonical lifecycle row. Bookings remains the scheduler/capacity
+// table, then gets overlaid with Lead data before the CRM sees it.
 
 const { getSheetsClient } = require("../lib/sheets");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
 const { hrSpreadsheetId }  = require("../lib/hrSheetClient");
+const { enrichBookingsFromLeads } = require("../lib/leadLifecycle");
 
 const SPREADSHEET_ID    = () => process.env.CRM_SHEET_ID;
 const HR_SPREADSHEET_ID = () => hrSpreadsheetId();
@@ -23,12 +27,16 @@ function rowsToObjects(rows) {
 async function handleGetBookings(req, res) {
   try {
     await ensureTabHeaders("Bookings");
+    await ensureTabHeaders("Leads");
+
     const sheets = await getSheetsClient();
+    const spreadsheetId = SPREADSHEET_ID();
     const [r, staffResp] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID(), range: "Bookings!A:Z" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
       sheets.spreadsheets.values.get({ spreadsheetId: HR_SPREADSHEET_ID(), range: "Staff!A:Z" }).catch(() => ({ data: { values: [] } })),
     ]);
-    const bookings = rowsToObjects(r.data.values || []);
+
+    let bookings = rowsToObjects(r.data.values || []);
     const staffRows = staffResp.data.values || [];
     const staffMap = {};
     if (staffRows.length > 1) {
@@ -40,10 +48,14 @@ async function handleGetBookings(req, res) {
         if (sid) staffMap[sid] = name || sid;
       });
     }
+
     bookings.forEach((b) => {
       const ids = String(b.assigned_tech_ids || b.assigned_tech_id || "").split(",").map(s => s.trim()).filter(Boolean);
       b.assigned_crew_names = ids.map(id => staffMap[id] || id).join(", ");
     });
+
+    // Canonical overlay: customer/job/status/assignment fields come from Leads.
+    bookings = await enrichBookingsFromLeads({ sheets, spreadsheetId, bookings });
 
     // Optional filter: ?status=confirmed
     const url    = new URL(req.url, "http://localhost");
