@@ -6,9 +6,13 @@
 //   - unscheduled[]: bookings with no scheduled_datetime
 //   - staff[]      : active Staff rows for Day/Dispatch view
 //   - timezone     : from SchedulerRules (default America/Chicago)
+//
+// Leads is the canonical lifecycle row. Bookings stays as scheduler/capacity data,
+// then gets overlaid with Lead customer/job/assignment data before rendering.
 
 const { getSheetsClient }  = require("../lib/sheets");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
+const { enrichBookingsFromLeads } = require("../lib/leadLifecycle");
 
 const SPREADSHEET_ID = () => process.env.CRM_SHEET_ID;
 
@@ -30,13 +34,10 @@ function rowsToObjects(rows) {
 function normalizeToUtc(str, tz) {
   if (!str) return str;
   const s = String(str).trim();
-  // Already explicit UTC or has a UTC offset — leave as-is
   if (s.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(s)) return s;
   try {
-    // Parse treating the naive time as if it were UTC to get the raw milliseconds
     const naive = new Date(s.replace(" ", "T") + "Z");
     if (isNaN(naive.getTime())) return s;
-    // Find what this UTC instant looks like in the target timezone
     const fmtOpts = {
       timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
@@ -44,9 +45,7 @@ function normalizeToUtc(str, tz) {
     const p = Object.fromEntries(
       new Intl.DateTimeFormat("en-US", fmtOpts).formatToParts(naive).map(x => [x.type, x.value])
     );
-    // Build a UTC Date that represents that same moment-in-TZ
     const tzEquiv = new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`);
-    // Offset = how far the TZ-display is from what we assumed (UTC)
     const offset = naive.getTime() - tzEquiv.getTime();
     return new Date(naive.getTime() + offset).toISOString();
   } catch { return s; }
@@ -81,13 +80,14 @@ function toLocalMinute(isoStr, tz) {
 
 function shapeBooking(b, tz) {
   const dtRaw = b.scheduled_datetime ? String(b.scheduled_datetime).trim() : "";
-  const dt    = dtRaw ? normalizeToUtc(dtRaw, tz) : "";   // canonical UTC ISO
+  const dt    = dtRaw ? normalizeToUtc(dtRaw, tz) : "";
   const isScheduled = dt.length > 0;
   const localDate = isScheduled ? toLocalDate(dt, tz) : "";
   const localHour = isScheduled ? toLocalHour(dt, tz) : 0;
   const localMin  = isScheduled ? toLocalMinute(dt, tz) : 0;
   return {
     booking_id:           b.booking_id   || "",
+    lead_id:              b.lead_id      || "",
     quote_id:             b.quote_id     || "",
     created_at:           b.created_at   || "",
     scheduled_datetime:   dt,
@@ -95,6 +95,7 @@ function shapeBooking(b, tz) {
     address:              b.address      || "",
     customer_name:        b.customer_name || "",
     status:               (b.status      || "pending").toLowerCase(),
+    lead_status:          b.lead_status  || "",
     schedule_block:       b.schedule_block || "",
     job_type_id:          b.job_type_id  || "",
     final_price:          b.final_price  || "",
@@ -105,6 +106,7 @@ function shapeBooking(b, tz) {
     is_continuation:      String(b.is_continuation || "").toLowerCase() === "true",
     assigned_tech_id:     b.assigned_tech_id || "",
     assigned_tech_ids:    b.assigned_tech_ids || "",
+    assigned_crew_names:  b.assigned_crew_names || "",
     assigned_tech_name:   "",
     assigned_tech_names:  [],
     lat:                  b.lat ? parseFloat(b.lat) : null,
@@ -125,6 +127,7 @@ async function handleGetCalendar(req, res) {
     const id     = SPREADSHEET_ID();
 
     await ensureTabHeaders("Bookings");
+    await ensureTabHeaders("Leads");
 
     let staffError = null;
     const [rulesRes, bookingsRes, staffRes] = await Promise.all([
@@ -145,10 +148,10 @@ async function handleGetCalendar(req, res) {
     const rules     = Object.fromEntries(rulesHdrs.map((h, i) => [h, rulesData[i] || ""]));
     const tz        = rules.timezone || "America/Chicago";
 
-    const rawBookings = rowsToObjects(bookingsRes.data.values || []);
-    const rawStaff    = rowsToObjects(staffRes.data.values   || []);
+    let rawBookings = rowsToObjects(bookingsRes.data.values || []);
+    rawBookings = await enrichBookingsFromLeads({ sheets, spreadsheetId: id, bookings: rawBookings });
+    const rawStaff = rowsToObjects(staffRes.data.values || []);
 
-    // Build tech lookup for assigned_tech_name
     const techMap = {};
     for (const s of rawStaff) {
       if (s.staff_id) {
@@ -156,16 +159,13 @@ async function handleGetCalendar(req, res) {
       }
     }
 
-    // Shape all bookings
     const shaped = rawBookings
       .filter(b => b.booking_id)
       .map(b => {
         const sh = shapeBooking(b, tz);
-        // Primary single tech name
         if (sh.assigned_tech_id && techMap[sh.assigned_tech_id]) {
           sh.assigned_tech_name = techMap[sh.assigned_tech_id];
         }
-        // Multi-tech names from assigned_tech_ids (comma-separated)
         if (sh.assigned_tech_ids) {
           sh.assigned_tech_names = sh.assigned_tech_ids
             .split(",").map(id => id.trim()).filter(Boolean)
@@ -174,7 +174,6 @@ async function handleGetCalendar(req, res) {
         return sh;
       });
 
-    // Filter by date range if provided
     const scheduled   = [];
     const unscheduled = [];
     for (const b of shaped) {
@@ -187,12 +186,10 @@ async function handleGetCalendar(req, res) {
       scheduled.push(b);
     }
 
-    // Also include unscheduled regardless of date range
     const staffOut = rawStaff
       .filter(s => s.staff_id && (
         !s.status ||
         s.status === "active" || s.status === "approved" ||
-        // HR module uses employment_status instead of status
         s.employment_status === "active" || s.employment_status === "employed" ||
         s.employment_status === "full_time" || s.employment_status === "part_time"
       ))
@@ -205,7 +202,6 @@ async function handleGetCalendar(req, res) {
         phone:      s.phone       || "",
       }));
 
-    // Group scheduled bookings by local date for task-contract compliance
     const byDate = {};
     for (const b of scheduled) {
       if (!byDate[b.local_date]) byDate[b.local_date] = [];
@@ -215,8 +211,8 @@ async function handleGetCalendar(req, res) {
     json(res, 200, {
       ok:             true,
       timezone:       tz,
-      bookings:       scheduled,    // flat list (frontend convenience)
-      by_date:        byDate,       // grouped by local date (API contract)
+      bookings:       scheduled,
+      by_date:        byDate,
       unscheduled:    unscheduled,
       staff:          staffOut,
       staff_degraded: staffError !== null,
