@@ -1,32 +1,16 @@
 // api/schedule-book.js
 // POST /api/schedule/book
 //
-// Accepts block-based booking:
-//   { quote_id, block: "Morning"|"Afternoon", date: "YYYY-MM-DD",
-//     scheduled_datetime: "<ISO start of block>" }
-//
-// Crew-hours-aware multi-block logic:
-//   1. Reads estimated job duration from the locked QuoteSnapshot (total_hours field)
-//   2. Calls planMultiBlockBooking() to find consecutive block segments that fit the job
-//   3. Writes one Bookings row per segment with block_allocated_minutes + booking_group_id
-//   4. If job spans multiple blocks, all segments are returned in blocks_reserved[]
-//
-// Weekend bridging:
-//   Friday Afternoon overflow → Monday Morning (Saturday/Sunday skipped automatically)
-//
-// On success:
-//   - Writes booking row(s) to Bookings sheet
-//   - Appends "booked" event to QuoteSnapshots
-//   - Updates the Lead's schedule_window + scheduled_date
+// Leads is the canonical lifecycle row.
+// Bookings remains the scheduler/capacity table, and QuoteSnapshots remains an audit log.
+// Every successful booking now mirrors the full schedule/snapshot state back into Leads.
 
 const crypto = require("crypto");
 const { getSheetsClient }  = require("../lib/sheets");
 const { generateSlots }    = require("../lib/slotEngine");
 const { ensureTabHeaders } = require("../lib/sheetsSchema");
+const { mirrorBookingToLead } = require("../lib/leadLifecycle");
 
-// In-process booking lock — prevents two simultaneous requests from both
-// passing the fresh-read check before either append executes.
-// Key: "YYYY-MM-DD:Block" of the requested start block.
 const _bookingLocks = new Set();
 const {
   getBlockCapacityMins,
@@ -76,7 +60,6 @@ function toLocalDateStr(isoStr, tz) {
   }
 }
 
-// Build the ISO start time for a block on a given date
 function blockStartIso(dateStr, block, tz) {
   const timeStr = block === "Morning" ? "08:00" : "13:00";
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -90,65 +73,97 @@ function blockStartIso(dateStr, block, tz) {
   return new Date(guess.getTime() + diff).toISOString();
 }
 
-// After booking, update the matching Lead record and return the lead's id (non-fatal)
-async function updateLeadSchedule(sheets, quote_id, date, block, startIso, snapshot) {
+function buildBookingObject({ bookingId, quoteId, now, scheduledIso, durationMinutes, snapshot, block = "", allocatedMinutes = "", groupId = "", isContinuation = "" }) {
+  return {
+    booking_id: bookingId,
+    quote_id: quoteId,
+    created_at: now,
+    scheduled_datetime: scheduledIso,
+    duration_minutes: String(durationMinutes || ""),
+    address: snapshot.address || "",
+    customer_name: snapshot.customer_name || "",
+    status: "confirmed",
+    schedule_block: block,
+    job_type_id: snapshot.job_type_id || "",
+    final_price: snapshot.final_price || "",
+    phone: snapshot.phone || "",
+    email: snapshot.email || "",
+    block_allocated_minutes: String(allocatedMinutes || ""),
+    booking_group_id: groupId,
+    is_continuation: isContinuation ? "true" : "",
+  };
+}
+
+function bookingObjectToLegacyRow(b) {
+  return [
+    b.booking_id,
+    b.quote_id,
+    b.created_at,
+    b.scheduled_datetime,
+    b.duration_minutes,
+    b.address,
+    b.customer_name,
+    b.status,
+    b.schedule_block,
+    b.job_type_id,
+    b.final_price,
+    b.phone,
+    b.email,
+    b.block_allocated_minutes,
+    b.booking_group_id,
+    b.is_continuation,
+  ];
+}
+
+async function getRulesSnapshotsBookings(sheets, spreadsheetId) {
+  const [rulesRes, snapshotsRes, bookingsRes] = await Promise.all([
+    sheets.spreadsheets.values.get({ spreadsheetId, range: "SchedulerRules!A1:O3" }),
+    sheets.spreadsheets.values.get({ spreadsheetId, range: "QuoteSnapshots!A:AZ" }),
+    sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:Z" }),
+  ]);
+  return { rulesRes, snapshotsRes, bookingsRes };
+}
+
+async function mirrorPrimaryBooking({ sheets, spreadsheetId, quoteId, snapshot, booking }) {
   try {
-    const id       = SPREADSHEET_ID();
-    const leadsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Leads!A1:AZ2000" });
-    const rows     = leadsRes.data.values || [];
-    if (rows.length < 2) return null;
-
-    const headers       = rows[0];
-    const lastQuoteIdx  = headers.indexOf("last_quote_id");
-    const schedDateIdx  = headers.indexOf("scheduled_date");
-    const schedWinIdx   = headers.indexOf("schedule_window");
-    const statusIdx     = headers.indexOf("status");
-
-    let foundRowIdx = -1;
-    for (let i = 1; i < rows.length; i++) {
-      if (lastQuoteIdx >= 0 && String(rows[i][lastQuoteIdx] || "").trim() === quote_id) {
-        foundRowIdx = i;
-        break;
-      }
-    }
-
-    // Fallback: match by phone or email
-    if (foundRowIdx === -1 && snapshot) {
-      const phoneIdx = headers.indexOf("phone");
-      const emailIdx = headers.indexOf("email");
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i] || [];
-        const ph  = String(row[phoneIdx] || "").replace(/\D/g, "");
-        const em  = String(row[emailIdx] || "").toLowerCase().trim();
-        const sPh = String(snapshot.phone || "").replace(/\D/g, "");
-        const sEm = String(snapshot.email || "").toLowerCase().trim();
-        if ((sPh && ph === sPh) || (sEm && em === sEm)) { foundRowIdx = i; break; }
-      }
-    }
-
-    if (foundRowIdx === -1) {
-      console.log(`[schedule-book] No matching Lead for quote_id=${quote_id}`);
-      return null;
-    }
-
-    const row = [...(rows[foundRowIdx] || [])];
-    while (row.length < headers.length) row.push("");
-    if (schedDateIdx >= 0) row[schedDateIdx] = startIso.slice(0, 16);
-    if (schedWinIdx  >= 0) row[schedWinIdx]  = block;
-    if (statusIdx    >= 0 && row[statusIdx] !== "Scheduled") row[statusIdx] = "Scheduled";
-
-    const sheetRow   = foundRowIdx + 1;
-    const endColLtr  = String.fromCharCode(65 + Math.min(headers.length - 1, 51)); // cap at AZ
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: id,
-      range:         `Leads!A${sheetRow}:${endColLtr}${sheetRow}`,
-      valueInputOption: "RAW",
-      requestBody:   { majorDimension: "ROWS", values: [row.slice(0, headers.length)] },
+    return await mirrorBookingToLead({
+      sheets,
+      spreadsheetId,
+      quoteId,
+      snapshot,
+      booking,
+      desiredStatus: "Scheduled",
     });
-    console.log(`[schedule-book] Lead row ${sheetRow} updated: block=${block} date=${date} status=Scheduled`);
-    return String(rows[foundRowIdx][0] || "").trim() || null; // return lead id
   } catch (err) {
-    console.error("[schedule-book/updateLead]", err.message);
+    console.error("[schedule-book] Lead lifecycle mirror failed:", err.message);
+    return "";
+  }
+}
+
+async function backfillLeadIdIntoBookings(sheets, spreadsheetId, bookingIds, leadId) {
+  if (!leadId || !bookingIds.length) return;
+  try {
+    const bkHdrResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!1:1" });
+    const bkHdrs = (bkHdrResp.data.values && bkHdrResp.data.values[0]) || [];
+    const lidColIdx = bkHdrs.indexOf("lead_id");
+    if (lidColIdx < 0) return;
+
+    const allBkResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Bookings!A:A" });
+    const allIds = (allBkResp.data.values || []).map(r => String(r[0] || "").trim());
+    const colLetter = String.fromCharCode(65 + lidColIdx);
+    for (const bookingId of bookingIds) {
+      const rowNum = allIds.indexOf(bookingId);
+      if (rowNum > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Bookings!${colLetter}${rowNum + 1}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [[leadId]] },
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[schedule-book] lead_id backfill:", err.message);
   }
 }
 
@@ -166,135 +181,134 @@ async function handleBook(req, res) {
     }
 
     const sheets = await getSheetsClient();
-    const id     = SPREADSHEET_ID();
+    const id = SPREADSHEET_ID();
 
-    await ensureTabHeaders("Bookings");
-
-    const [rulesRes, snapshotsRes, bookingsRes] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "SchedulerRules!A1:O3" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "QuoteSnapshots!A:U" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:P" }),
+    await Promise.all([
+      ensureTabHeaders("Bookings"),
+      ensureTabHeaders("Leads"),
+      ensureTabHeaders("QuoteSnapshots"),
     ]);
 
-    // Parse rules
-    const rulesRows    = rulesRes.data.values || [];
-    const rulesHeaders = rulesRows[0] || [];
-    const rulesData    = rulesRows[1] || [];
-    const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
-    const tz    = rules.timezone || "America/Chicago";
+    const { rulesRes, snapshotsRes, bookingsRes } = await getRulesSnapshotsBookings(sheets, id);
 
-    // Find locked snapshot
+    const rulesRows = rulesRes.data.values || [];
+    const rulesHeaders = rulesRows[0] || [];
+    const rulesData = rulesRows[1] || [];
+    const rules = Object.fromEntries(rulesHeaders.map((h, i) => [h, rulesData[i] || ""]));
+    const tz = rules.timezone || "America/Chicago";
+
     const snapshots = rowsToObjects(snapshotsRes.data.values || []);
-    const snapshot  = snapshots.filter(r => r.quote_id === quote_id && r.event_type === "locked").pop();
+    const snapshot = snapshots.filter(r => r.quote_id === quote_id && r.event_type === "locked").pop();
     if (!snapshot) {
       return json(res, 400, { ok: false, error: "No locked quote found. Lock your price first." });
     }
 
-    // Existing bookings (for capacity math)
     const existingBookings = rowsToObjects(bookingsRes.data.values || []);
-
     const isBlockBooking = Boolean(block && (block === "Morning" || block === "Afternoon"));
-    const bookingDate    = date || toLocalDateStr(scheduled_datetime, tz) || slotDate.toISOString().slice(0, 10);
+    const bookingDate = date || toLocalDateStr(scheduled_datetime, tz) || slotDate.toISOString().slice(0, 10);
 
     if (!isBlockBooking) {
-      // ── Legacy exact-time path (no multi-block, no hours logic) ────────────
       const bookingsLegacy = rowsToObjects(
         (await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:H" })).data.values || []
       );
       const durationLeg = getJobMinsFromSnapshot(snapshot);
-      const availSlots  = generateSlots(rules, bookingsLegacy, durationLeg, new Date());
-      const isAvail     = availSlots.some(s => Math.abs(new Date(s).getTime() - slotDate.getTime()) < 60000);
+      const availSlots = generateSlots(rules, bookingsLegacy, durationLeg, new Date());
+      const isAvail = availSlots.some(s => Math.abs(new Date(s).getTime() - slotDate.getTime()) < 60000);
       if (!isAvail) {
         return json(res, 409, { ok: false, error: "That time slot is no longer available." });
       }
-      // Write single legacy booking
+
       const bookingId = newId("BK");
-      const eventId   = newId("EV");
-      const now       = nowIso();
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: id, range: "Bookings!A:A",
-        valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
-        requestBody: { majorDimension: "ROWS", values: [[
-          bookingId, quote_id, now, slotDate.toISOString(), durationLeg,
-          snapshot.address || "", snapshot.customer_name || "", "confirmed",
-          "", snapshot.job_type_id || "", snapshot.final_price || "",
-          snapshot.phone || "", snapshot.email || "",
-          durationLeg, "", "",
-        ]]},
+      const now = nowIso();
+      const booking = buildBookingObject({
+        bookingId,
+        quoteId: quote_id,
+        now,
+        scheduledIso: slotDate.toISOString(),
+        durationMinutes: durationLeg,
+        snapshot,
+        allocatedMinutes: durationLeg,
       });
-      await _appendSnapshotEvent(sheets, id, eventId, quote_id, snapshot, bookingId, now);
-      console.log(`[schedule-book] Legacy booked ${bookingId} quote=${quote_id}`);
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: id,
+        range: "Bookings!A:A",
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { majorDimension: "ROWS", values: [bookingObjectToLegacyRow(booking)] },
+      });
+
+      const leadId = await mirrorPrimaryBooking({ sheets, spreadsheetId: id, quoteId: quote_id, snapshot, booking });
+      await backfillLeadIdIntoBookings(sheets, id, [bookingId], leadId);
+      await _appendSnapshotEvent(sheets, id, newId("EV"), quote_id, snapshot, bookingId, now, leadId);
+
+      console.log(`[schedule-book] Legacy booked ${bookingId} quote=${quote_id} lead=${leadId || ""}`);
       return json(res, 200, {
-        ok: true, booking_id: bookingId,
+        ok: true,
+        booking_id: bookingId,
+        lead_id: leadId || "",
         scheduled_datetime: slotDate.toISOString(),
-        schedule_block: null, window_label: null,
-        duration_minutes: durationLeg, blocks_reserved: [],
-        customer_name: snapshot.customer_name, address: snapshot.address,
-        final_price: snapshot.final_price, quote_id,
+        schedule_block: null,
+        window_label: null,
+        duration_minutes: durationLeg,
+        blocks_reserved: [],
+        customer_name: snapshot.customer_name,
+        address: snapshot.address,
+        final_price: snapshot.final_price,
+        quote_id,
       });
     }
 
-    // ── Block-based path: hours-aware multi-block planning ───────────────────
-    const jobMins  = getJobMinsFromSnapshot(snapshot);
-    const capMins  = getBlockCapacityMins(rules);
+    const jobMins = getJobMinsFromSnapshot(snapshot);
+    const capMins = getBlockCapacityMins(rules);
     const leadHours = Number(rules.lead_time_hours) || 3;
 
-    // Lead-time guard: reject if the requested block starts within the cutoff window
     const reqBlockIso = blockStartIso(bookingDate, block, tz);
-    const cutoffMs    = Date.now() + leadHours * 3600000;
+    const cutoffMs = Date.now() + leadHours * 3600000;
     if (new Date(reqBlockIso).getTime() < cutoffMs) {
       return json(res, 409, {
-        ok:    false,
+        ok: false,
         error: `That slot is within the ${leadHours}-hour advance booking window. Please choose a later date.`,
       });
     }
 
-    // Validate the requested start block has room
-    const usedInStart   = getBlockUsedMins(existingBookings, bookingDate, block, tz);
-    const availInStart  = capMins - usedInStart;
+    const usedInStart = getBlockUsedMins(existingBookings, bookingDate, block, tz);
+    const availInStart = capMins - usedInStart;
     if (availInStart < MIN_BOOKING_MINS) {
       return json(res, 409, {
-        ok:    false,
+        ok: false,
         error: `The ${block} block on ${bookingDate} is at capacity (${(availInStart / 60).toFixed(1)} hrs remaining). Please choose another.`,
       });
     }
 
-    // Plan the full booking (may span multiple blocks)
     const segments = planMultiBlockBooking(jobMins, bookingDate, block, existingBookings, rules, tz);
     if (!segments || segments.length === 0) {
       return json(res, 409, { ok: false, error: "Unable to find available blocks for this job." });
     }
 
-    // ── Race-condition guard: re-read bookings fresh before writing ──────────
-    // Two simultaneous requests could both see capacity and both proceed.
-    // Re-reading and recomputing segments from fresh data closes the window.
-    const freshBookingsRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: id, range: "Bookings!A:P",
-    });
+    const freshBookingsRes = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:Z" });
     const freshBookings = rowsToObjects(freshBookingsRes.data.values || []);
     const freshSegments = planMultiBlockBooking(jobMins, bookingDate, block, freshBookings, rules, tz);
     if (!freshSegments || freshSegments.length === 0) {
       return json(res, 409, { ok: false, error: "This slot just filled up. Please choose another time." });
     }
-    // Verify each planned segment still has enough room for its required allocation
+
     for (const seg of freshSegments) {
-      const freshUsed  = getBlockUsedMins(freshBookings, seg.date, seg.block, tz);
+      const freshUsed = getBlockUsedMins(freshBookings, seg.date, seg.block, tz);
       const freshAvail = capMins - freshUsed;
       if (freshAvail < seg.allocated_mins) {
         return json(res, 409, {
-          ok:    false,
+          ok: false,
           error: `This slot just filled up (${seg.date} ${seg.block}). Please choose another time.`,
         });
       }
     }
 
-    // Acquire in-process locks for ALL planned segment blocks — prevents concurrent
-    // requests from contending on any block in a multi-block job sequence.
     const lockKeys = freshSegments.map(s => `${s.date}:${s.block}`);
     for (const lk of lockKeys) {
       if (_bookingLocks.has(lk)) {
         return json(res, 409, {
-          ok:    false,
+          ok: false,
           error: `This slot just filled up (${lk.replace(":", " ")}). Please choose another time.`,
         });
       }
@@ -302,138 +316,124 @@ async function handleBook(req, res) {
     for (const lk of lockKeys) _bookingLocks.add(lk);
 
     try {
+      const groupId = newId("GRP");
+      const now = nowIso();
+      const primaryIso = blockStartIso(bookingDate, block, tz);
 
-    const groupId   = newId("GRP");
-    const now       = nowIso();
-    const primaryIso = blockStartIso(bookingDate, block, tz);
-
-    // Write one Bookings row per segment (use freshSegments — fresh allocation amounts)
-    const bookingRows = [];
-    for (const seg of freshSegments) {
-      const bookingId  = newId("BK");
-      const segStartIso = blockStartIso(seg.date, seg.block, tz);
-      bookingRows.push({
-        id:  bookingId,
-        row: [
+      const bookings = freshSegments.map((seg) => {
+        const bookingId = newId("BK");
+        const segStartIso = blockStartIso(seg.date, seg.block, tz);
+        return buildBookingObject({
           bookingId,
-          quote_id,
+          quoteId: quote_id,
           now,
-          segStartIso,
-          jobMins,                              // duration_minutes = total job (for display)
-          snapshot.address         || "",
-          snapshot.customer_name   || "",
-          "confirmed",
-          seg.block,
-          snapshot.job_type_id     || "",
-          snapshot.final_price     || "",
-          snapshot.phone           || "",
-          snapshot.email           || "",
-          seg.allocated_mins,                   // block_allocated_minutes (hours engine)
-          groupId,                              // booking_group_id
-          seg.is_continuation ? "true" : "",   // is_continuation
-        ],
+          scheduledIso: segStartIso,
+          durationMinutes: jobMins,
+          snapshot,
+          block: seg.block,
+          allocatedMinutes: seg.allocated_mins,
+          groupId,
+          isContinuation: seg.is_continuation,
+        });
       });
-    }
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: id, range: "Bookings!A:A",
-      valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
-      requestBody: { majorDimension: "ROWS", values: bookingRows.map(b => b.row) },
-    });
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: id,
+        range: "Bookings!A:A",
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { majorDimension: "ROWS", values: bookings.map(bookingObjectToLegacyRow) },
+      });
 
-    // Append "booked" snapshot event (once, for the primary segment)
-    const eventId = newId("EV");
-    await _appendSnapshotEvent(sheets, id, eventId, quote_id, snapshot, bookingRows[0].id, now);
+      const primaryBooking = {
+        ...bookings[0],
+        scheduled_datetime: primaryIso,
+        schedule_block: block,
+      };
+      const leadId = await mirrorPrimaryBooking({
+        sheets,
+        spreadsheetId: id,
+        quoteId: quote_id,
+        snapshot,
+        booking: primaryBooking,
+      });
 
-    // Update lead schedule to primary block; returns lead_id so we can backfill bookings
-    const resolvedLeadId = await updateLeadSchedule(sheets, quote_id, bookingDate, block, primaryIso, snapshot);
-    // Backfill lead_id into every booking row we just wrote (safe: Bookings schema has lead_id col)
-    if (resolvedLeadId) {
-      try {
-        const bkHdrResp = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!1:1" });
-        const bkHdrs = (bkHdrResp.data.values && bkHdrResp.data.values[0]) || [];
-        const lidColIdx = bkHdrs.indexOf("lead_id");
-        if (lidColIdx >= 0) {
-          const allBkResp = await sheets.spreadsheets.values.get({ spreadsheetId: id, range: "Bookings!A:A" });
-          const bkIds = (allBkResp.data.values || []).map(r => String(r[0] || "").trim());
-          const bkLetter = String.fromCharCode(65 + lidColIdx);
-          for (const { id: bkId } of bookingRows) {
-            const rowNum = bkIds.indexOf(bkId);
-            if (rowNum > 0) {
-              sheets.spreadsheets.values.update({
-                spreadsheetId: id, range: `Bookings!${bkLetter}${rowNum + 1}`,
-                valueInputOption: "RAW", requestBody: { values: [[resolvedLeadId]] },
-              }).catch(() => {});
-            }
-          }
-        }
-      } catch (e) { console.warn("[schedule-book] lead_id backfill:", e.message); }
-    }
+      await backfillLeadIdIntoBookings(sheets, id, bookings.map(b => b.booking_id), leadId);
+      await _appendSnapshotEvent(sheets, id, newId("EV"), quote_id, snapshot, bookings[0].booking_id, now, leadId);
 
-    const blocksReserved = freshSegments.map((seg, i) => ({
-      date:             seg.date,
-      block:            seg.block,
-      window_label:     WINDOW_LABELS[seg.block] || "",
-      display:          `${seg.block} — ${WINDOW_LABELS[seg.block] || ""}`,
-      allocated_hrs:    Math.round(seg.allocated_mins / 60 * 10) / 10,
-      booking_id:       bookingRows[i].id,
-      is_continuation:  seg.is_continuation,
-    }));
+      const blocksReserved = freshSegments.map((seg, i) => ({
+        date: seg.date,
+        block: seg.block,
+        window_label: WINDOW_LABELS[seg.block] || "",
+        display: `${seg.block} — ${WINDOW_LABELS[seg.block] || ""}`,
+        allocated_hrs: Math.round(seg.allocated_mins / 60 * 10) / 10,
+        booking_id: bookings[i].booking_id,
+        is_continuation: seg.is_continuation,
+      }));
 
-    const spansSummary = blocksReserved.length > 1
-      ? blocksReserved.map(b => `${b.date} ${b.block}`).join(" → ")
-      : `${bookingDate} ${block}`;
+      const spansSummary = blocksReserved.length > 1
+        ? blocksReserved.map(b => `${b.date} ${b.block}`).join(" → ")
+        : `${bookingDate} ${block}`;
 
-    console.log(`[schedule-book] Booked group=${groupId} quote=${quote_id} job=${(jobMins/60).toFixed(1)}h spans: ${spansSummary}`);
+      console.log(`[schedule-book] Booked group=${groupId} quote=${quote_id} lead=${leadId || ""} job=${(jobMins/60).toFixed(1)}h spans: ${spansSummary}`);
 
-    json(res, 200, {
-      ok:                 true,
-      booking_id:         bookingRows[0].id,
-      booking_group_id:   groupId,
-      scheduled_datetime: primaryIso,
-      schedule_block:     block,
-      window_label:       WINDOW_LABELS[block] || "",
-      duration_minutes:   jobMins,
-      blocks_reserved:    blocksReserved,
-      multi_block:        blocksReserved.length > 1,
-      customer_name:      snapshot.customer_name,
-      address:            snapshot.address,
-      final_price:        snapshot.final_price,
-      quote_id,
-    });
-
+      json(res, 200, {
+        ok: true,
+        booking_id: bookings[0].booking_id,
+        lead_id: leadId || "",
+        booking_group_id: groupId,
+        scheduled_datetime: primaryIso,
+        schedule_block: block,
+        window_label: WINDOW_LABELS[block] || "",
+        duration_minutes: jobMins,
+        blocks_reserved: blocksReserved,
+        multi_block: blocksReserved.length > 1,
+        customer_name: snapshot.customer_name,
+        address: snapshot.address,
+        final_price: snapshot.final_price,
+        quote_id,
+      });
     } finally {
       for (const lk of lockKeys) _bookingLocks.delete(lk);
     }
-
   } catch (err) {
     console.error("[schedule-book]", err.message);
     json(res, 500, { ok: false, error: err.message });
   }
 }
 
-// ── Helper: write "booked" event to QuoteSnapshots ───────────────────────────
-async function _appendSnapshotEvent(sheets, id, eventId, quote_id, snapshot, bookingId, now) {
+async function _appendSnapshotEvent(sheets, id, eventId, quote_id, snapshot, bookingId, now, leadId = "") {
   try {
     const snapRow = [
-      eventId, quote_id, now, "booked",
-      snapshot.job_type_id            || "",
-      snapshot.selected_options_json  || "[]",
-      snapshot.selected_addons_json   || "[]",
-      snapshot.total_hours            || "",
-      "", "", "", "",
-      snapshot.final_price            || "",
-      "", snapshot.pricing_version    || "1",
+      eventId,
+      quote_id,
+      now,
       "booked",
-      snapshot.customer_name          || "",
-      snapshot.phone                  || "",
-      snapshot.email                  || "",
-      snapshot.address                || "",
+      snapshot.job_type_id || "",
+      snapshot.selected_options_json || "[]",
+      snapshot.selected_addons_json || "[]",
+      snapshot.total_hours || "",
+      "",
+      "",
+      "",
+      "",
+      snapshot.final_price || "",
+      "",
+      snapshot.pricing_version || "1",
+      "booked",
+      snapshot.customer_name || "",
+      snapshot.phone || "",
+      snapshot.email || "",
+      snapshot.address || "",
       bookingId,
+      leadId || "",
+      bookingId || "",
     ];
     await sheets.spreadsheets.values.append({
-      spreadsheetId: id, range: "QuoteSnapshots!A:A",
-      valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+      spreadsheetId: id,
+      range: "QuoteSnapshots!A:A",
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
       requestBody: { majorDimension: "ROWS", values: [snapRow] },
     });
   } catch (err) {
